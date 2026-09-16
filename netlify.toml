@@ -1,6 +1,22 @@
 [build]
   publish = "."
-  command = "echo 'Static site — no build step'"
+  command = "npm install --omit=dev"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/account"
+  to = "/.netlify/functions/account"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/account/*"
+  to = "/.netlify/functions/account"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/api/*"

@@ -1,0 +1,23 @@
+{
+  "name": "pronti-via-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pronti? VIA! static web app",
+  "scripts": {
+    "test": "node --check netlify/functions/account.mjs && node --check account.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Andrew231716/Pronti-VIA-Web.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Andrew231716/Pronti-VIA-Web/issues"
+  },
+  "homepage": "https://github.com/Andrew231716/Pronti-VIA-Web#readme",
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0"
+  }
+}

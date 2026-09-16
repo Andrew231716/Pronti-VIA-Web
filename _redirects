@@ -1,2 +1,4 @@
+/api/account /.netlify/functions/account 200!
+/api/account/* /.netlify/functions/account 200!
 /api/* https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via/:splat 200
 /* /index.html 200
