@@ -16,7 +16,7 @@
   "bugs": {
     "url": "https://github.com/Andrew231716/Pronti-VIA-Web/issues"
   },
-  "homepage": "https://github.com/Andrew231716/Pronti-VIA-Web#readme",
+  "homepage": "https://andrew231716.github.io/Pronti-VIA-Web/",
   "dependencies": {
     "@netlify/blobs": "^11.1.0"
   }

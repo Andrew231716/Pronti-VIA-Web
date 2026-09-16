@@ -19,20 +19,66 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Prepare static site
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
         run: |
           mkdir -p site
-          # Copy only public static assets (no node_modules / git / netlify state)
-          shopt -s extglob
-          cp -a !(node_modules|.git|.netlify|site|package-lock.json) site/ 2>/dev/null || true
-          # Fallback copy if bash extglob missed files
           for f in index.html 404.html account.js account.css api-shim.js places-suggest.js \
                    favicon.svg logo.png coast.jpg manifest.webmanifest map.html \
-                   vercel.json _redirects README.md; do
+                   vercel.json _redirects README.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
           done
           [ -d assets ] && cp -a assets site/
           [ -d vendor ] && cp -a vendor site/
           [ -d brand ] && cp -a brand site/
+
+          # Project Pages live at /<repo>/ — rewrite root-absolute static paths.
+          # Keep /api/* as-is so the client shim can intercept same-origin API calls.
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+
+          base = f"/{os.environ['REPO_NAME']}"
+          root = Path("site")
+          suffixes = {".html", ".js", ".css", ".webmanifest", ".json", ".svg"}
+          # Longest-first so /account.css wins over /account
+          prefixes = [
+              "/assets/",
+              "/vendor/",
+              "/places-suggest.js",
+              "/api-shim.js",
+              "/account.css",
+              "/account.js",
+              "/manifest.webmanifest",
+              "/pronti-via-logo.png",
+              "/favicon.svg",
+              "/logo.png",
+              "/coast.jpg",
+              "/map.html",
+          ]
+
+          def rewrite(text: str) -> str:
+              out = text
+              for prefix in prefixes:
+                  for quote in ('"', "'", "`"):
+                      out = out.replace(f"{quote}{prefix}", f"{quote}{base}{prefix}")
+                  # also unquoted in url(...)
+                  out = out.replace(f"url({prefix}", f"url({base}{prefix}")
+                  out = out.replace(f"url('{prefix}", f"url('{base}{prefix}")
+                  out = out.replace(f'url("{prefix}', f'url("{base}{prefix}')
+              return out
+
+          for path in root.rglob("*"):
+              if not path.is_file() or path.suffix not in suffixes:
+                  continue
+              original = path.read_text(encoding="utf-8", errors="ignore")
+              updated = rewrite(original)
+              if updated != original:
+                  path.write_text(updated, encoding="utf-8")
+                  print(f"rewrote {path}")
+
+          print(f"base={base}")
+          PY
           ls -la site
       - name: Setup Pages
         uses: actions/configure-pages@v5
