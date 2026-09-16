@@ -1,25 +1,25 @@
 /**
- * Client fallback when /api/places is not available (e.g. static hosts).
- * Account stays on localStorage via account.js.
+ * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
+ * Places → Photon; trips → Supabase direct, then Netlify CORS proxy.
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
+  const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
 
   const originalFetch = window.fetch.bind(window);
+  const onGitHubPages = /\.github\.io$/i.test(location.hostname);
 
   async function searchPlaces(query, scope) {
     const q = String(query || "").trim();
     if (q.length < 2) return { places: [] };
 
     const photonParams = new URLSearchParams({ q, limit: "10", lang: "default" });
-    const photonPromise = originalFetch(`https://photon.komoot.io/api/?${photonParams}`).then((r) =>
-      r.json()
-    );
-
     let features = [];
     try {
-      const data = await photonPromise;
+      const data = await originalFetch(`https://photon.komoot.io/api/?${photonParams}`).then((r) =>
+        r.json()
+      );
       features = Array.isArray(data.features) ? data.features : [];
     } catch {
       features = [];
@@ -99,35 +99,39 @@
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
-      } catch (error) {
-        return new Response(
-          JSON.stringify({ error: "Ricerca mappe non disponibile." }),
-          { status: 502, headers: { "Content-Type": "application/json" } }
-        );
+      } catch {
+        return new Response(JSON.stringify({ error: "Ricerca mappe non disponibile." }), {
+          status: 502,
+          headers: { "Content-Type": "application/json" },
+        });
       }
     }
 
     if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/account")) {
-      // Let account.js local flow handle auth; return soft failure for cloud sync.
       return new Response(JSON.stringify({ error: "Sync cloud non disponibile su questo host." }), {
         status: 503,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    // If host has no reverse-proxy for trips, try direct Supabase (may fail on CORS).
     if (
       parsed.origin === location.origin &&
       parsed.pathname.startsWith("/api/") &&
       !parsed.pathname.startsWith("/api/places") &&
       !parsed.pathname.startsWith("/api/account")
     ) {
-      const target = `${TRIPS_BASE}${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
-      try {
-        const proxied = await originalFetch(target, init);
-        if (proxied.type !== "opaque" && proxied.status !== 0) return proxied;
-      } catch {
-        /* fall through */
+      const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
+      const candidates = onGitHubPages
+        ? [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
+        : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`];
+
+      for (const target of candidates) {
+        try {
+          const proxied = await originalFetch(target, init);
+          if (proxied.type !== "opaque" && proxied.status !== 0) return proxied;
+        } catch {
+          /* try next */
+        }
       }
     }
 
