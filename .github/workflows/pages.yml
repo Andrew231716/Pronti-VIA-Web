@@ -18,12 +18,30 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare static site
+        run: |
+          mkdir -p site
+          # Copy only public static assets (no node_modules / git / netlify state)
+          shopt -s extglob
+          cp -a !(node_modules|.git|.netlify|site|package-lock.json) site/ 2>/dev/null || true
+          # Fallback copy if bash extglob missed files
+          for f in index.html 404.html account.js account.css api-shim.js places-suggest.js \
+                   favicon.svg logo.png coast.jpg manifest.webmanifest map.html \
+                   vercel.json _redirects README.md; do
+            [ -f "$f" ] && cp -a "$f" site/
+          done
+          [ -d assets ] && cp -a assets site/
+          [ -d vendor ] && cp -a vendor site/
+          [ -d brand ] && cp -a brand site/
+          ls -la site
       - name: Setup Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
