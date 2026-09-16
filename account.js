@@ -432,10 +432,13 @@ async function ensureCurrentUserOnTrip() {
     });
     if (save.ok) {
       joinedTrips.add(joinKey);
-      // Soft refresh so the UI picks up the new member list.
-      setTimeout(() => {
-        if (location.hash.includes(tripId)) location.reload();
-      }, 400);
+      const refreshKey = `pv-joined-refresh:${joinKey}`;
+      if (!sessionStorage.getItem(refreshKey)) {
+        sessionStorage.setItem(refreshKey, "1");
+        setTimeout(() => {
+          if (location.hash.includes(tripId)) location.reload();
+        }, 400);
+      }
     }
   } catch {
     /* ignore transient join failures */

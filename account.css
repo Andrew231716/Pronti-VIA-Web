@@ -205,3 +205,25 @@ body.pv-account-ready {
   font: inherit;
   cursor: pointer;
 }
+
+.share-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-inputs input {
+  width: 88px;
+  box-sizing: border-box;
+}
+
+.share-inputs span {
+  color: #5b7380;
+  font-size: 0.85rem;
+}
+
+.route-hop {
+  margin: 2px 0 10px 28px;
+  color: #5b7380;
+  font-size: 0.85rem;
+}
