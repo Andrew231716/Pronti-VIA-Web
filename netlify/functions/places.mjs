@@ -13,6 +13,7 @@ const DESTINATION_TYPES = new Set([
   "administrative",
   "island",
   "archipelago",
+  "locality",
 ]);
 
 function json(status, body) {
@@ -50,29 +51,6 @@ function destinationTitle(item) {
   return name || item.display_name;
 }
 
-function toPlaceFromNominatim(item, scope) {
-  const lat = Number(item.lat);
-  const lng = Number(item.lon);
-  const title = scope === "destination" ? destinationTitle(item) : buildGenericLabel(item);
-  return {
-    id: `osm-${item.place_id}`,
-    title,
-    subtitle: item.display_name,
-    address: item.display_name,
-    lat: Number.isFinite(lat) ? lat : null,
-    lng: Number.isFinite(lng) ? lng : null,
-    type: item.type || item.class || "place",
-    mapsUrl:
-      Number.isFinite(lat) && Number.isFinite(lng)
-        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title)}`,
-    osmUrl:
-      Number.isFinite(lat) && Number.isFinite(lng)
-        ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
-        : `https://www.openstreetmap.org/search?query=${encodeURIComponent(title)}`,
-  };
-}
-
 function buildGenericLabel(item) {
   const address = item.address || {};
   const parts = [
@@ -88,8 +66,36 @@ function buildGenericLabel(item) {
     address.city || address.town || address.village || address.state,
     address.country,
   ].filter(Boolean);
-  return [...new Set(parts.map((part) => String(part).trim()).filter(Boolean))].join(", ") ||
-    item.display_name;
+  return (
+    [...new Set(parts.map((part) => String(part).trim()).filter(Boolean))].join(", ") ||
+    item.display_name
+  );
+}
+
+function toPlaceFromNominatim(item, scope) {
+  const lat = Number(item.lat);
+  const lng = Number(item.lon);
+  const title = scope === "destination" ? destinationTitle(item) : buildGenericLabel(item);
+  const name = item.name || item.display_name?.split(",")[0] || title;
+  return {
+    id: `osm-${item.place_id}`,
+    title,
+    name,
+    subtitle: item.display_name,
+    address: item.display_name,
+    lat: Number.isFinite(lat) ? lat : null,
+    lng: Number.isFinite(lng) ? lng : null,
+    type: item.type || item.class || "place",
+    importance: Number(item.importance) || 0,
+    mapsUrl:
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title)}`,
+    osmUrl:
+      Number.isFinite(lat) && Number.isFinite(lng)
+        ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
+        : `https://www.openstreetmap.org/search?query=${encodeURIComponent(title)}`,
+  };
 }
 
 function toPlaceFromPhoton(feature, scope) {
@@ -98,29 +104,33 @@ function toPlaceFromPhoton(feature, scope) {
   const lng = Number(coords[0]);
   const lat = Number(coords[1]);
   const type = props.type || props.osm_value || "place";
+  const name = props.name || props.city || props.country || "Luogo";
   let title;
   if (scope === "destination") {
-    const name = props.name || props.city || props.country;
     if (type === "country" || props.country === name) title = name;
     else if (props.country && name && props.country !== name) {
-      title = props.state && props.state !== name
-        ? `${name}, ${props.state}, ${props.country}`
-        : `${name}, ${props.country}`;
-    } else title = name || "Luogo";
+      title =
+        props.state && props.state !== name
+          ? `${name}, ${props.state}, ${props.country}`
+          : `${name}, ${props.country}`;
+    } else title = name;
   } else {
-    title = [...new Set([props.name, props.city || props.county, props.state, props.country].filter(Boolean))].join(", ") ||
-      props.name ||
-      "Luogo";
+    title =
+      [...new Set([props.name, props.city || props.county, props.state, props.country].filter(Boolean))].join(
+        ", "
+      ) || name;
   }
   const address = [props.name, props.city, props.state, props.country].filter(Boolean).join(", ");
   return {
     id: `photon-${props.osm_id || `${lat},${lng}`}`,
     title,
+    name,
     subtitle: address,
     address,
     lat: Number.isFinite(lat) ? lat : null,
     lng: Number.isFinite(lng) ? lng : null,
     type,
+    importance: 0.2,
     mapsUrl:
       Number.isFinite(lat) && Number.isFinite(lng)
         ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
@@ -135,8 +145,7 @@ function toPlaceFromPhoton(feature, scope) {
 function isDestinationPlace(place) {
   const type = String(place.type || "").toLowerCase();
   if (DESTINATION_TYPES.has(type)) return true;
-  // Photon sometimes uses osm_key/value equivalents already flattened into type.
-  return ["country", "city", "town", "village", "state", "locality"].some((token) =>
+  return ["country", "city", "town", "village", "state", "locality", "administrative"].some((token) =>
     type.includes(token)
   );
 }
@@ -145,9 +154,19 @@ function destinationRank(place) {
   const type = String(place.type || "").toLowerCase();
   if (type === "country") return 0;
   if (type === "state" || type === "region") return 1;
-  if (type === "city" || type === "town") return 2;
-  if (type === "village" || type === "municipality") return 3;
+  if (type === "city" || type === "town" || type === "administrative") return 2;
+  if (type === "village" || type === "municipality" || type === "locality") return 3;
   return 4;
+}
+
+function queryMatchScore(place, q) {
+  const query = q.toLowerCase();
+  const name = String(place.name || "").toLowerCase();
+  const title = String(place.title || "").toLowerCase();
+  if (name === query || title === query) return 0;
+  if (name.startsWith(query) || title.startsWith(query)) return 1;
+  if (name.includes(query) || title.includes(query)) return 2;
+  return 3;
 }
 
 function dedupePlaces(places, limit = 8) {
@@ -171,10 +190,6 @@ async function searchNominatim(q, scope) {
     limit: scope === "destination" ? "12" : "8",
     "accept-language": "it",
   });
-  if (scope === "destination") {
-    // Prefer admin areas / settlements.
-    params.set("featureType", "settlement");
-  }
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -207,27 +222,24 @@ async function searchNominatimCountry(q) {
   });
   if (!response.ok) throw new Error(`Nominatim country ${response.status}`);
   const rows = await response.json();
-  return (Array.isArray(rows) ? rows : []).map((item) => toPlaceFromNominatim(item, "destination"));
+  return (Array.isArray(rows) ? rows : []).map((item) => {
+    const place = toPlaceFromNominatim(item, "destination");
+    place.importance = Math.max(place.importance || 0, 0.9);
+    return place;
+  });
 }
 
 async function searchPhoton(q, scope) {
-  const params = new URLSearchParams({ q, limit: "10", lang: "en" });
-  if (scope === "destination") {
-    params.set("osm_tag", ":!highway");
-    params.append("layer", "country");
-    params.append("layer", "state");
-    params.append("layer", "city");
-    params.append("layer", "locality");
-  }
+  const params = new URLSearchParams({ q, limit: "10", lang: "default" });
   const response = await fetch(`https://photon.komoot.io/api/?${params}`, {
     headers: { Accept: "application/json" },
     signal: AbortSignal.timeout(15000),
   });
   if (!response.ok) throw new Error(`Photon ${response.status}`);
   const data = await response.json();
-  return (Array.isArray(data.features) ? data.features : []).map((feature) =>
-    toPlaceFromPhoton(feature, scope)
-  );
+  return (Array.isArray(data.features) ? data.features : [])
+    .map((feature) => toPlaceFromPhoton(feature, scope))
+    .filter((place) => (scope === "destination" ? isDestinationPlace(place) : true));
 }
 
 export async function handler(event) {
@@ -267,7 +279,13 @@ export async function handler(event) {
     if (scope === "destination") {
       places = places
         .filter(isDestinationPlace)
-        .sort((a, b) => destinationRank(a) - destinationRank(b) || a.title.localeCompare(b.title, "it"));
+        .sort(
+          (a, b) =>
+            queryMatchScore(a, q) - queryMatchScore(b, q) ||
+            destinationRank(a) - destinationRank(b) ||
+            (b.importance || 0) - (a.importance || 0) ||
+            a.title.localeCompare(b.title, "it")
+        );
     }
 
     places = dedupePlaces(places, 8);
