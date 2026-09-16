@@ -5,6 +5,8 @@
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
+  // Temporary CORS proxy while Netlify production redeploy is unavailable.
+  const TRIPS_PROXY = "https://purchases-variation-sophisticated-adrian.trycloudflare.com";
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
 
   const originalFetch = window.fetch.bind(window);
@@ -122,8 +124,8 @@
     ) {
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
       const candidates = onGitHubPages
-        ? [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
-        : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`];
+        ? [`${TRIPS_PROXY}/api${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
+        : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_PROXY}/api${suffix}`];
 
       for (const target of candidates) {
         try {
