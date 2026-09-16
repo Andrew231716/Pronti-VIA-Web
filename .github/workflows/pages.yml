@@ -4,17 +4,12 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 concurrency:
   group: pages
   cancel-in-progress: true
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +26,8 @@ jobs:
           [ -d assets ] && cp -a assets site/
           [ -d vendor ] && cp -a vendor site/
           [ -d brand ] && cp -a brand site/
+          touch site/.nojekyll
 
-          # Project Pages live at /<repo>/ — rewrite root-absolute static paths.
-          # Keep /api/* as-is so the client shim can intercept same-origin API calls.
           python3 <<'PY'
           import os
           from pathlib import Path
@@ -41,7 +35,6 @@ jobs:
           base = f"/{os.environ['REPO_NAME']}"
           root = Path("site")
           suffixes = {".html", ".js", ".css", ".webmanifest", ".json", ".svg"}
-          # Longest-first so /account.css wins over /account
           prefixes = [
               "/assets/",
               "/vendor/",
@@ -62,7 +55,6 @@ jobs:
               for prefix in prefixes:
                   for quote in ('"', "'", "`"):
                       out = out.replace(f"{quote}{prefix}", f"{quote}{base}{prefix}")
-                  # also unquoted in url(...)
                   out = out.replace(f"url({prefix}", f"url({base}{prefix}")
                   out = out.replace(f"url('{prefix}", f"url('{base}{prefix}")
                   out = out.replace(f'url("{prefix}', f'url("{base}{prefix}')
@@ -76,18 +68,12 @@ jobs:
               if updated != original:
                   path.write_text(updated, encoding="utf-8")
                   print(f"rewrote {path}")
-
           print(f"base={base}")
           PY
-          ls -la site
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          enablement: true
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          force_orphan: true
+          enable_jekyll: false
