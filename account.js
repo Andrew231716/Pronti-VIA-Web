@@ -1,4 +1,5 @@
 const SESSION_KEY = "viavia-account-v1";
+const USERS_KEY = "viavia-accounts-db-v1";
 const TRIPS_KEY = "viavia-recent-links-v1";
 const API = "/api/account";
 
@@ -8,30 +9,53 @@ const state = {
   mode: "login",
 };
 
-function readSession() {
+function readJson(key, fallback) {
   try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+    const value = JSON.parse(localStorage.getItem(key) || "null");
+    return value == null ? fallback : value;
   } catch {
-    return null;
+    return fallback;
   }
+}
+
+function writeJson(key, value) {
+  if (value == null) localStorage.removeItem(key);
+  else localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readSession() {
+  const session = readJson(SESSION_KEY, null);
+  if (!session?.user?.username) return null;
+  return session;
 }
 
 function writeSession(session) {
-  if (!session) localStorage.removeItem(SESSION_KEY);
-  else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  writeJson(SESSION_KEY, session);
+}
+
+function readUsers() {
+  const users = readJson(USERS_KEY, {});
+  return users && typeof users === "object" ? users : {};
+}
+
+function writeUsers(users) {
+  writeJson(USERS_KEY, users);
 }
 
 function readLocalTrips() {
-  try {
-    const trips = JSON.parse(localStorage.getItem(TRIPS_KEY) || "[]");
-    return Array.isArray(trips) ? trips : [];
-  } catch {
-    return [];
-  }
+  const trips = readJson(TRIPS_KEY, []);
+  return Array.isArray(trips) ? trips : [];
 }
 
 function writeLocalTrips(trips) {
-  localStorage.setItem(TRIPS_KEY, JSON.stringify(trips.slice(0, 40)));
+  writeJson(TRIPS_KEY, trips.slice(0, 40));
+}
+
+function normalizeUsername(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
 }
 
 function mergeTrips(remote = [], local = []) {
@@ -53,14 +77,57 @@ function mergeTrips(remote = [], local = []) {
   return [...map.values()].slice(0, 40);
 }
 
+function bufferToHex(buffer) {
+  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBuffer(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes.buffer;
+}
+
+async function hashPassword(password, saltHex) {
+  const enc = new TextEncoder();
+  const salt = saltHex
+    ? new Uint8Array(hexToBuffer(saltHex))
+    : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 120000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  return {
+    salt: bufferToHex(salt),
+    hash: bufferToHex(bits),
+  };
+}
+
+async function verifyPassword(password, salt, hash) {
+  const next = await hashPassword(password, salt);
+  return next.hash === hash;
+}
+
 async function api(action, { method = "POST", body, token } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   const isGet = method === "GET";
   if (!isGet) headers["Content-Type"] = "application/json";
-  const url = isGet
-    ? `${API}?action=${encodeURIComponent(action)}`
-    : API;
+  const url = isGet ? `${API}?action=${encodeURIComponent(action)}` : API;
   const response = await fetch(url, {
     method,
     headers,
@@ -84,7 +151,7 @@ function ensureUi() {
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
-      <p>Con un nome utente i tuoi viaggi restano salvati e li ritrovi anche da un altro dispositivo.</p>
+      <p>Con un nome utente i tuoi viaggi restano salvati su questo dispositivo finché non cancelli i dati del browser.</p>
       <div class="pv-account-tabs" role="tablist">
         <button type="button" data-mode="login" aria-selected="true">Accedi</button>
         <button type="button" data-mode="register" aria-selected="false">Crea account</button>
@@ -102,7 +169,7 @@ function ensureUi() {
         <button class="pv-account-submit" type="submit">Entra</button>
       </form>
       <div class="pv-account-note">
-        Puoi ancora condividere un viaggio con il link. L’account serve a ritrovare e tenere insieme i tuoi viaggi.
+        L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.
       </div>
     </div>
   `;
@@ -165,6 +232,52 @@ function showChip() {
   document.body.classList.add("pv-account-ready");
 }
 
+async function registerLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  if (username.length < 3 || username.length > 32) {
+    throw new Error("Il nome utente deve avere tra 3 e 32 caratteri.");
+  }
+  if (!/^[a-z0-9._ -]+$/i.test(username)) {
+    throw new Error("Usa solo lettere, numeri, spazi, punti, _ e -.");
+  }
+  if (!password || password.length < 4) {
+    throw new Error("La password deve avere almeno 4 caratteri.");
+  }
+
+  const users = readUsers();
+  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
+
+  const { salt, hash } = await hashPassword(password);
+  users[username] = {
+    username,
+    displayName: usernameRaw.trim().slice(0, 40) || username,
+    salt,
+    hash,
+    createdAt: new Date().toISOString(),
+  };
+  writeUsers(users);
+
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: users[username].displayName },
+    trips: readLocalTrips(),
+  };
+}
+
+async function loginLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  const users = readUsers();
+  const user = users[username];
+  if (!user?.salt || !user?.hash || !(await verifyPassword(password, user.salt, user.hash))) {
+    throw new Error("Nome utente o password non corretti.");
+  }
+  return {
+    token: `local:${username}`,
+    user: { username: user.username, displayName: user.displayName || user.username },
+    trips: readLocalTrips(),
+  };
+}
+
 async function onSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -175,9 +288,22 @@ async function onSubmit(event) {
   submit.disabled = true;
   error.textContent = "";
   try {
-    const data = await api(state.mode === "register" ? "register" : "login", {
-      body: { username, password, displayName: username },
-    });
+    const data =
+      state.mode === "register"
+        ? await registerLocal(username, password)
+        : await loginLocal(username, password);
+
+    // Best-effort cloud mirror; never blocks local persistent access.
+    try {
+      const cloud = await api(state.mode === "register" ? "register" : "login", {
+        body: { username, password, displayName: username },
+      });
+      data.token = cloud.token || data.token;
+      data.trips = mergeTrips(cloud.trips || [], data.trips || []);
+    } catch {
+      /* keep local session */
+    }
+
     await activateSession(data);
   } catch (err) {
     error.textContent = err.message || "Accesso non riuscito.";
@@ -188,7 +314,9 @@ async function onSubmit(event) {
 
 async function onLogout() {
   try {
-    if (state.token) await api("logout", { token: state.token });
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("logout", { token: state.token });
+    }
   } catch {
     /* ignore */
   }
@@ -203,11 +331,18 @@ async function onLogout() {
 async function activateSession(data, { bootApp = true } = {}) {
   state.token = data.token;
   state.user = data.user;
-  writeSession({ token: data.token, user: data.user });
+  // Persist until the browser site data is cleared (or explicit logout).
+  writeSession({
+    token: data.token,
+    user: data.user,
+    remembered: true,
+    savedAt: new Date().toISOString(),
+  });
 
   const merged = mergeTrips(data.trips || [], readLocalTrips());
   writeLocalTrips(merged);
-  if (JSON.stringify(merged) !== JSON.stringify(data.trips || [])) {
+
+  if (state.token && !String(state.token).startsWith("local:")) {
     try {
       await api("save-trips", {
         method: "PUT",
@@ -215,7 +350,7 @@ async function activateSession(data, { bootApp = true } = {}) {
         body: { trips: merged },
       });
     } catch {
-      /* offline-ish: keep local */
+      /* offline / blobs unavailable */
     }
   }
 
@@ -237,7 +372,7 @@ let lastPayload = "";
 function startTripSync() {
   if (syncTimer) return;
   const push = async () => {
-    if (!state.token) return;
+    if (!state.token || String(state.token).startsWith("local:")) return;
     const trips = readLocalTrips();
     const payload = JSON.stringify(trips);
     if (payload === lastPayload) return;
@@ -262,16 +397,40 @@ function startTripSync() {
 async function boot() {
   ensureUi();
   const session = readSession();
-  if (!session?.token) {
+  if (!session?.user?.username) {
     showGate();
     return;
   }
-  try {
-    const data = await api("me", { method: "GET", token: session.token });
-    await activateSession({ token: session.token, user: data.user, trips: data.trips });
-  } catch {
-    writeSession(null);
-    showGate("Sessione scaduta. Accedi di nuovo.");
+
+  // Local session is enough: stay logged in across reloads until cache/site data is cleared.
+  await activateSession(
+    {
+      token: session.token || `local:${session.user.username}`,
+      user: session.user,
+      trips: readLocalTrips(),
+    },
+    { bootApp: true }
+  );
+
+  // Optional background refresh from cloud; never clears the local session on failure.
+  if (session.token && !String(session.token).startsWith("local:")) {
+    try {
+      const data = await api("me", { method: "GET", token: session.token });
+      const merged = mergeTrips(data.trips || [], readLocalTrips());
+      writeLocalTrips(merged);
+      if (data.user) {
+        state.user = data.user;
+        writeSession({
+          token: session.token,
+          user: data.user,
+          remembered: true,
+          savedAt: new Date().toISOString(),
+        });
+        showChip();
+      }
+    } catch {
+      /* keep remembered local access */
+    }
   }
 }
 

@@ -1,8 +1,24 @@
 import { getStore } from "@netlify/blobs";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365 * 10; // ~10 years; client also remembers in localStorage
 const MAX_TRIPS = 40;
+
+function getAccountStore() {
+  const siteID =
+    process.env.SITE_ID ||
+    process.env.NETLIFY_SITE_ID ||
+    process.env.BLOBS_SITE_ID;
+  const token =
+    process.env.NETLIFY_BLOBS_TOKEN ||
+    process.env.NETLIFY_API_TOKEN ||
+    process.env.BLOBS_TOKEN;
+
+  if (siteID && token) {
+    return getStore({ name: "pronti-via-accounts", siteID, token });
+  }
+  return getStore("pronti-via-accounts");
+}
 
 function json(status, body, extraHeaders = {}) {
   return {
@@ -78,10 +94,19 @@ function sanitizeTrips(trips) {
 async function getSession(store, token) {
   if (!token) return null;
   const session = await store.get(`session:${token}`, { type: "json" });
-  if (!session?.username || !session?.expiresAt) return null;
-  if (Date.now() > session.expiresAt) {
+  if (!session?.username) return null;
+  // Keep long-lived sessions; refresh expiry on use.
+  if (session.expiresAt && Date.now() > session.expiresAt) {
     await store.delete(`session:${token}`);
     return null;
+  }
+  try {
+    await store.setJSON(`session:${token}`, {
+      username: session.username,
+      expiresAt: Date.now() + SESSION_TTL_MS,
+    });
+  } catch {
+    /* ignore refresh failures */
   }
   return session;
 }
@@ -99,7 +124,7 @@ export async function handler(event) {
     };
   }
 
-  const store = getStore("pronti-via-accounts");
+  const store = getAccountStore();
   let body = {};
   if (event.body) {
     try {
