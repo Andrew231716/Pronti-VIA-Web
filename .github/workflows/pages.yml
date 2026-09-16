@@ -68,6 +68,22 @@ jobs:
               if updated != original:
                   path.write_text(updated, encoding="utf-8")
                   print(f"rewrote {path}")
+          # iOS Home Screen is picky: use absolute paths under the project site.
+          manifest = root / "manifest.webmanifest"
+          if manifest.exists():
+              import json
+              data = json.loads(manifest.read_text(encoding="utf-8"))
+              data["id"] = f"{base}/"
+              data["start_url"] = f"{base}/"
+              data["scope"] = f"{base}/"
+              for icon in data.get("icons", []):
+                  src = icon.get("src", "")
+                  if src.startswith("./"):
+                      icon["src"] = f"{base}/{src[2:]}"
+                  elif src.startswith("/") and not src.startswith(base + "/"):
+                      icon["src"] = f"{base}{src}"
+              manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+              print("manifest", data)
           print(f"base={base}")
           PY
       - name: Publish to gh-pages branch
