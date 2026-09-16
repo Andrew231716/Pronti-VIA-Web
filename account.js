@@ -369,6 +369,91 @@ async function loadApp() {
 
 let syncTimer = null;
 let lastPayload = "";
+let joinInFlight = null;
+const joinedTrips = new Set();
+
+function currentDisplayName() {
+  return (state.user?.displayName || state.user?.username || "").trim();
+}
+
+function namesMatch(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+async function ensureCurrentUserOnTrip() {
+  const name = currentDisplayName();
+  if (!name) return;
+
+  const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const tripId = params.get("trip");
+  const key = params.get("key");
+  if (!tripId || !key) return;
+
+  const joinKey = `${tripId}:${name.toLowerCase()}`;
+  if (joinedTrips.has(joinKey) || joinInFlight === joinKey) return;
+  joinInFlight = joinKey;
+
+  try {
+    const response = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.trip) return;
+    if (data.canEdit === false) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
+    const members = Array.isArray(data.trip.members) ? data.trip.members : [];
+    if (members.some((member) => namesMatch(member?.name, name))) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
+    const nextTrip = {
+      ...data.trip,
+      members: [
+        ...members,
+        { id: crypto.randomUUID(), name },
+      ].slice(0, 30),
+    };
+
+    const save = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        trip: nextTrip,
+        revision: data.revision,
+      }),
+    });
+    if (save.ok) {
+      joinedTrips.add(joinKey);
+      // Soft refresh so the UI picks up the new member list.
+      setTimeout(() => {
+        if (location.hash.includes(tripId)) location.reload();
+      }, 400);
+    }
+  } catch {
+    /* ignore transient join failures */
+  } finally {
+    if (joinInFlight === joinKey) joinInFlight = null;
+  }
+}
+
+function startMemberJoinSync() {
+  const run = () => {
+    ensureCurrentUserOnTrip();
+  };
+  run();
+  window.addEventListener("hashchange", () => setTimeout(run, 600));
+  setTimeout(run, 1500);
+  setTimeout(run, 4000);
+}
+
 function startTripSync() {
   if (syncTimer) return;
   const push = async () => {
@@ -392,6 +477,7 @@ function startTripSync() {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") push();
   });
+  startMemberJoinSync();
 }
 
 async function boot() {
