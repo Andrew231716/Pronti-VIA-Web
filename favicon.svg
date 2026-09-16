@@ -1,20 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pronti? VIA!">
   <rect width="64" height="64" rx="16" fill="#007d82"/>
-  <circle cx="32" cy="32" r="22" fill="#f4f8f8"/>
-  <!-- compass rose -->
+  <circle cx="32" cy="32" r="22" fill="#f3f7f7"/>
   <g fill="#007d82">
-    <polygon points="32,12 35.2,28.8 32,27 28.8,28.8"/>
-    <polygon points="32,52 28.8,35.2 32,37 35.2,35.2"/>
-    <polygon points="12,32 28.8,28.8 27,32 28.8,35.2"/>
-    <polygon points="52,32 35.2,35.2 37,32 35.2,28.8"/>
-    <polygon points="18.5,18.5 29.5,29.5 28,32 29.5,34.5" opacity=".55"/>
-    <polygon points="45.5,18.5 34.5,29.5 32,28 29.5,29.5" opacity=".55" transform="rotate(90 32 32)"/>
-    <polygon points="45.5,45.5 34.5,34.5 32,36 29.5,34.5" opacity=".55"/>
-    <polygon points="18.5,45.5 29.5,34.5 32,36 34.5,34.5" opacity=".55" transform="rotate(90 32 32)"/>
+    <polygon points="32,11 34.8,29 32,27.2 29.2,29"/>
+    <polygon points="32,53 29.2,35 32,36.8 34.8,35"/>
+    <polygon points="11,32 29,29.2 27.2,32 29,34.8"/>
+    <polygon points="53,32 35,34.8 36.8,32 35,29.2"/>
+    <polygon points="19.2,19.2 29.6,29.6 28.2,32 29.6,34.4" opacity=".5"/>
+    <polygon points="44.8,19.2 34.4,29.6 32,28.2 29.6,29.6" opacity=".5"/>
+    <polygon points="44.8,44.8 34.4,34.4 32,35.8 29.6,34.4" opacity=".5"/>
+    <polygon points="19.2,44.8 29.6,34.4 32,35.8 34.4,34.4" opacity=".5"/>
   </g>
-  <!-- via swoosh -->
-  <path d="M20 42c6-1 10-8 12-14 2-5 5-9 11-11" fill="none" stroke="#f4f8f8" stroke-width="4.2" stroke-linecap="round"/>
-  <path d="M38 15l7 2.2-2.8 6.6" fill="none" stroke="#f4f8f8" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="32" cy="32" r="3.2" fill="#007d82"/>
-  <circle cx="32" cy="32" r="1.4" fill="#f4f8f8"/>
+  <path d="M19 43c7-2 11-9 13-15 2.2-6 6-10.5 13-12.5" fill="none" stroke="#f3f7f7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M39.5 14.2l7.2 1.6-2.2 7" fill="none" stroke="#f3f7f7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="3.4" fill="#007d82"/>
+  <circle cx="32" cy="32" r="1.5" fill="#f3f7f7"/>
 </svg>
