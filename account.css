@@ -52,12 +52,10 @@ body.pv-account-ready {
   width: 34px;
   height: 34px;
   border-radius: 10px;
-  display: grid;
-  place-items: center;
+  display: block;
+  object-fit: cover;
   background: var(--pv-account-teal);
-  color: white;
-  font-weight: 800;
-  letter-spacing: -0.04em;
+  box-shadow: 0 1px 2px rgba(21, 59, 71, 0.12);
 }
 
 .pv-account-brand strong {

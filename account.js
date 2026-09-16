@@ -147,7 +147,7 @@ function ensureUi() {
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
       <div class="pv-account-brand">
-        <div class="pv-account-mark" aria-hidden="true">PV</div>
+        <img class="pv-account-mark" src="/logo.png" width="34" height="34" alt="">
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
