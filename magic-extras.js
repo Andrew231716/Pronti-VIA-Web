@@ -749,7 +749,8 @@
     // Remove legacy mega-block if still present.
     document.querySelectorAll(".pv-useful").forEach((el) => el.remove());
     if (document.querySelector(".pv-fx-box")) return;
-    if (fxDoneKey === auth.id) return;
+    // Only skip re-inject when we intentionally hid FX (EUR / unknown currency).
+    if (fxDoneKey === `${auth.id}:skip`) return;
     if (!document.querySelector(".day-strip")) return;
 
     const box = document.createElement("div");
@@ -777,7 +778,7 @@
 
       // Eurozone / unknown: no FX card.
       if (!localFx || localFx.code === "EUR") {
-        fxDoneKey = tripKey;
+        fxDoneKey = `${tripKey}:skip`;
         box.remove();
         return;
       }
@@ -792,15 +793,16 @@
         const digits = rate >= 100 ? 0 : 2;
         fxMeta.textContent = `Valuta locale · ${trip.destination}`;
         fxEl.innerHTML = `<div class="pv-fx-card"><span class="code">${escapeHtml(localFx.code)}</span><div class="rate">1 € = ${rate.toLocaleString("it-IT", { maximumFractionDigits: digits })}</div><span class="name">${escapeHtml(localFx.name)}</span></div>`;
-        fxDoneKey = tripKey;
+        fxDoneKey = `${tripKey}:ok`;
       } catch {
         fxMeta.textContent = "Cambio non disponibile al momento.";
         fxEl.innerHTML = "";
-        fxDoneKey = tripKey;
+        // Allow retry on next tick if the card was wiped by a React remount.
+        fxDoneKey = "";
       }
     } catch (err) {
       fxMeta.textContent = err instanceof Error ? err.message : "Cambio non disponibile.";
-      fxDoneKey = tripKey;
+      fxDoneKey = "";
     }
   }
 
