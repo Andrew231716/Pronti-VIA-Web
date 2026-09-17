@@ -364,7 +364,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix-20260917f.js");
+  await import("/assets/index-loadfix-20260917g.js");
 }
 
 let syncTimer = null;
