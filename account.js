@@ -364,7 +364,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-ios2.js");
+  await import("/assets/index-tripfix.js");
 }
 
 let syncTimer = null;
