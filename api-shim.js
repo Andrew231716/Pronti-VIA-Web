@@ -1,13 +1,17 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
- * Places → Photon; trips → CORS-enabled proxy (then Netlify / Supabase).
- * v=20260917c — wall-clock timeouts so iOS never hangs on a dead tunnel.
+ * Places → Photon; trips → CORS-enabled proxies (Cloudflare tunnel + Vercel).
+ * v=20260917e
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-  // Temporary CORS proxy while Netlify production redeploy is unavailable.
-  const TRIPS_PROXY = "https://quotes-embassy-discrete-isa.trycloudflare.com";
+  // Temporary CORS proxies while Netlify production redeploy is blocked (credits).
+  const TRIPS_PROXIES = [
+    "https://bonds-wheel-cambridge-theme.trycloudflare.com",
+    "https://temporary-turbo-juniper-d9oc7zv.vercel.app",
+    "https://temporary-sonic-dune-wq1xaoq.vercel.app",
+  ];
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
   const PER_TRY_MS = 4500;
 
@@ -15,6 +19,7 @@
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
   const sameOriginApiProxy =
     /\.trycloudflare\.com$/i.test(location.hostname) ||
+    /\.vercel\.app$/i.test(location.hostname) ||
     location.hostname === "localhost" ||
     location.hostname === "127.0.0.1";
 
@@ -112,7 +117,6 @@
       ]);
       if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
       const ct = String(res.headers.get("content-type") || "").toLowerCase();
-      // Dead Cloudflare tunnels often return HTML error pages with 404/530.
       if (ct.includes("text/html")) throw new Error("html-error");
       if (!ct.includes("json")) {
         const peek = await res.clone().text();
@@ -165,25 +169,25 @@
       !parsed.pathname.startsWith("/api/places") &&
       !parsed.pathname.startsWith("/api/account")
     ) {
-      // Tunnel / local already reverse-proxy /api — use same-origin directly.
       if (sameOriginApiProxy) {
         return Promise.race([
           originalFetch(input, init),
-          wallTimeout(PER_TRY_MS, "local-proxy-timeout").catch(() =>
-            new Response(JSON.stringify({ error: "Il server non risponde. Riprova tra poco." }), {
-              status: 504,
-              headers: { "Content-Type": "application/json" },
-            })
+          wallTimeout(PER_TRY_MS, "local-proxy-timeout").catch(
+            () =>
+              new Response(JSON.stringify({ error: "Il server non risponde. Riprova tra poco." }), {
+                status: 504,
+                headers: { "Content-Type": "application/json" },
+              })
           ),
         ]);
       }
 
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
+      const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
       const candidates = onGitHubPages
-        ? [`${TRIPS_PROXY}/api${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
-        : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_PROXY}/api${suffix}`];
+        ? [...proxyTargets, `${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
+        : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`, ...proxyTargets];
 
-      // Race all candidates; first valid JSON wins. Wall-clock so iOS cannot hang.
       try {
         return await Promise.any(candidates.map((target) => fetchTripsCandidate(target, init)));
       } catch {
