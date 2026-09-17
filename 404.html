@@ -9,18 +9,26 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Pronti? VIA!">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
   <meta name="description" content="Il viaggio, organizzato insieme. Itinerari, prenotazioni e spese di gruppo.">
   <link rel="icon" href="/favicon.svg">
   <link rel="apple-touch-icon" href="/logo.png">
-  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="manifest" href="/manifest.webmanifest?v=20260917f">
   <title>Pronti? VIA! — Il viaggio, organizzato insieme</title>
   <link rel="stylesheet" crossorigin href="/assets/index-JJ3bX5VS.css">
-  <link rel="stylesheet" href="/account.css">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <script src="/api-shim.js?v=20260917e"></script>
-  <script src="/ios-form-fix.js?v=20260917e"></script>
-  <script src="/places-suggest.js?v=20260917e" defer></script>
-  <script type="module" src="/account.js?v=20260917e"></script>
+  <link rel="stylesheet" href="/account.css?v=20260917f">
+  <script>
+    try {
+      if ("caches" in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+      }
+    } catch (_) {}
+  </script>
+  <script src="/assets/api-shim-20260917f.js"></script>
+  <script src="/ios-form-fix.js?v=20260917f"></script>
+  <script src="/places-suggest.js?v=20260917f" defer></script>
+  <script type="module" src="/account.js?v=20260917f"></script>
 </head>
 <body>
   <div id="root"></div>
