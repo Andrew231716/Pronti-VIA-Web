@@ -547,6 +547,16 @@
         </div>
       `;
       money.parentElement.insertBefore(box, money.nextSibling);
+      const saveBtn = box.querySelector("[data-pv-save-budget]");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          void savePrivateBudgetFromUi(box).catch((err) => {
+            alert(err instanceof Error ? err.message : "Budget non salvato");
+          });
+        });
+      }
     }
 
     // Category breakdown near money-stats or expense list
@@ -565,16 +575,24 @@
     if (!auth) throw new Error("Apri un viaggio salvato.");
     // Persist privately first — never rely on the shared trip blob for budget.
     writePrivateBudgetCents(auth.id, cents);
-    try {
-      const { data } = await loadTrip();
-      const trip = structuredClone(data.trip);
-      // Strip shared budget; api-shim keeps the private value when budget is 0.
-      trip.budget = 0;
-      await saveTrip(auth, trip, data.revision);
-    } catch {
-      /* private save already done */
+    const btn = box.querySelector("[data-pv-save-budget]");
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Salvato…";
     }
-    // Re-assert after any write path that might have raced.
+    // Strip shared budget in background; do not let network delays block private persist.
+    const stripShared = (async () => {
+      try {
+        const { data } = await loadTrip();
+        const trip = structuredClone(data.trip);
+        trip.budget = 0;
+        await saveTrip(auth, trip, data.revision);
+      } catch {
+        /* private save already done */
+      }
+      writePrivateBudgetCents(auth.id, cents);
+    })();
+    await Promise.race([stripShared, new Promise((r) => setTimeout(r, 2500))]);
     writePrivateBudgetCents(auth.id, cents);
     location.reload();
   }
@@ -586,6 +604,8 @@
       (event) => {
         const btn = event.target?.closest?.("[data-pv-save-budget]");
         if (!btn) return;
+        // Prefer the direct listener attached on inject; skip if already handled.
+        if (btn.dataset.pvBound === "1") return;
         const box = btn.closest(".pv-budget-box");
         if (!box) return;
         event.preventDefault();
@@ -1390,7 +1410,11 @@
       }
     }
     for (const el of document.querySelectorAll(".budget-card .eyebrow, .money-stats span")) {
-      if (/IL BUDGET/i.test(el.textContent || "") && !el.dataset.pvPrivate) {
+      const t = (el.textContent || "").trim();
+      if (
+        !el.dataset.pvPrivate &&
+        (/IL BUDGET/i.test(t) || /^Budget del viaggio$/i.test(t))
+      ) {
         el.dataset.pvPrivate = "1";
         el.textContent = "IL TUO BUDGET PRIVATO";
       }
