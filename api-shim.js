@@ -7,7 +7,7 @@
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
   const TRIPS_PROXIES = [
-    "https://optics-medium-pit-completed.trycloudflare.com",
+    "https://licensed-violin-minute-contributing.trycloudflare.com",
   ];
   // v=20260917h
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
