@@ -346,7 +346,7 @@
 
   let panelOpen = false;
   let pendingPois = [];
-  let magicTab = "idee";
+  let magicTab = "chiedi";
   let chatPlaces = [];
   let magicTripCache = null;
 
