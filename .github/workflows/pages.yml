@@ -77,7 +77,7 @@ jobs:
               import json
               data = json.loads(manifest.read_text(encoding="utf-8"))
               data["id"] = f"{base}/"
-              data["start_url"] = f"{base}/?v=20260917t"
+              data["start_url"] = f"{base}/?v=20260917u"
               data["scope"] = f"{base}/"
               for icon in data.get("icons", []):
                   src = icon.get("src", "")
