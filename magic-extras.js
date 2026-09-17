@@ -592,7 +592,7 @@
   async function enrichWithWikipedia(places) {
     const out = [];
     for (const place of places.slice(0, 8)) {
-      const enriched = { ...place, image: "", extract: "", wikiUrl: "", tripadvisorUrl: "" };
+      const enriched = { ...place, image: "", extract: "", wikiUrl: "" };
       enriched.tripadvisorUrl = `https://www.tripadvisor.it/Search?q=${encodeURIComponent(
         `${place.title} ${magicTripCache?.destination || ""}`
       )}`;
@@ -603,15 +603,29 @@
       try {
         const wikiHosts = ["it.wikipedia.org", "en.wikipedia.org"];
         for (const host of wikiHosts) {
+          let title = place.title;
+          // Exact title often misses for restaurants — try search first.
+          try {
+            const search = await fetch(
+              `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+                `${place.title} ${magicTripCache?.destination || ""}`
+              )}&srlimit=1&format=json&origin=*`,
+              { signal: AbortSignal.timeout(8000) }
+            ).then((r) => r.json());
+            const hit = search?.query?.search?.[0]?.title;
+            if (hit) title = hit;
+          } catch {
+            /* keep original title */
+          }
           const data = await fetch(
-            `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(place.title)}&prop=pageimages|extracts|info&inprop=url&exintro=1&explaintext=1&pithumbsize=320&format=json&origin=*`,
+            `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=pageimages|extracts|info&inprop=url&exintro=1&explaintext=1&pithumbsize=320&format=json&origin=*`,
             { signal: AbortSignal.timeout(10000) }
           ).then((r) => r.json());
           const page = Object.values(data?.query?.pages || {})[0];
           if (!page || page.missing != null) continue;
           enriched.image = page.thumbnail?.source || "";
           enriched.extract = String(page.extract || "").slice(0, 280);
-          enriched.wikiUrl = page.fullurl || `https://${host}/wiki/${encodeURIComponent(place.title)}`;
+          enriched.wikiUrl = page.fullurl || `https://${host}/wiki/${encodeURIComponent(title)}`;
           if (enriched.extract || enriched.image) break;
         }
       } catch {
