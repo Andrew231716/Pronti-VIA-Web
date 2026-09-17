@@ -6,7 +6,7 @@
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
   // Temporary CORS proxy while Netlify production redeploy is unavailable.
-  const TRIPS_PROXY = "https://purchases-variation-sophisticated-adrian.trycloudflare.com";
+  const TRIPS_PROXY = "https://quotes-embassy-discrete-isa.trycloudflare.com";
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
 
   const originalFetch = window.fetch.bind(window);
@@ -129,7 +129,11 @@
 
       for (const target of candidates) {
         try {
-          const proxied = await originalFetch(target, init);
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 8000);
+          const nextInit = { ...init, signal: ctrl.signal };
+          const proxied = await originalFetch(target, nextInit);
+          clearTimeout(timer);
           if (proxied.type !== "opaque" && proxied.status !== 0) return proxied;
         } catch {
           /* try next */
