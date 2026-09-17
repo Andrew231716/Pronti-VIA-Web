@@ -1,6 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
- * Places → Photon; trips → Supabase direct, then Netlify CORS proxy.
+ * Places → Photon; trips → CORS-enabled proxy (then Netlify / Supabase).
+ * v=20260917c — wall-clock timeouts so iOS never hangs on a dead tunnel.
  */
 (() => {
   const TRIPS_BASE =
@@ -8,9 +9,24 @@
   // Temporary CORS proxy while Netlify production redeploy is unavailable.
   const TRIPS_PROXY = "https://quotes-embassy-discrete-isa.trycloudflare.com";
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
+  const PER_TRY_MS = 4500;
 
   const originalFetch = window.fetch.bind(window);
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
+  const sameOriginApiProxy =
+    /\.trycloudflare\.com$/i.test(location.hostname) ||
+    location.hostname === "localhost" ||
+    location.hostname === "127.0.0.1";
+
+  function wallTimeout(ms, label) {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        const err = new Error(label || "timeout");
+        err.name = "TimeoutError";
+        reject(err);
+      }, ms);
+    });
+  }
 
   async function searchPlaces(query, scope) {
     const q = String(query || "").trim();
@@ -82,6 +98,33 @@
     return { places: (filtered.length ? filtered : places).slice(0, 8) };
   }
 
+  async function fetchTripsCandidate(target, init) {
+    const ctrl = new AbortController();
+    const externalAbort = () => ctrl.abort();
+    if (init.signal) {
+      if (init.signal.aborted) throw new DOMException("Aborted", "AbortError");
+      init.signal.addEventListener("abort", externalAbort, { once: true });
+    }
+    try {
+      const res = await Promise.race([
+        originalFetch(target, { ...init, signal: ctrl.signal }),
+        wallTimeout(PER_TRY_MS, "proxy-timeout"),
+      ]);
+      if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
+      const ct = String(res.headers.get("content-type") || "").toLowerCase();
+      // Dead Cloudflare tunnels often return HTML error pages with 404/530.
+      if (ct.includes("text/html")) throw new Error("html-error");
+      if (!ct.includes("json")) {
+        const peek = await res.clone().text();
+        const trimmed = peek.trim();
+        if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) throw new Error("not-json");
+      }
+      return res;
+    } finally {
+      if (init.signal) init.signal.removeEventListener("abort", externalAbort);
+    }
+  }
+
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input?.url || "";
     let parsed;
@@ -122,22 +165,34 @@
       !parsed.pathname.startsWith("/api/places") &&
       !parsed.pathname.startsWith("/api/account")
     ) {
+      // Tunnel / local already reverse-proxy /api — use same-origin directly.
+      if (sameOriginApiProxy) {
+        return Promise.race([
+          originalFetch(input, init),
+          wallTimeout(PER_TRY_MS, "local-proxy-timeout").catch(() =>
+            new Response(JSON.stringify({ error: "Il server non risponde. Riprova tra poco." }), {
+              status: 504,
+              headers: { "Content-Type": "application/json" },
+            })
+          ),
+        ]);
+      }
+
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
       const candidates = onGitHubPages
         ? [`${TRIPS_PROXY}/api${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
         : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`, `${TRIPS_PROXY}/api${suffix}`];
 
-      for (const target of candidates) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 8000);
-          const nextInit = { ...init, signal: ctrl.signal };
-          const proxied = await originalFetch(target, nextInit);
-          clearTimeout(timer);
-          if (proxied.type !== "opaque" && proxied.status !== 0) return proxied;
-        } catch {
-          /* try next */
-        }
+      // Race all candidates; first valid JSON wins. Wall-clock so iOS cannot hang.
+      try {
+        return await Promise.any(candidates.map((target) => fetchTripsCandidate(target, init)));
+      } catch {
+        return new Response(
+          JSON.stringify({
+            error: "Connessione non riuscita. Controlla la rete e riprova.",
+          }),
+          { status: 503, headers: { "Content-Type": "application/json" } }
+        );
       }
     }
 

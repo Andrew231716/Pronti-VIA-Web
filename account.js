@@ -364,7 +364,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix.js");
+  await import("/assets/index-loadfix.js?v=20260917c");
 }
 
 let syncTimer = null;
@@ -432,13 +432,8 @@ async function ensureCurrentUserOnTrip() {
     });
     if (save.ok) {
       joinedTrips.add(joinKey);
-      const refreshKey = `pv-joined-refresh:${joinKey}`;
-      if (!sessionStorage.getItem(refreshKey)) {
-        sessionStorage.setItem(refreshKey, "1");
-        setTimeout(() => {
-          if (location.hash.includes(tripId)) location.reload();
-        }, 400);
-      }
+      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
+      // Safari stuck on the loading screen when the trips proxy is slow.
     }
   } catch {
     /* ignore transient join failures */
