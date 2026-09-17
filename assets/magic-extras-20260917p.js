@@ -683,13 +683,16 @@
   let fxDoneKey = "";
 
   function itineraryHost() {
+    // Prefer the panel that actually contains the day strip (not the heading wrapper).
+    const strip = document.querySelector(".day-strip");
+    if (strip?.parentElement) return strip.parentElement;
     const heading = [...document.querySelectorAll("h2")].find((el) =>
       /il nostro itinerario|itinerario/i.test(el.textContent || "")
     );
     return (
       heading?.closest("section") ||
-      heading?.parentElement ||
-      document.querySelector(".day-strip")?.parentElement ||
+      heading?.closest(".primary-panel") ||
+      heading?.parentElement?.parentElement ||
       null
     );
   }
