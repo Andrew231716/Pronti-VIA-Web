@@ -2,7 +2,7 @@
   "name": "Pronti? VIA! — Viaggi insieme",
   "short_name": "Pronti? VIA!",
   "id": "./",
-  "start_url": "./",
+  "start_url": "./?v=20260917f",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7f9fb",
