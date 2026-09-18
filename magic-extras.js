@@ -88,11 +88,11 @@
       #${ROOT_ID} .pv-magic-btn svg{width:18px;height:18px;flex:0 0 auto}
       #${ROOT_ID} .pv-magic-panel{position:relative;z-index:1;width:min(440px,calc(100vw - 24px));max-height:min(82vh,720px);overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #d0e0e0;border-radius:20px;box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0}
       #${ROOT_ID} .pv-magic-panel[hidden]{display:none !important}
-      #${ROOT_ID} .pv-panel-head{flex:0 0 auto;padding:12px 14px 8px;border-bottom:1px solid #e8f0f0;background:#f7fbfb}
+      #${ROOT_ID} .pv-panel-head{flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid #e8f0f0;background:#f7fbfb}
       #${ROOT_ID} .pv-panel-body{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 8px}
       #${ROOT_ID} .pv-panel-foot{flex:0 0 auto;padding:10px 14px 14px;border-top:1px solid #e8f0f0;background:#fff}
-      #${ROOT_ID} .pv-magic-panel h3{margin:0 0 4px;font-size:1.08rem;color:#122f34}
-      #${ROOT_ID} .pv-magic-panel .pv-lead{margin:0 0 10px;color:#3d5960;font-size:.9rem;line-height:1.45}
+      #${ROOT_ID} .pv-magic-panel h3{margin:8px 0 4px;font-size:1.12rem;color:#0f2c31;font-weight:700}
+      #${ROOT_ID} .pv-magic-panel .pv-lead{margin:0 0 10px;color:#2f4e55;font-size:.88rem;line-height:1.45}
       #${ROOT_ID} .pv-magic-panel p{margin:0 0 12px;color:#3d5960;font-size:.92rem}
       #${ROOT_ID} .pv-magic-panel label{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid #eef3f3;font-size:.92rem;color:#1d3338}
       #${ROOT_ID} .pv-magic-panel .pv-meta{display:block;color:#4d676e;font-size:.8rem;margin-top:2px}
@@ -109,7 +109,7 @@
       #${ROOT_ID} .pv-chips button{appearance:none;border:1px solid #b8d0d0;background:#fff;color:#124048;border-radius:999px;padding:9px 12px;font:600 12px inherit;cursor:pointer;white-space:nowrap;flex:0 0 auto;min-height:38px}
       #${ROOT_ID} .pv-chat{display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:none;overflow:visible;padding:0 0 8px}
       #${ROOT_ID} .pv-bubble{max-width:100%;padding:12px 14px;border-radius:16px;font-size:.92rem;line-height:1.5;color:#122f34;white-space:pre-wrap;word-break:break-word}
-      #${ROOT_ID} .pv-bubble.bot{align-self:stretch;background:#eaf5f5;border:1px solid #d5e8e8;border-bottom-left-radius:6px}
+      #${ROOT_ID} .pv-bubble.bot{align-self:stretch;background:#eaf5f5;border:1px solid #d5e8e8;border-bottom-left-radius:6px;color:#0f2c31}
       #${ROOT_ID} .pv-bubble.user{align-self:flex-end;max-width:90%;background:#007d82;color:#fff;border-bottom-right-radius:6px}
       #${ROOT_ID} .pv-chat-form{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0}
       #${ROOT_ID} .pv-chat-form input,#${ROOT_ID} .pv-lang-pair textarea,#${ROOT_ID} .pv-magic-panel select{width:100%;border:1px solid #b8d0d0;border-radius:12px;padding:12px 14px;font:inherit;color:#122f34;background:#fff;min-height:44px}
@@ -122,10 +122,10 @@
       #${ROOT_ID} .pv-place-card strong{display:block;font-size:.95rem;color:#0f2c31;margin-bottom:3px;line-height:1.25}
       #${ROOT_ID} .pv-place-card .pv-kind-tag{display:inline-block;margin:0 0 4px;padding:2px 7px;border-radius:999px;background:#e4f2f2;color:#0f5a60;font-size:.68rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
       #${ROOT_ID} .pv-place-card .pv-extract{font-size:.84rem;color:#35555c;line-height:1.4;margin:0 0 10px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-      #${ROOT_ID} .pv-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-      #${ROOT_ID} .pv-card-actions .primary{grid-column:1 / -1}
-      #${ROOT_ID} .pv-card-actions a,#${ROOT_ID} .pv-card-actions button{font-size:12px;padding:10px 10px;text-decoration:none;text-align:center;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;min-height:40px;box-sizing:border-box}
-      #${ROOT_ID} .pv-card-actions a.ghost{border:1px solid #c5d8d8;background:#fff;color:#1d3338;font-weight:600}
+      #${ROOT_ID} .pv-card-actions{display:flex;flex-wrap:wrap;gap:8px}
+      #${ROOT_ID} .pv-card-actions .primary{flex:1 1 100%}
+      #${ROOT_ID} .pv-card-actions a,#${ROOT_ID} .pv-card-actions button{font-size:12px;padding:10px 12px;text-decoration:none;text-align:center;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;min-height:40px;box-sizing:border-box;flex:1 1 calc(50% - 4px)}
+      #${ROOT_ID} .pv-card-actions a.ghost{border:1px solid #a9c4c4;background:#fff;color:#122f34;font-weight:600}
       #${ROOT_ID} .pv-lang-pair{display:grid;gap:10px}
       #${ROOT_ID} .pv-lang-pair label{display:grid;gap:4px;border:0;padding:0;font-size:.78rem;font-weight:700;color:#4d676e;letter-spacing:.04em;text-transform:uppercase}
       #${ROOT_ID} .pv-lang-pair textarea{min-height:72px;resize:vertical;font:400 .92rem inherit;text-transform:none;letter-spacing:normal;color:#122f34}
