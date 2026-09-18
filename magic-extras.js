@@ -1170,7 +1170,7 @@
         ${
           poi.image
             ? `<img src="${escapeHtml(poi.image)}" alt="" loading="lazy" />`
-            : `<div class="pv-ph" aria-hidden="true"><span class="pv-ph-ico">${escapeHtml(meta.short)}</span>${escapeHtml(meta.label)}</div>`
+            : `<div class="pv-ph" aria-hidden="true">${escapeHtml(meta.label)}</div>`
         }
         <div>
           <span class="pv-kind-tag">${escapeHtml(meta.label)}</span>
