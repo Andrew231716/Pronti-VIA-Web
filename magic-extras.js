@@ -1573,7 +1573,7 @@ Regole pv-places:
           method: "POST",
           headers: { "Content-Type": "application/json", Accept: "application/json" },
           body: JSON.stringify(ep.body),
-          signal: AbortSignal.timeout(35000),
+          signal: AbortSignal.timeout(12000),
         });
         if (!res.ok) throw new Error(`AI ${res.status}`);
         const content = String((await ep.parse(res)) || "").trim();
@@ -1686,45 +1686,58 @@ Regole pv-places:
       const trip = magicTripCache || (await loadTrip()).data.trip;
       magicTripCache = trip;
       const cityHint = searchCityForDestination(trip.destination, trip.title);
-      let place = { lat: null, lng: null };
-      try {
-        place = await geocodeDestination(
-          /^(island|ísland|iceland)$/i.test(String(trip.destination || "").trim())
-            ? cityHint
-            : trip.destination || cityHint
-        );
-      } catch {
-        /* AI can still answer without coords */
-      }
-
       let aiText = "";
       let usedLocal = false;
-      try {
-        aiText = await askTravelAI(trip, chatHistory);
-      } catch {
-        aiText = "";
-      }
-      if (aiText && isAiProviderError(aiText)) aiText = "";
-
       let reply = "";
       let aiPlaces = [];
-      if (aiText) {
-        ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
-        chatHistory.push({ role: "assistant", content: aiText });
+      const preferLocal = /spesa|budget|cost|quanto\b|euro|€|prezzi|econom|consigli pratic/i.test(text);
+      const localPrefetch = preferLocal ? localTravelReply(trip, text) : "";
+
+      if (localPrefetch) {
+        // Budget/practical answers: respond immediately with local estimate.
+        // Cloud AI is often rate-limited and was surfacing credit errors raw.
+        reply = localPrefetch;
+        usedLocal = true;
+        chatHistory.push({ role: "assistant", content: localPrefetch });
       } else {
-        const local = localTravelReply(trip, text);
-        if (local) {
-          reply = local;
-          usedLocal = true;
-          chatHistory.push({ role: "assistant", content: local });
+        try {
+          aiText = await askTravelAI(trip, chatHistory);
+        } catch {
+          aiText = "";
+        }
+        if (aiText && isAiProviderError(aiText)) aiText = "";
+
+        if (aiText) {
+          ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
+          chatHistory.push({ role: "assistant", content: aiText });
+        } else {
+          const local = localTravelReply(trip, text);
+          if (local) {
+            reply = local;
+            usedLocal = true;
+            chatHistory.push({ role: "assistant", content: local });
+          }
         }
       }
 
+      // Geocode only when we need place cards / map enrichment
+      let place = { lat: null, lng: null };
       const intent = parseChatIntent(text);
       const placeAsk =
         /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere/i.test(
           text
         );
+      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal) {
+        try {
+          place = await geocodeDestination(
+            /^(island|ísland|iceland)$/i.test(String(trip.destination || "").trim())
+              ? cityHint
+              : trip.destination || cityHint
+          );
+        } catch {
+          /* continue without coords */
+        }
+      }
 
       let cards = [];
       if (aiPlaces.length) {
