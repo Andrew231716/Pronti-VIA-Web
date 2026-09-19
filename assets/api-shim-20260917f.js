@@ -7,12 +7,12 @@
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
   const TRIPS_PROXIES = [
-    "https://licensed-violin-minute-contributing.trycloudflare.com",
+    "https://bonds-wheel-cambridge-theme.trycloudflare.com",
+    "https://temporary-turbo-juniper-d9oc7zv.vercel.app",
+    "https://temporary-sonic-dune-wq1xaoq.vercel.app",
   ];
-  // v=20260917h
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
-  const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
   const PER_TRY_MS = 4000;
 
   const originalFetch = window.fetch.bind(window);
@@ -57,132 +57,6 @@
     }
   }
 
-  function budgetOwner() {
-    try {
-      const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
-      const user = String(session?.user?.username || "anon")
-        .trim()
-        .toLowerCase();
-      return user || "anon";
-    } catch {
-      return "anon";
-    }
-  }
-
-  function privateBudgetSlot(tripId) {
-    return `${budgetOwner()}::${tripId}`;
-  }
-
-  function readPrivateBudgets() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(PRIVATE_BUDGET_KEY) || "{}");
-      return raw && typeof raw === "object" ? raw : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writePrivateBudgets(db) {
-    try {
-      localStorage.setItem(PRIVATE_BUDGET_KEY, JSON.stringify(db));
-    } catch {
-      /* quota */
-    }
-  }
-
-  function getPrivateBudget(tripId) {
-    if (!tripId) return null;
-    const v = readPrivateBudgets()[privateBudgetSlot(tripId)];
-    return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
-  }
-
-  function setPrivateBudget(tripId, cents) {
-    if (!tripId || !Number.isFinite(cents) || cents < 0) return;
-    const db = readPrivateBudgets();
-    db[privateBudgetSlot(tripId)] = Math.round(cents);
-    writePrivateBudgets(db);
-  }
-
-  /** Budget stays on-device; shared trip always stores 0. */
-  function applyPrivateBudgetView(tripId, trip) {
-    if (!trip || !tripId) return trip;
-    const next = { ...trip };
-    const priv = getPrivateBudget(tripId);
-    if (priv == null && Number(next.budget) > 0) {
-      setPrivateBudget(tripId, Number(next.budget));
-      next.budget = Number(next.budget);
-      return next;
-    }
-    next.budget = priv != null ? priv : 0;
-    return next;
-  }
-
-  function takeBudgetPrivate(tripId, trip) {
-    if (!trip || !tripId) return trip;
-    const next = { ...trip };
-    // Only migrate a positive shared budget. budget === 0 means
-    // "clear shared copy; keep the existing private value".
-    if (typeof next.budget === "number" && Number.isFinite(next.budget) && next.budget > 0) {
-      setPrivateBudget(tripId, next.budget);
-    }
-    next.budget = 0;
-    return next;
-  }
-
-  async function rewriteTripWriteInit(pathname, init = {}) {
-    const method = (init.method || "GET").toUpperCase();
-    if (method !== "POST" && method !== "PUT" && method !== "PATCH") return init;
-    if (!init.body) return init;
-    let body;
-    try {
-      body = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
-    } catch {
-      return init;
-    }
-    const idFromPath = decodeURIComponent(pathname.replace(/^\/api\/trips\/?/, "").split("/")[0] || "");
-    if (method === "POST" && body && !body.trip) {
-      // create: body is the trip itself — stash budget privately after we know the id
-      rewriteTripWriteInit._pendingBudget =
-        typeof body.budget === "number" && Number.isFinite(body.budget) && body.budget > 0
-          ? body.budget
-          : null;
-      return { ...init, body: JSON.stringify({ ...body, budget: 0 }) };
-    }
-    if (body?.trip) {
-      const id = idFromPath || body.id || "";
-      const trip = takeBudgetPrivate(id, body.trip);
-      return { ...init, body: JSON.stringify({ ...body, trip }) };
-    }
-    return init;
-  }
-
-  async function withPrivateBudgetResponse(res, tripIdHint) {
-    if (!res || !res.ok) return res;
-    try {
-      const data = await res.clone().json();
-      let changed = false;
-      if (data?.trip) {
-        const id = data.id || tripIdHint;
-        if (
-          id &&
-          data.id &&
-          typeof rewriteTripWriteInit._pendingBudget === "number" &&
-          rewriteTripWriteInit._pendingBudget > 0
-        ) {
-          setPrivateBudget(data.id, rewriteTripWriteInit._pendingBudget);
-          rewriteTripWriteInit._pendingBudget = null;
-        }
-        data.trip = applyPrivateBudgetView(id, data.trip);
-        // Never leak shared budget into local cache as private value
-        changed = true;
-      }
-      if (!changed) return res;
-      return jsonResponse(res.status, data);
-    } catch {
-      return res;
-    }
-  }
-
   function randomHex(bytes) {
     const arr = new Uint8Array(bytes);
     crypto.getRandomValues(arr);
@@ -207,13 +81,11 @@
   function cacheTripRecord(id, record) {
     if (!id || !record?.trip) return;
     const db = readLocalTrips();
-    // Never persist private budget into the shared/local trip blob.
-    const sharedTrip = { ...record.trip, budget: 0 };
     db[id] = {
       id,
       key: record.key || db[id]?.key || "",
       viewToken: record.viewToken || db[id]?.viewToken || "",
-      trip: sharedTrip,
+      trip: record.trip,
       revision: record.revision || 1,
       canEdit: record.canEdit !== false,
       updated: record.updated || new Date().toISOString(),
@@ -239,25 +111,11 @@
       const newId = crypto.randomUUID();
       const editKey = randomHex(32);
       const viewToken = randomHex(32);
-      if (
-        typeof rewriteTripWriteInit._pendingBudget === "number" &&
-        rewriteTripWriteInit._pendingBudget > 0
-      ) {
-        setPrivateBudget(newId, rewriteTripWriteInit._pendingBudget);
-        rewriteTripWriteInit._pendingBudget = null;
-      } else if (typeof body.budget === "number" && body.budget > 0) {
-        setPrivateBudget(newId, body.budget);
-      }
-      const tripBody =
-        body?.trip && typeof body.trip === "object" && !Array.isArray(body.trip)
-          ? body.trip
-          : body;
-      const sharedTrip = { ...tripBody, budget: 0 };
       const record = {
         id: newId,
         key: editKey,
         viewToken,
-        trip: sharedTrip,
+        trip: body,
         revision: 1,
         canEdit: true,
         updated: new Date().toISOString(),
@@ -269,7 +127,7 @@
         id: newId,
         key: editKey,
         viewToken,
-        trip: applyPrivateBudgetView(newId, sharedTrip),
+        trip: body,
         revision: 1,
         canEdit: true,
         updated: record.updated,
@@ -293,7 +151,7 @@
     if (method === "GET") {
       if (!canView) return jsonResponse(403, { error: "Link non valido" });
       return jsonResponse(200, {
-        trip: applyPrivateBudgetView(id, record.trip),
+        trip: record.trip,
         revision: record.revision || 1,
         updated: record.updated,
         canEdit,
@@ -310,7 +168,7 @@
       } catch {
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
-      const nextTrip = takeBudgetPrivate(id, body.trip || body);
+      const nextTrip = body.trip || body;
       const revision = Number(body.revision || record.revision || 1) + 1;
       record.trip = nextTrip;
       record.revision = revision;
@@ -318,7 +176,7 @@
       db[id] = record;
       writeLocalTrips(db);
       return jsonResponse(200, {
-        trip: applyPrivateBudgetView(id, record.trip),
+        trip: record.trip,
         revision: record.revision,
         updated: record.updated,
         canEdit: true,
@@ -413,7 +271,6 @@
         wallTimeout(PER_TRY_MS, "proxy-timeout"),
       ]);
       if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
-      if (!res.ok) throw new Error(`upstream-${res.status}`);
       const ct = String(res.headers.get("content-type") || "").toLowerCase();
       if (ct.includes("text/html")) throw new Error("html-error");
       if (!ct.includes("json")) {
@@ -456,25 +313,6 @@
       }
     }
 
-    if (parsed.origin === location.origin && parsed.pathname === "/api/pois") {
-      const suffix = `/pois${parsed.search}`;
-      try {
-        if (sameOriginApiProxy) {
-          return Promise.race([
-            originalFetch(input, init),
-            wallTimeout(28000, "pois-timeout"),
-          ]);
-        }
-        return await Promise.any(
-          TRIPS_PROXIES.map((base) =>
-            fetchTripsCandidate(`${base}/api${suffix}`, { ...init, method: "GET" })
-          )
-        );
-      } catch {
-        return jsonResponse(502, { error: "Ricerca luoghi non disponibile." });
-      }
-    }
-
     if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/account")) {
       return jsonResponse(503, { error: "Sync cloud non disponibile su questo host." });
     }
@@ -485,93 +323,70 @@
     ) {
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
       const method = (init.method || "GET").toUpperCase();
-      const tripIdHint = decodeURIComponent(
-        parsed.pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean)[0] || ""
-      );
-      const writeInit = await rewriteTripWriteInit(parsed.pathname, init);
 
       // Prefer same-origin reverse proxy when available.
       if (sameOriginApiProxy) {
         try {
           const res = await Promise.race([
-            originalFetch(input, writeInit),
+            originalFetch(input, init),
             wallTimeout(PER_TRY_MS, "local-proxy-timeout"),
           ]);
           if (res.ok) {
             try {
               const data = await res.clone().json();
-              const id = data.id || tripIdHint;
+              const id = parsed.pathname.split("/").pop();
               if (method === "GET" && id && data?.trip) {
                 cacheTripRecord(id, {
                   trip: data.trip,
                   revision: data.revision,
                   viewToken: data.viewToken,
                   canEdit: data.canEdit,
-                  key: bearerKey(writeInit),
+                  key: bearerKey(init),
                   updated: data.updated,
                 });
               }
               if (method === "POST" && data?.id && data?.trip) {
                 cacheTripRecord(data.id, data);
               }
-              if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
-                cacheTripRecord(id, {
-                  trip: data.trip,
-                  revision: data.revision,
-                  viewToken: data.viewToken,
-                  canEdit: true,
-                  key: bearerKey(writeInit),
-                  updated: data.updated,
-                });
-              }
             } catch {
               /* ignore cache errors */
             }
-            return withPrivateBudgetResponse(res, tripIdHint);
           }
-          // Proxy miss / validation: prefer durable local copy when present.
-          if (method === "GET" || method === "POST" || res.status >= 500) {
-            try {
-              const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-              if (local.status === 200 || method === "POST") return local;
-            } catch {
-              /* continue */
-            }
-          }
-          if (res.status < 500) return withPrivateBudgetResponse(res, tripIdHint);
+          // If upstream hard-failed, fall through to local for resilience.
+          if (res.ok || res.status < 500) return res;
         } catch {
           /* use remote/local fallback */
         }
       }
 
       try {
-        const res = await remoteTrips(suffix, writeInit);
+        const res = await remoteTrips(suffix, init);
         if (res.ok) {
           try {
             const data = await res.clone().json();
             if (method === "POST" && data?.id) cacheTripRecord(data.id, data);
             if (method === "GET") {
-              const id = data.id || tripIdHint;
+              const id = decodeURIComponent(parsed.pathname.split("/").pop() || "");
               if (id && data?.trip) {
                 cacheTripRecord(id, {
                   trip: data.trip,
                   revision: data.revision,
                   viewToken: data.viewToken,
                   canEdit: data.canEdit,
-                  key: bearerKey(writeInit),
+                  key: bearerKey(init),
                   updated: data.updated,
                 });
               }
             }
             if ((method === "PUT" || method === "PATCH") && data?.trip) {
-              const id = tripIdHint || data.id;
+              const id = decodeURIComponent(parsed.pathname.split("/").pop() || "");
               if (id) {
                 cacheTripRecord(id, {
                   trip: data.trip,
                   revision: data.revision,
                   viewToken: data.viewToken,
                   canEdit: true,
-                  key: bearerKey(writeInit),
+                  key: bearerKey(init),
                   updated: data.updated,
                 });
               }
@@ -582,13 +397,13 @@
         }
         // Cloud 404/403 for GET → try local copy before surfacing error.
         if (!res.ok && method === "GET") {
-          const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+          const local = await handleLocalTrips(parsed.pathname, parsed.search, init);
           if (local.status === 200) return local;
         }
-        return withPrivateBudgetResponse(res, tripIdHint);
+        return res;
       } catch {
         // All remote proxies failed — durable local fallback.
-        return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        return handleLocalTrips(parsed.pathname, parsed.search, init);
       }
     }
 

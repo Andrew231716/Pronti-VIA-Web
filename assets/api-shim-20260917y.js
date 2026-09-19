@@ -248,11 +248,7 @@
       } else if (typeof body.budget === "number" && body.budget > 0) {
         setPrivateBudget(newId, body.budget);
       }
-      const tripBody =
-        body?.trip && typeof body.trip === "object" && !Array.isArray(body.trip)
-          ? body.trip
-          : body;
-      const sharedTrip = { ...tripBody, budget: 0 };
+      const sharedTrip = { ...body, budget: 0 };
       const record = {
         id: newId,
         key: editKey,
@@ -529,15 +525,7 @@
             }
             return withPrivateBudgetResponse(res, tripIdHint);
           }
-          // Proxy miss / validation: prefer durable local copy when present.
-          if (method === "GET" || method === "POST" || res.status >= 500) {
-            try {
-              const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-              if (local.status === 200 || method === "POST") return local;
-            } catch {
-              /* continue */
-            }
-          }
+          // If upstream hard-failed, fall through to local for resilience.
           if (res.status < 500) return withPrivateBudgetResponse(res, tripIdHint);
         } catch {
           /* use remote/local fallback */

@@ -7,7 +7,7 @@
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
   const TRIPS_PROXIES = [
-    "https://licensed-violin-minute-contributing.trycloudflare.com",
+    "https://optics-medium-pit-completed.trycloudflare.com",
   ];
   // v=20260917h
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
@@ -120,9 +120,7 @@
   function takeBudgetPrivate(tripId, trip) {
     if (!trip || !tripId) return trip;
     const next = { ...trip };
-    // Only migrate a positive shared budget. budget === 0 means
-    // "clear shared copy; keep the existing private value".
-    if (typeof next.budget === "number" && Number.isFinite(next.budget) && next.budget > 0) {
+    if (typeof next.budget === "number" && Number.isFinite(next.budget)) {
       setPrivateBudget(tripId, next.budget);
     }
     next.budget = 0;
@@ -143,9 +141,7 @@
     if (method === "POST" && body && !body.trip) {
       // create: body is the trip itself — stash budget privately after we know the id
       rewriteTripWriteInit._pendingBudget =
-        typeof body.budget === "number" && Number.isFinite(body.budget) && body.budget > 0
-          ? body.budget
-          : null;
+        typeof body.budget === "number" && Number.isFinite(body.budget) ? body.budget : 0;
       return { ...init, body: JSON.stringify({ ...body, budget: 0 }) };
     }
     if (body?.trip) {
@@ -163,12 +159,7 @@
       let changed = false;
       if (data?.trip) {
         const id = data.id || tripIdHint;
-        if (
-          id &&
-          data.id &&
-          typeof rewriteTripWriteInit._pendingBudget === "number" &&
-          rewriteTripWriteInit._pendingBudget > 0
-        ) {
+        if (id && rewriteTripWriteInit._pendingBudget != null && data.id) {
           setPrivateBudget(data.id, rewriteTripWriteInit._pendingBudget);
           rewriteTripWriteInit._pendingBudget = null;
         }
@@ -239,20 +230,13 @@
       const newId = crypto.randomUUID();
       const editKey = randomHex(32);
       const viewToken = randomHex(32);
-      if (
-        typeof rewriteTripWriteInit._pendingBudget === "number" &&
-        rewriteTripWriteInit._pendingBudget > 0
-      ) {
+      if (rewriteTripWriteInit._pendingBudget != null) {
         setPrivateBudget(newId, rewriteTripWriteInit._pendingBudget);
         rewriteTripWriteInit._pendingBudget = null;
-      } else if (typeof body.budget === "number" && body.budget > 0) {
+      } else if (typeof body.budget === "number") {
         setPrivateBudget(newId, body.budget);
       }
-      const tripBody =
-        body?.trip && typeof body.trip === "object" && !Array.isArray(body.trip)
-          ? body.trip
-          : body;
-      const sharedTrip = { ...tripBody, budget: 0 };
+      const sharedTrip = { ...body, budget: 0 };
       const record = {
         id: newId,
         key: editKey,
@@ -529,15 +513,7 @@
             }
             return withPrivateBudgetResponse(res, tripIdHint);
           }
-          // Proxy miss / validation: prefer durable local copy when present.
-          if (method === "GET" || method === "POST" || res.status >= 500) {
-            try {
-              const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-              if (local.status === 200 || method === "POST") return local;
-            } catch {
-              /* continue */
-            }
-          }
+          // If upstream hard-failed, fall through to local for resilience.
           if (res.status < 500) return withPrivateBudgetResponse(res, tripIdHint);
         } catch {
           /* use remote/local fallback */

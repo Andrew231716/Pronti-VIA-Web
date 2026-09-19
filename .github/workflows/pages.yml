@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p site
           for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
-                   favicon.svg logo.png coast.jpg manifest.webmanifest map.html \
+                   favicon.svg logo.png coast.jpg manifest.webmanifest map.html magic-extras.js \
                    vercel.json _redirects README.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
           done
@@ -40,6 +40,7 @@ jobs:
               "/vendor/",
               "/places-suggest.js",
               "/api-shim.js",
+              "/magic-extras.js",
               "/ios-form-fix.js",
               "/account.css",
               "/account.js",
@@ -70,12 +71,13 @@ jobs:
                   path.write_text(updated, encoding="utf-8")
                   print(f"rewrote {path}")
           # iOS Home Screen is picky: use absolute paths under the project site.
+          # Also force a unique start_url so iOS picks up fresh assets.
           manifest = root / "manifest.webmanifest"
           if manifest.exists():
               import json
               data = json.loads(manifest.read_text(encoding="utf-8"))
               data["id"] = f"{base}/"
-              data["start_url"] = f"{base}/"
+              data["start_url"] = f"{base}/?v=20260919a"
               data["scope"] = f"{base}/"
               for icon in data.get("icons", []):
                   src = icon.get("src", "")
