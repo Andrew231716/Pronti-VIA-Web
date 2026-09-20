@@ -796,7 +796,21 @@
     `;
   }
 
+  function launchBtn() {
+    if (!document.body) return;
+    let btn = document.querySelector(".pv-prev-launch");
+    if (!btn) {
+      btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pv-prev-launch";
+      btn.textContent = "Preventivo intelligente";
+      btn.addEventListener("click", () => openPreventivo());
+      document.body.appendChild(btn);
+    }
+  }
+
   function rootEl() {
+    if (!document.body) return null;
     let root = document.getElementById(ROOT_ID);
     if (!root) {
       root = document.createElement("div");
@@ -808,21 +822,11 @@
 
   function setOpen(open) {
     state.open = open;
-    rootEl().classList.toggle("open", open);
+    const root = rootEl();
+    if (!root) return;
+    root.classList.toggle("open", open);
     document.documentElement.style.overflow = open ? "hidden" : "";
     if (open) render();
-  }
-
-  function launchBtn() {
-    let btn = document.querySelector(".pv-prev-launch");
-    if (!btn) {
-      btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "pv-prev-launch";
-      btn.textContent = "Preventivo intelligente";
-      btn.addEventListener("click", () => openPreventivo());
-      document.body.appendChild(btn);
-    }
   }
 
   async function openPreventivo() {
@@ -1206,6 +1210,7 @@
   function render() {
     ensureStyles();
     const root = rootEl();
+    if (!root) return;
     const tabs = SECTIONS.map(
       ([id, label]) =>
         `<button type="button" data-section="${id}" class="${state.section === id ? "active" : ""}">${label}</button>`
@@ -1458,27 +1463,31 @@
     launchBtn();
   }
 
-  // Boot
-  ensureStyles();
-  const obs = new MutationObserver(() => tick());
-  obs.observe(document.documentElement, { childList: true, subtree: true });
-  tick();
-  window.__pvOpenPreventivo = openPreventivo;
+  // Boot after body exists (script may load in <head>)
+  function boot() {
+    ensureStyles();
+    const obs = new MutationObserver(() => tick());
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    tick();
+    window.__pvOpenPreventivo = openPreventivo;
 
-  function maybeAutoOpen() {
-    const hash = location.hash.replace(/^#/, "");
-    const qs = new URLSearchParams(location.search);
-    if (qs.get("preventivo") === "1" || /(^|&)preventivo(=|&|$)/.test(hash) || hash === "preventivo") {
-      setTimeout(() => openPreventivo(), 400);
+    function maybeAutoOpen() {
+      const hash = location.hash.replace(/^#/, "");
+      const qs = new URLSearchParams(location.search);
+      if (qs.get("preventivo") === "1" || /(^|&)preventivo(=|&|$)/.test(hash) || hash === "preventivo") {
+        setTimeout(() => openPreventivo(), 400);
+      }
     }
+    window.addEventListener("hashchange", maybeAutoOpen);
+    maybeAutoOpen();
+
+    window.addEventListener("message", (e) => {
+      if (e.origin !== location.origin) return;
+      if (e.data?.type === "viavia-ready" && state.open && state.section === "itinerary") {
+        pushMapPoints();
+      }
+    });
   }
-  window.addEventListener("hashchange", maybeAutoOpen);
-  maybeAutoOpen();
-
-  window.addEventListener("message", (e) => {
-    if (e.origin !== location.origin) return;
-    if (e.data?.type === "viavia-ready" && state.open && state.section === "itinerary") {
-      pushMapPoints();
-    }
-  });
+  if (document.body) boot();
+  else document.addEventListener("DOMContentLoaded", boot);
 })();
