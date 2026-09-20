@@ -761,6 +761,7 @@
     style.textContent = `
       #${ROOT_ID}{position:fixed;inset:0;z-index:120;display:none;font-family:inherit}
       #${ROOT_ID}.open{display:flex;flex-direction:column;background:#f4fafb}
+      #${ROOT_ID}.open ~ #pv-account-chip, body:has(#${ROOT_ID}.open) #pv-account-chip{display:none!important}
       #${ROOT_ID} .pv-prev-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#007d82;color:#fff}
       #${ROOT_ID} .pv-prev-top h1{margin:0;font-size:1.05rem;font-weight:700}
       #${ROOT_ID} .pv-prev-top button{appearance:none;border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;padding:8px 12px;font:600 13px inherit;cursor:pointer}
