@@ -41,6 +41,7 @@ jobs:
               "/places-suggest.js",
               "/api-shim.js",
               "/magic-extras.js",
+              "/preventivo-islanda.js",
               "/ios-form-fix.js",
               "/account.css",
               "/account.js",
