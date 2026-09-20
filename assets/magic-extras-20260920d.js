@@ -71,6 +71,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
+    if (style && style.dataset.pvReady === "1") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -180,6 +181,7 @@
       .pv-links-box .pv-action-list .hint{font-size:.78rem;font-weight:600;color:#7a9096}
       .pv-links-box .pv-status{min-height:1.1em;margin:10px 0 0;font-size:.82rem;color:#5b7076}
     `;
+    style.dataset.pvReady = "1";
   }
 
   function setMagicOpen(open) {
