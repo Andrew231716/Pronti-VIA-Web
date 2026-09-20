@@ -759,7 +759,7 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:0;z-index:120;display:none;font-family:inherit}
+      #${ROOT_ID}{position:fixed;inset:0;z-index:100000;display:none;font-family:inherit}
       #${ROOT_ID}.open{display:flex;flex-direction:column;background:#f4fafb}
       #${ROOT_ID}.open ~ #pv-account-chip, body:has(#${ROOT_ID}.open) #pv-account-chip{display:none!important}
       #${ROOT_ID} .pv-prev-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#007d82;color:#fff}
