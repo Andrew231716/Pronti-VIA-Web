@@ -1,0 +1,96 @@
+name: Deploy GitHub Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare static site
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          mkdir -p site
+          for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
+                   favicon.svg logo.png coast.jpg manifest.webmanifest map.html \
+                   vercel.json _redirects README.md pronti-via-logo.png; do
+            [ -f "$f" ] && cp -a "$f" site/
+          done
+          [ -d assets ] && cp -a assets site/
+          [ -d vendor ] && cp -a vendor site/
+          [ -d brand ] && cp -a brand site/
+          touch site/.nojekyll
+
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+
+          base = f"/{os.environ['REPO_NAME']}"
+          root = Path("site")
+          suffixes = {".html", ".js", ".css", ".webmanifest", ".json", ".svg"}
+          prefixes = [
+              "/assets/",
+              "/vendor/",
+              "/places-suggest.js",
+              "/api-shim.js",
+              "/ios-form-fix.js",
+              "/account.css",
+              "/account.js",
+              "/manifest.webmanifest",
+              "/pronti-via-logo.png",
+              "/favicon.svg",
+              "/logo.png",
+              "/coast.jpg",
+              "/map.html",
+          ]
+
+          def rewrite(text: str) -> str:
+              out = text
+              for prefix in prefixes:
+                  for quote in ('"', "'", "`"):
+                      out = out.replace(f"{quote}{prefix}", f"{quote}{base}{prefix}")
+                  out = out.replace(f"url({prefix}", f"url({base}{prefix}")
+                  out = out.replace(f"url('{prefix}", f"url('{base}{prefix}")
+                  out = out.replace(f'url("{prefix}', f'url("{base}{prefix}')
+              return out
+
+          for path in root.rglob("*"):
+              if not path.is_file() or path.suffix not in suffixes:
+                  continue
+              original = path.read_text(encoding="utf-8", errors="ignore")
+              updated = rewrite(original)
+              if updated != original:
+                  path.write_text(updated, encoding="utf-8")
+                  print(f"rewrote {path}")
+          # iOS Home Screen is picky: use absolute paths under the project site.
+          manifest = root / "manifest.webmanifest"
+          if manifest.exists():
+              import json
+              data = json.loads(manifest.read_text(encoding="utf-8"))
+              data["id"] = f"{base}/"
+              data["start_url"] = f"{base}/"
+              data["scope"] = f"{base}/"
+              for icon in data.get("icons", []):
+                  src = icon.get("src", "")
+                  if src.startswith("./"):
+                      icon["src"] = f"{base}/{src[2:]}"
+                  elif src.startswith("/") and not src.startswith(base + "/"):
+                      icon["src"] = f"{base}{src}"
+              manifest.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+              print("manifest", data)
+          print(f"base={base}")
+          PY
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          force_orphan: true
+          enable_jekyll: false

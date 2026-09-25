@@ -1,0 +1,227 @@
+:root {
+  --pv-account-ink: #153b47;
+  --pv-account-muted: #5b7380;
+  --pv-account-teal: #007d82;
+  --pv-account-teal-deep: #00656a;
+  --pv-account-sand: #f4f8f8;
+  --pv-account-line: #d7e4e6;
+  --pv-account-danger: #b42318;
+}
+
+body.pv-account-ready {
+  padding-top: 44px;
+}
+
+#pv-account-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 125, 130, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(71, 112, 177, 0.14), transparent 50%),
+    linear-gradient(160deg, #eef6f6 0%, #f7fafb 45%, #e8f1f2 100%);
+  color: var(--pv-account-ink);
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+#pv-account-gate[hidden] {
+  display: none !important;
+}
+
+.pv-account-card {
+  width: min(420px, 100%);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(21, 59, 71, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(21, 59, 71, 0.12);
+  padding: 28px 24px 22px;
+  backdrop-filter: blur(10px);
+}
+
+.pv-account-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.pv-account-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: block;
+  object-fit: cover;
+  background: var(--pv-account-teal);
+  box-shadow: 0 1px 2px rgba(21, 59, 71, 0.12);
+}
+
+.pv-account-brand strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.pv-account-card h1 {
+  margin: 0 0 8px;
+  font-size: 1.55rem;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.pv-account-card p {
+  margin: 0 0 18px;
+  color: var(--pv-account-muted);
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+.pv-account-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--pv-account-sand);
+}
+
+.pv-account-tabs button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 650;
+  color: var(--pv-account-muted);
+  cursor: pointer;
+}
+
+.pv-account-tabs button[aria-selected="true"] {
+  background: white;
+  color: var(--pv-account-ink);
+  box-shadow: 0 1px 3px rgba(21, 59, 71, 0.08);
+}
+
+.pv-account-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.pv-account-field label {
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.pv-account-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--pv-account-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--pv-account-ink);
+  background: white;
+}
+
+.pv-account-field input:focus {
+  outline: 2px solid rgba(0, 125, 130, 0.25);
+  border-color: var(--pv-account-teal);
+}
+
+.pv-account-error {
+  min-height: 1.2em;
+  margin: 4px 0 12px;
+  color: var(--pv-account-danger);
+  font-size: 0.9rem;
+}
+
+.pv-account-submit {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 16px;
+  font: inherit;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(180deg, var(--pv-account-teal), var(--pv-account-teal-deep));
+  cursor: pointer;
+}
+
+.pv-account-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.pv-account-note {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--pv-account-muted);
+  line-height: 1.4;
+}
+
+#pv-account-chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99990;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  height: 44px;
+  padding: 0 12px;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid rgba(21, 59, 71, 0.08);
+  color: var(--pv-account-ink);
+  font: 650 0.85rem/1 "Segoe UI", "Helvetica Neue", sans-serif;
+  backdrop-filter: blur(8px);
+}
+
+#pv-account-chip[hidden] {
+  display: none !important;
+}
+
+#pv-account-chip span {
+  color: var(--pv-account-muted);
+}
+
+#pv-account-chip strong {
+  color: var(--pv-account-ink);
+  font-weight: 700;
+}
+
+#pv-account-chip button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: var(--pv-account-sand);
+  color: var(--pv-account-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.share-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-inputs input {
+  width: 88px;
+  box-sizing: border-box;
+}
+
+.share-inputs span {
+  color: #5b7380;
+  font-size: 0.85rem;
+}
+
+.route-hop {
+  margin: 2px 0 10px 28px;
+  color: #5b7380;
+  font-size: 0.85rem;
+}

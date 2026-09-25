@@ -1,0 +1,55 @@
+[build]
+  publish = "."
+  command = "npm install --omit=dev"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[[redirects]]
+  from = "/api/account"
+  to = "/.netlify/functions/account"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/account/*"
+  to = "/.netlify/functions/account"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/places"
+  to = "/.netlify/functions/places"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/places/*"
+  to = "/.netlify/functions/places"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/trips"
+  to = "/.netlify/functions/trips"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/trips/*"
+  to = "/.netlify/functions/trips/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
