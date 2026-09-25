@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pronti-VIA</title>
+    <style>
+      :root {
+        --bg: linear-gradient(135deg, #eef4ff 0%, #f8f7ff 100%);
+        --panel: rgba(255, 255, 255, 0.9);
+        --primary: #2563eb;
+        --primary-dark: #1d4ed8;
+        --danger: #dc2626;
+        --danger-dark: #b91c1c;
+        --text: #111827;
+        --muted: #4b5563;
+        --border: #dbe3f0;
+        --shadow: 0 20px 45px rgba(37, 99, 235, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      .container {
+        max-width: 980px;
+        margin: 48px auto;
+        padding: 0 16px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        padding: 28px;
+        backdrop-filter: blur(8px);
+      }
+
+      h1 {
+        margin: 0 0 20px;
+        font-size: clamp(2rem, 4vw, 2.5rem);
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      input, button {
+        font: inherit;
+      }
+
+      input {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 14px;
+        background: #fff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+      }
+
+      .primary, .danger, .secondary {
+        border: none;
+        border-radius: 12px;
+        padding: 11px 16px;
+        cursor: pointer;
+        transition: transform 0.15s ease, opacity 0.2s ease, background 0.2s ease;
+        font-weight: 700;
+      }
+
+      .primary:hover, .danger:hover, .secondary:hover {
+        transform: translateY(-1px);
+      }
+
+      .primary {
+        background: var(--primary);
+        color: white;
+        min-width: 160px;
+      }
+
+      .primary:hover { background: var(--primary-dark); }
+
+      .danger {
+        background: var(--danger);
+        color: white;
+      }
+
+      .danger:hover { background: var(--danger-dark); }
+
+      .secondary {
+        background: #edf2ff;
+        color: var(--text);
+      }
+
+      .secondary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .trip-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .trip-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 16px;
+        background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+      }
+
+      .trip-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .trip-meta strong {
+        font-size: 1.1rem;
+      }
+
+      .trip-meta span {
+        color: var(--muted);
+      }
+
+      .empty-state {
+        color: var(--muted);
+        font-style: italic;
+        background: #f9fafb;
+        border: 1px dashed var(--border);
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      @media (max-width: 640px) {
+        .panel {
+          padding: 20px 16px;
+        }
+
+        .trip-item {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <section class="panel">
+        <h1>I tuoi viaggi</h1>
+
+        <form id="trip-form" class="form-grid">
+          <label>
+            Destinazione
+            <input id="destination" name="destination" type="text" placeholder="Es. Roma" required />
+          </label>
+          <label>
+            Data
+            <input id="date" name="date" type="date" required />
+          </label>
+          <label>
+            Persone
+            <input id="travelers" name="travelers" type="number" min="1" value="1" required />
+          </label>
+          <div style="display: flex; align-items: end;">
+            <button class="primary" type="submit">Aggiungi viaggio</button>
+          </div>
+        </form>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+          <button id="clear-all" class="secondary" type="button">Elimina tutti</button>
+        </div>
+        <p id="status-message" aria-live="polite" style="margin-top: 12px; min-height: 20px; color: var(--muted);"></p>
+        <ul id="trip-list" class="trip-list"></ul>
+      </section>
+    </main>
+
+    <script type="module">
+      import { getTrips, createTrip, deleteTrip } from './tripManager.js';
+
+      const form = document.getElementById('trip-form');
+      const list = document.getElementById('trip-list');
+      const clearAllButton = document.getElementById('clear-all');
+      const statusMessage = document.getElementById('status-message');
+
+      function showStatus(message) {
+        statusMessage.textContent = message;
+      }
+
+      function renderTrips() {
+        const trips = getTrips();
+
+        if (!trips.length) {
+          list.innerHTML = '<li class="empty-state">Nessun viaggio creato.</li>';
+          clearAllButton.disabled = true;
+          return;
+        }
+
+        clearAllButton.disabled = false;
+
+        list.innerHTML = trips
+          .slice()
+          .reverse()
+          .map(
+            (trip) => `
+              <li class="trip-item">
+                <div class="trip-meta">
+                  <strong>${trip.destination}</strong>
+                  <span>${trip.date}</span>
+                  <span>${trip.travelers} persona/e</span>
+                </div>
+                <button class="danger" data-id="${trip.id}" type="button" aria-label="Elimina viaggio ${trip.destination}">Elimina</button>
+              </li>
+            `
+          )
+          .join('');
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const destination = document.getElementById('destination').value.trim();
+        const date = document.getElementById('date').value;
+        const travelers = Number(document.getElementById('travelers').value);
+
+        if (!destination || !date || !travelers) {
+          return;
+        }
+
+        createTrip({ destination, date, travelers });
+        form.reset();
+        document.getElementById('travelers').value = 1;
+        showStatus('Viaggio aggiunto con successo.');
+        renderTrips();
+      });
+
+      clearAllButton.addEventListener('click', () => {
+        const trips = getTrips();
+        if (!trips.length) {
+          showStatus('Non ci sono viaggi da eliminare.');
+          return;
+        }
+
+        const confirmed = window.confirm('Vuoi eliminare tutti i viaggi?');
+        if (!confirmed) return;
+
+        localStorage.clear();
+        showStatus('Tutti i viaggi sono stati eliminati.');
+        renderTrips();
+      });
+
+      list.addEventListener('click', (event) => {
+        const button = event.target.closest('button[data-id]');
+        if (!button) return;
+
+        const trip = getTrips().find((item) => item.id === button.dataset.id);
+        if (!trip) return;
+
+        const confirmed = window.confirm(`Vuoi eliminare il viaggio per ${trip.destination}?`);
+        if (!confirmed) return;
+
+        deleteTrip(button.dataset.id);
+        showStatus(`Il viaggio per ${trip.destination} è stato eliminato.`);
+        renderTrips();
+      });
+
+      renderTrips();
+    </script>
+  </body>
+</html>
