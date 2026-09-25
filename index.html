@@ -9,17 +9,29 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Pronti? VIA!">
   <meta name="mobile-web-app-capable" content="yes">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
   <meta name="description" content="Il viaggio, organizzato insieme. Itinerari, prenotazioni e spese di gruppo.">
-  <link rel="icon" href="/favicon.svg">
-  <link rel="apple-touch-icon" href="/logo.png">
-  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="./favicon.svg">
+  <link rel="apple-touch-icon" href="./logo.png">
+  <link rel="manifest" href="/manifest.webmanifest?v=20260920g">
   <title>Pronti? VIA! — Il viaggio, organizzato insieme</title>
   <link rel="stylesheet" crossorigin href="/assets/index-JJ3bX5VS.css">
-  <link rel="stylesheet" href="/account.css">
-  <script src="/api-shim.js"></script>
-  <script src="/ios-form-fix.js"></script>
-  <script src="/places-suggest.js" defer></script>
-  <script type="module" src="/account.js"></script>
+  <link rel="stylesheet" href="/account.css?v=20260920g">
+  <script>
+    // Drop any stale Cache Storage entries from previous PWA builds.
+    try {
+      if ("caches" in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
+      }
+    } catch (_) {}
+  </script>
+  <script src="/assets/api-shim-20260920g.js"></script>
+  <script src="/assets/magic-extras-20260920g.js"></script>
+  <script src="/assets/preventivo-islanda-20260920g.js"></script>
+  <script src="/ios-form-fix.js?v=20260920g"></script>
+  <script src="/places-suggest.js?v=20260920g" defer></script>
+  <script type="module" src="/account.js?v=20260920g"></script>
 </head>
 <body>
   <div id="root"></div>

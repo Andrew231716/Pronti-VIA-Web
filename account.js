@@ -147,7 +147,7 @@ function ensureUi() {
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
       <div class="pv-account-brand">
-        <img class="pv-account-mark" src="/logo.png" width="34" height="34" alt="">
+        <img class="pv-account-mark" src="./logo.png" width="34" height="34" alt="">
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
@@ -364,7 +364,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix.js");
+  await import("/assets/index-loadfix-20260920g.js");
 }
 
 let syncTimer = null;
@@ -432,13 +432,8 @@ async function ensureCurrentUserOnTrip() {
     });
     if (save.ok) {
       joinedTrips.add(joinKey);
-      const refreshKey = `pv-joined-refresh:${joinKey}`;
-      if (!sessionStorage.getItem(refreshKey)) {
-        sessionStorage.setItem(refreshKey, "1");
-        setTimeout(() => {
-          if (location.hash.includes(tripId)) location.reload();
-        }, 400);
-      }
+      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
+      // Safari stuck on the loading screen when the trips proxy is slow.
     }
   } catch {
     /* ignore transient join failures */

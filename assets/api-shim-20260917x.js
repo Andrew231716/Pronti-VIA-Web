@@ -1,26 +1,25 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
- * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20260920c — short share links via bytebin so WhatsApp/iOS keep the trip snapshot.
+ * Places → Photon; trips → CORS proxies, then durable localStorage fallback.
+ * v=20260917f — local trips so the app works even when cloud proxies die.
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-  // Dead CF tunnels removed — they only slowed Promise.any and forced local fallback.
-  const TRIPS_PROXIES = [];
+  const TRIPS_PROXIES = [
+    "https://licensed-violin-minute-contributing.trycloudflare.com",
+  ];
+  // v=20260917h
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
   const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
-  const SHARE_BLOBS_KEY = "viavia-share-blobs-v1";
-  const BYTEBIN = "https://bytebin.lucko.me";
-  const PER_TRY_MS = 8000;
+  const PER_TRY_MS = 4000;
 
   const originalFetch = window.fetch.bind(window);
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
   const sameOriginApiProxy =
     /\.trycloudflare\.com$/i.test(location.hostname) ||
     /\.vercel\.app$/i.test(location.hostname) ||
-    /\.netlify\.app$/i.test(location.hostname) ||
     location.hostname === "localhost" ||
     location.hostname === "127.0.0.1";
 
@@ -174,6 +173,7 @@
           rewriteTripWriteInit._pendingBudget = null;
         }
         data.trip = applyPrivateBudgetView(id, data.trip);
+        // Never leak shared budget into local cache as private value
         changed = true;
       }
       if (!changed) return res;
@@ -222,352 +222,6 @@
     writeLocalTrips(db);
   }
 
-  /** Seed trip from share-hash payload so recipients can open shared trips. */
-  function readShareBlobMap() {
-    try {
-      const raw = JSON.parse(localStorage.getItem(SHARE_BLOBS_KEY) || "{}");
-      return raw && typeof raw === "object" ? raw : {};
-    } catch {
-      return {};
-    }
-  }
-
-  function writeShareBlobMap(db) {
-    try {
-      localStorage.setItem(SHARE_BLOBS_KEY, JSON.stringify(db));
-    } catch {
-      /* quota */
-    }
-  }
-
-  function shareBlobSlot(tripId, shareKey) {
-    return `${tripId}::${shareKey || ""}`;
-  }
-
-  function getCachedShareRef(tripId, shareKey) {
-    const hit = readShareBlobMap()[shareBlobSlot(tripId, shareKey)];
-    if (!hit?.ref) return "";
-    // Invalidate when revision moved on.
-    const rec = readLocalTrips()[tripId];
-    if (rec && hit.revision && Number(hit.revision) !== Number(rec.revision || 1)) return "";
-    return String(hit.ref);
-  }
-
-  function setCachedShareRef(tripId, shareKey, ref, revision) {
-    if (!tripId || !ref) return;
-    const db = readShareBlobMap();
-    db[shareBlobSlot(tripId, shareKey)] = {
-      ref,
-      revision: revision || 1,
-      updated: new Date().toISOString(),
-    };
-    writeShareBlobMap(db);
-  }
-
-  function slimShareRecord(record, shareKey) {
-    const key = String(shareKey || "");
-    const isEdit = Boolean(key && key === record.key);
-    return {
-      id: record.id,
-      trip: { ...record.trip, budget: 0 },
-      revision: record.revision || 1,
-      updated: record.updated,
-      viewToken: record.viewToken || "",
-      key: isEdit ? record.key : "",
-      canEdit: isEdit,
-    };
-  }
-
-  function applySeededRecord(id, key, json) {
-    if (!id || !json?.trip) return false;
-    const db = readLocalTrips();
-    const existing = db[id];
-    const record = {
-      id,
-      key: json.key || existing?.key || "",
-      viewToken: json.viewToken || existing?.viewToken || key || "",
-      trip: { ...json.trip, budget: 0 },
-      revision: json.revision || 1,
-      canEdit: Boolean(json.canEdit || (json.key && json.key === key)),
-      updated: json.updated || new Date().toISOString(),
-      local: true,
-    };
-    if (!existing || Number(record.revision) >= Number(existing.revision || 0)) {
-      db[id] = {
-        ...record,
-        key: record.key || existing?.key || "",
-        viewToken: record.viewToken || existing?.viewToken || key || "",
-      };
-      writeLocalTrips(db);
-      return true;
-    }
-    return Boolean(existing);
-  }
-
-  function encodeInlineSharePayload(record, shareKey) {
-    try {
-      const raw = JSON.stringify(slimShareRecord(record, shareKey));
-      return (
-        "i:" +
-        btoa(unescape(encodeURIComponent(raw)))
-          .replace(/\+/g, "-")
-          .replace(/\//g, "_")
-          .replace(/=+$/g, "")
-      );
-    } catch {
-      return "";
-    }
-  }
-
-  function decodeInlineSharePayload(b64) {
-    const pad = "===".slice((b64.length + 3) % 4);
-    const norm = b64.replace(/-/g, "+").replace(/_/g, "/") + pad;
-    const raw = decodeURIComponent(escape(atob(norm)));
-    return JSON.parse(raw);
-  }
-
-  async function publishShareBlob(record, shareKey) {
-    const slim = slimShareRecord(record, shareKey);
-    const res = await originalFetch(`${BYTEBIN}/post`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(slim),
-    });
-    if (!res.ok) throw new Error(`bytebin-${res.status}`);
-    const data = await res.json().catch(() => ({}));
-    const key = data.key || String(res.headers.get("location") || "").replace(/^\/+/, "");
-    if (!key) throw new Error("bytebin-empty");
-    const ref = `b:${key}`;
-    setCachedShareRef(record.id, shareKey, ref, slim.revision);
-    return ref;
-  }
-
-  async function fetchShareBlob(binKey) {
-    const res = await originalFetch(`${BYTEBIN}/${encodeURIComponent(binKey)}`, {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`bytebin-get-${res.status}`);
-    return res.json();
-  }
-
-  function parseSharePayloadToken(payload) {
-    const raw = String(payload || "");
-    if (raw.startsWith("b:")) return { kind: "bin", value: raw.slice(2) };
-    if (raw.startsWith("i:")) return { kind: "inline", value: raw.slice(2) };
-    // Legacy bare base64 payload
-    if (raw.length > 20) return { kind: "inline", value: raw };
-    return { kind: "unknown", value: raw };
-  }
-
-  function seedSharePayloadFromHash() {
-    try {
-      const hash = String(location.hash || "").replace(/^#/, "");
-      if (!hash) return;
-      const params = new URLSearchParams(hash);
-      const id = params.get("trip");
-      const key = params.get("key");
-      const payload = params.get("s") || params.get("payload");
-      if (!id || !payload) return;
-      const parsed = parseSharePayloadToken(payload);
-      if (parsed.kind !== "inline") return; // bin needs async hydrate
-      const json = decodeInlineSharePayload(parsed.value);
-      applySeededRecord(id, key, json);
-    } catch {
-      /* ignore bad payload */
-    }
-  }
-
-  let hydrateInFlight = null;
-  async function hydrateTripFromShare(tripIdHint) {
-    seedSharePayloadFromHash();
-    const hash = String(location.hash || "").replace(/^#/, "");
-    if (!hash) return;
-    const params = new URLSearchParams(hash);
-    const id = params.get("trip") || tripIdHint || "";
-    const key = params.get("key") || "";
-    const payload = params.get("s") || params.get("payload") || "";
-    if (!id || !payload) return;
-    if (tripIdHint && id !== tripIdHint) return;
-    if (readLocalTrips()[id]?.trip) return;
-
-    const parsed = parseSharePayloadToken(payload);
-    if (parsed.kind === "inline") {
-      try {
-        applySeededRecord(id, key, decodeInlineSharePayload(parsed.value));
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-    if (parsed.kind !== "bin" || !parsed.value) return;
-
-    if (hydrateInFlight) {
-      try {
-        await hydrateInFlight;
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-    hydrateInFlight = (async () => {
-      const json = await fetchShareBlob(parsed.value);
-      applySeededRecord(id, key, json);
-    })();
-    try {
-      await hydrateInFlight;
-    } finally {
-      hydrateInFlight = null;
-    }
-  }
-
-  async function resolveShareRef(tripId, shareKey) {
-    const rec = readLocalTrips()[tripId];
-    if (!rec?.trip) return "";
-    const cached = getCachedShareRef(tripId, shareKey);
-    if (cached) return cached;
-    try {
-      return await publishShareBlob(rec, shareKey);
-    } catch {
-      // Fallback: inline snapshot for small trips / offline publish failure.
-      const inline = encodeInlineSharePayload(rec, shareKey);
-      if (inline && inline.length <= 3500) {
-        setCachedShareRef(tripId, shareKey, inline, rec.revision || 1);
-        return inline;
-      }
-      return "";
-    }
-  }
-
-  seedSharePayloadFromHash();
-  window.addEventListener("hashchange", () => {
-    seedSharePayloadFromHash();
-    void hydrateTripFromShare();
-  });
-  void hydrateTripFromShare();
-
-  /** Keep address-bar / copied share links self-contained via short blob refs. */
-  async function ensureHashSharePayload() {
-    try {
-      const hash = String(location.hash || "").replace(/^#/, "");
-      if (!hash) return;
-      const params = new URLSearchParams(hash);
-      const tripId = params.get("trip");
-      const key = params.get("key");
-      if (!tripId || !key) return;
-      const rec = readLocalTrips()[tripId];
-      if (!rec?.trip) return;
-      const ref = await resolveShareRef(tripId, key);
-      if (!ref) return;
-      if (params.get("s") === ref) return;
-      params.set("s", ref);
-      // Drop legacy long inline payloads from the live hash when we have a short ref.
-      const next = `#${params.toString()}`;
-      if (next !== location.hash) {
-        history.replaceState(null, "", `${location.pathname}${location.search}${next}`);
-      }
-    } catch {
-      /* ignore */
-    }
-  }
-
-  setTimeout(() => {
-    void ensureHashSharePayload();
-  }, 0);
-  setInterval(() => {
-    void ensureHashSharePayload();
-  }, 5000);
-
-  // Sync helper used by the React share-link builder (patched Ye).
-  window.__pvGetShareRef = function getShareRef(tripId, shareKey) {
-    return getCachedShareRef(tripId, shareKey) || "";
-  };
-  window.__pvEncodeTripShare = function encodeTripShare(tripId, shareKey) {
-    return getCachedShareRef(tripId, shareKey) || "";
-  };
-  window.__pvPrepareShare = async function prepareShare(tripId, shareKey) {
-    return resolveShareRef(tripId, shareKey);
-  };
-
-  /** Enrich copied share links with a durable short snapshot ref. */
-  function enrichShareUrl(text) {
-    try {
-      const raw = String(text || "").trim();
-      if (!raw || raw.length > 20000) return text;
-      let url;
-      try {
-        url = new URL(raw);
-      } catch {
-        return text;
-      }
-      if (!url.hash || url.hash.indexOf("trip=") < 0) return text;
-      const params = new URLSearchParams(url.hash.replace(/^#/, ""));
-      const tripId = params.get("trip");
-      const key = params.get("key");
-      if (!tripId || !key) return text;
-      const ref = getCachedShareRef(tripId, key);
-      if (!ref) {
-        // Kick off publish for next copy; still try inline if small.
-        void resolveShareRef(tripId, key);
-        const rec = readLocalTrips()[tripId];
-        if (!rec?.trip) return text;
-        const inline = encodeInlineSharePayload(rec, key);
-        if (!inline || inline.length > 3500) return text;
-        params.set("s", inline);
-      } else {
-        params.set("s", ref);
-      }
-      url.hash = params.toString();
-      return url.toString();
-    } catch {
-      return text;
-    }
-  }
-
-  const originalWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard);
-  if (originalWriteText) {
-    navigator.clipboard.writeText = async (text) => {
-      try {
-        const raw = String(text || "");
-        if (raw.includes("trip=") && raw.includes("key=")) {
-          const url = new URL(raw);
-          const params = new URLSearchParams(url.hash.replace(/^#/, ""));
-          const tripId = params.get("trip");
-          const key = params.get("key");
-          if (tripId && key) await resolveShareRef(tripId, key);
-        }
-      } catch {
-        /* ignore */
-      }
-      return originalWriteText(enrichShareUrl(text));
-    };
-  }
-
-  // If the UI uses navigator.share, enrich the URL the same way.
-  if (typeof navigator.share === "function") {
-    const originalShare = navigator.share.bind(navigator);
-    navigator.share = async (data = {}) => {
-      const next = { ...data };
-      if (typeof next.url === "string") next.url = enrichShareUrl(next.url);
-      try {
-        const url = new URL(String(next.url || location.href));
-        const params = new URLSearchParams(url.hash.replace(/^#/, ""));
-        const tripId = params.get("trip");
-        const key = params.get("key");
-        if (tripId && key) {
-          await resolveShareRef(tripId, key);
-          next.url = enrichShareUrl(next.url || url.toString());
-        }
-      } catch {
-        /* ignore */
-      }
-      return originalShare(next);
-    };
-  }
-
   async function handleLocalTrips(pathname, search, init = {}) {
     const method = (init.method || "GET").toUpperCase();
     const parts = pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean);
@@ -594,11 +248,7 @@
       } else if (typeof body.budget === "number" && body.budget > 0) {
         setPrivateBudget(newId, body.budget);
       }
-      const tripBody =
-        body?.trip && typeof body.trip === "object" && !Array.isArray(body.trip)
-          ? body.trip
-          : body;
-      const sharedTrip = { ...tripBody, budget: 0 };
+      const sharedTrip = { ...body, budget: 0 };
       const record = {
         id: newId,
         key: editKey,
@@ -611,8 +261,6 @@
       };
       db[newId] = record;
       writeLocalTrips(db);
-      void resolveShareRef(newId, editKey);
-      void resolveShareRef(newId, viewToken);
       return jsonResponse(200, {
         id: newId,
         key: editKey,
@@ -629,19 +277,14 @@
     const record = db[id];
     if (!record) return jsonResponse(404, { error: "Viaggio non trovato" });
 
-    const canEdit = Boolean(
-      key &&
-        (key === record.key ||
-          // Legacy local records without a stored edit key: only the creator device.
-          (!record.key && record.local && !record.viewToken))
-    );
+    const canEdit = Boolean(key && (key === record.key || (!record.key && record.local)));
     const canView =
       canEdit ||
       !record.key ||
       key === record.viewToken ||
       key === record.key ||
-      // Allow open from recent-links / share payload when viewToken matches or local seed present
-      Boolean(record.local && key && (key === record.viewToken || !record.viewToken));
+      // Allow open from recent-links even if cloud key was stored for a local trip
+      Boolean(record.local && key);
 
     if (method === "GET") {
       if (!canView) return jsonResponse(403, { error: "Link non valido" });
@@ -670,8 +313,6 @@
       record.updated = new Date().toISOString();
       db[id] = record;
       writeLocalTrips(db);
-      void resolveShareRef(id, record.key);
-      if (record.viewToken) void resolveShareRef(id, record.viewToken);
       return jsonResponse(200, {
         trip: applyPrivateBudgetView(id, record.trip),
         revision: record.revision,
@@ -768,8 +409,7 @@
         wallTimeout(PER_TRY_MS, "proxy-timeout"),
       ]);
       if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
-      // Accept 2xx/4xx JSON from the CORS proxy; only hard-fail transport/5xx/HTML.
-      if (res.status >= 500) throw new Error(`upstream-${res.status}`);
+      if (!res.ok) throw new Error(`upstream-${res.status}`);
       const ct = String(res.headers.get("content-type") || "").toLowerCase();
       if (ct.includes("text/html")) throw new Error("html-error");
       if (!ct.includes("json")) {
@@ -784,22 +424,11 @@
   }
 
   async function remoteTrips(suffix, init) {
-    // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
     const candidates = onGitHubPages
-      ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
-      : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
-
-    // Try sequentially so a CORS-blocked candidate does not race-win as rejection noise.
-    let lastErr;
-    for (const target of candidates) {
-      try {
-        return await fetchTripsCandidate(target, init);
-      } catch (err) {
-        lastErr = err;
-      }
-    }
-    throw lastErr || new Error("no-remote");
+      ? [...proxyTargets, `${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`]
+      : [`${TRIPS_BASE}${suffix}`, `${NETLIFY_API}/api${suffix}`, ...proxyTargets];
+    return Promise.any(candidates.map((target) => fetchTripsCandidate(target, init)));
   }
 
   window.fetch = async (input, init = {}) => {
@@ -832,7 +461,11 @@
             wallTimeout(28000, "pois-timeout"),
           ]);
         }
-        return await remoteTrips(suffix, { ...init, method: "GET" });
+        return await Promise.any(
+          TRIPS_PROXIES.map((base) =>
+            fetchTripsCandidate(`${base}/api${suffix}`, { ...init, method: "GET" })
+          )
+        );
       } catch {
         return jsonResponse(502, { error: "Ricerca luoghi non disponibile." });
       }
@@ -853,16 +486,7 @@
       );
       const writeInit = await rewriteTripWriteInit(parsed.pathname, init);
 
-      // Before opening a shared trip, hydrate snapshot from hash (inline or bytebin).
-      if (method === "GET" && tripIdHint) {
-        try {
-          await hydrateTripFromShare(tripIdHint);
-        } catch {
-          /* continue with remote/local */
-        }
-      }
-
-      // Prefer same-origin reverse proxy when available (Netlify / local).
+      // Prefer same-origin reverse proxy when available.
       if (sameOriginApiProxy) {
         try {
           const res = await Promise.race([
@@ -881,11 +505,10 @@
                   canEdit: data.canEdit,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
                 });
               }
               if (method === "POST" && data?.id && data?.trip) {
-                cacheTripRecord(data.id, { ...data, local: false });
+                cacheTripRecord(data.id, data);
               }
               if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
                 cacheTripRecord(id, {
@@ -895,7 +518,6 @@
                   canEdit: true,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
                 });
               }
             } catch {
@@ -903,15 +525,7 @@
             }
             return withPrivateBudgetResponse(res, tripIdHint);
           }
-          // Proxy miss / validation: prefer durable local copy when present.
-          if (method === "GET" || method === "POST" || res.status >= 500) {
-            try {
-              const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-              if (local.status === 200 || method === "POST") return local;
-            } catch {
-              /* continue */
-            }
-          }
+          // If upstream hard-failed, fall through to local for resilience.
           if (res.status < 500) return withPrivateBudgetResponse(res, tripIdHint);
         } catch {
           /* use remote/local fallback */
@@ -923,7 +537,7 @@
         if (res.ok) {
           try {
             const data = await res.clone().json();
-            if (method === "POST" && data?.id) cacheTripRecord(data.id, { ...data, local: false });
+            if (method === "POST" && data?.id) cacheTripRecord(data.id, data);
             if (method === "GET") {
               const id = data.id || tripIdHint;
               if (id && data?.trip) {
@@ -934,7 +548,6 @@
                   canEdit: data.canEdit,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
                 });
               }
             }
@@ -948,7 +561,6 @@
                   canEdit: true,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
                 });
               }
             }
@@ -961,8 +573,6 @@
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
           if (local.status === 200) return local;
         }
-        // POST must not silently become local-only when cloud returns 4xx —
-        // that creates unshareable trips. Only fall back on transport failure.
         return withPrivateBudgetResponse(res, tripIdHint);
       } catch {
         // All remote proxies failed — durable local fallback.
