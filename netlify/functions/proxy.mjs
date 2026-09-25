@@ -1,4 +1,4 @@
-const TRIPS_BASE =
+const UPSTREAM =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
 
 const corsHeaders = {
@@ -8,41 +8,17 @@ const corsHeaders = {
   "Access-Control-Max-Age": "86400",
 };
 
-function tripsPath(event) {
-  const candidates = [
-    event.path,
-    event.rawPath,
-    event.headers?.["x-forwarded-url"],
-    event.headers?.["x-original-url"],
-    event.headers?.["x-netlify-original-pathname"],
-    event.rawUrl,
-  ]
-    .filter(Boolean)
-    .map(String);
-
-  let rest = "";
-  for (const raw of candidates) {
-    let pathOnly = raw;
-    try {
-      if (/^https?:/i.test(raw)) pathOnly = new URL(raw).pathname;
-    } catch {
-      /* keep */
-    }
-    const matched = pathOnly.match(/\/(?:\.netlify\/functions\/trips|api\/trips|api)(\/.*)?$/i);
-    if (matched) {
-      rest = matched[1] || "";
-      break;
-    }
-  }
-
+function upstreamPath(event) {
+  const raw = String(event.path || event.rawPath || "");
+  let rest = raw
+    .replace(/^\/\.netlify\/functions\/proxy/, "")
+    .replace(/^\/api/, "");
   const splat = event.pathParameters?.splat || event.params?.splat;
   if ((!rest || rest === "/") && splat) {
     rest = Array.isArray(splat) ? `/${splat.join("/")}` : `/${String(splat).replace(/^\/+/, "")}`;
   }
-  if (!rest || rest === "/") return "/trips";
-  if (!rest.startsWith("/")) rest = `/${rest}`;
-  if (rest === "/trips" || rest.startsWith("/trips/")) return rest;
-  return `/trips${rest}`;
+  if (!rest || rest === "/") return "/";
+  return rest.startsWith("/") ? rest : `/${rest}`;
 }
 
 export async function handler(event) {
@@ -51,11 +27,13 @@ export async function handler(event) {
   }
 
   try {
-    const target = `${TRIPS_BASE}${tripsPath(event)}${
+    const target = `${UPSTREAM}${upstreamPath(event)}${
       event.rawQuery ? `?${event.rawQuery}` : ""
     }`;
-
-    const headers = { "Content-Type": "application/json", Accept: "application/json" };
+    const headers = { Accept: "application/json" };
+    const contentType = event.headers?.["content-type"] || event.headers?.["Content-Type"];
+    if (contentType) headers["Content-Type"] = contentType;
+    else if (event.body) headers["Content-Type"] = "application/json";
     const auth = event.headers?.authorization || event.headers?.Authorization;
     if (auth) headers.Authorization = auth;
 
@@ -64,7 +42,6 @@ export async function handler(event) {
       headers,
       body: ["GET", "HEAD"].includes(event.httpMethod) ? undefined : event.body,
     });
-
     const text = await upstream.text();
     return {
       statusCode: upstream.status,
@@ -79,7 +56,7 @@ export async function handler(event) {
     return {
       statusCode: 502,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      body: JSON.stringify({ error: "Proxy viaggi non disponibile." }),
+      body: JSON.stringify({ error: "Proxy API non disponibile." }),
     };
   }
 }
