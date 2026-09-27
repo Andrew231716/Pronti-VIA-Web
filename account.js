@@ -135,7 +135,11 @@ async function api(action, { method = "POST", body, token } = {}) {
     cache: "no-store",
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Operazione non riuscita.");
+  if (!response.ok) {
+    const error = new Error(data.error || "Operazione non riuscita.");
+    error.status = response.status;
+    throw error;
+  }
   return data;
 }
 
@@ -283,25 +287,54 @@ async function onSubmit(event) {
   const form = event.currentTarget;
   const submit = form.querySelector(".pv-account-submit");
   const error = document.getElementById("pv-account-error");
+  const mode = state.mode;
   const username = form.username.value;
   const password = form.password.value;
   submit.disabled = true;
   error.textContent = "";
   try {
-    const data =
-      state.mode === "register"
+    let data;
+    let localError;
+    try {
+      data = mode === "register"
         ? await registerLocal(username, password)
         : await loginLocal(username, password);
+    } catch (err) {
+      if (mode === "register") throw err;
+      localError = err;
+    }
 
-    // Best-effort cloud mirror; never blocks local persistent access.
-    try {
-      const cloud = await api(state.mode === "register" ? "register" : "login", {
-        body: { username, password, displayName: username },
-      });
-      data.token = cloud.token || data.token;
-      data.trips = mergeTrips(cloud.trips || [], data.trips || []);
-    } catch {
-      /* keep local session */
+    if (!data) {
+      try {
+        const cloud = await api("login", {
+          body: { username, password, displayName: username },
+        });
+        if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
+        data = { token: cloud.token, user: cloud.user, trips: cloud.trips || [] };
+      } catch {
+        throw localError || new Error("Nome utente o password non corretti.");
+      }
+    } else {
+      // Mirror local accounts when cloud storage is available.
+      try {
+        const action = mode === "register" ? "register" : "login";
+        const cloud = await api(action, {
+          body: { username, password, displayName: username },
+        });
+        if (cloud?.token && cloud?.user?.username) {
+          data.token = cloud.token;
+          data.user = cloud.user;
+          data.trips = mergeTrips(cloud.trips || [], data.trips || []);
+        }
+      } catch (err) {
+        if (mode === "register" && err.status === 409) {
+          const users = readUsers();
+          delete users[normalizeUsername(username)];
+          writeUsers(users);
+          throw new Error("Questo account esiste già online. Accedi oppure scegli un altro nome utente.");
+        }
+        /* keep local session */
+      }
     }
 
     await activateSession(data);

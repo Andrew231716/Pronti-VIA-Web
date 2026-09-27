@@ -18,7 +18,7 @@ jobs:
           REPO_NAME: ${{ github.event.repository.name }}
         run: |
           mkdir -p site
-          for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
+          for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js magic-extras.js preventivo-islanda.js \
                    favicon.svg logo.png coast.jpg manifest.webmanifest map.html \
                    vercel.json _redirects README.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
@@ -39,6 +39,8 @@ jobs:
               "/assets/",
               "/vendor/",
               "/places-suggest.js",
+              "/magic-extras.js",
+              "/preventivo-islanda.js",
               "/api-shim.js",
               "/ios-form-fix.js",
               "/account.css",

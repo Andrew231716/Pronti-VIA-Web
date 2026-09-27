@@ -15,7 +15,8 @@ const mimeTypes = {
 };
 
 const server = http.createServer((req, res) => {
-  const url = req.url === '/' ? '/index.html' : req.url;
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+  const url = pathname === '/' ? '/index.html' : pathname;
   const safePath = path.normalize(url).replace(/^\/+/, '');
   const filePath = path.join(__dirname, safePath);
 

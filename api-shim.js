@@ -109,7 +109,11 @@
       }
     }
 
-    if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/account")) {
+    if (
+      onGitHubPages &&
+      parsed.origin === location.origin &&
+      parsed.pathname.startsWith("/api/account")
+    ) {
       return new Response(JSON.stringify({ error: "Sync cloud non disponibile su questo host." }), {
         status: 503,
         headers: { "Content-Type": "application/json" },
