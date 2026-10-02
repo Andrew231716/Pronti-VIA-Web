@@ -2,7 +2,7 @@
   const STYLE_ID = "pv-preventivo-css";
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v1";
-  const VERSION = "20261002-generic";
+  const VERSION = "20261002-generic-sync";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -177,6 +177,21 @@
     writeStore(database);
   }
 
+  function readTripPreventivo(trip) {
+    const preventivo = trip?.preventivo || {};
+    return {
+      params: preventivo.params || null,
+      scenario: preventivo.scenario || "economico",
+      lines: Array.isArray(preventivo.lines) ? preventivo.lines : [],
+      flightNotes: Array.isArray(preventivo.flightNotes) ? preventivo.flightNotes : [],
+      stayConfigs: Array.isArray(preventivo.stayConfigs) ? preventivo.stayConfigs : [],
+      transport: preventivo.transport || { strategy: "A", notes: "" },
+      sources: Array.isArray(preventivo.sources) ? preventivo.sources : [],
+      safety: preventivo.safety || { weather: null, fetchedAt: "" },
+      flightFilters: preventivo.flightFilters || { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" },
+    };
+  }
+
   async function loadTripRecord() {
     const auth = tripAuth();
     if (!auth) return null;
@@ -191,6 +206,24 @@
     } catch {
       return null;
     }
+  }
+
+  async function saveTripPreventivo(tripId, authKey, preventivo) {
+    if (!tripId || !authKey) return null;
+    const record = await loadTripRecord();
+    if (!record || !record.data?.trip) return null;
+    const trip = { ...record.data.trip, preventivo };
+    const res = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authKey}`,
+      },
+      body: JSON.stringify({ trip, revision: record.data.revision }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Salvataggio preventivo non riuscito");
+    return data;
   }
 
   function defaultBudgetLines(params, scenario) {
@@ -320,16 +353,20 @@
   function initWorkingState(tripId, saved) {
     const baseTripParams = buildGenericParamsFromTrip(saved?.tripData || null);
     const mergedParams = saved?.params ? { ...baseTripParams, ...saved.params, prefs: { ...baseTripParams.prefs, ...(saved.params.prefs || {}) } } : baseTripParams;
+    const savedPreventivo = saved?.preventivo || {};
+    const preferPreventivo = savedPreventivo.params ? savedPreventivo : {};
+    const finalParams = preferPreventivo.params ? { ...mergedParams, ...preferPreventivo.params, prefs: { ...mergedParams.prefs, ...(preferPreventivo.params.prefs || {}) } } : mergedParams;
+
     state.tripId = tripId || "";
-    state.params = mergedParams;
-    state.scenario = saved?.scenario || "economico";
-    state.lines = saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
-    state.flightNotes = saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
-    state.stayConfigs = saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs();
-    state.transport = saved?.transport || { strategy: "A", notes: "" };
-    state.sources = saved?.sources?.length ? saved.sources : defaultSources();
-    state.safety = saved?.safety || defaultSafety(state.params);
-    state.flightFilters = saved?.flightFilters || { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" };
+    state.params = finalParams;
+    state.scenario = preferPreventivo.scenario || saved?.scenario || "economico";
+    state.lines = preferPreventivo.lines?.length ? preferPreventivo.lines : saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
+    state.flightNotes = preferPreventivo.flightNotes?.length ? preferPreventivo.flightNotes : saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
+    state.stayConfigs = preferPreventivo.stayConfigs?.length ? preferPreventivo.stayConfigs : saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs();
+    state.transport = preferPreventivo.transport || saved?.transport || { strategy: "A", notes: "" };
+    state.sources = preferPreventivo.sources?.length ? preferPreventivo.sources : saved?.sources?.length ? saved.sources : defaultSources();
+    state.safety = preferPreventivo.safety || saved?.safety || defaultSafety(state.params);
+    state.flightFilters = preferPreventivo.flightFilters || saved?.flightFilters || { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" };
     state.section = "overview";
   }
 
@@ -386,12 +423,12 @@
     const draft = loadStateForTrip(DRAFT_KEY);
     state.tripId = data.id;
     if (draft) {
-      initWorkingState(data.id, { ...draft, tripData: trip });
+      initWorkingState(data.id, { ...draft, tripData: trip, preventivo: { params: state.params, scenario: state.scenario, lines: state.lines, flightNotes: state.flightNotes, stayConfigs: state.stayConfigs, transport: state.transport, sources: state.sources, safety: state.safety, flightFilters: state.flightFilters } });
       const database = readStore();
       delete database[DRAFT_KEY];
       writeStore(database);
     } else {
-      initWorkingState(data.id, { tripData: trip, params: buildGenericParamsFromTrip(trip) });
+      initWorkingState(data.id, { tripData: trip, params: buildGenericParamsFromTrip(trip), preventivo: { params: state.params, scenario: state.scenario, lines: state.lines, flightNotes: state.flightNotes, stayConfigs: state.stayConfigs, transport: state.transport, sources: state.sources, safety: state.safety, flightFilters: state.flightFilters } });
     }
     persistState();
 
@@ -473,11 +510,13 @@
       tripData = await resolveCurrentTrip();
     }
     const saved = auth ? (loadStateForTrip(auth.id) || draft) : draft;
-    if (saved) {
-      initWorkingState(auth?.id || "", { ...saved, tripData: tripData || saved.tripData || null });
+    const baseTrip = tripData || (saved && saved.tripData) || null;
+    const preventivoFromTrip = baseTrip ? readTripPreventivo(baseTrip) : {};
+    if (saved || preventivoFromTrip.params) {
+      initWorkingState(auth?.id || "", { ...saved, tripData: baseTrip, preventivo: preventivoFromTrip, params: buildGenericParamsFromTrip(baseTrip || null) });
       state.status = tripData ? "Preventivo generato dal viaggio attuale." : "Preventivo caricato dal dispositivo.";
     } else {
-      initWorkingState(auth?.id || "", { tripData: tripData || null, params: buildGenericParamsFromTrip(tripData || null) });
+      initWorkingState(auth?.id || "", { tripData: baseTrip, params: buildGenericParamsFromTrip(baseTrip || null) });
       state.status = tripData ? "Nuovo preventivo generato dal viaggio attuale." : "Nessun viaggio aperto: puoi creare un nuovo preventivo generico.";
     }
     setOpen(true);
@@ -793,6 +832,36 @@
     });
   }
 
+  async function persistCurrentTripPreventivo() {
+    const auth = tripAuth();
+    const preventivo = {
+      params: state.params,
+      scenario: state.scenario,
+      lines: state.lines,
+      flightNotes: state.flightNotes,
+      stayConfigs: state.stayConfigs,
+      transport: state.transport,
+      sources: state.sources,
+      safety: state.safety,
+      flightFilters: state.flightFilters,
+      updatedAt: nowIso(),
+    };
+    if (!auth) {
+      const database = readStore();
+      database[DRAFT_KEY] = { ...database[DRAFT_KEY], ...preventivo };
+      writeStore(database);
+      return null;
+    }
+    try {
+      return await saveTripPreventivo(auth.id, auth.key, preventivo);
+    } catch {
+      const database = readStore();
+      database[auth.id] = { ...database[auth.id], ...preventivo };
+      writeStore(database);
+      return null;
+    }
+  }
+
   async function onAction(action) {
     try {
       if (action === "close") {
@@ -801,7 +870,8 @@
       }
       if (action === "save-local") {
         persistState();
-        state.status = "Salvato sul dispositivo.";
+        await persistCurrentTripPreventivo();
+        state.status = "Salvato sul dispositivo e sul viaggio attivo.";
         render();
         return;
       }
