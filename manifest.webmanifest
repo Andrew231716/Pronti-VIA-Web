@@ -1,0 +1,25 @@
+{
+  "name": "Pronti? VIA! — Viaggi insieme",
+  "short_name": "Pronti? VIA!",
+  "id": "/Pronti-VIA-Web/",
+  "start_url": "/Pronti-VIA-Web/",
+  "scope": "/Pronti-VIA-Web/",
+  "display": "standalone",
+  "background_color": "#f7f9fb",
+  "theme_color": "#007d82",
+  "lang": "it",
+  "icons": [
+    {
+      "src": "/Pronti-VIA-Web/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/Pronti-VIA-Web/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

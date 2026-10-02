@@ -1,0 +1,8 @@
+/api/account /.netlify/functions/account 200!
+/api/account/* /.netlify/functions/account 200!
+/api/places /.netlify/functions/places 200!
+/api/places/* /.netlify/functions/places 200!
+/api/trips /.netlify/functions/trips 200!
+/api/trips/* /.netlify/functions/trips/:splat 200!
+/api/* https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via/:splat 200
+/* /index.html 200

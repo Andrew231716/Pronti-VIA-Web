@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pronti? VIA!">
+  <rect width="64" height="64" rx="16" fill="#007d82"/>
+  <circle cx="32" cy="32" r="22" fill="#f3f7f7"/>
+  <g fill="#007d82">
+    <polygon points="32,11 34.8,29 32,27.2 29.2,29"/>
+    <polygon points="32,53 29.2,35 32,36.8 34.8,35"/>
+    <polygon points="11,32 29,29.2 27.2,32 29,34.8"/>
+    <polygon points="53,32 35,34.8 36.8,32 35,29.2"/>
+    <polygon points="19.2,19.2 29.6,29.6 28.2,32 29.6,34.4" opacity=".5"/>
+    <polygon points="44.8,19.2 34.4,29.6 32,28.2 29.6,29.6" opacity=".5"/>
+    <polygon points="44.8,44.8 34.4,34.4 32,35.8 29.6,34.4" opacity=".5"/>
+    <polygon points="19.2,44.8 29.6,34.4 32,35.8 34.4,34.4" opacity=".5"/>
+  </g>
+  <path d="M19 43c7-2 11-9 13-15 2.2-6 6-10.5 13-12.5" fill="none" stroke="#f3f7f7" stroke-width="4" stroke-linecap="round"/>
+  <path d="M39.5 14.2l7.2 1.6-2.2 7" fill="none" stroke="#f3f7f7" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="3.4" fill="#007d82"/>
+  <circle cx="32" cy="32" r="1.5" fill="#f3f7f7"/>
+</svg>
