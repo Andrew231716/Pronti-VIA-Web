@@ -211,6 +211,33 @@ export async function handler(event) {
       return json(200, { ok: true });
     }
 
+    if (event.httpMethod === "POST" && action === "delete-account") {
+      const token = getBearer(event);
+      const session = await getSession(store, token);
+      const username = normalizeUsername(body.username || session?.username || "");
+      const password = body.password;
+      if (!username || !password) {
+        return json(400, { error: "Per eliminare l’account servono nome utente e password." });
+      }
+      const user = await store.get(`user:${username}`, { type: "json" });
+      if (!user?.salt || !user?.hash || !verifyPassword(password, user.salt, user.hash)) {
+        return json(401, { error: "Credenziali non corrette." });
+      }
+      await store.delete(`user:${username}`);
+      await store.delete(`trips:${username}`);
+      if (token) await store.delete(`session:${token}`);
+      try {
+        const listed = await store.list({ prefix: "session:" });
+        for (const blob of listed.blobs || []) {
+          const sess = await store.get(blob.key, { type: "json" });
+          if (sess?.username === username) await store.delete(blob.key);
+        }
+      } catch {
+        /* best-effort session sweep */
+      }
+      return json(200, { ok: true, deleted: username });
+    }
+
     if (event.httpMethod === "GET" && (action === "me" || action === "trips")) {
       const token = getBearer(event);
       const session = await getSession(store, token);

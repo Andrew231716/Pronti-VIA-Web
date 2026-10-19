@@ -43,8 +43,21 @@
   force = true
 
 [[redirects]]
+  from = "/api/share"
+  to = "/.netlify/functions/share"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/share/*"
+  to = "/.netlify/functions/share/:splat"
+  status = 200
+  force = true
+
+# CORS-safe proxy for remaining /api routes (never raw-proxy Supabase: no ACAO).
+[[redirects]]
   from = "/api/*"
-  to = "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via/:splat"
+  to = "/.netlify/functions/proxy/:splat"
   status = 200
   force = true
 

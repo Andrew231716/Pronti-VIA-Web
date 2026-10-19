@@ -201,17 +201,6 @@
     return { id, key };
   }
 
-  function emptyTripContext() {
-    return {
-      title: "Il tuo prossimo viaggio",
-      destination: "",
-      start: "",
-      end: "",
-      members: [],
-      stops: [],
-    };
-  }
-
   async function loadTrip() {
     const auth = tripAuth();
     if (!auth) throw new Error("Apri un viaggio salvato per usare questa funzione.");
@@ -403,7 +392,7 @@
   function magicTabsHtml(active) {
     return `
       <div class="pv-tabs" role="tablist">
-        ${tripAuth() ? `<button type="button" data-tab="idee" class="${active === "idee" ? "active" : ""}">Idee</button>` : ""}
+        <button type="button" data-tab="idee" class="${active === "idee" ? "active" : ""}">Idee</button>
         <button type="button" data-tab="chiedi" class="${active === "chiedi" ? "active" : ""}">Chiedi</button>
         <button type="button" data-tab="lingua" class="${active === "lingua" ? "active" : ""}">Lingua</button>
       </div>`;
@@ -420,6 +409,12 @@
 
   function renderFab() {
     if (!document.body.classList.contains("pv-account-ready")) return;
+    if (!tripAuth()) {
+      const existing = document.getElementById(ROOT_ID);
+      if (existing) existing.innerHTML = "";
+      setMagicOpen(false);
+      return;
+    }
     if (document.querySelector("main.loading")) return;
 
     const root = ensureRoot();
@@ -443,15 +438,11 @@
   }
 
   async function showMagicPanel(panel, tab = "chiedi") {
-    magicTab = !tripAuth() && tab === "idee" ? "chiedi" : tab;
+    magicTab = tab;
     try {
       if (!magicTripCache) {
-        if (tripAuth()) {
-          const { data } = await loadTrip();
-          magicTripCache = data.trip;
-        } else {
-          magicTripCache = emptyTripContext();
-        }
+        const { data } = await loadTrip();
+        magicTripCache = data.trip;
       }
     } catch (err) {
       panel.innerHTML = `
@@ -1191,9 +1182,7 @@
             ${
               isWeb
                 ? ""
-                : tripAuth()
-                  ? `<button type="button" class="primary" data-add="${idx}">Aggiungi all’itinerario</button>`
-                  : `<span class="pv-save-hint">Apri un viaggio salvato per aggiungere questo luogo</span>`
+                : `<button type="button" class="primary" data-add="${idx}">Aggiungi all’itinerario</button>`
             }
             ${
               poi.tripadvisorUrl
@@ -1263,16 +1252,15 @@
   }
 
   async function renderChatTab(panel) {
-    const dest = magicTripCache?.destination || "";
-    const greetingWhere = dest ? formatDestGreeting(dest, magicTripCache?.title || "") : "";
-    const promptWhere = greetingWhere || "per la tua destinazione";
+    const dest = magicTripCache?.destination || "la destinazione";
+    const greetingWhere = formatDestGreeting(dest, magicTripCache?.title || "");
     const trip = magicTripCache;
     const days = trip ? tripDays(trip) : [];
     panel.innerHTML = `
       <div class="pv-panel-head">
         ${magicTabsHtml("chiedi")}
         <h3>Chiedi alla bacchetta</h3>
-        <p class="pv-lead">AI gratuita senza chiave API, quando disponibile; in alternativa risposte e guide locali. Indica la destinazione per consigli mirati.</p>
+        <p class="pv-lead">Assistente AI del viaggio: domande, idee e tappe da aggiungere.</p>
         <div class="pv-chips" id="pv-chat-chips">
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
           <button type="button" data-q="Cosa non perdere in 2 giorni?">Cosa vedere</button>
@@ -1287,7 +1275,7 @@
       </div>
       <div class="pv-panel-foot">
         <form class="pv-chat-form" id="pv-chat-form">
-          <input type="text" id="pv-chat-input" placeholder="Scrivi pure… es. ristoranti ${escapeHtml(promptWhere)}" autocomplete="off" />
+          <input type="text" id="pv-chat-input" placeholder="Scrivi pure… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
           <button type="submit">Invia</button>
         </form>
         <div class="pv-actions">
@@ -1300,7 +1288,7 @@
     bindMagicTabs(panel);
     const log = panel.querySelector("#pv-chat-log");
     if (!chatHistory.length) {
-      const hello = `Ciao! Sono la tua assistente AI${greetingWhere ? ` ${greetingWhere}` : " di viaggio"}${
+      const hello = `Ciao! Sono la tua assistente AI ${greetingWhere}${
         days.length ? ` (${days.length} giorni)` : ""
       }. Chiedimi cosa vuoi sapere: posti, cibo, itinerari, consigli. Quando troviamo luoghi utili, puoi aggiungerli al programma.`;
       chatHistory = [{ role: "assistant", content: hello }];
@@ -1376,8 +1364,7 @@ Contesto viaggio:
 Compiti:
 1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari.
 2) Tieni conto del contesto del viaggio e dei messaggi precedenti (multi-turno).
-3) Se manca una destinazione, chiedi prima dove si svolge il viaggio.
-4) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
+3) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
 
 \`\`\`pv-places
 [{"title":"Nome posto","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché consigliarlo"}]
@@ -1698,7 +1685,7 @@ Regole pv-places:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
-      const trip = magicTripCache || (tripAuth() ? (await loadTrip()).data.trip : emptyTripContext());
+      const trip = magicTripCache || (await loadTrip()).data.trip;
       magicTripCache = trip;
       const cityHint = searchCityForDestination(trip.destination, trip.title);
       let aiText = "";
@@ -1724,7 +1711,6 @@ Regole pv-places:
 
         if (aiText) {
           ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
-          if (!trip.destination) aiPlaces = [];
           chatHistory.push({ role: "assistant", content: aiText });
         } else {
           const local = localTravelReply(trip, text);
@@ -1743,7 +1729,7 @@ Regole pv-places:
         /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere/i.test(
           text
         );
-      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal && trip.destination) {
+      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal) {
         try {
           place = await geocodeDestination(
             /^(island|ísland|iceland)$/i.test(String(trip.destination || "").trim())
@@ -1760,7 +1746,7 @@ Regole pv-places:
         status.textContent = "Verifico i posti sulle mappe…";
         cards = await resolveAiPlaces(aiPlaces, trip.destination, trip.title, place.lat, place.lng);
         cards = await enrichWithWikipedia(cards);
-      } else if (!aiText && placeAsk && trip.destination) {
+      } else if (!aiText && placeAsk) {
         status.textContent = "Integro con mappe e guide…";
         const found = await searchPlacesForIntent(
           trip.destination,
@@ -2280,7 +2266,7 @@ Regole pv-places:
   }
 
   function ensureMapIframe() {
-    const MAP_VER = "20260918b";
+    const MAP_VER = "20261019c";
     const iframes = [...document.querySelectorAll('iframe[src*="map.html"]')];
     for (const iframe of iframes) {
       try {
@@ -2873,7 +2859,16 @@ Regole pv-places:
           color: DAY_COLORS[(dayIndex[s.day] ?? days.length) % DAY_COLORS.length],
           day: s.day || "",
         }));
-      iframe.contentWindow.postMessage({ type: "viavia-map", points, selected: null, pick: false }, location.origin);
+      iframe.contentWindow.postMessage(
+        {
+          type: "viavia-map",
+          points,
+          selected: null,
+          pick: false,
+          destination: data.trip.destination || data.trip.title || "",
+        },
+        location.origin
+      );
     } catch {
       /* ignore */
     }
@@ -3030,6 +3025,205 @@ Regole pv-places:
     );
   }
 
+  function injectLocalOnlyBanner() {
+    const openTrip = (() => {
+      try {
+        const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+        return p.get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const isLocal =
+      openTrip &&
+      typeof window.__pvIsTripLocalOnly === "function" &&
+      window.__pvIsTripLocalOnly(openTrip);
+    let banner = document.getElementById("pv-local-only-banner");
+    if (!isLocal) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-local-only-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:70;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    banner.textContent =
+      "Questo viaggio è salvato su questo dispositivo. Usa «Condividi viaggio» e attendi il link con snapshot (s=…) prima di inviarlo agli amici.";
+  }
+
+  function fixItalianTappeGrammar() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const t = node.nodeValue || "";
+      if (!t.includes("tappe")) continue;
+      const next = t
+        .replace(/\b1 tappe\b/g, "1 tappa")
+        .replace(/\b0 tappe\b/g, "0 tappe");
+      if (next !== t) node.nodeValue = next;
+    }
+  }
+
+  function preferIcelandCover() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const dest =
+      root.querySelector("h1, h2, .hero, [class*='destination']")?.textContent ||
+      root.innerText ||
+      "";
+    if (!/islanda|iceland|reykjav/i.test(dest)) return;
+    const icelandSrc = new URL("iceland.svg", location.href).href;
+    const heroImgs = [...root.querySelectorAll("img")].filter((img) => {
+      const alt = `${img.alt || ""} ${img.src || ""} ${img.className || ""}`;
+      return (
+        /balos|creta|crete|greece|santorini|mykonos|coast|cover|hero|banner|copertina/i.test(alt) ||
+        /balos|crete|greece|coast\.jpg/i.test(img.src || "") ||
+        (img.width > 400 || img.clientWidth > 400)
+      );
+    });
+    for (const img of heroImgs.slice(0, 2)) {
+      if (img.dataset.pvIcelandSwap === "1" && /iceland\.svg/i.test(img.src || "")) continue;
+      img.dataset.pvIcelandSwap = "1";
+      img.dataset.pvPrevSrc = img.src;
+      img.src = icelandSrc;
+      img.alt = "Copertina Islanda";
+      // Hide stale "Copertina: Balos" credits near the image.
+      const wrap = img.closest("div,section,article,figure") || img.parentElement;
+      if (wrap) {
+        for (const el of wrap.querySelectorAll("small, span, p, figcaption")) {
+          const t = (el.textContent || "").trim();
+          if (/copertina\s*:\s*balos|balos|creta|crete/i.test(t) && t.length < 80) {
+            el.textContent = "Copertina: Islanda";
+          }
+        }
+        if (!img.dataset.pvIcelandNote) {
+          img.dataset.pvIcelandNote = "1";
+          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+          const note = document.createElement("div");
+          note.className = "pv-cover-note";
+          note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
+          note.style.cssText =
+            "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
+          wrap.appendChild(note);
+        }
+      }
+    }
+  }
+
+  function injectCloudStatusBanner() {
+    if (window.__pvCloudBannerBound) return;
+    window.__pvCloudBannerBound = true;
+    const ENDPOINTS = [
+      "https://pronti-via-k7es.netlify.app/api/trips",
+      "https://like-success-universities-old.trycloudflare.com/api/trips",
+    ];
+    const run = async () => {
+      let ok = false;
+      for (const url of ENDPOINTS) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 4000);
+          // GET without id returns 404 from a healthy API, 502 when down.
+          const res = await fetch(url, { method: "GET", signal: ctrl.signal, cache: "no-store" });
+          clearTimeout(t);
+          if (res.status < 500) {
+            ok = true;
+            break;
+          }
+        } catch {
+          /* try next */
+        }
+      }
+      let el = document.getElementById("pv-cloud-status-banner");
+      if (ok) {
+        if (el) el.remove();
+        return;
+      }
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-cloud-status-banner";
+        el.setAttribute("role", "status");
+        el.style.cssText =
+          "position:sticky;top:0;z-index:71;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
+        document.body.prepend(el);
+      }
+      el.textContent =
+        "Cloud temporaneamente non raggiungibile: i viaggi restano su questo dispositivo. Condividi solo dopo aver ottenuto un link con snapshot (s=…).";
+    };
+    void run();
+    setInterval(run, 120000);
+  }
+
+  function injectPreventivoTripBanner() {
+    const openTrip = (() => {
+      try {
+        return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (!openTrip) {
+      document.getElementById("pv-preventivo-trip-banner")?.remove();
+      return;
+    }
+    let pv = null;
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      const db = raw ? JSON.parse(raw) : null;
+      const rec = db?.[openTrip];
+      pv = rec?.trip?.meta?.preventivo || null;
+    } catch {
+      pv = null;
+    }
+    let banner = document.getElementById("pv-preventivo-trip-banner");
+    if (!pv?.totals) {
+      if (banner) banner.remove();
+      return;
+    }
+    const group = Math.round((Number(pv.totals.groupCents) || 0) / 100);
+    const pp = Math.round((Number(pv.totals.perPersonCents) || 0) / 100);
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-preventivo-trip-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:69;margin:0;padding:8px 14px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    // Sit below local-only banner if present.
+    const local = document.getElementById("pv-local-only-banner");
+    if (local && banner.previousElementSibling !== local) {
+      local.after(banner);
+    }
+    banner.textContent = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
+  }
+
+  function ensureShareToast() {
+    if (window.__pvShareToastBound) return;
+    window.__pvShareToastBound = true;
+    window.addEventListener("pv-share-blocked", (ev) => {
+      const msg = ev?.detail?.message || "Condivisione non pronta.";
+      let el = document.getElementById("pv-share-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-share-toast";
+        el.style.cssText =
+          "position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;max-width:min(420px,92vw);background:#7a1f1f;color:#fff;padding:12px 14px;border-radius:12px;font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)";
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.remove(), 5200);
+    });
+  }
+
   function tick() {
     renderFab();
     injectPackingTemplates();
@@ -3041,6 +3235,12 @@ Regole pv-places:
     injectLinksAfterNotes();
     void enhanceExpenseCurrencyField();
     markPrivateBudgetLabels();
+    injectLocalOnlyBanner();
+    injectPreventivoTripBanner();
+    fixItalianTappeGrammar();
+    preferIcelandCover();
+    ensureShareToast();
+    injectCloudStatusBanner();
   }
 
   function markPrivateBudgetLabels() {
@@ -3085,7 +3285,6 @@ Regole pv-places:
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);
     if (root) root.innerHTML = "";
-    if (!tripAuth()) magicTab = "chiedi";
     setTimeout(tick, 300);
   });
   setTimeout(tick, 800);

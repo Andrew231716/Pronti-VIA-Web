@@ -1,14 +1,15 @@
 /**
- * Preventivo intelligente — Islanda (modulo integrato in Pronti? VIA!)
- * Estende i viaggi esistenti: crea/aggiorna trip via /api/trips, UI overlay,
- * persistenza in localStorage + sync itinerario/checklist/prenotazioni nel trip.
- * Prezzi: solo STIMA / DA VERIFICARE con link ufficiali — mai inventati come VERIFICATO.
+ * Preventivo intelligente — modulo generico per qualsiasi viaggio in Pronti? VIA!
+ * Crea/aggiorna trip via /api/trips, UI overlay, persistenza locale + sync nel trip.
+ * Include un preset opzionale «Islanda» come esempio, non come unico percorso.
+ * Prezzi: solo STIMA / DA VERIFICARE — mai inventati come VERIFICATO.
  */
 (() => {
   const STYLE_ID = "pv-preventivo-css";
   const ROOT_ID = "pv-preventivo-root";
-  const STORE_KEY = "viavia-preventivo-v1";
-  const VERSION = "20260920g";
+  const STORE_KEY = "viavia-preventivo-v2";
+  const STORE_KEY_LEGACY = "viavia-preventivo-v1";
+  const VERSION = "20261019f";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -23,8 +24,55 @@
     ["export", "Esportazione"],
   ];
 
+  function isoDate(d) {
+    return d.toISOString().slice(0, 10);
+  }
+
+  function addDays(iso, n) {
+    const d = new Date(`${iso}T12:00:00`);
+    d.setDate(d.getDate() + n);
+    return isoDate(d);
+  }
+
+  function defaultDateRange(nights = 7) {
+    const start = new Date();
+    start.setHours(12, 0, 0, 0);
+    start.setDate(start.getDate() + 30);
+    const s = isoDate(start);
+    return { start: s, end: addDays(s, nights), nights, days: nights + 1 };
+  }
+
+  const DATE_RANGE = defaultDateRange(7);
+
+  /** Blank template for any new trip */
   const DEFAULT_PARAMS = {
-    title: "Islanda — Avventura invernale 2027",
+    title: "",
+    destination: "",
+    departureCity: "Milano, Italia",
+    airportsOut: ["MXP", "LIN", "BGY"],
+    airportIn: "",
+    start: DATE_RANGE.start,
+    end: DATE_RANGE.end,
+    nights: DATE_RANGE.nights,
+    days: DATE_RANGE.days,
+    travelers: 2,
+    currency: "EUR",
+    language: "it",
+    prefs: {
+      cheapest: true,
+      noHostels: true,
+      preferApartmentKitchen: true,
+      maxStops: 1,
+      compareTransport: true,
+      splitVehicles: false,
+      freeActivities: true,
+      winterSafe: false,
+    },
+  };
+
+  /** Optional example preset (not required). */
+  const ICELAND_PRESET = {
+    title: "Islanda — Avventura invernale",
     destination: "Islanda",
     departureCity: "Milano, Italia",
     airportsOut: ["MXP", "LIN", "BGY"],
@@ -48,29 +96,48 @@
     },
   };
 
-  /** Official / reference links — not scraped prices */
-  const OFFICIAL = {
-    icelandair: "https://www.icelandair.com/",
-    easyjet: "https://www.easyjet.com/",
-    wizz: "https://www.wizzair.com/",
-    visiticeland: "https://www.visiticeland.com/",
-    visitreykjavik: "https://visitreykjavik.is/",
-    safetravel: "https://safetravel.is/",
-    vedur: "https://en.vedur.is/",
-    roads: "https://umferdin.is/",
-    googleFlights:
-      "https://www.google.com/travel/flights?q=Flights%20to%20KEF%20from%20MXP%20on%202027-02-15%20through%20LIN%20or%20BGY%20returning%202027-02-22%208%20adults",
-    bookingReykjavik:
-      "https://www.booking.com/searchresults.html?ss=Reykjavik&group_adults=8&no_rooms=2&checkin=2027-02-15&checkout=2027-02-22",
-    airbnbReykjavik:
-      "https://www.airbnb.com/s/Reykjavik--Iceland/homes?checkin=2027-02-15&checkout=2027-02-22&adults=8",
-    blueLagoon: "https://www.bluelagoon.com/",
-    skyLagoon: "https://www.skylagoon.com/",
-    re: "https://www.re.is/",
-    citybus: "https://www.straeto.is/",
-  };
+  function officialLinks(params) {
+    const dest = encodeURIComponent(params.destination || "destinazione");
+    const adults = params.travelers || 2;
+    const start = params.start || DATE_RANGE.start;
+    const end = params.end || DATE_RANGE.end;
+    const from = (params.airportsOut || ["MXP"])[0] || "MXP";
+    const to = params.airportIn || dest;
+    return {
+      googleFlights: `https://www.google.com/travel/flights?q=Flights%20to%20${encodeURIComponent(
+        to
+      )}%20from%20${encodeURIComponent(from)}%20on%20${start}%20returning%20${end}%20${adults}%20adults`,
+      booking: `https://www.booking.com/searchresults.html?ss=${dest}&group_adults=${adults}&checkin=${start}&checkout=${end}`,
+      airbnb: `https://www.airbnb.com/s/${dest}/homes?checkin=${start}&checkout=${end}&adults=${adults}`,
+      googleMaps: `https://www.google.com/maps/search/?api=1&query=${dest}`,
+      easyjet: "https://www.easyjet.com/",
+      wizz: "https://www.wizzair.com/",
+      ryanair: "https://www.ryanair.com/",
+      kayak: "https://www.kayak.it/",
+      // Iceland-specific extras (used only by Iceland preset / when destination matches)
+      icelandair: "https://www.icelandair.com/",
+      visiticeland: "https://www.visiticeland.com/",
+      visitreykjavik: "https://visitreykjavik.is/",
+      safetravel: "https://safetravel.is/",
+      vedur: "https://en.vedur.is/",
+      roads: "https://umferdin.is/",
+      blueLagoon: "https://www.bluelagoon.com/",
+      skyLagoon: "https://www.skylagoon.com/",
+      re: "https://www.re.is/",
+      citybus: "https://www.straeto.is/",
+    };
+  }
 
-  const ITINERARY_SEED = [
+  const OFFICIAL = officialLinks(DEFAULT_PARAMS);
+
+  function isIcelandTrip(params) {
+    const p = params || {};
+    return /islanda|iceland|reykjav|keflav/i.test(
+      `${p.destination || ""} ${p.title || ""} ${p.airportIn || ""}`
+    );
+  }
+
+  const ICELAND_ITINERARY_SEED = [
     {
       day: "2027-02-15",
       title: "Arrivo KEF → Reykjavík",
@@ -145,56 +212,102 @@
     },
   ];
 
-  const ACTIVITY_CATALOG = [
-    {
-      id: "aurora",
-      title: "Tour aurora boreale",
-      org: "Operatori locali (es. Reykjavik Excursions)",
-      url: "https://www.re.is/",
-      note: "Nessuna garanzia di avvistamento. Dipende da meteo e attività geomagnetica.",
-      transport: "Spesso incluso nel tour",
-    },
-    {
-      id: "golden",
-      title: "Golden Circle day tour",
-      org: "Vari operatori / self-drive",
-      url: OFFICIAL.visiticeland,
-      note: "Compatibile con febbraio se strade aperte.",
-      transport: "Incluso nei tour organizzati",
-    },
-    {
-      id: "south",
-      title: "South Coast day tour",
-      org: "Vari operatori",
-      url: OFFICIAL.visiticeland,
-      note: "Reynisfjara: restare lontani dall’acqua.",
-      transport: "Incluso nei tour",
-    },
-    {
-      id: "blue",
-      title: "Blue Lagoon",
-      org: "Blue Lagoon",
-      url: OFFICIAL.blueLagoon,
-      note: "Prezzi e slot solo dal sito ufficiale.",
-      transport: "Transfer opzionale a pagamento",
-    },
-    {
-      id: "sky",
-      title: "Sky Lagoon",
-      org: "Sky Lagoon",
-      url: OFFICIAL.skyLagoon,
-      note: "Più vicino a Reykjavík rispetto a Blue Lagoon.",
-      transport: "Bus / taxi / auto",
-    },
-    {
-      id: "pools",
-      title: "Piscine geotermiche pubbliche",
-      org: "Reykjavík / comuni",
-      url: OFFICIAL.visitreykjavik,
-      note: "Opzione economica rispetto alle lagune premium.",
-      transport: "Autobus cittadino",
-    },
-  ];
+  function generateDaySeeds(params) {
+    if (isIcelandTrip(params) && params.start === ICELAND_PRESET.start) {
+      return ICELAND_ITINERARY_SEED;
+    }
+    const dest = String(params.destination || "destinazione").trim() || "destinazione";
+    const start = params.start || DATE_RANGE.start;
+    const n = Math.max(1, Number(params.days) || 1);
+    const days = [];
+    for (let i = 0; i < n; i++) {
+      const day = addDays(start, i);
+      let title = `${dest} — giorno ${i + 1}`;
+      let category = "Visita";
+      let notes = "Da pianificare: luoghi, orari e spostamenti.";
+      if (i === 0) {
+        title = `Arrivo — ${dest}`;
+        category = "Trasporto";
+        notes = "Transfer, check-in, orientamento. Non sovraccaricare il primo giorno.";
+      } else if (i === n - 1) {
+        title = `Rientro da ${dest}`;
+        category = "Trasporto";
+        notes = "Margine per transfer/aeroporto. Evitare tappe lontane il giorno del volo.";
+      }
+      days.push({
+        day,
+        title,
+        category,
+        address: dest,
+        notes,
+        lat: null,
+        lng: null,
+      });
+    }
+    return days;
+  }
+
+  function activityCatalog(params) {
+    const links = officialLinks(params);
+    if (isIcelandTrip(params)) {
+      return [
+        {
+          id: "aurora",
+          title: "Tour aurora boreale",
+          org: "Operatori locali",
+          url: links.re,
+          note: "Nessuna garanzia di avvistamento.",
+          transport: "Spesso incluso nel tour",
+        },
+        {
+          id: "golden",
+          title: "Golden Circle day tour",
+          org: "Vari operatori / self-drive",
+          url: links.visiticeland,
+          note: "Verificare strade aperte.",
+          transport: "Tour o auto",
+        },
+        {
+          id: "blue",
+          title: "Blue Lagoon / Sky Lagoon",
+          org: "Siti ufficiali",
+          url: links.blueLagoon,
+          note: "Prezzi e slot solo dal sito ufficiale.",
+          transport: "Transfer opzionale",
+        },
+      ];
+    }
+    const dest = params.destination || "destinazione";
+    return [
+      {
+        id: "walk",
+        title: `Centro / quartieri di ${dest}`,
+        org: "A piedi / trasporto locale",
+        url: links.googleMaps,
+        note: "Parti dalle zone pedonabili e dai punti di interesse principali.",
+        transport: "A piedi / mezzi pubblici",
+      },
+      {
+        id: "daytrip",
+        title: "Escursione giornaliera",
+        org: "Tour locali o self-drive",
+        url: links.googleMaps,
+        note: "Confronta tour organizzati e spostamenti in autonomia.",
+        transport: "Tour / auto / treno",
+      },
+      {
+        id: "food",
+        title: "Mercati e cucina locale",
+        org: "Ristorazione",
+        url: links.googleMaps,
+        note: "Segna 2–3 opzioni economiche e 1 speciale.",
+        transport: "A piedi",
+      },
+    ];
+  }
+
+  const ACTIVITY_CATALOG = activityCatalog(DEFAULT_PARAMS);
+  const ITINERARY_SEED = generateDaySeeds(DEFAULT_PARAMS);
 
   const DRAFT_KEY = "__draft__";
 
@@ -275,10 +388,48 @@
     return data;
   }
 
+  function looksLikeLegacyIcelandDefault(params) {
+    if (!params || typeof params !== "object") return false;
+    return (
+      /islanda|iceland/i.test(String(params.destination || "")) &&
+      String(params.start || "") === "2027-02-15" &&
+      String(params.end || "") === "2027-02-22" &&
+      Number(params.travelers) === 8
+    );
+  }
+
   function readStore() {
     try {
-      const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
-      return raw && typeof raw === "object" ? raw : {};
+      let raw = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (!raw || typeof raw !== "object") {
+        // One-time migrate / drop corrupt v1 drafts that wiped title/destination.
+        const legacy = JSON.parse(localStorage.getItem(STORE_KEY_LEGACY) || "null");
+        if (legacy && typeof legacy === "object") {
+          raw = {};
+          for (const [id, slot] of Object.entries(legacy)) {
+            if (slot?.params && !paramsLookBroken(slot.params)) raw[id] = slot;
+          }
+          try {
+            localStorage.removeItem(STORE_KEY_LEGACY);
+          } catch {
+            /* ignore */
+          }
+        } else {
+          raw = {};
+        }
+      }
+      if (!raw || typeof raw !== "object") return {};
+      // Old builds auto-saved Islanda as the blank template — drop that orphan draft
+      // so «nuovo viaggio» starts empty. Explicit «Esempio Islanda» still available.
+      if (raw[DRAFT_KEY]?.params && looksLikeLegacyIcelandDefault(raw[DRAFT_KEY].params)) {
+        delete raw[DRAFT_KEY];
+        try {
+          localStorage.setItem(STORE_KEY, JSON.stringify(raw));
+        } catch {
+          /* ignore */
+        }
+      }
+      return raw;
     } catch {
       return {};
     }
@@ -431,43 +582,45 @@
   }
 
   function defaultStayConfigs(params) {
-    const t = params.travelers;
+    const t = params.travelers || 2;
+    const links = officialLinks(params);
+    const half = Math.max(1, Math.ceil(t / 2));
     return [
       {
         id: "A",
-        title: "Un appartamento per 8",
-        rooms: 3,
-        baths: 2,
+        title: `Un alloggio per ${t}`,
+        rooms: Math.max(1, Math.ceil(t / 2)),
+        baths: Math.max(1, Math.ceil(t / 4)),
         kitchen: true,
         totalCents: 0,
         status: "DA VERIFICARE",
-        source: "Booking / Airbnb — verificare capienza 8 adulti",
-        url: OFFICIAL.airbnbReykjavik,
-        notes: "Non segnare come disponibile finché non confermi letti/bagni per 8.",
+        source: "Booking / Airbnb — verificare capienza gruppo",
+        url: links.airbnb,
+        notes: `Conferma letti/bagni per ${t} persone prima di segnare come disponibile.`,
       },
       {
         id: "B",
-        title: "Due appartamenti da 4",
-        rooms: 4,
+        title: `Due alloggi da ~${half}`,
+        rooms: half,
         baths: 2,
         kitchen: true,
         totalCents: 0,
         status: "DA VERIFICARE",
         source: "Due annunci separati",
-        url: OFFICIAL.bookingReykjavik,
-        notes: "Spesso più economico e più realistico di un unico alloggio grande.",
+        url: links.booking,
+        notes: "Spesso più realistico di un unico alloggio grande.",
       },
       {
         id: "C",
-        title: "Quattro camere doppie (hotel/guesthouse)",
-        rooms: 4,
-        baths: 4,
+        title: "Hotel / camere private (no ostelli)",
+        rooms: Math.max(1, Math.ceil(t / 2)),
+        baths: Math.max(1, Math.ceil(t / 2)),
         kitchen: false,
         totalCents: 0,
         status: "DA VERIFICARE",
-        source: "Hotel economici / guesthouse — NO ostelli",
-        url: OFFICIAL.bookingReykjavik,
-        notes: "Escludere dormitori. Preferire private room.",
+        source: "Hotel / guesthouse — NO dormitori",
+        url: links.booking,
+        notes: "Preferire private room.",
       },
       {
         id: "D",
@@ -485,10 +638,12 @@
   }
 
   function defaultFlightRows(params) {
-    return params.airportsOut.map((ap) => ({
+    const links = officialLinks(params);
+    const airports = params.airportsOut?.length ? params.airportsOut : ["MXP"];
+    return airports.map((ap) => ({
       id: uid(),
       from: ap,
-      to: params.airportIn,
+      to: params.airportIn || "—",
       depart: params.start,
       returnDate: params.end,
       stops: "0-1",
@@ -499,46 +654,115 @@
       status: "DA VERIFICARE",
       groupFareConfirmed: false,
       source: "Compagnia / Google Flights",
-      url: OFFICIAL.googleFlights,
-      notes: "Non moltiplicare un prezzo single×8 senza conferma disponibilità gruppo.",
+      url: links.googleFlights,
+      notes: `Non moltiplicare un prezzo single×${params.travelers || 2} senza conferma disponibilità gruppo.`,
     }));
   }
 
-  function defaultSources() {
-    return [
-      { id: uid(), title: "Icelandair", url: OFFICIAL.icelandair, kind: "voli" },
-      { id: uid(), title: "easyJet", url: OFFICIAL.easyjet, kind: "voli" },
-      { id: uid(), title: "Wizz Air", url: OFFICIAL.wizz, kind: "voli" },
-      { id: uid(), title: "Visit Iceland", url: OFFICIAL.visiticeland, kind: "info" },
-      { id: uid(), title: "Visit Reykjavík", url: OFFICIAL.visitreykjavik, kind: "info" },
-      { id: uid(), title: "SafeTravel.is", url: OFFICIAL.safetravel, kind: "sicurezza" },
-      { id: uid(), title: "Icelandic Met Office", url: OFFICIAL.vedur, kind: "meteo" },
-      { id: uid(), title: "Road conditions (umferdin)", url: OFFICIAL.roads, kind: "strade" },
-      { id: uid(), title: "Strætó (bus)", url: OFFICIAL.citybus, kind: "trasporti" },
+  function defaultSources(params = state.params) {
+    const links = officialLinks(params);
+    const base = [
+      { id: uid(), title: "Google Flights", url: links.googleFlights, kind: "voli" },
+      { id: uid(), title: "Kayak", url: links.kayak, kind: "voli" },
+      { id: uid(), title: "easyJet", url: links.easyjet, kind: "voli" },
+      { id: uid(), title: "Ryanair", url: links.ryanair, kind: "voli" },
+      { id: uid(), title: "Wizz Air", url: links.wizz, kind: "voli" },
+      { id: uid(), title: "Booking.com", url: links.booking, kind: "alloggi" },
+      { id: uid(), title: "Airbnb", url: links.airbnb, kind: "alloggi" },
+      { id: uid(), title: "Google Maps", url: links.googleMaps, kind: "info" },
     ];
+    if (isIcelandTrip(params)) {
+      base.push(
+        { id: uid(), title: "Icelandair", url: links.icelandair, kind: "voli" },
+        { id: uid(), title: "Visit Iceland", url: links.visiticeland, kind: "info" },
+        { id: uid(), title: "SafeTravel.is", url: links.safetravel, kind: "sicurezza" },
+        { id: uid(), title: "Vedur.is", url: links.vedur, kind: "meteo" },
+        { id: uid(), title: "Umferdin (strade)", url: links.roads, kind: "strade" }
+      );
+    }
+    return base;
+  }
+
+  function mergeParams(savedParams) {
+    const base = structuredClone(DEFAULT_PARAMS);
+    if (!savedParams || typeof savedParams !== "object") return base;
+    for (const [key, val] of Object.entries(savedParams)) {
+      if (key === "prefs" && val && typeof val === "object") {
+        base.prefs = { ...base.prefs, ...val };
+        continue;
+      }
+      if (val == null) continue;
+      if (typeof val === "string" && !val.trim()) continue; // never wipe defaults with ""
+      if (Array.isArray(val) && val.length === 0) continue;
+      base[key] = val;
+    }
+    // Critical fields must never stay blank in the UI.
+    for (const key of ["title", "destination", "departureCity", "airportIn", "start", "end", "currency"]) {
+      if (!String(base[key] || "").trim()) base[key] = DEFAULT_PARAMS[key];
+    }
+    if (!Array.isArray(base.airportsOut) || !base.airportsOut.length) {
+      base.airportsOut = [...DEFAULT_PARAMS.airportsOut];
+    }
+    const travelers = Number(base.travelers);
+    base.travelers = Number.isFinite(travelers) && travelers > 0 ? travelers : DEFAULT_PARAMS.travelers;
+    return base;
+  }
+
+  function paramsLookBroken(params) {
+    if (!params) return true;
+    const title = String(params.title || "").trim();
+    const dest = String(params.destination || "").trim();
+    // Empty draft is valid (any new trip). Partial wipe is broken.
+    if (!title && !dest) return false;
+    if (!title || !dest) return true;
+    return false;
+  }
+
+  function refreshDerivedParams(params) {
+    const p = { ...params };
+    if (p.start && p.end) {
+      const a = new Date(`${p.start}T12:00:00`);
+      const b = new Date(`${p.end}T12:00:00`);
+      const nights = Math.max(1, Math.round((b - a) / 86400000));
+      p.nights = nights;
+      p.days = nights + 1;
+    }
+    return p;
   }
 
   function initWorkingState(tripId, saved) {
     state.tripId = tripId;
-    state.params = saved?.params ? { ...DEFAULT_PARAMS, ...saved.params, prefs: { ...DEFAULT_PARAMS.prefs, ...(saved.params.prefs || {}) } } : structuredClone(DEFAULT_PARAMS);
+    const useSaved = saved?.params && !paramsLookBroken(saved.params);
+    state.params = mergeParams(useSaved ? saved.params : null);
     state.scenario = saved?.scenario || "economico";
-    state.lines = saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
-    state.flightNotes = saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
-    state.stayConfigs = saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs(state.params);
+    state.lines = useSaved && saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
+    state.flightNotes = useSaved && saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
+    state.stayConfigs = useSaved && saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs(state.params);
     state.transport = saved?.transport || { strategy: "A", notes: "" };
-    state.sources = saved?.sources?.length ? saved.sources : defaultSources();
+    state.params = refreshDerivedParams(state.params);
+    state.sources = saved?.sources?.length ? saved.sources : defaultSources(state.params);
     state.safety = saved?.safety || { weather: null, fetchedAt: "" };
     state.flightFilters = saved?.flightFilters || { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" };
     state.section = "overview";
   }
 
-  async function createIcelandTrip() {
+  async function createTripFromPreventivo() {
+    state.params = refreshDerivedParams(mergeParams(state.params));
     const p = state.params;
+    if (!String(p.destination || "").trim()) {
+      throw new Error("Indica una destinazione prima di creare il viaggio.");
+    }
+    if (!String(p.title || "").trim()) {
+      p.title = `${p.destination} — viaggio`;
+      state.params = p;
+    }
+    const links = officialLinks(p);
+    const seeds = generateDaySeeds(p);
     const members = Array.from({ length: p.travelers }, (_, i) => ({
       id: uid(),
       name: i === 0 ? accountName() : `Viaggiatore ${i + 1}`,
     }));
-    const stops = ITINERARY_SEED.map((s) => ({
+    const stops = seeds.map((s) => ({
       id: uid(),
       title: s.title,
       day: s.day,
@@ -550,36 +774,46 @@
       lng: s.lng,
     }));
     const checklist = [
-      { id: uid(), title: "Verificare voli per 8 su sito compagnia (non solo prezzo single)", done: false },
+      {
+        id: uid(),
+        title: `Verificare voli per ${p.travelers} su sito compagnia (non solo prezzo single)`,
+        done: false,
+      },
       { id: uid(), title: "Escludere ostelli / dormitori nella ricerca alloggi", done: false },
-      { id: uid(), title: "Controllare strade e meteo su umferdin.is / vedur.is prima delle uscite", done: false },
-      { id: uid(), title: "Assicurazione viaggio + eventuale auto (Kasko / gomme invernali)", done: false },
-      { id: uid(), title: "Aurora: nessuna garanzia — pianificare alternative indoor", done: false },
+      { id: uid(), title: "Controllare meteo e spostamenti locali prima delle uscite", done: false },
+      { id: uid(), title: "Assicurazione viaggio (+ auto se prevista)", done: false },
     ];
+    if (isIcelandTrip(p)) {
+      checklist.push({
+        id: uid(),
+        title: "Aurora: nessuna garanzia — pianificare alternative indoor",
+        done: false,
+      });
+    }
     const bookings = [
       {
         id: uid(),
-        title: "Voli Milano ↔ KEF (da confermare)",
+        title: `Voli → ${p.airportIn || p.destination} (da confermare)`,
         type: "Volo",
         date: p.start,
         reference: "",
-        notes: "Verificare tariffa gruppo 8 pax su Icelandair / easyJet / Wizz / aggregatori.",
-        url: OFFICIAL.googleFlights,
+        notes: `Verificare tariffa gruppo ${p.travelers} pax su compagnie / aggregatori.`,
+        url: links.googleFlights,
       },
       {
         id: uid(),
-        title: "Alloggio Reykjavík area (no ostelli)",
+        title: `Alloggio ${p.destination} (no ostelli)`,
         type: "Alloggio",
         date: p.start,
         reference: "",
-        notes: "Confrontare 1 apt / 2 apt / 4 doppie. Cucina preferita.",
-        url: OFFICIAL.bookingReykjavik,
+        notes: "Confrontare opzioni con cucina se preferita.",
+        url: links.booking,
       },
     ];
     const notes = [
       "Preventivo intelligente — bozza automatica.",
       "Tutti i prezzi nel modulo partono come STIMA o DA VERIFICARE.",
-      `Preferenze: no ostelli; max ${p.prefs.maxStops} scalo; cucina preferita; febbraio winter-safe.`,
+      `Destinazione: ${p.destination}. Preferenze: no ostelli; max ${p.prefs.maxStops} scali.`,
       `Apri «Preventivo intelligente» (v${VERSION}) per voli, alloggi, trasporti, budget e fonti.`,
     ].join("\n");
 
@@ -595,7 +829,8 @@
       expenses: [],
       transfers: [],
       checklist,
-      notes,
+      notes: stampPreventivoNotes(notes),
+      meta: { preventivo: buildPreventivoMeta() },
     };
 
     const res = await fetch("/api/trips", {
@@ -645,10 +880,140 @@
   function accountName() {
     try {
       const s = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
-      return (s?.user?.displayName || s?.user?.username || "Andrea").trim() || "Viaggiatore";
+      return (s?.user?.displayName || s?.user?.username || "Viaggiatore").trim() || "Viaggiatore";
     } catch {
       return "Viaggiatore";
     }
+  }
+
+  function currentItinerarySeed() {
+    return generateDaySeeds(state.params);
+  }
+
+  function currentActivities() {
+    return activityCatalog(state.params);
+  }
+
+  function currentOfficial() {
+    return officialLinks(state.params);
+  }
+
+  function buildPreventivoMeta() {
+    ensureBudgetLines();
+    const tot = budgetTotals();
+    return {
+      version: VERSION,
+      updated: nowIso(),
+      scenario: state.scenario,
+      params: {
+        title: state.params.title,
+        destination: state.params.destination,
+        start: state.params.start,
+        end: state.params.end,
+        travelers: state.params.travelers,
+        currency: state.params.currency || "EUR",
+        airportIn: state.params.airportIn,
+        departureCity: state.params.departureCity,
+      },
+      totals: {
+        groupCents: tot.group,
+        perPersonCents: tot.pp,
+        perDayPpCents: tot.perDay,
+        byStatus: tot.byStatus,
+      },
+      lines: (state.lines || []).map((l) => ({
+        id: l.id,
+        title: l.title,
+        status: l.status,
+        totalCents: lineTotal(l),
+        source: l.source || "",
+      })),
+      transport: state.transport || { strategy: "A", notes: "" },
+      flightNotes: (state.flightNotes || []).slice(0, 12).map((f) => ({
+        from: f.from,
+        to: f.to,
+        airline: f.airline || "",
+        stops: f.stops || "",
+        perPersonCents: f.perPersonCents || 0,
+        status: f.status || "DA VERIFICARE",
+        url: f.url || "",
+      })),
+      stayConfigs: (state.stayConfigs || []).map((s) => ({
+        id: s.id,
+        title: s.title,
+        totalCents: s.totalCents || 0,
+        status: s.status || "DA VERIFICARE",
+        notes: s.notes || "",
+      })),
+      sources: (state.sources || []).slice(0, 20).map((s) => ({
+        title: s.title,
+        url: s.url,
+        kind: s.kind || "altro",
+      })),
+    };
+  }
+
+  function applyPreventivoMeta(meta) {
+    if (!meta || typeof meta !== "object") return false;
+    if (meta.params) state.params = mergeParams(meta.params);
+    if (meta.scenario) state.scenario = meta.scenario;
+    if (Array.isArray(meta.lines) && meta.lines.length) {
+      state.lines = meta.lines.map((l) => ({
+        id: l.id || uid(),
+        title: l.title || "Voce",
+        unitCents: Number(l.totalCents) || 0,
+        qty: 1,
+        status: l.status || "STIMA",
+        source: l.source || "",
+        url: l.url || "",
+        verifiedAt: "",
+      }));
+    }
+    if (meta.transport) state.transport = { strategy: "A", notes: "", ...meta.transport };
+    if (Array.isArray(meta.flightNotes) && meta.flightNotes.length) state.flightNotes = meta.flightNotes;
+    if (Array.isArray(meta.stayConfigs) && meta.stayConfigs.length) state.stayConfigs = meta.stayConfigs;
+    if (Array.isArray(meta.sources) && meta.sources.length) {
+      state.sources = meta.sources.map((s) => ({
+        id: uid(),
+        title: s.title || "Fonte",
+        url: s.url || "",
+        kind: s.kind || "altro",
+      }));
+    }
+    return true;
+  }
+
+  async function refreshShareAfterSave(auth) {
+    try {
+      if (auth?.id && auth?.key && typeof window.__pvPrepareShare === "function") {
+        await window.__pvPrepareShare(auth.id, auth.key);
+      }
+    } catch {
+      /* share refresh best-effort */
+    }
+  }
+
+  function stampPreventivoNotes(notes, extra) {
+    const tot = budgetTotals();
+    const stamp = `\n\n[Preventivo ${state.scenario} ${nowIso()}] Totale gruppo ${fmtMoney(tot.group)} · ${fmtMoney(tot.pp)}/pp (include STIMA/DA VERIFICARE).${extra ? " " + extra : ""}`;
+    const cleaned = String(notes || "").replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "");
+    return (cleaned + stamp).slice(0, 4000);
+  }
+
+  async function syncPreventivoIntoTrip() {
+    const packed = await loadTripRecord();
+    if (!packed) throw new Error("Apri un viaggio per sincronizzare il preventivo");
+    const { auth, data } = packed;
+    const trip = { ...data.trip };
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes);
+    persistState();
+    const saved = await saveTripRecord(auth, trip, data.revision);
+    await refreshShareAfterSave(auth);
+    state.status = "Preventivo scritto nel viaggio (viaggia con il link di condivisione).";
+    return saved;
   }
 
   async function syncItineraryToTrip() {
@@ -658,7 +1023,7 @@
     const trip = { ...data.trip };
     const existingDays = new Set((trip.stops || []).map((s) => s.day + "|" + s.title));
     const add = [];
-    for (const seed of ITINERARY_SEED) {
+    for (const seed of currentItinerarySeed()) {
       const key = seed.day + "|" + seed.title;
       if (existingDays.has(key)) continue;
       add.push({
@@ -674,8 +1039,13 @@
       });
     }
     trip.stops = [...(trip.stops || []), ...add].slice(0, 500);
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes, `Itinerario +${add.length} tappe.`);
     const saved = await saveTripRecord(auth, trip, data.revision);
-    state.status = `Itinerario sincronizzato (+${add.length} tappe).`;
+    await refreshShareAfterSave(auth);
+    state.status = `Itinerario sincronizzato (+${add.length} tappe). Preventivo nel payload.`;
     return saved;
   }
 
@@ -710,23 +1080,60 @@
         };
       });
     trip.expenses = [...(trip.expenses || []), ...newExpenses].slice(0, 1000);
-    const noteLine = `\n\n[Preventivo ${state.scenario} — ${nowIso()}] Spese STIMA aggiunte. Verificare e correggere.`;
-    trip.notes = ((trip.notes || "") + noteLine).slice(0, 3000);
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes, "Spese STIMA aggiunte. Verificare e correggere.");
     await saveTripRecord(auth, trip, data.revision);
+    await refreshShareAfterSave(auth);
     state.status = `Aggiunte ${newExpenses.length} spese stimate alle Spese di gruppo.`;
   }
 
+  async function resolveDestinationCoords(params) {
+    if (isIcelandTrip(params)) {
+      return { lat: 64.15, lon: -21.94, label: "Reykjavík" };
+    }
+    const q = String(params.destination || "").trim();
+    if (!q) return null;
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=it&format=json`;
+    const res = await fetch(geoUrl);
+    const data = await res.json();
+    const hit = Array.isArray(data?.results) ? data.results[0] : null;
+    if (!hit || hit.latitude == null || hit.longitude == null) return null;
+    const label = [hit.name, hit.admin1, hit.country].filter(Boolean).join(", ");
+    return { lat: hit.latitude, lon: hit.longitude, label: label || q };
+  }
+
   async function fetchWinterSafety() {
-    // Climate normals for Reykjavik mid-February — not a forecast months ahead.
-    const url =
-      "https://climate-api.open-meteo.com/v1/climate?latitude=64.15&longitude=-21.94&start_date=1991-01-01&end_date=2020-12-31&models=EC_Earth3P_HR&daily=temperature_2m_mean";
+    // Climate normals — not a forecast for the trip dates.
     try {
+      const place = await resolveDestinationCoords(state.params);
+      if (!place) {
+        state.safety = {
+          weather: {
+            place: state.params.destination || "—",
+            note: "Indica una destinazione riconosciuta, oppure consulta meteo e avvisi ufficiali locali.",
+            sample: "",
+          },
+          fetchedAt: nowIso(),
+        };
+        state.status = "Destinazione non geolocalizzata — usa fonti ufficiali.";
+        persistState();
+        render();
+        return;
+      }
+      const url =
+        `https://climate-api.open-meteo.com/v1/climate?latitude=${place.lat}&longitude=${place.lon}` +
+        `&start_date=1991-01-01&end_date=2020-12-31&models=EC_Earth3P_HR&daily=temperature_2m_mean`;
       const res = await fetch(url);
       const data = await res.json();
+      const icelandNote = isIcelandTrip(state.params)
+        ? " Non è una previsione. Usa vedur.is a ridosso del viaggio."
+        : " Non è una previsione del tuo viaggio: verifica meteo locale a ridosso delle date.";
       state.safety = {
         weather: {
-          place: "Reykjavík (clima 1991–2020, Open-Meteo)",
-          note: "Non è una previsione per il 2027. Usa vedur.is a ridosso del viaggio.",
+          place: `${place.label} (clima 1991–2020, Open-Meteo)`,
+          note: icelandNote.trim(),
           sample: Array.isArray(data?.daily?.temperature_2m_mean)
             ? `Serie climatica disponibile (${data.daily.temperature_2m_mean.length} punti).`
             : "Dati climatici non disponibili al momento.",
@@ -739,8 +1146,10 @@
     } catch {
       state.safety = {
         weather: {
-          place: "Reykjavík",
-          note: "API clima non raggiungibile. Consulta https://en.vedur.is/ e https://safetravel.is/",
+          place: state.params.destination || "destinazione",
+          note: isIcelandTrip(state.params)
+            ? "API clima non raggiungibile. Consulta https://en.vedur.is/ e https://safetravel.is/"
+            : "API clima non raggiungibile. Consulta meteo e avvisi ufficiali della destinazione.",
           sample: "",
         },
         fetchedAt: nowIso(),
@@ -836,19 +1245,68 @@
     if (open) render();
   }
 
+  async function hydrateParamsFromOpenTrip() {
+    try {
+      const packed = await loadTripRecord();
+      if (!packed?.data?.trip) return { ok: false, fromMeta: false };
+      const trip = packed.data.trip;
+      const fromMeta = applyPreventivoMeta(trip.meta?.preventivo);
+      if (!fromMeta) {
+        const next = mergeParams({
+          title: trip.title,
+          destination: trip.destination,
+          start: trip.start,
+          end: trip.end,
+          travelers: Array.isArray(trip.members) && trip.members.length ? trip.members.length : state.params.travelers,
+        });
+        state.params = next;
+      } else {
+        // Keep trip title/dates as source of truth when present.
+        state.params = mergeParams({
+          ...state.params,
+          title: trip.title || state.params.title,
+          destination: trip.destination || state.params.destination,
+          start: trip.start || state.params.start,
+          end: trip.end || state.params.end,
+          travelers:
+            Array.isArray(trip.members) && trip.members.length
+              ? trip.members.length
+              : state.params.travelers,
+        });
+      }
+      persistState();
+      return { ok: true, fromMeta };
+    } catch {
+      return { ok: false, fromMeta: false };
+    }
+  }
+
   async function openPreventivo() {
     ensureStyles();
     const auth = tripAuth();
     if (auth) {
-      const saved = loadStateForTrip(auth.id) || loadStateForTrip(DRAFT_KEY);
-      initWorkingState(auth.id, saved);
-      state.status = saved ? "Preventivo caricato dal dispositivo." : "Nuovo preventivo sul viaggio aperto.";
+      const saved = loadStateForTrip(auth.id);
+      const usable = saved && !paramsLookBroken(saved.params);
+      initWorkingState(auth.id, usable ? saved : null);
+      if (!usable) {
+        const fromTrip = await hydrateParamsFromOpenTrip();
+        if (fromTrip.fromMeta) {
+          state.status = "Preventivo recuperato dal viaggio condiviso.";
+        } else if (fromTrip.ok) {
+          state.status = "Parametri presi dal viaggio aperto.";
+        } else {
+          state.status = "Preventivo vuoto pronto: indica destinazione, date e compagni.";
+        }
+      } else {
+        state.status = "Preventivo caricato dal dispositivo.";
+      }
     } else {
       const draft = loadStateForTrip(DRAFT_KEY);
-      initWorkingState("", draft);
-      state.status = draft
-        ? "Bozza locale caricata. Crea il viaggio per collegarla a Pronti? VIA!."
-        : "Nessun viaggio aperto: puoi creare «Islanda — Avventura invernale 2027».";
+      const usable = draft && !paramsLookBroken(draft.params);
+      initWorkingState("", usable ? draft : null);
+      state.status = usable
+        ? "Bozza locale caricata. Puoi creare il viaggio in Pronti? VIA!."
+        : "Nuovo preventivo: scegli destinazione, date e compagni, poi crea il viaggio. Puoi anche caricare l’esempio Islanda.";
     }
     setOpen(true);
     if (state.section === "itinerary") setTimeout(() => pushMapPoints(), 400);
@@ -857,17 +1315,31 @@
   function pushMapPoints() {
     const iframe = document.getElementById("pv-prev-map");
     if (!iframe?.contentWindow) return;
-    const points = [
-      { id: "kef", title: "KEF Aeroporto", day: state.params.start, lat: 63.985, lng: -22.6056, color: "#124048" },
-      ...ITINERARY_SEED.map((s, i) => ({
+    const points = [];
+    if (isIcelandTrip(state.params)) {
+      points.push({
+        id: "kef",
+        title: "KEF Aeroporto",
+        day: state.params.start,
+        lat: 63.985,
+        lng: -22.6056,
+        color: "#124048",
+      });
+    }
+    for (const [i, s] of currentItinerarySeed().entries()) {
+      if (s.lat == null || s.lng == null) continue;
+      points.push({
         id: `d${i}`,
         title: s.title,
         day: s.day,
         lat: s.lat,
         lng: s.lng,
-      })),
-    ];
-    iframe.contentWindow.postMessage({ type: "viavia-map", points }, location.origin);
+      });
+    }
+    iframe.contentWindow.postMessage(
+      { type: "viavia-map", points, destination: state.params.destination || "" },
+      location.origin
+    );
   }
 
   function sectionHtml() {
@@ -914,18 +1386,30 @@
           ${field("currency", "Valuta", p.currency)}
         </div>
         <div class="pv-prev-grid" style="margin-top:10px">
-          <label class="pv-field">Aeroporti Milano
-            <input data-param="airportsOut" value="${escapeAttr(p.airportsOut.join(", "))}" />
+          <label class="pv-field">Aeroporti partenza
+            <input data-param="airportsOut" value="${escapeAttr((p.airportsOut || []).join(", "))}" />
           </label>
           <label class="pv-field">Max scali
             <input data-param="maxStops" type="number" min="0" max="2" value="${p.prefs.maxStops}" />
           </label>
         </div>
         <div class="pv-prev-actions">
-          <button type="button" class="primary" data-act="create-trip">Crea viaggio Islanda in Pronti? VIA!</button>
-          <button type="button" class="ghost" data-act="save-local">Salva parametri</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="primary" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>
+          <button type="button" class="ghost" data-act="save-local">Salva sul dispositivo</button>`
+              : `<button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
+          <button type="button" class="ghost" data-act="save-local">Salva parametri</button>`
+          }
+          <button type="button" class="ghost" data-act="reset-blank">Nuovo preventivo vuoto</button>
+          <button type="button" class="ghost" data-act="load-iceland-example">Esempio Islanda</button>
+          <button type="button" class="ghost" data-act="clear-draft">Pulisci bozza salvata</button>
         </div>
-        <p class="pv-prev-muted">Preferenze attive: no ostelli · cucina preferita · febbraio winter-safe · confronto trasporti.</p>
+        <p class="pv-prev-muted">Per qualsiasi destinazione: compilare destinazione/date/adulti, poi creare o sincronizzare il viaggio.${
+          state.tripId
+            ? " Le stime nel viaggio viaggiano con il link di condivisione (meta.preventivo)."
+            : ""
+        }</p>
       </div>`;
   }
 
@@ -974,11 +1458,13 @@
     return `
       <div class="pv-prev-card">
         <h2>Voli per ${state.params.travelers} adulti</h2>
-        <p>Ricerca A/R ${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)}. Non moltiplicare un prezzo single × 8 senza conferma disponibilità.</p>
-        <p class="pv-callout">Fonti consigliate: <a href="${OFFICIAL.icelandair}" target="_blank" rel="noopener">Icelandair</a>,
-        <a href="${OFFICIAL.easyjet}" target="_blank" rel="noopener">easyJet</a>,
-        <a href="${OFFICIAL.wizz}" target="_blank" rel="noopener">Wizz Air</a>,
-        <a href="${OFFICIAL.googleFlights}" target="_blank" rel="noopener">Google Flights (8 adulti)</a>.</p>
+        <p>Ricerca A/R ${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)}. Non moltiplicare un prezzo single × ${state.params.travelers} senza conferma disponibilità.</p>
+        <p class="pv-callout">Fonti consigliate:
+        <a href="${escapeAttr(currentOfficial().googleFlights)}" target="_blank" rel="noopener">Google Flights</a>,
+        <a href="${escapeAttr(currentOfficial().kayak)}" target="_blank" rel="noopener">Kayak</a>,
+        <a href="${escapeAttr(currentOfficial().easyjet)}" target="_blank" rel="noopener">easyJet</a>,
+        <a href="${escapeAttr(currentOfficial().ryanair)}" target="_blank" rel="noopener">Ryanair</a>,
+        <a href="${escapeAttr(currentOfficial().wizz)}" target="_blank" rel="noopener">Wizz Air</a>.</p>
         <div class="pv-prev-grid">
           <label class="pv-field">Max €/pax (filtro)
             <input data-ff="maxPricePp" type="number" min="0" step="1" value="${escapeAttr(ff.maxPricePp ?? "")}" placeholder="es. 350" />
@@ -1009,7 +1495,7 @@
         <div class="pv-prev-actions">
           <button type="button" class="primary" data-act="save-local">Salva voli</button>
         </div>
-        <p class="pv-prev-muted">Se il totale per 8 non è confermato, lascia «gruppo non confermato» e usa il link compagnia. Il prezzo individuale è solo riferimento.</p>
+        <p class="pv-prev-muted">Se il totale di gruppo non è confermato, lascia «gruppo non confermato» e usa il link compagnia. Il prezzo individuale è solo riferimento.</p>
       </div>`;
   }
 
@@ -1034,7 +1520,7 @@
     return `
       <div class="pv-prev-card">
         <h2>Alloggi — niente ostelli</h2>
-        <p>Confronta A/B/C/D. Non segnare disponibile finché non hai verificato capienza reale per 8 adulti.</p>
+        <p>Confronta A/B/C/D. Non segnare disponibile finché non hai verificato capienza reale per ${state.params.travelers} adulti.</p>
       </div>
       ${cards}
       <div class="pv-prev-actions"><button type="button" class="primary" data-act="save-local">Salva alloggi</button></div>`;
@@ -1042,49 +1528,61 @@
 
   function transportHtml() {
     const strat = state.transport.strategy || "A";
+    const links = currentOfficial();
+    const iceland = isIcelandTrip(state.params);
     return `
       <div class="pv-prev-card">
         <h2>Trasporti — 3 strategie</h2>
         <label class="pv-field">Strategia attiva
           <select data-transport="strategy">
-            <option value="A" ${strat === "A" ? "selected" : ""}>A — Nessuna auto (bus + tour)</option>
-            <option value="B" ${strat === "B" ? "selected" : ""}>B — Due auto economiche</option>
-            <option value="C" ${strat === "C" ? "selected" : ""}>C — Un veicolo capiente (da verificare bagagli)</option>
+            <option value="A" ${strat === "A" ? "selected" : ""}>A — Nessuna auto (mezzi + tour)</option>
+            <option value="B" ${strat === "B" ? "selected" : ""}>B — Due auto / veicoli</option>
+            <option value="C" ${strat === "C" ? "selected" : ""}>C — Un veicolo capiente (verificare bagagli)</option>
           </select>
         </label>
         <div class="pv-callout">
-          <strong>A:</strong> Flybus/taxi + Strætó + tour con transfer. Evita doppi conteggi.<br/>
-          <strong>B:</strong> 2 auto: noleggio, Kasko, gomme invernali, carburante, parcheggi, depositi.<br/>
-          <strong>C:</strong> Un 8/9 posti non implica bagagli comodi per 8 — verifica capacità reale.
+          <strong>A:</strong> Transfer + mezzi pubblici + tour con transfer. Evita doppi conteggi.<br/>
+          <strong>B:</strong> 2 veicoli: noleggio, assicurazione, carburante, parcheggi, depositi.<br/>
+          <strong>C:</strong> Un veicolo grande non implica bagagli comodi per tutti — verifica capacità reale.
         </div>
         <label class="pv-field">Note / preventivi inseriti
           <textarea data-transport="notes" rows="5">${escapeHtml(state.transport.notes || "")}</textarea>
         </label>
-        <p><a href="${OFFICIAL.citybus}" target="_blank" rel="noopener">Strætó</a> ·
-        <a href="${OFFICIAL.re}" target="_blank" rel="noopener">Reykjavik Excursions / Flybus</a> ·
-        <a href="${OFFICIAL.roads}" target="_blank" rel="noopener">Condizioni stradali</a></p>
+        <p><a href="${escapeAttr(links.googleMaps)}" target="_blank" rel="noopener">Mappe / spostamenti</a>
+        ${
+          iceland
+            ? ` · <a href="${escapeAttr(links.citybus)}" target="_blank" rel="noopener">Strætó</a> ·
+        <a href="${escapeAttr(links.re)}" target="_blank" rel="noopener">Flybus</a> ·
+        <a href="${escapeAttr(links.roads)}" target="_blank" rel="noopener">Strade</a>`
+            : ""
+        }</p>
         <div class="pv-prev-actions"><button type="button" class="primary" data-act="save-local">Salva trasporti</button></div>
       </div>`;
   }
 
   function itineraryHtml() {
-    const days = ITINERARY_SEED.map(
-      (d) => `<tr><td>${escapeHtml(d.day)}</td><td><strong>${escapeHtml(d.title)}</strong><br/><span class="pv-prev-muted">${escapeHtml(d.notes)}</span></td><td>${escapeHtml(d.address)}</td></tr>`
-    ).join("");
+    const seeds = currentItinerarySeed();
+    const days = seeds
+      .map(
+        (d) =>
+          `<tr><td>${escapeHtml(d.day)}</td><td><strong>${escapeHtml(d.title)}</strong><br/><span class="pv-prev-muted">${escapeHtml(d.notes)}</span></td><td>${escapeHtml(d.address)}</td></tr>`
+      )
+      .join("");
     const mapSrc = (() => {
       try {
         return new URL("map.html", location.href).pathname;
       } catch {
-        return "/Pronti-VIA-Web/map.html";
+        return "/map.html";
       }
     })();
+    const dest = state.params.destination || "destinazione";
     return `
       <div class="pv-prev-card">
-        <h2>Itinerario 15–22 feb (realistico)</h2>
-        <p>Base Reykjavík. Giornate flessibili per maltempo. Non massimizzare le attrazioni a scapito della sicurezza.</p>
+        <h2>Itinerario — ${escapeHtml(dest)}</h2>
+        <p>${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)} · ${state.params.days} giorni. Lascia buffer per imprevisti.</p>
         <div style="overflow:auto"><table><thead><tr><th>Data</th><th>Programma</th><th>Luogo</th></tr></thead><tbody>${days}</tbody></table></div>
         <div class="pv-prev-card" style="padding:0;overflow:hidden;margin-top:12px">
-          <iframe id="pv-prev-map" title="Mappa itinerario Islanda" src="${escapeAttr(mapSrc)}" style="width:100%;height:280px;border:0;display:block"></iframe>
+          <iframe id="pv-prev-map" title="Mappa itinerario" src="${escapeAttr(mapSrc)}" style="width:100%;height:280px;border:0;display:block"></iframe>
         </div>
         <div class="pv-prev-actions">
           <button type="button" class="primary" data-act="sync-itinerary">Scrivi tappe nel viaggio</button>
@@ -1095,16 +1593,21 @@
   }
 
   function activitiesHtml() {
-    const cards = ACTIVITY_CATALOG.map(
-      (a) => `<div class="pv-prev-card">
+    const cards = currentActivities()
+      .map(
+        (a) => `<div class="pv-prev-card">
         <h2>${escapeHtml(a.title)}</h2>
         <p>${escapeHtml(a.note)}</p>
         <p class="pv-prev-muted">Organizzatore: ${escapeHtml(a.org)} · Trasporto: ${escapeHtml(a.transport)}</p>
-        <p><span class="pv-badge WARN">DA VERIFICARE</span> prezzo persona / gruppo 8 — solo dal sito ufficiale.</p>
-        <p><a href="${escapeAttr(a.url)}" target="_blank" rel="noopener">Fonte ufficiale</a></p>
+        <p><span class="pv-badge WARN">DA VERIFICARE</span> prezzo persona / gruppo ${state.params.travelers} — solo da fonti ufficiali.</p>
+        <p><a href="${escapeAttr(a.url)}" target="_blank" rel="noopener">Apri ricerca / fonte</a></p>
       </div>`
-    ).join("");
-    return `<div class="pv-prev-card"><h2>Attività e aurora</h2><p>L’aurora non è garantita. Distingui tour organizzati e osservazione autonoma.</p></div>${cards}`;
+      )
+      .join("");
+    const tip = isIcelandTrip(state.params)
+      ? "L’aurora non è garantita. Distingui tour organizzati e osservazione autonoma."
+      : "Parti da 2–3 idee concrete e verifica orari/prezzi sulle fonti ufficiali.";
+    return `<div class="pv-prev-card"><h2>Attività</h2><p>${tip}</p></div>${cards}`;
   }
 
   function budgetHtml() {
@@ -1149,6 +1652,11 @@
           <button type="button" class="primary" data-act="save-local">Salva budget</button>
           <button type="button" class="ghost" data-act="reset-budget">Ricarica template scenario</button>
           <button type="button" class="ghost" data-act="sync-expenses">Copia stime in Spese di gruppo</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
+              : ""
+          }
         </div>
       </div>`;
   }
@@ -1168,16 +1676,27 @@
 
   function safetyHtml() {
     const w = state.safety?.weather;
+    const links = currentOfficial();
+    const iceland = isIcelandTrip(state.params);
     return `
       <div class="pv-prev-card">
-        <h2>Sicurezza invernale</h2>
-        <p class="pv-callout">Febbraio: ghiaccio, vento, strade chiuse, ore di luce limitate. Non pianificare spostamenti rischiosi automaticamente.</p>
+        <h2>Sicurezza e condizioni</h2>
+        <p class="pv-callout">${
+          iceland
+            ? "Inverno islandese: ghiaccio, vento, strade chiuse, poche ore di luce. Non forzare spostamenti rischiosi."
+            : "Controlla meteo, trasporti locali e avvisi ufficiali prima di ogni giornata impegnativa."
+        }</p>
         <ul>
-          <li><a href="${OFFICIAL.safetravel}" target="_blank" rel="noopener">SafeTravel.is</a></li>
-          <li><a href="${OFFICIAL.vedur}" target="_blank" rel="noopener">Vedur.is (meteo)</a></li>
-          <li><a href="${OFFICIAL.roads}" target="_blank" rel="noopener">Umferdin.is (strade)</a></li>
+          ${
+            iceland
+              ? `<li><a href="${escapeAttr(links.safetravel)}" target="_blank" rel="noopener">SafeTravel.is</a></li>
+          <li><a href="${escapeAttr(links.vedur)}" target="_blank" rel="noopener">Vedur.is (meteo)</a></li>
+          <li><a href="${escapeAttr(links.roads)}" target="_blank" rel="noopener">Umferdin.is (strade)</a></li>`
+              : `<li><a href="${escapeAttr(links.googleMaps)}" target="_blank" rel="noopener">Mappe / percorsi</a></li>
+          <li>Consulta siti ufficiali di turismo e trasporti della destinazione</li>`
+          }
         </ul>
-        <p>${w ? escapeHtml(w.note) + " " + escapeHtml(w.sample || "") : "Carica indici climatici (non previsione 2027)."}</p>
+        <p>${w ? escapeHtml(w.note) + " " + escapeHtml(w.sample || "") : "Puoi caricare indici climatici di riferimento (non sono una previsione del tuo viaggio)."}</p>
         <p class="pv-prev-muted">Ultimo aggiornamento modulo: ${escapeHtml(state.safety?.fetchedAt || "—")}</p>
         <div class="pv-prev-actions">
           <button type="button" class="primary" data-act="fetch-safety">Aggiorna clima (Open-Meteo)</button>
@@ -1199,6 +1718,11 @@
           <button type="button" class="primary" data-act="export-print">Stampa / Salva PDF</button>
           <button type="button" class="ghost" data-act="export-csv">Scarica CSV budget</button>
           <button type="button" class="ghost" data-act="export-summary">Copia riepilogo</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
+              : ""
+          }
         </div>
       </div>`;
   }
@@ -1258,7 +1782,20 @@
         } else {
           state.params[key] = val;
         }
+        if (key === "start" || key === "end") {
+          state.params = refreshDerivedParams(state.params);
+        }
+        if (["destination", "airportIn", "start", "end", "travelers", "airportsOut"].includes(key)) {
+          state.flightNotes = defaultFlightRows(state.params);
+          state.sources = defaultSources(state.params);
+          if (key === "destination" || key === "start" || key === "end" || key === "travelers") {
+            state.stayConfigs = defaultStayConfigs(state.params);
+          }
+        }
         persistState();
+        if (key === "start" || key === "end" || key === "destination" || key === "travelers") {
+          render();
+        }
       });
     });
     root.querySelectorAll("[data-flight]").forEach((el) => {
@@ -1334,21 +1871,63 @@
         return;
       }
       if (act === "save-local") {
+        state.params = mergeParams(state.params);
         persistState();
         state.status = "Salvato su questo dispositivo.";
         render();
         return;
       }
+      if (act === "reset-blank") {
+        initWorkingState(state.tripId || "", null);
+        persistState();
+        state.status = "Preventivo vuoto pronto per qualsiasi destinazione.";
+        render();
+        return;
+      }
+      if (act === "load-iceland-example") {
+        state.params = mergeParams(ICELAND_PRESET);
+        state.lines = defaultBudgetLines(state.params, state.scenario);
+        state.flightNotes = defaultFlightRows(state.params);
+        state.stayConfigs = defaultStayConfigs(state.params);
+        state.sources = defaultSources(state.params);
+        state.transport = { strategy: "A", notes: "" };
+        persistState();
+        state.status = "Caricato esempio Islanda (opzionale). Puoi modificarlo o tornare al vuoto.";
+        render();
+        return;
+      }
+      if (act === "clear-draft") {
+        try {
+          const db = readStore();
+          if (state.tripId) delete db[state.tripId];
+          delete db[DRAFT_KEY];
+          writeStore(db);
+          localStorage.removeItem(STORE_KEY_LEGACY);
+        } catch {
+          /* ignore */
+        }
+        initWorkingState(state.tripId || "", null);
+        state.status = "Bozza cancellata. Preventivo vuoto ricaricato.";
+        render();
+        return;
+      }
       if (act === "create-trip") {
+        state.params = refreshDerivedParams(mergeParams(state.params));
+        persistState();
         state.status = "Creazione viaggio…";
         render();
-        await createIcelandTrip();
+        await createTripFromPreventivo();
         state.status = "Viaggio creato. Continua dal preventivo.";
         render();
         return;
       }
       if (act === "sync-itinerary") {
         await syncItineraryToTrip();
+        render();
+        return;
+      }
+      if (act === "sync-preventivo") {
+        await syncPreventivoIntoTrip();
         render();
         return;
       }
@@ -1408,7 +1987,9 @@
           `<tr><td>${escapeHtml(l.title)}</td><td>${escapeHtml(l.status)}</td><td>${fmtMoney(lineTotal(l))}</td><td>${escapeHtml(l.source || "")}</td></tr>`
       )
       .join("");
-    const days = ITINERARY_SEED.map((d) => `<li><strong>${escapeHtml(d.day)}</strong> — ${escapeHtml(d.title)}: ${escapeHtml(d.notes)}</li>`).join("");
+    const days = currentItinerarySeed()
+      .map((d) => `<li><strong>${escapeHtml(d.day)}</strong> — ${escapeHtml(d.title)}: ${escapeHtml(d.notes)}</li>`)
+      .join("");
     w.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Preventivo — ${escapeHtml(state.params.title)}</title>
       <style>body{font:14px/1.45 system-ui,sans-serif;padding:24px;color:#122} h1{color:#007d82} table{width:100%;border-collapse:collapse} td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left} .warn{background:#fff3cd;padding:8px;border-radius:8px}</style></head><body>
       <h1>Pronti? VIA! — Preventivo intelligente</h1>
@@ -1441,19 +2022,26 @@
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "pronti-via-preventivo-islanda.csv";
+    const slug = String(state.params.destination || state.params.title || "viaggio")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/gi, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "viaggio";
+    a.download = `pronti-via-preventivo-${slug}.csv`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
   async function exportSummary() {
     const tot = budgetTotals();
+    const sourceTitles = (state.sources || []).map((s) => s.title).filter(Boolean).slice(0, 8);
     const text = [
-      state.params.title,
+      state.params.title || state.params.destination || "Preventivo",
+      `Destinazione: ${state.params.destination || "—"}`,
       `${state.params.start} → ${state.params.end} · ${state.params.travelers} adulti`,
       `Scenario ${state.scenario}: ${fmtMoney(tot.group)} gruppo / ${fmtMoney(tot.pp)} a persona`,
       "Stati: molti valori STIMA/DA VERIFICARE",
-      "Fonti: icelandair.com, easyjet.com, wizzair.com, visiticeland.com, safetravel.is, vedur.is, umferdin.is",
+      sourceTitles.length ? `Fonti: ${sourceTitles.join(", ")}` : "Fonti: vedi scheda Fonti nel modulo",
       `Generato ${nowIso()} · Pronti? VIA! Preventivo intelligente ${VERSION}`,
     ].join("\n");
     try {

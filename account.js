@@ -151,7 +151,7 @@ function ensureUi() {
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
       <div class="pv-account-brand">
-        <img class="pv-account-mark" src="/logo.png" width="34" height="34" alt="">
+        <img class="pv-account-mark" src="./logo.png" width="34" height="34" alt="">
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
@@ -185,6 +185,7 @@ function ensureUi() {
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
     <button type="button" id="pv-account-logout">Esci</button>
+    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina</button>
   `;
   document.body.appendChild(chip);
 
@@ -194,6 +195,7 @@ function ensureUi() {
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
   chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
+  chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
 }
 
 function setMode(mode) {
@@ -361,6 +363,87 @@ async function onLogout() {
   location.reload();
 }
 
+function wipeLocalUser(username) {
+  const users = readUsers();
+  const key = normalizeUsername(username);
+  if (users[key]) {
+    delete users[key];
+    writeUsers(users);
+  }
+}
+
+async function onDeleteAccount() {
+  const username = state.user?.username || "";
+  if (!username) return;
+  const ok = window.confirm(
+    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+  );
+  if (!ok) return;
+  const password = window.prompt("Conferma con la password dell’account:");
+  if (password == null) return;
+  if (!String(password).trim()) {
+    window.alert("Password obbligatoria per eliminare l’account.");
+    return;
+  }
+  try {
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("delete-account", {
+        token: state.token,
+        body: { username, password },
+      });
+    } else {
+      // Local-only account: verify password then wipe.
+      await loginLocal(username, password);
+    }
+  } catch (err) {
+    // Still try cloud delete if local verify failed but cloud may have the account.
+    try {
+      await api("delete-account", {
+        token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+        body: { username, password },
+      });
+    } catch (cloudErr) {
+      window.alert(cloudErr.message || err.message || "Eliminazione non riuscita.");
+      return;
+    }
+  }
+  wipeLocalUser(username);
+  try {
+    localStorage.removeItem("viavia-preventivo-v2");
+    localStorage.removeItem("viavia-preventivo-v1");
+  } catch {
+    /* ignore */
+  }
+  state.token = null;
+  state.user = null;
+  writeSession(null);
+  window.alert("Account eliminato.");
+  showGate();
+  location.hash = "";
+  location.reload();
+}
+
+/** One-shot: remove stale local copy of deleted cloud usernames. */
+function purgeKnownDeletedLocalUsers() {
+  try {
+    const users = readUsers();
+    let changed = false;
+    for (const name of ["andrea"]) {
+      if (users[name]) {
+        delete users[name];
+        changed = true;
+      }
+    }
+    if (changed) writeUsers(users);
+    const session = readSession();
+    if (session?.user?.username && normalizeUsername(session.user.username) === "andrea") {
+      writeSession(null);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 async function activateSession(data, { bootApp = true } = {}) {
   state.token = data.token;
   state.user = data.user;
@@ -368,6 +451,7 @@ async function activateSession(data, { bootApp = true } = {}) {
   writeSession({
     token: data.token,
     user: data.user,
+    guest: Boolean(data.guest),
     remembered: true,
     savedAt: new Date().toISOString(),
   });
@@ -397,7 +481,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix.js");
+  await import("/assets/index-loadfix-20260920g.js");
 }
 
 let syncTimer = null;
@@ -465,13 +549,8 @@ async function ensureCurrentUserOnTrip() {
     });
     if (save.ok) {
       joinedTrips.add(joinKey);
-      const refreshKey = `pv-joined-refresh:${joinKey}`;
-      if (!sessionStorage.getItem(refreshKey)) {
-        sessionStorage.setItem(refreshKey, "1");
-        setTimeout(() => {
-          if (location.hash.includes(tripId)) location.reload();
-        }, 400);
-      }
+      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
+      // Safari stuck on the loading screen when the trips proxy is slow.
     }
   } catch {
     /* ignore transient join failures */
@@ -516,10 +595,37 @@ function startTripSync() {
   startMemberJoinSync();
 }
 
+function hashHasSharedTrip() {
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    return Boolean(params.get("trip") && params.get("key"));
+  } catch {
+    return false;
+  }
+}
+
+function makeGuestSession() {
+  const suffix = Date.now().toString(36).slice(-5);
+  const username = `ospite-${suffix}`;
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: "Ospite" },
+    trips: readLocalTrips(),
+    guest: true,
+  };
+}
+
 async function boot() {
   ensureUi();
+  purgeKnownDeletedLocalUsers();
   const session = readSession();
   if (!session?.user?.username) {
+    // Shared trip links should open without forcing registration.
+    if (hashHasSharedTrip()) {
+      const guest = makeGuestSession();
+      await activateSession(guest, { bootApp: true });
+      return;
+    }
     showGate();
     return;
   }
