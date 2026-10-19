@@ -9,7 +9,9 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019g";
+  const VERSION = "20261019h";
+  const FAB_POS_KEY = "viavia-preventivo-fab-pos";
+  const PANEL_POS_KEY = "viavia-preventivo-panel-pos";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -1373,24 +1375,33 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:0;z-index:100000;display:none;font-family:inherit}
-      #${ROOT_ID}.open{display:flex;flex-direction:column;background:#f4fafb}
-      body:has(#${ROOT_ID}.open) #pv-account-chip{display:none!important}
-      #${ROOT_ID} .pv-prev-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#007d82;color:#fff}
-      #${ROOT_ID} .pv-prev-top h1{margin:0;font-size:1.05rem;font-weight:700}
+      #${ROOT_ID}{position:fixed;inset:0;z-index:90;display:none;font-family:inherit;pointer-events:none}
+      #${ROOT_ID}.open{display:block}
+      #${ROOT_ID} .pv-prev-scrim{position:fixed;inset:0;background:rgba(12,32,36,.22);pointer-events:auto}
+      #${ROOT_ID} .pv-prev-shell{
+        position:fixed;left:16px;bottom:92px;z-index:2;pointer-events:auto;
+        width:min(420px,calc(100vw - 24px));height:min(78vh,700px);
+        display:flex;flex-direction:column;background:#f4fafb;
+        border:1px solid #d0e0e0;border-radius:22px;
+        box-shadow:0 22px 60px rgba(12,40,48,.28);overflow:hidden;
+      }
+      #${ROOT_ID} .pv-prev-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#124048;color:#fff;cursor:grab;touch-action:none}
+      #${ROOT_ID} .pv-prev-top:active{cursor:grabbing}
+      #${ROOT_ID} .pv-prev-top h1{margin:0;font-size:1rem;font-weight:700}
+      #${ROOT_ID} .pv-prev-top .pv-prev-sub{display:block;font-size:.72rem;font-weight:600;opacity:.8;margin-top:2px}
       #${ROOT_ID} .pv-prev-top button{appearance:none;border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;padding:8px 12px;font:600 13px inherit;cursor:pointer}
       #${ROOT_ID} .pv-prev-tabs{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:#e7f2f2;-webkit-overflow-scrolling:touch}
       #${ROOT_ID} .pv-prev-tabs button{flex:0 0 auto;appearance:none;border:1px solid #b7d0d0;background:#fff;color:#184047;border-radius:999px;padding:8px 12px;font:600 12px inherit;cursor:pointer;white-space:nowrap}
       #${ROOT_ID} .pv-prev-tabs button.active{background:#007d82;border-color:#007d82;color:#fff}
-      #${ROOT_ID} .pv-prev-body{flex:1 1 auto;overflow:auto;padding:14px;max-width:920px;width:100%;margin:0 auto;box-sizing:border-box}
+      #${ROOT_ID} .pv-prev-body{flex:1 1 auto;overflow:auto;padding:14px;width:100%;margin:0;box-sizing:border-box}
       #${ROOT_ID} .pv-prev-card{background:#fff;border:1px solid #d9e7e7;border-radius:16px;padding:14px;margin:0 0 12px}
       #${ROOT_ID} .pv-prev-card h2{margin:0 0 8px;font-size:1.05rem;color:#0f2c31}
       #${ROOT_ID} .pv-prev-card p,#${ROOT_ID} .pv-prev-muted{margin:0 0 10px;color:#3d5960;font-size:.9rem;line-height:1.45}
-      #${ROOT_ID} .pv-prev-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+      #${ROOT_ID} .pv-prev-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
       #${ROOT_ID} label.pv-field{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:#5b7076;letter-spacing:.04em;text-transform:uppercase}
       #${ROOT_ID} label.pv-field input,#${ROOT_ID} label.pv-field select,#${ROOT_ID} label.pv-field textarea{font:600 .95rem inherit;text-transform:none;letter-spacing:normal;color:#122f34;border:1px solid #c9dbdb;border-radius:10px;padding:10px 12px;background:#f7fbfb}
       #${ROOT_ID} .pv-prev-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-      #${ROOT_ID} .pv-prev-actions button,.pv-prev-launch{appearance:none;border:0;border-radius:12px;padding:11px 14px;font:600 13px inherit;cursor:pointer;min-height:42px}
+      #${ROOT_ID} .pv-prev-actions button{appearance:none;border:0;border-radius:12px;padding:11px 14px;font:600 13px inherit;cursor:pointer;min-height:42px}
       #${ROOT_ID} .pv-prev-actions .primary{background:#007d82;color:#fff}
       #${ROOT_ID} .pv-prev-actions .ghost{background:#eef5f5;color:#1d3338}
       #${ROOT_ID} .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
@@ -1403,13 +1414,40 @@
       #${ROOT_ID} .pv-status{margin:8px 0 0;font-size:.82rem;color:#5b7076;min-height:1.2em}
       #${ROOT_ID} .pv-callout{padding:10px 12px;border-radius:12px;background:#eaf5f5;border:1px solid #d5e8e8;color:#0f2c31;font-size:.88rem;margin:0 0 12px}
       #${ROOT_ID} a{color:#007d82;font-weight:600}
-      .pv-prev-launch{position:fixed;left:14px;bottom:14px;z-index:85;background:#124048;color:#fff;box-shadow:0 10px 28px rgba(0,40,50,.28);display:none}
-      body.pv-account-ready .pv-prev-launch{display:inline-flex;align-items:center;gap:8px}
+      .pv-prev-launch{
+        appearance:none;border:0;position:fixed;left:16px;bottom:18px;z-index:85;
+        width:62px;height:62px;border-radius:50%;padding:0;display:none;
+        background:radial-gradient(circle at 30% 28%,#3a6b72 0%,#124048 58%,#0a2c32 100%);
+        color:#fff;box-shadow:0 12px 28px rgba(0,40,50,.35),inset 0 1px 0 rgba(255,255,255,.2);
+        cursor:grab;align-items:center;justify-content:center;touch-action:none;user-select:none;
+      }
+      .pv-prev-launch:active,.pv-prev-launch.pv-dragging{cursor:grabbing;transform:scale(1.04)}
+      .pv-prev-launch svg{width:28px;height:28px;display:block}
+      .pv-prev-launch .pv-prev-fab-label{
+        position:absolute;left:68px;bottom:14px;white-space:nowrap;
+        background:#0f2c31;color:#fff;font:700 11px/1 inherit;padding:6px 10px;border-radius:999px;
+        box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(-6px);pointer-events:none;transition:opacity .15s,transform .15s;
+      }
+      .pv-prev-launch:hover .pv-prev-fab-label,.pv-prev-launch:focus-visible .pv-prev-fab-label{opacity:1;transform:none}
+      body.pv-account-ready .pv-prev-launch{display:inline-flex}
       @media (max-width:640px){
-        .pv-prev-launch{left:10px;bottom:72px;padding:10px 12px;font-size:12px}
+        .pv-prev-launch{left:12px;bottom:16px;width:58px;height:58px}
+        .pv-prev-launch .pv-prev-fab-label{display:none}
+        #${ROOT_ID} .pv-prev-shell{
+          left:0!important;right:0!important;bottom:0!important;top:auto!important;
+          width:100%;height:min(88dvh,88vh);border-radius:18px 18px 0 0;
+        }
       }
     `;
     style.dataset.pvReady = VERSION;
+  }
+
+  function preventivoIcon() {
+    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="3" width="16" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/>
+      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="17" cy="17" r="3.2" fill="#2bb7bc" stroke="#fff" stroke-width="1.2"/>
+    </svg>`;
   }
 
   function launchBtn() {
@@ -1419,9 +1457,16 @@
       btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pv-prev-launch";
-      btn.textContent = "Preventivo intelligente";
-      btn.addEventListener("click", () => openPreventivo());
+      btn.setAttribute("aria-label", "Preventivo intelligente");
+      btn.title = "Preventivo intelligente";
+      btn.innerHTML = `${preventivoIcon()}<span class="pv-prev-fab-label">Preventivo intelligente</span>`;
       document.body.appendChild(btn);
+      const open = () => openPreventivo();
+      if (typeof window.__pvMakeDraggable === "function") {
+        window.__pvMakeDraggable(btn, { storageKey: FAB_POS_KEY, onTap: open });
+      } else {
+        btn.addEventListener("click", open);
+      }
     }
   }
 
@@ -1441,7 +1486,12 @@
     const root = rootEl();
     if (!root) return;
     root.classList.toggle("open", open);
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    // Floating panel: lock scroll only on small screens.
+    if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
     if (open) render();
   }
 
@@ -2015,14 +2065,30 @@
         `<button type="button" data-section="${id}" class="${state.section === id ? "active" : ""}">${label}</button>`
     ).join("");
     root.innerHTML = `
-      <div class="pv-prev-top">
-        <h1>Preventivo intelligente</h1>
-        <button type="button" data-act="close">Chiudi</button>
+      <div class="pv-prev-scrim" data-act="close" aria-hidden="true"></div>
+      <div class="pv-prev-shell" id="pv-prev-shell">
+        <div class="pv-prev-top" id="pv-prev-drag">
+          <div>
+            <h1>Preventivo intelligente</h1>
+            <span class="pv-prev-sub">Floating · trascina per spostare</span>
+          </div>
+          <button type="button" data-act="close">Chiudi</button>
+        </div>
+        <div class="pv-prev-tabs">${tabs}</div>
+        <div class="pv-prev-body">${sectionHtml()}<p class="pv-status">${escapeHtml(state.status)}</p></div>
       </div>
-      <div class="pv-prev-tabs">${tabs}</div>
-      <div class="pv-prev-body">${sectionHtml()}<p class="pv-status">${escapeHtml(state.status)}</p></div>
     `;
     bind(root);
+    const shell = root.querySelector("#pv-prev-shell");
+    const handle = root.querySelector("#pv-prev-drag");
+    if (
+      shell &&
+      handle &&
+      typeof window.__pvMakeDraggable === "function" &&
+      !(window.matchMedia && window.matchMedia("(max-width:640px)").matches)
+    ) {
+      window.__pvMakeDraggable(shell, { storageKey: PANEL_POS_KEY, handle });
+    }
   }
 
   function bind(root) {
