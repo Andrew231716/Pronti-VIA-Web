@@ -1,7 +1,7 @@
 /**
  * Free Wanderlog-parity extras for Pronti? VIA!
- * - Bacchetta magica: Idee + chat suggerimenti (OSM/Wikipedia/TripAdvisor link)
- *   e sezione Lingua (frasario + traduzione simultanea)
+ * - Pronty (Bacchetta magica): AI floating companion — Idee + chat + Lingua
+ *   Funziona prima e durante il viaggio; FAB a tondino spostabile
  * - Packing list templates
  * - Budget privato + expense category breakdown
  * - Day-colored map pins, distances, meteo, FX in Spese, link utili
@@ -9,6 +9,9 @@
 (() => {
   const STYLE_ID = "pv-magic-extras-css";
   const ROOT_ID = "pv-magic-root";
+  const AI_NAME = "Pronty";
+  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos";
+  const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
   const DAY_COLORS = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545", "#2a9d8f", "#e76f51"];
   const WMO = {
     0: "Sereno",
@@ -78,17 +81,41 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:auto 14px 14px auto;z-index:80;display:flex;flex-direction:column;align-items:flex-end;gap:0;font-family:inherit;pointer-events:none}
+      #${ROOT_ID}{position:fixed;inset:0;z-index:80;pointer-events:none;font-family:inherit}
       #${ROOT_ID} > *{pointer-events:auto}
-      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0;pointer-events:auto}
-      #${ROOT_ID}.pv-open{inset:0;align-items:stretch;justify-content:flex-end}
+      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.28);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
-      #${ROOT_ID}.pv-open .pv-magic-btn{display:none}
-      #${ROOT_ID} .pv-magic-btn{appearance:none;border:0;border-radius:999px;background:#007d82;color:#fff;padding:12px 16px;font:600 14px/1.2 inherit;box-shadow:0 10px 30px rgba(0,80,90,.28);cursor:pointer;display:inline-flex;align-items:center;gap:8px;position:relative;z-index:2}
+      #${ROOT_ID} .pv-magic-btn{
+        appearance:none;border:0;position:fixed;right:16px;bottom:18px;z-index:2;
+        width:62px;height:62px;border-radius:50%;padding:0;
+        background:radial-gradient(circle at 30% 28%,#2bb7bc 0%,#007d82 55%,#0a5c60 100%);
+        color:#fff;box-shadow:0 12px 28px rgba(0,70,80,.35),inset 0 1px 0 rgba(255,255,255,.25);
+        cursor:grab;display:inline-flex;align-items:center;justify-content:center;
+        touch-action:none;user-select:none;-webkit-user-select:none;
+        transition:transform .15s ease,box-shadow .15s ease;
+      }
+      #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;transform:scale(.96)}
+      #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;transform:scale(1.04);box-shadow:0 16px 36px rgba(0,70,80,.42)}
       #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait}
-      #${ROOT_ID} .pv-magic-btn svg{width:18px;height:18px;flex:0 0 auto}
-      #${ROOT_ID} .pv-magic-panel{position:relative;z-index:1;width:min(440px,calc(100vw - 24px));max-height:min(82vh,720px);overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #d0e0e0;border-radius:20px;box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:42px;height:42px;display:block}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-label{
+        position:absolute;right:68px;bottom:14px;white-space:nowrap;
+        background:#0f2c31;color:#fff;font:700 11px/1 inherit;letter-spacing:.02em;
+        padding:6px 10px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.18);
+        opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
+      }
+      #${ROOT_ID} .pv-magic-btn:hover .pv-pronty-label,#${ROOT_ID} .pv-magic-btn:focus-visible .pv-pronty-label{opacity:1;transform:none}
+      #${ROOT_ID} .pv-magic-panel{
+        position:fixed;right:16px;bottom:92px;z-index:1;
+        width:min(400px,calc(100vw - 24px));max-height:min(78vh,680px);
+        overflow:hidden;display:flex;flex-direction:column;background:#fff;
+        border:1px solid #d0e0e0;border-radius:22px;
+        box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0;
+        touch-action:none;
+      }
       #${ROOT_ID} .pv-magic-panel[hidden]{display:none !important}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle{cursor:grab;touch-action:none}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle:active{cursor:grabbing}
       #${ROOT_ID} .pv-panel-head{flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid #e8f0f0;background:#f7fbfb}
       #${ROOT_ID} .pv-panel-body{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 8px}
       #${ROOT_ID} .pv-panel-foot{flex:0 0 auto;padding:10px 14px 14px;border-top:1px solid #e8f0f0;background:#fff}
@@ -134,9 +161,13 @@
       #${ROOT_ID} .pv-phrase strong{display:block;font-size:.86rem;color:#122f34}
       #${ROOT_ID} .pv-phrase span{display:block;font-size:.78rem;color:#4d676e;margin-top:2px}
       @media (max-width:640px){
-        #${ROOT_ID}{inset:auto 10px 10px auto}
-        #${ROOT_ID}.pv-open{inset:0;padding:0}
-        #${ROOT_ID}.pv-open .pv-magic-panel{width:100%;max-width:none;max-height:min(92dvh,92vh);border-radius:18px 18px 0 0;margin-top:auto;border-left:0;border-right:0;border-bottom:0}
+        #${ROOT_ID} .pv-magic-btn{right:12px;bottom:16px;width:58px;height:58px}
+        #${ROOT_ID} .pv-magic-panel{
+          left:0!important;right:0!important;bottom:0!important;top:auto!important;
+          width:100%;max-width:none;max-height:min(88dvh,88vh);
+          border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
+        }
+        #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
         #${ROOT_ID} .pv-place-card{grid-template-columns:56px 1fr;gap:10px;padding:12px}
         #${ROOT_ID} .pv-place-card img,#${ROOT_ID} .pv-place-card .pv-ph{width:56px;height:56px}
         #${ROOT_ID} .pv-card-actions{grid-template-columns:1fr 1fr}
@@ -188,10 +219,139 @@
     panelOpen = open;
     const root = document.getElementById(ROOT_ID);
     const panel = root?.querySelector("#pv-magic-panel");
+    const fab = root?.querySelector("#pv-magic-open");
     if (root) root.classList.toggle("pv-open", open);
     if (panel) panel.hidden = !open;
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    // Don't lock the whole page — Pronty is a floating companion.
+    if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
   }
+
+  /** Shared draggable helper for floating FABs / panels. Click still fires if movement is tiny. */
+  function makeDraggable(el, { storageKey, handle, onTap, axis = "both" } = {}) {
+    if (!el || el.dataset.pvDragBound === "1") return;
+    el.dataset.pvDragBound = "1";
+    const target = handle || el;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+    let moved = false;
+    let dragging = false;
+
+    const clamp = () => {
+      const rect = el.getBoundingClientRect();
+      const maxL = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxT = Math.max(8, window.innerHeight - rect.height - 8);
+      let left = parseFloat(el.style.left || String(rect.left));
+      let top = parseFloat(el.style.top || String(rect.top));
+      left = Math.min(maxL, Math.max(8, left));
+      top = Math.min(maxT, Math.max(8, top));
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      return { left, top };
+    };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        el.style.left = `${saved.left}px`;
+        el.style.top = `${saved.top}px`;
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        requestAnimationFrame(clamp);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const onPointerDown = (ev) => {
+      if (ev.button != null && ev.button !== 0) return;
+      if (ev.target?.closest?.("button, a, input, select, textarea, label")) return;
+      const rect = el.getBoundingClientRect();
+      startX = ev.clientX;
+      startY = ev.clientY;
+      origLeft = rect.left;
+      origTop = rect.top;
+      moved = false;
+      dragging = true;
+      el.classList.add("pv-dragging");
+      target.setPointerCapture?.(ev.pointerId);
+    };
+    const onPointerMove = (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+      if (axis !== "y") el.style.left = `${origLeft + dx}px`;
+      if (axis !== "x") el.style.top = `${origTop + dy}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      clamp();
+    };
+    const onPointerUp = (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove("pv-dragging");
+      try {
+        target.releasePointerCapture?.(ev.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const pos = clamp();
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(pos));
+        } catch {
+          /* ignore */
+        }
+      }
+      if (moved) {
+        el.dataset.pvDidDrag = "1";
+        // Swallow the synthetic click that follows a drag.
+        const swallow = (ce) => {
+          ce.preventDefault();
+          ce.stopPropagation();
+          el.removeEventListener("click", swallow, true);
+        };
+        el.addEventListener("click", swallow, true);
+        setTimeout(() => el.removeEventListener("click", swallow, true), 400);
+      } else if (typeof onTap === "function") {
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      }
+    };
+    target.addEventListener("pointerdown", onPointerDown);
+    target.addEventListener("pointermove", onPointerMove);
+    target.addEventListener("pointerup", onPointerUp);
+    target.addEventListener("pointercancel", onPointerUp);
+    // Reliable open path for browsers / automation that prefer click over pointerup-tap.
+    if (typeof onTap === "function") {
+      el.addEventListener("click", (ev) => {
+        if (el.dataset.pvDidDrag === "1") {
+          el.dataset.pvDidDrag = "0";
+          return;
+        }
+        // Avoid double-open when pointerup already called onTap.
+        if (el.dataset.pvTapLock === "1") return;
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      });
+    }
+  }
+  window.__pvMakeDraggable = makeDraggable;
 
   function tripAuth() {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -371,6 +531,21 @@
     return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20 L14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4 l1.2 2.4 2.6.4-1.9 1.9.5 2.6L13 10.2 10.6 11.3l.5-2.6L9.2 6.8l2.6-.4L13 4z" fill="currentColor"/><path d="M16.5 14.5 l.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2.7-1.4z" fill="currentColor"/></svg>`;
   }
 
+  /** Cute round face for Pronty FAB */
+  function prontyFace() {
+    return `<svg class="pv-pronty-face" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="28" fill="#e8fafa"/>
+      <circle cx="32" cy="32" r="28" fill="url(#pvProntyGlow)" opacity=".35"/>
+      <defs><radialGradient id="pvProntyGlow" cx="30%" cy="30%"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#007d82"/></radialGradient></defs>
+      <circle cx="23" cy="28" r="3.2" fill="#0f2c31"/>
+      <circle cx="41" cy="28" r="3.2" fill="#0f2c31"/>
+      <path d="M22 38c3.5 5 16.5 5 20 0" fill="none" stroke="#0f2c31" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="18" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
+      <circle cx="46" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
+      <path d="M44 14l1.1 2.2 2.4.3-1.7 1.7.4 2.4-2.2-1.1-2.2 1.1.4-2.4-1.7-1.7 2.4-.3L44 14z" fill="#ffd56a"/>
+    </svg>`;
+  }
+
   function ensureRoot() {
     ensureStyles();
     let root = document.getElementById(ROOT_ID);
@@ -409,12 +584,6 @@
 
   function renderFab() {
     if (!document.body.classList.contains("pv-account-ready")) return;
-    if (!tripAuth()) {
-      const existing = document.getElementById(ROOT_ID);
-      if (existing) existing.innerHTML = "";
-      setMagicOpen(false);
-      return;
-    }
     if (document.querySelector("main.loading")) return;
 
     const root = ensureRoot();
@@ -426,36 +595,71 @@
 
     root.innerHTML = `
       <div class="pv-magic-scrim" id="pv-magic-scrim"></div>
-      <button type="button" class="pv-magic-btn" id="pv-magic-open">${wandIcon()} Bacchetta magica</button>
+      <button type="button" class="pv-magic-btn" id="pv-magic-open" aria-label="${AI_NAME} — Bacchetta magica" title="${AI_NAME}">
+        ${prontyFace()}
+        <span class="pv-pronty-label">${AI_NAME} · Bacchetta magica</span>
+      </button>
       <div class="pv-magic-panel" id="pv-magic-panel" hidden></div>
     `;
     const openPanel = () => {
       setMagicOpen(true);
       void showMagicPanel(root.querySelector("#pv-magic-panel"), magicTab || "chiedi");
     };
-    root.querySelector("#pv-magic-open").onclick = openPanel;
+    const fab = root.querySelector("#pv-magic-open");
+    makeDraggable(fab, { storageKey: AI_FAB_POS_KEY, onTap: openPanel });
     root.querySelector("#pv-magic-scrim").onclick = () => setMagicOpen(false);
+  }
+
+  function bindPanelChrome(panel) {
+    const close = panel.querySelector("#pv-magic-close");
+    if (close) close.onclick = () => setMagicOpen(false);
+    const handle = panel.querySelector(".pv-drag-handle") || panel.querySelector(".pv-panel-head");
+    if (handle && !(window.matchMedia && window.matchMedia("(max-width:640px)").matches)) {
+      makeDraggable(panel, { storageKey: AI_PANEL_POS_KEY, handle });
+    }
+  }
+
+  function readPreventivoDraft() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-preventivo-v2") || "null");
+      const draft = raw?.__draft__?.params || null;
+      if (draft && (draft.destination || draft.title)) return draft;
+    } catch {
+      /* ignore */
+    }
+    return null;
   }
 
   async function showMagicPanel(panel, tab = "chiedi") {
     magicTab = tab;
-    try {
-      if (!magicTripCache) {
-        const { data } = await loadTrip();
-        magicTripCache = data.trip;
+    const auth = tripAuth();
+    if (auth) {
+      try {
+        if (!magicTripCache) {
+          const { data } = await loadTrip();
+          magicTripCache = data.trip;
+        }
+      } catch (err) {
+        // Keep Pronty usable even if trip load fails (pre-trip / offline).
+        magicTripCache = magicTripCache || null;
+        console.warn("[pronty]", err);
       }
-    } catch (err) {
-      panel.innerHTML = `
-        <div class="pv-panel-body">
-          <h3>Bacchetta magica</h3>
-          <p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Errore")}</p>
-          <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
-        </div>
-      `;
-      panel.querySelector("#pv-magic-close").onclick = () => {
-        setMagicOpen(false);
-      };
-      return;
+    } else {
+      // Before a trip is open: seed context from preventivo draft if any.
+      const draft = readPreventivoDraft();
+      if (draft && !magicTripCache) {
+        magicTripCache = {
+          title: draft.title || "",
+          destination: draft.destination || "",
+          start: draft.start || "",
+          end: draft.end || "",
+          members: Array.from({ length: Number(draft.travelers) || 2 }, (_, i) => ({
+            name: i === 0 ? "Tu" : `Viaggiatore ${i + 1}`,
+          })),
+          stops: [],
+          _draftOnly: true,
+        };
+      }
     }
 
     if (tab === "idee") return void runMagicSuggest(panel);
@@ -465,10 +669,29 @@
 
   async function runMagicSuggest(panel) {
     panel.innerHTML = `
-      <div class="pv-panel-head">${magicTabsHtml("idee")}<h3>Idee per l’itinerario</h3></div>
+      <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3><p class="pv-lead">Bacchetta magica — proposte per l’itinerario</p></div>
       <div class="pv-panel-body"><p class="pv-status">Cerco luoghi intorno alla destinazione…</p></div>`;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     try {
+      if (!tripAuth()) {
+        panel.innerHTML = `
+          <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3></div>
+          <div class="pv-panel-body">
+            <p class="pv-lead">Apri o crea un viaggio per ricevere idee geolocalizzate da aggiungere alle tappe. Prima del viaggio puoi comunque chattare con ${AI_NAME} o aprire il Preventivo intelligente.</p>
+            <div class="pv-actions">
+              <button type="button" class="primary" id="pv-pronty-open-prev">Apri Preventivo</button>
+              <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+            </div>
+          </div>`;
+        bindMagicTabs(panel);
+        bindPanelChrome(panel);
+        panel.querySelector("#pv-pronty-open-prev")?.addEventListener("click", () => {
+          setMagicOpen(false);
+          if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+        });
+        return;
+      }
       const { data } = await loadTrip();
       const trip = data.trip;
       magicTripCache = trip;
@@ -477,9 +700,9 @@
       pendingPois = pois;
       const existing = new Set((trip.stops || []).map((s) => String(s.title || "").toLowerCase()));
       panel.innerHTML = `
-        <div class="pv-panel-head">
+        <div class="pv-panel-head pv-drag-handle">
           ${magicTabsHtml("idee")}
-          <h3>Idee per l’itinerario</h3>
+          <h3>${AI_NAME} · Idee per l’itinerario</h3>
           <p class="pv-lead">Proposte intorno a <strong>${escapeHtml(trip.destination)}</strong>. Scegli cosa aggiungere.</p>
         </div>
         <div class="pv-panel-body"><div id="pv-magic-list"></div></div>
@@ -492,6 +715,7 @@
         </div>
       `;
       bindMagicTabs(panel);
+      bindPanelChrome(panel);
       const list = panel.querySelector("#pv-magic-list");
       pois.forEach((poi, idx) => {
         const already = existing.has(poi.title.toLowerCase());
@@ -1252,20 +1476,24 @@
   }
 
   async function renderChatTab(panel) {
-    const dest = magicTripCache?.destination || "la destinazione";
-    const greetingWhere = formatDestGreeting(dest, magicTripCache?.title || "");
+    const dest = magicTripCache?.destination || "";
+    const greetingWhere = dest
+      ? formatDestGreeting(dest, magicTripCache?.title || "")
+      : "per il tuo prossimo viaggio";
     const trip = magicTripCache;
-    const days = trip ? tripDays(trip) : [];
+    const days = trip && !trip._draftOnly ? tripDays(trip) : [];
+    const duringTrip = Boolean(tripAuth());
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("chiedi")}
-        <h3>Chiedi alla bacchetta</h3>
-        <p class="pv-lead">Assistente AI del viaggio: domande, idee e tappe da aggiungere.</p>
+        <h3>${AI_NAME}</h3>
+        <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, idee e gestione pratica.</p>
         <div class="pv-chips" id="pv-chat-chips">
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
           <button type="button" data-q="Cosa non perdere in 2 giorni?">Cosa vedere</button>
           <button type="button" data-q="Idee per una giornata con natura e panorami">Natura</button>
           <button type="button" data-q="Consigli pratici per il viaggio (soldi, clima, trasporti)">Consigli</button>
+          <button type="button" data-q="Come organizzare bagagli, budget e checklist prima di partire?">Prima di partire</button>
           <button type="button" data-q="Frasi utili e come comportarsi con la gente del posto">Lingua</button>
         </div>
       </div>
@@ -1275,7 +1503,7 @@
       </div>
       <div class="pv-panel-foot">
         <form class="pv-chat-form" id="pv-chat-form">
-          <input type="text" id="pv-chat-input" placeholder="Scrivi pure… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
+          <input type="text" id="pv-chat-input" placeholder="Scrivi a ${AI_NAME}… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
           <button type="submit">Invia</button>
         </form>
         <div class="pv-actions">
@@ -1286,19 +1514,20 @@
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const log = panel.querySelector("#pv-chat-log");
     if (!chatHistory.length) {
-      const hello = `Ciao! Sono la tua assistente AI ${greetingWhere}${
+      const phase = duringTrip
+        ? "Sono con te durante il viaggio"
+        : "Ti aiuto a preparare il viaggio (e resto con te anche dopo)";
+      const hello = `Ciao! Sono ${AI_NAME}, la Bacchetta magica di Pronti? VIA!. ${phase} ${greetingWhere}${
         days.length ? ` (${days.length} giorni)` : ""
-      }. Chiedimi cosa vuoi sapere: posti, cibo, itinerari, consigli. Quando troviamo luoghi utili, puoi aggiungerli al programma.`;
+      }. Chiedimi posti, cibo, itinerari, budget, bagagli o consigli pratici.`;
       chatHistory = [{ role: "assistant", content: hello }];
     }
     for (const msg of chatHistory) {
       appendBubble(log, msg.role === "user" ? "user" : "bot", msg.content);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
     panel.querySelector("#pv-chat-reset").onclick = () => {
       chatHistory = [];
       chatPlaces = [];
@@ -1343,26 +1572,33 @@
   }
 
   function buildTravelSystemPrompt(trip) {
-    const city = searchCityForDestination(trip.destination, trip.title);
-    const where = formatDestGreeting(trip.destination, trip.title);
-    const members = (trip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
-    const stops = (trip.stops || [])
+    const safeTrip = trip || { title: "", destination: "", start: "", end: "", members: [], stops: [] };
+    const city = searchCityForDestination(safeTrip.destination, safeTrip.title);
+    const where = safeTrip.destination
+      ? formatDestGreeting(safeTrip.destination, safeTrip.title)
+      : "un viaggio ancora da definire";
+    const members = (safeTrip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
+    const stops = (safeTrip.stops || [])
       .slice(0, 12)
       .map((s) => s.title)
       .filter(Boolean)
       .join("; ");
-    return `Sei la Bacchetta magica di Pronti? VIA!, un'assistente AI di viaggio conversazionale.
+    const phase = tripAuth()
+      ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
+      : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
+    return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — un companion AI di viaggio simpatico e concreto.
 Rispondi SEMPRE in italiano, come una chat: tono cordiale, chiaro, concreto. Usa 2–6 frasi (o elenchi brevi), niente markdown pesante.
+${phase}
 Contesto viaggio:
-- Titolo: ${trip.title || "—"}
-- Destinazione: ${trip.destination || city} (${where})
-- Città di riferimento: ${city}
-- Date: ${trip.start || "?"} → ${trip.end || "?"}
+- Titolo: ${safeTrip.title || "—"}
+- Destinazione: ${safeTrip.destination || city || "da scegliere"} (${where})
+- Città di riferimento: ${city || "—"}
+- Date: ${safeTrip.start || "?"} → ${safeTrip.end || "?"}
 - Compagni: ${members}
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
 
 Compiti:
-1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari.
+1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari, bagagli e organizzazione.
 2) Tieni conto del contesto del viaggio e dei messaggi precedenti (multi-turno).
 3) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
 
@@ -1685,7 +1921,26 @@ Regole pv-places:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
-      const trip = magicTripCache || (await loadTrip()).data.trip;
+      let trip = magicTripCache;
+      if (!trip && tripAuth()) {
+        try {
+          trip = (await loadTrip()).data.trip;
+        } catch {
+          trip = null;
+        }
+      }
+      if (!trip) {
+        const draft = readPreventivoDraft();
+        trip = {
+          title: draft?.title || "",
+          destination: draft?.destination || "",
+          start: draft?.start || "",
+          end: draft?.end || "",
+          members: [],
+          stops: [],
+          _draftOnly: true,
+        };
+      }
       magicTripCache = trip;
       const cityHint = searchCityForDestination(trip.destination, trip.title);
       let aiText = "";
@@ -1975,17 +2230,32 @@ Regole pv-places:
   }
 
   async function renderLanguageTab(panel) {
-    const trip = magicTripCache || (await loadTrip()).data.trip;
-    magicTripCache = trip;
+    let trip = magicTripCache;
+    if (!trip && tripAuth()) {
+      try {
+        trip = (await loadTrip()).data.trip;
+      } catch {
+        trip = null;
+      }
+    }
+    if (!trip) {
+      const draft = readPreventivoDraft();
+      trip = {
+        destination: draft?.destination || "la destinazione",
+        title: draft?.title || "",
+        _draftOnly: true,
+      };
+    }
+    magicTripCache = { ...(magicTripCache || {}), ...trip };
     const lang = languageForDestination(trip.destination);
     const phrases = PHRASEBOOK[lang.code] || PHRASEBOOK.en;
     const [src, dst] = lang.pair.split("|");
 
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("lingua")}
-        <h3>Lingua di viaggio</h3>
-        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination)}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
+        <h3>${AI_NAME} · Lingua</h3>
+        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination || "il viaggio")}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
       </div>
       <div class="pv-panel-body">
         <div id="pv-phrases"></div>
@@ -2005,6 +2275,7 @@ Regole pv-places:
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const phraseHost = panel.querySelector("#pv-phrases");
     for (const [local, it] of phrases) {
       const btn = document.createElement("button");
@@ -2018,9 +2289,6 @@ Regole pv-places:
       };
       phraseHost.appendChild(btn);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
 
     let tIt = 0;
     let tLocal = 0;
