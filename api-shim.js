@@ -1,7 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019f — share snapshots: Netlify Blobs first, then bytebin; refuse copy without s=.
+ * v=20261019g — live flight/stay search via /api/search; share via Blobs + bytebin.
  */
 (() => {
   const TRIPS_BASE =
@@ -872,7 +872,7 @@
     return { places: (filtered.length ? filtered : places).slice(0, 8) };
   }
 
-  async function fetchTripsCandidate(target, init) {
+  async function fetchTripsCandidate(target, init, timeoutMs = PER_TRY_MS) {
     const ctrl = new AbortController();
     const externalAbort = () => ctrl.abort();
     if (init.signal) {
@@ -882,14 +882,14 @@
     try {
       const res = await Promise.race([
         originalFetch(target, { ...init, signal: ctrl.signal }),
-        wallTimeout(PER_TRY_MS, "proxy-timeout"),
+        wallTimeout(timeoutMs, "proxy-timeout"),
       ]);
       if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
       // Accept 2xx/4xx JSON from the CORS proxy; only hard-fail transport/5xx/HTML.
       if (res.status >= 500) throw new Error(`upstream-${res.status}`);
       const ct = String(res.headers.get("content-type") || "").toLowerCase();
       if (ct.includes("text/html")) throw new Error("html-error");
-      if (!ct.includes("json")) {
+      if (!ct.includes("json") && res.status !== 204) {
         const peek = await res.clone().text();
         const trimmed = peek.trim();
         if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) throw new Error("not-json");
@@ -903,15 +903,20 @@
   async function remoteTrips(suffix, init) {
     // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
-    const candidates = onGitHubPages
-      ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
-      : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
+    const isSearch = String(suffix || "").startsWith("/search");
+    // Live flight/stay search can take 15–40s; skip dead tunnel fallbacks.
+    const candidates = isSearch
+      ? [`${NETLIFY_API}/api${suffix}`]
+      : onGitHubPages
+        ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
+        : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
+    const timeoutMs = isSearch ? 55000 : PER_TRY_MS;
 
     // Try sequentially so a CORS-blocked candidate does not race-win as rejection noise.
     let lastErr;
     for (const target of candidates) {
       try {
-        return await fetchTripsCandidate(target, init);
+        return await fetchTripsCandidate(target, init, timeoutMs);
       } catch (err) {
         lastErr = err;
       }
