@@ -7,8 +7,9 @@
 (() => {
   const STYLE_ID = "pv-preventivo-css";
   const ROOT_ID = "pv-preventivo-root";
-  const STORE_KEY = "viavia-preventivo-v1";
-  const VERSION = "20260920g";
+  const STORE_KEY = "viavia-preventivo-v2";
+  const STORE_KEY_LEGACY = "viavia-preventivo-v1";
+  const VERSION = "20261019a";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -277,7 +278,24 @@
 
   function readStore() {
     try {
-      const raw = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+      let raw = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+      if (!raw || typeof raw !== "object") {
+        // One-time migrate / drop corrupt v1 drafts that wiped title/destination.
+        const legacy = JSON.parse(localStorage.getItem(STORE_KEY_LEGACY) || "null");
+        if (legacy && typeof legacy === "object") {
+          raw = {};
+          for (const [id, slot] of Object.entries(legacy)) {
+            if (slot?.params && !paramsLookBroken(slot.params)) raw[id] = slot;
+          }
+          try {
+            localStorage.removeItem(STORE_KEY_LEGACY);
+          } catch {
+            /* ignore */
+          }
+        } else {
+          raw = {};
+        }
+      }
       return raw && typeof raw === "object" ? raw : {};
     } catch {
       return {};
@@ -518,13 +536,44 @@
     ];
   }
 
+  function mergeParams(savedParams) {
+    const base = structuredClone(DEFAULT_PARAMS);
+    if (!savedParams || typeof savedParams !== "object") return base;
+    for (const [key, val] of Object.entries(savedParams)) {
+      if (key === "prefs" && val && typeof val === "object") {
+        base.prefs = { ...base.prefs, ...val };
+        continue;
+      }
+      if (val == null) continue;
+      if (typeof val === "string" && !val.trim()) continue; // never wipe defaults with ""
+      if (Array.isArray(val) && val.length === 0) continue;
+      base[key] = val;
+    }
+    // Critical fields must never stay blank in the UI.
+    for (const key of ["title", "destination", "departureCity", "airportIn", "start", "end", "currency"]) {
+      if (!String(base[key] || "").trim()) base[key] = DEFAULT_PARAMS[key];
+    }
+    if (!Array.isArray(base.airportsOut) || !base.airportsOut.length) {
+      base.airportsOut = [...DEFAULT_PARAMS.airportsOut];
+    }
+    const travelers = Number(base.travelers);
+    base.travelers = Number.isFinite(travelers) && travelers > 0 ? travelers : DEFAULT_PARAMS.travelers;
+    return base;
+  }
+
+  function paramsLookBroken(params) {
+    if (!params) return true;
+    return !String(params.title || "").trim() || !String(params.destination || "").trim() || !String(params.airportIn || "").trim();
+  }
+
   function initWorkingState(tripId, saved) {
     state.tripId = tripId;
-    state.params = saved?.params ? { ...DEFAULT_PARAMS, ...saved.params, prefs: { ...DEFAULT_PARAMS.prefs, ...(saved.params.prefs || {}) } } : structuredClone(DEFAULT_PARAMS);
+    const useSaved = saved?.params && !paramsLookBroken(saved.params);
+    state.params = mergeParams(useSaved ? saved.params : null);
     state.scenario = saved?.scenario || "economico";
-    state.lines = saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
-    state.flightNotes = saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
-    state.stayConfigs = saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs(state.params);
+    state.lines = useSaved && saved?.lines?.length ? saved.lines : defaultBudgetLines(state.params, state.scenario);
+    state.flightNotes = useSaved && saved?.flightNotes?.length ? saved.flightNotes : defaultFlightRows(state.params);
+    state.stayConfigs = useSaved && saved?.stayConfigs?.length ? saved.stayConfigs : defaultStayConfigs(state.params);
     state.transport = saved?.transport || { strategy: "A", notes: "" };
     state.sources = saved?.sources?.length ? saved.sources : defaultSources();
     state.safety = saved?.safety || { weather: null, fetchedAt: "" };
@@ -836,19 +885,48 @@
     if (open) render();
   }
 
+  async function hydrateParamsFromOpenTrip() {
+    try {
+      const packed = await loadTripRecord();
+      if (!packed?.data?.trip) return false;
+      const trip = packed.data.trip;
+      const next = mergeParams({
+        title: trip.title,
+        destination: trip.destination,
+        start: trip.start,
+        end: trip.end,
+        travelers: Array.isArray(trip.members) && trip.members.length ? trip.members.length : state.params.travelers,
+      });
+      state.params = next;
+      persistState();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function openPreventivo() {
     ensureStyles();
     const auth = tripAuth();
     if (auth) {
-      const saved = loadStateForTrip(auth.id) || loadStateForTrip(DRAFT_KEY);
-      initWorkingState(auth.id, saved);
-      state.status = saved ? "Preventivo caricato dal dispositivo." : "Nuovo preventivo sul viaggio aperto.";
+      const saved = loadStateForTrip(auth.id);
+      const usable = saved && !paramsLookBroken(saved.params);
+      initWorkingState(auth.id, usable ? saved : null);
+      if (!usable) {
+        const fromTrip = await hydrateParamsFromOpenTrip();
+        state.status = fromTrip
+          ? "Parametri presi dal viaggio aperto."
+          : "Preventivo pronto con preset Islanda (bozza precedente vuota ignorata).";
+      } else {
+        state.status = "Preventivo caricato dal dispositivo.";
+      }
     } else {
       const draft = loadStateForTrip(DRAFT_KEY);
-      initWorkingState("", draft);
-      state.status = draft
-        ? "Bozza locale caricata. Crea il viaggio per collegarla a Pronti? VIA!."
-        : "Nessun viaggio aperto: puoi creare «Islanda — Avventura invernale 2027».";
+      const usable = draft && !paramsLookBroken(draft.params);
+      initWorkingState("", usable ? draft : null);
+      state.status = usable
+        ? "Bozza locale caricata. Puoi creare il viaggio in Pronti? VIA!."
+        : "Preset Islanda — Avventura invernale 2027. Modifica pure i campi, poi crea il viaggio.";
     }
     setOpen(true);
     if (state.section === "itinerary") setTimeout(() => pushMapPoints(), 400);
@@ -915,15 +993,17 @@
         </div>
         <div class="pv-prev-grid" style="margin-top:10px">
           <label class="pv-field">Aeroporti Milano
-            <input data-param="airportsOut" value="${escapeAttr(p.airportsOut.join(", "))}" />
+            <input data-param="airportsOut" value="${escapeAttr((p.airportsOut || []).join(", "))}" />
           </label>
           <label class="pv-field">Max scali
             <input data-param="maxStops" type="number" min="0" max="2" value="${p.prefs.maxStops}" />
           </label>
         </div>
         <div class="pv-prev-actions">
-          <button type="button" class="primary" data-act="create-trip">Crea viaggio Islanda in Pronti? VIA!</button>
+          <button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
           <button type="button" class="ghost" data-act="save-local">Salva parametri</button>
+          <button type="button" class="ghost" data-act="reset-island-preset">Ripristina preset Islanda</button>
+          <button type="button" class="ghost" data-act="clear-draft">Pulisci bozza salvata</button>
         </div>
         <p class="pv-prev-muted">Preferenze attive: no ostelli · cucina preferita · febbraio winter-safe · confronto trasporti.</p>
       </div>`;
@@ -1334,12 +1414,37 @@
         return;
       }
       if (act === "save-local") {
+        state.params = mergeParams(state.params);
         persistState();
         state.status = "Salvato su questo dispositivo.";
         render();
         return;
       }
+      if (act === "reset-island-preset") {
+        initWorkingState(state.tripId || "", null);
+        persistState();
+        state.status = "Preset Islanda ripristinato.";
+        render();
+        return;
+      }
+      if (act === "clear-draft") {
+        try {
+          const db = readStore();
+          if (state.tripId) delete db[state.tripId];
+          delete db[DRAFT_KEY];
+          writeStore(db);
+          localStorage.removeItem(STORE_KEY_LEGACY);
+        } catch {
+          /* ignore */
+        }
+        initWorkingState(state.tripId || "", null);
+        state.status = "Bozza cancellata. Ricaricato il preset Islanda.";
+        render();
+        return;
+      }
       if (act === "create-trip") {
+        state.params = mergeParams(state.params);
+        persistState();
         state.status = "Creazione viaggio…";
         render();
         await createIcelandTrip();
