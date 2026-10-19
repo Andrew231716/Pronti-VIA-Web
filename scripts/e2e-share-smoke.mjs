@@ -156,7 +156,12 @@ try {
       title: document.body.innerText.slice(0, 400),
     };
   });
-  ok("local-only detection", banner.isLocal || /dispositivo|locale/i.test(banner.localBanner), JSON.stringify({ isLocal: banner.isLocal, localBanner: banner.localBanner.slice(0, 80) }));
+  // Cloud API should clear local-only; banner only when still local.
+  ok(
+    "cloud trip not local-only",
+    banner.isLocal === false && !banner.localBanner,
+    JSON.stringify({ isLocal: banner.isLocal, localBanner: banner.localBanner.slice(0, 80) })
+  );
   ok(
     "preventivo banner from trip.meta",
     /Preventivo|€|STIMA/i.test(banner.pvBanner),
