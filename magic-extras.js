@@ -3121,8 +3121,8 @@ Regole pv-places:
     if (window.__pvCloudBannerBound) return;
     window.__pvCloudBannerBound = true;
     const ENDPOINTS = [
-      "https://like-success-universities-old.trycloudflare.com/api/trips",
       "https://pronti-via-k7es.netlify.app/api/trips",
+      "https://like-success-universities-old.trycloudflare.com/api/trips",
     ];
     const run = async () => {
       let ok = false;

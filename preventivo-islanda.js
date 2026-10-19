@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019d";
+  const VERSION = "20261019e";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
