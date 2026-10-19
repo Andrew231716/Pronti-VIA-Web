@@ -218,7 +218,11 @@
       revision: record.revision || 1,
       canEdit: record.canEdit !== false,
       updated: record.updated || new Date().toISOString(),
-      local: Boolean(record.local || db[id]?.local),
+      // Explicit cloud sync (local:false) must clear a prior local-only flag.
+      local:
+        record.local === false
+          ? false
+          : Boolean(record.local || db[id]?.local),
     };
     writeLocalTrips(db);
   }
@@ -1017,16 +1021,16 @@
             }
             return withPrivateBudgetResponse(res, tripIdHint);
           }
-          // Proxy miss / validation: prefer durable local copy when present.
-          if (method === "GET" || method === "POST" || res.status >= 500) {
-            try {
-              const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-              if (local.status === 200 || method === "POST") return local;
-            } catch {
-              /* continue */
-            }
+          // Static hosts (GitHub Pages / python -m http.server) return 404 HTML for /api/*.
+          // Fall through to remote cloud API instead of forcing local-only trips.
+          const ct = String(res.headers.get("content-type") || "").toLowerCase();
+          const looksMissing =
+            res.status === 404 ||
+            res.status === 405 ||
+            ct.includes("text/html");
+          if (!looksMissing && res.status < 500) {
+            return withPrivateBudgetResponse(res, tripIdHint);
           }
-          if (res.status < 500) return withPrivateBudgetResponse(res, tripIdHint);
         } catch {
           /* use remote/local fallback */
         }

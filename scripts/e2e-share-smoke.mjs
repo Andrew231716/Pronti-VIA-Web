@@ -26,7 +26,7 @@ try {
   // --- A: guest soft-login on shared hash ---
   const guest = await browser.newPage();
   await guest.goto(`${BASE}?v=e2e#trip=demo-trip&key=demo-key&s=i:e30`, {
-    waitUntil: "networkidle0",
+    waitUntil: "domcontentloaded",
     timeout: 45000,
   });
   await wait(1500);
@@ -51,7 +51,7 @@ try {
 
   // --- B: register, create local trip, banner + share ---
   const page = await browser.newPage();
-  await page.goto(`${BASE}?v=e2e2`, { waitUntil: "networkidle0", timeout: 45000 });
+  await page.goto(`${BASE}?v=e2e2`, { waitUntil: "domcontentloaded", timeout: 45000 });
   await wait(800);
 
   // Fill account gate if present
@@ -140,7 +140,7 @@ try {
   if (!tripId || !tripKey) throw new Error("no trip id/key");
 
   await page.goto(`${BASE}?v=e2e3#trip=${encodeURIComponent(tripId)}&key=${encodeURIComponent(tripKey)}`, {
-    waitUntil: "networkidle0",
+    waitUntil: "domcontentloaded",
     timeout: 45000,
   });
   await wait(2500);
