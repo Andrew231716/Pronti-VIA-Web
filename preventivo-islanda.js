@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019f";
+  const VERSION = "20261019g";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -324,6 +324,10 @@
     sources: [],
     safety: { weather: null, fetchedAt: "" },
     flightFilters: { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" },
+    liveFlights: [],
+    liveStays: [],
+    searchBusy: "",
+    searchMeta: { flights: null, stays: null },
     status: "",
   };
 
@@ -465,6 +469,9 @@
       sources: state.sources,
       safety: state.safety,
       flightFilters: state.flightFilters,
+      liveFlights: state.liveFlights,
+      liveStays: state.liveStays,
+      searchMeta: state.searchMeta,
     };
     writeStore(db);
   }
@@ -659,6 +666,195 @@
     }));
   }
 
+  async function apiSearch(action, body) {
+    const q = `?action=${encodeURIComponent(action)}`;
+    const targets = [
+      `/api/search${q}`,
+      `https://pronti-via-k7es.netlify.app/api/search${q}`,
+    ];
+    let lastErr;
+    for (const url of targets) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Ricerca ${action} non riuscita`);
+        return data;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error(`Ricerca ${action} non riuscita`);
+  }
+
+  async function searchFlightsLive() {
+    state.params = refreshDerivedParams(mergeParams(state.params));
+    const p = state.params;
+    if (!String(p.destination || p.airportIn || "").trim()) {
+      throw new Error("Indica destinazione o aeroporto di arrivo prima di cercare i voli.");
+    }
+    if (!String(p.start || "").trim()) throw new Error("Indica la data di andata.");
+    state.searchBusy = "flights";
+    state.status = "Cerco voli live…";
+    render();
+    // Cap origins to keep Netlify function under timeout (live aggregator is slow).
+    const origins =
+      Array.isArray(p.airportsOut) && p.airportsOut.length
+        ? p.airportsOut.slice(0, 2)
+        : [p.departureCity || "Milano"];
+    const destination = p.airportIn || p.destination;
+    const data = await apiSearch("flights", {
+      origins,
+      destination,
+      departure_date: p.start,
+      return_date: p.end,
+      adults: Math.min(9, Number(p.travelers) || 1),
+      currency: p.currency || "EUR",
+      maxStops: state.flightFilters?.maxStops,
+    });
+    state.liveFlights = Array.isArray(data.flights) ? data.flights : [];
+    state.searchMeta.flights = {
+      fetchedAt: data.fetchedAt || nowIso(),
+      count: data.count || state.liveFlights.length,
+      disclaimer: data.disclaimer || "",
+      query: data.query || {},
+    };
+    if (state.liveFlights[0]?.url) {
+      addSource("Ricerca voli live", state.liveFlights[0].url, "voli");
+    }
+    state.searchBusy = "";
+    state.status =
+      state.liveFlights.length > 0
+        ? `Trovati ${state.liveFlights.length} voli live. Seleziona un’offerta per usarla nel preventivo.`
+        : "Nessun volo live trovato — prova altre date o aeroporti.";
+    persistState();
+    render();
+  }
+
+  async function searchStaysLive() {
+    state.params = refreshDerivedParams(mergeParams(state.params));
+    const p = state.params;
+    if (!String(p.destination || "").trim()) {
+      throw new Error("Indica una destinazione prima di cercare gli alloggi.");
+    }
+    if (!p.start || !p.end) throw new Error("Indica check-in e check-out.");
+    state.searchBusy = "stays";
+    state.status = "Cerco hotel e appartamenti live…";
+    render();
+    const adults = Number(p.travelers) || 2;
+    const data = await apiSearch("stays", {
+      destination: p.destination,
+      startDate: p.start,
+      endDate: p.end,
+      adults,
+      rooms: Math.max(1, Math.ceil(adults / 2)),
+      currency: p.currency || "EUR",
+      nationality: "IT",
+      noHostels: p.prefs?.noHostels !== false,
+      limit: 12,
+    });
+    state.liveStays = Array.isArray(data.stays) ? data.stays : [];
+    state.searchMeta.stays = {
+      fetchedAt: data.fetchedAt || nowIso(),
+      count: data.count || state.liveStays.length,
+      disclaimer: data.disclaimer || "",
+      query: data.query || {},
+    };
+    const region = data.query?.regionName || p.destination;
+    addSource(`Alloggi live · ${region}`, officialLinks(p).booking, "alloggi");
+    state.searchBusy = "";
+    state.status =
+      state.liveStays.length > 0
+        ? `Trovati ${state.liveStays.length} alloggi live a ${region}. Seleziona un’opzione per usarla nel preventivo.`
+        : "Nessun alloggio live trovato — prova altre date o destinazione.";
+    persistState();
+    render();
+  }
+
+  function applyLiveFlight(offer) {
+    if (!offer) return;
+    const travelers = Number(state.params.travelers) || 1;
+    // Recompute group total for the trip party (offer price may be for fewer adults).
+    const offeredAdults = Math.min(9, travelers);
+    const pp = offer.perPersonCents || 0;
+    const row = {
+      id: uid(),
+      from: offer.from,
+      to: offer.to,
+      depart: offer.depart || state.params.start,
+      returnDate: offer.returnDate || state.params.end,
+      stops: String(offer.stops ?? ""),
+      airline: offer.airline || "",
+      totalGroupCents: Math.round(pp * travelers),
+      perPersonCents: pp,
+      bags: offer.bags || "Da verificare",
+      status: "STIMA",
+      groupFareConfirmed: false,
+      source: offer.source || "Live",
+      url: offer.url || "",
+      notes: `${offer.airline || ""} ${Array.isArray(offer.flightNumbers) ? offer.flightNumbers.join("/") : ""} · prezzo live per ${offeredAdults} pax, ricalcolato su ${travelers}`.trim(),
+      live: true,
+    };
+    state.flightNotes = [row, ...state.flightNotes.filter((f) => !f.live)].slice(0, 20);
+    ensureBudgetLines();
+    const flightLine = state.lines.find((l) => l.key === "flights");
+    if (flightLine) {
+      flightLine.unitCents = pp;
+      flightLine.qty = travelers;
+      flightLine.status = "STIMA";
+      flightLine.source = offer.source || "Live voli";
+      flightLine.url = offer.url || "";
+      flightLine.verifiedAt = nowIso();
+    }
+    if (offer.url) addSource(offer.airline || "Volo live", offer.url, "voli");
+    state.status = `Volo ${offer.airline || ""} ${fmtMoney(pp)}/pax applicato al preventivo (STIMA live).`;
+    persistState();
+    render();
+  }
+
+  function applyLiveStay(stay) {
+    if (!stay) return;
+    const travelers = Number(state.params.travelers) || 1;
+    const nights = Number(state.params.nights) || stay.nights || 1;
+    const total = stay.totalCents || 0;
+    const pp = Math.round(total / travelers);
+    const card = {
+      id: "A",
+      title: stay.title,
+      rooms: Math.max(1, Math.ceil(travelers / 2)),
+      baths: Math.max(1, Math.ceil(travelers / 4)),
+      kitchen: /kitchen|cucina|appart/i.test(`${stay.title} ${(stay.amenities || []).join(" ")}`),
+      totalCents: total,
+      status: "STIMA",
+      source: stay.source || "Live alloggi",
+      url: stay.bookingUrl || stay.url || "",
+      notes: `${stay.address || ""} · ${nights} notti · ${stay.starRating != null ? `${stay.starRating}★` : "classe n/d"}`.trim(),
+      live: true,
+      hotelId: stay.hotelId,
+    };
+    const rest = state.stayConfigs.filter((s) => s.id !== "A");
+    state.stayConfigs = [card, ...rest];
+    ensureBudgetLines();
+    const stayLine = state.lines.find((l) => l.key === "stay");
+    if (stayLine) {
+      stayLine.unitCents = pp;
+      stayLine.qty = travelers;
+      stayLine.title = `Alloggi (${nights} notti)`;
+      stayLine.status = "STIMA";
+      stayLine.source = stay.source || "Live alloggi";
+      stayLine.url = card.url;
+      stayLine.verifiedAt = nowIso();
+    }
+    if (card.url) addSource(stay.title, card.url, "alloggi");
+    state.status = `Alloggio «${stay.title}» ${fmtMoney(total)} totale applicato al preventivo (STIMA live).`;
+    persistState();
+    render();
+  }
+
   function defaultSources(params = state.params) {
     const links = officialLinks(params);
     const base = [
@@ -743,6 +939,10 @@
     state.sources = saved?.sources?.length ? saved.sources : defaultSources(state.params);
     state.safety = saved?.safety || { weather: null, fetchedAt: "" };
     state.flightFilters = saved?.flightFilters || { maxPricePp: "", maxStops: "1", airport: "all", bags: "any" };
+    state.liveFlights = saved?.liveFlights || [];
+    state.liveStays = saved?.liveStays || [];
+    state.searchMeta = saved?.searchMeta || { flights: null, stays: null };
+    state.searchBusy = "";
     state.section = "overview";
   }
 
@@ -1423,48 +1623,70 @@
     const maxStops = ff.maxStops === "" || ff.maxStops == null ? null : Number(ff.maxStops);
     const airport = ff.airport || "all";
     const bags = ff.bags || "any";
+    const busy = state.searchBusy === "flights";
+    const liveFiltered = (state.liveFlights || []).filter((f) => {
+      if (airport !== "all" && f.from !== airport) return false;
+      if (maxPrice != null && Number.isFinite(maxPrice) && maxPrice > 0 && (f.perPersonCents || 0) / 100 > maxPrice)
+        return false;
+      if (maxStops != null && Number.isFinite(maxStops) && Number(f.stops) > maxStops) return false;
+      if (bags === "included" && !/cabin|bag|inclus|piece/i.test(String(f.bags || ""))) return false;
+      return true;
+    });
+    const liveRows = liveFiltered
+      .map(
+        (f) => `<tr>
+        <td><strong>${escapeHtml(f.airline || "—")}</strong><br/><span class="pv-prev-muted">${escapeHtml(f.from)}→${escapeHtml(f.to)} · ${escapeHtml(f.departTime || "")}</span></td>
+        <td>${f.isDirect || Number(f.stops) === 0 ? "Diretto" : `${escapeHtml(String(f.stops))} scalo/i`}</td>
+        <td>${escapeHtml(f.bags || "—")}</td>
+        <td><strong>${fmtMoney(f.perPersonCents)}</strong></td>
+        <td>${fmtMoney(f.totalGroupCents)}</td>
+        <td><span class="pv-badge STIMA">LIVE</span></td>
+        <td>
+          <button type="button" class="primary" data-apply-flight="${escapeAttr(f.id)}" style="padding:6px 10px;font-size:12px">Usa</button>
+          ${f.url ? `<a href="${escapeAttr(f.url)}" target="_blank" rel="noopener">Apri</a>` : ""}
+        </td>
+      </tr>`
+      )
+      .join("");
     const filtered = state.flightNotes.filter((f) => {
       if (airport !== "all" && f.from !== airport) return false;
       if (maxPrice != null && Number.isFinite(maxPrice) && maxPrice > 0 && (f.perPersonCents || 0) > 0 && f.perPersonCents / 100 > maxPrice)
         return false;
       if (maxStops != null && Number.isFinite(maxStops)) {
-        const stopsNum = String(f.stops || "").includes("0") && !String(f.stops).includes("1") ? 0 : Number(String(f.stops).replace(/[^0-9]/g, "") || 99);
-        // "0-1" means up to 1 — keep if filter allows
         const declared = String(f.stops || "");
         if (declared.includes("-")) {
           const hi = Number(declared.split("-").pop());
           if (Number.isFinite(hi) && hi > maxStops) return false;
-        } else if (Number.isFinite(stopsNum) && stopsNum > maxStops) return false;
+        } else {
+          const stopsNum = Number(String(f.stops).replace(/[^0-9]/g, "") || 99);
+          if (Number.isFinite(stopsNum) && stopsNum > maxStops) return false;
+        }
       }
-      if (bags === "included" && !/inclus|incl|si|sì|yes/i.test(String(f.bags || ""))) return false;
+      if (bags === "included" && !/inclus|incl|si|sì|yes|cabin|bag/i.test(String(f.bags || ""))) return false;
       return true;
     });
     const rows = filtered
       .map(
         (f) => `<tr>
-        <td>${escapeHtml(f.from)}→${escapeHtml(f.to)}</td>
+        <td>${escapeHtml(f.from)}→${escapeHtml(f.to)}${f.airline ? `<br/><span class="pv-prev-muted">${escapeHtml(f.airline)}</span>` : ""}</td>
         <td>${escapeHtml(f.stops)}</td>
         <td>${escapeHtml(f.bags || "—")}</td>
         <td><input data-flight="${f.id}" data-k="perPersonCents" type="number" step="1" min="0" value="${Math.round((f.perPersonCents || 0) / 100)}" style="width:90px" /> €/pax</td>
         <td><input data-flight="${f.id}" data-k="totalGroupCents" type="number" step="1" min="0" value="${Math.round((f.totalGroupCents || 0) / 100)}" style="width:100px" /> € gruppo</td>
-        <td><span class="pv-badge ${f.groupFareConfirmed ? "VERIFICATO" : "WARN"}">${f.groupFareConfirmed ? "gruppo ok" : "gruppo non confermato"}</span></td>
-        <td><a href="${escapeAttr(f.url)}" target="_blank" rel="noopener">Apri ricerca</a></td>
+        <td><span class="pv-badge ${f.groupFareConfirmed ? "VERIFICATO" : f.live ? "STIMA" : "WARN"}">${f.groupFareConfirmed ? "gruppo ok" : f.live ? "live" : "gruppo non confermato"}</span></td>
+        <td>${f.url ? `<a href="${escapeAttr(f.url)}" target="_blank" rel="noopener">Apri</a>` : "—"}</td>
       </tr>`
       )
       .join("");
-    const airportOpts = ["all", ...state.params.airportsOut]
+    const airportOpts = ["all", ...(state.params.airportsOut || [])]
       .map((a) => `<option value="${escapeAttr(a)}" ${airport === a ? "selected" : ""}>${a === "all" ? "Tutti" : a}</option>`)
       .join("");
+    const meta = state.searchMeta?.flights;
     return `
       <div class="pv-prev-card">
         <h2>Voli per ${state.params.travelers} adulti</h2>
-        <p>Ricerca A/R ${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)}. Non moltiplicare un prezzo single × ${state.params.travelers} senza conferma disponibilità.</p>
-        <p class="pv-callout">Fonti consigliate:
-        <a href="${escapeAttr(currentOfficial().googleFlights)}" target="_blank" rel="noopener">Google Flights</a>,
-        <a href="${escapeAttr(currentOfficial().kayak)}" target="_blank" rel="noopener">Kayak</a>,
-        <a href="${escapeAttr(currentOfficial().easyjet)}" target="_blank" rel="noopener">easyJet</a>,
-        <a href="${escapeAttr(currentOfficial().ryanair)}" target="_blank" rel="noopener">Ryanair</a>,
-        <a href="${escapeAttr(currentOfficial().wizz)}" target="_blank" rel="noopener">Wizz Air</a>.</p>
+        <p>Ricerca A/R reale ${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)} da ${(state.params.airportsOut || []).join(", ") || "—"} verso ${escapeHtml(state.params.airportIn || state.params.destination || "—")}.</p>
+        <p class="pv-callout">La ricerca live interroga aggregatori in tempo reale. I prezzi scadono in pochi minuti: conferma sempre sul link di prenotazione, soprattutto per gruppi.</p>
         <div class="pv-prev-grid">
           <label class="pv-field">Max €/pax (filtro)
             <input data-ff="maxPricePp" type="number" min="0" step="1" value="${escapeAttr(ff.maxPricePp ?? "")}" placeholder="es. 350" />
@@ -1482,30 +1704,64 @@
           <label class="pv-field">Bagagli
             <select data-ff="bags">
               <option value="any" ${bags === "any" ? "selected" : ""}>Qualsiasi</option>
-              <option value="included" ${bags === "included" ? "selected" : ""}>Inclusi (testo)</option>
+              <option value="included" ${bags === "included" ? "selected" : ""}>Con bagaglio (testo)</option>
             </select>
           </label>
         </div>
-        <div style="overflow:auto;margin-top:10px">
+        <div class="pv-prev-actions">
+          <button type="button" class="primary" data-act="search-flights" ${busy ? "disabled" : ""}>${busy ? "Ricerca in corso…" : "Cerca voli live"}</button>
+          <a class="ghost" style="display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid #b7d0d0;text-decoration:none;color:#184047;font:600 12px inherit" href="${escapeAttr(currentOfficial().googleFlights)}" target="_blank" rel="noopener">Google Flights</a>
+          <a class="ghost" style="display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;border:1px solid #b7d0d0;text-decoration:none;color:#184047;font:600 12px inherit" href="${escapeAttr(currentOfficial().kayak)}" target="_blank" rel="noopener">Kayak</a>
+        </div>
+        ${meta?.fetchedAt ? `<p class="pv-prev-muted">Ultima ricerca live: ${escapeHtml(meta.fetchedAt)} · ${meta.count || 0} risultati</p>` : ""}
+        <h2 style="margin-top:16px;font-size:1rem">Risultati live</h2>
+        <div style="overflow:auto;margin-top:8px">
+          <table>
+            <thead><tr><th>Volo</th><th>Scali</th><th>Bagagli</th><th>€/pax</th><th>Totale offerta</th><th>Stato</th><th></th></tr></thead>
+            <tbody>${liveRows || `<tr><td colspan="7">${busy ? "Ricerca in corso…" : "Premi «Cerca voli live» per prezzi reali."}</td></tr>`}</tbody>
+          </table>
+        </div>
+        <h2 style="margin-top:16px;font-size:1rem">Selezione / note nel preventivo</h2>
+        <div style="overflow:auto;margin-top:8px">
           <table>
             <thead><tr><th>Rotta</th><th>Scali</th><th>Bagagli</th><th>Rif. /pax</th><th>Totale gruppo</th><th>Stato</th><th>Link</th></tr></thead>
-            <tbody>${rows || `<tr><td colspan="7">Nessuna riga con i filtri attuali. Inserisci prezzi dopo verifica sulle compagnie.</td></tr>`}</tbody>
+            <tbody>${rows || `<tr><td colspan="7">Nessuna offerta ancora applicata.</td></tr>`}</tbody>
           </table>
         </div>
         <div class="pv-prev-actions">
           <button type="button" class="primary" data-act="save-local">Salva voli</button>
         </div>
-        <p class="pv-prev-muted">Se il totale di gruppo non è confermato, lascia «gruppo non confermato» e usa il link compagnia. Il prezzo individuale è solo riferimento.</p>
+        <p class="pv-prev-muted">«Usa» copia il prezzo live nel budget come STIMA. Per gruppi grandi verifica disponibilità sul sito di prenotazione.</p>
       </div>`;
   }
 
   function staysHtml() {
+    const busy = state.searchBusy === "stays";
+    const nights = state.params.nights || 7;
+    const liveCards = (state.liveStays || [])
+      .map(
+        (s) => `<div class="pv-prev-card" style="display:grid;gap:8px;grid-template-columns:96px 1fr">
+        <div style="width:96px;height:72px;border-radius:10px;overflow:hidden;background:#e7f2f2">
+          ${s.image ? `<img src="${escapeAttr(s.image)}" alt="" style="width:100%;height:100%;object-fit:cover" loading="lazy" />` : ""}
+        </div>
+        <div>
+          <h2 style="font-size:1rem;margin:0 0 4px">${escapeHtml(s.title)} <span class="pv-badge STIMA">LIVE</span></h2>
+          <p class="pv-prev-muted" style="margin:0 0 6px">${escapeHtml(s.address || "")}${s.starRating != null ? ` · ${s.starRating}★` : ""}${s.distanceKm != null ? ` · ${Number(s.distanceKm).toFixed(1)} km` : ""}</p>
+          <p style="margin:0 0 8px"><strong>${fmtMoney(s.totalCents)}</strong> / ${nights} notti · ${fmtMoney(s.nightlyCents)}/notte · ${fmtMoney(state.params.travelers ? Math.round(s.totalCents / state.params.travelers) : 0)}/pax</p>
+          <div class="pv-prev-actions" style="margin:0">
+            <button type="button" class="primary" data-apply-stay="${escapeAttr(s.id)}">Usa nel preventivo</button>
+            ${s.url || s.bookingUrl ? `<a href="${escapeAttr(s.bookingUrl || s.url)}" target="_blank" rel="noopener">Apri scheda</a>` : ""}
+          </div>
+        </div>
+      </div>`
+      )
+      .join("");
     const cards = state.stayConfigs
       .map(
         (s) => `<div class="pv-prev-card">
         <h2>${escapeHtml(s.title)} <span class="pv-badge ${escapeAttr(s.status)}">${escapeHtml(s.status)}</span></h2>
         <div class="pv-prev-grid">
-          <label class="pv-field">Totale 7 notti (€)<input data-stay="${s.id}" data-k="totalEuros" type="number" min="0" step="1" value="${Math.round((s.totalCents || 0) / 100)}" /></label>
+          <label class="pv-field">Totale ${nights} notti (€)<input data-stay="${s.id}" data-k="totalEuros" type="number" min="0" step="1" value="${Math.round((s.totalCents || 0) / 100)}" /></label>
           <label class="pv-field">Camere<input data-stay="${s.id}" data-k="rooms" type="number" min="0" value="${s.rooms || 0}" /></label>
           <label class="pv-field">Bagni<input data-stay="${s.id}" data-k="baths" type="number" min="0" value="${s.baths || 0}" /></label>
           <label class="pv-field">Cucina
@@ -1513,17 +1769,29 @@
           </label>
         </div>
         <p class="pv-prev-muted">${escapeHtml(s.notes || "")}</p>
-        <p>${s.url ? `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">Apri ricerca</a>` : "Aggiungi URL fonte"} · Per persona: <strong>${fmtMoney(state.params.travelers ? Math.round((s.totalCents || 0) / state.params.travelers) : 0)}</strong></p>
+        <p>${s.url ? `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener">Apri scheda / ricerca</a>` : "Aggiungi URL fonte"} · Per persona: <strong>${fmtMoney(state.params.travelers ? Math.round((s.totalCents || 0) / state.params.travelers) : 0)}</strong></p>
       </div>`
       )
       .join("");
+    const meta = state.searchMeta?.stays;
+    const region = meta?.query?.regionName || state.params.destination || "destinazione";
     return `
       <div class="pv-prev-card">
-        <h2>Alloggi — niente ostelli</h2>
-        <p>Confronta A/B/C/D. Non segnare disponibile finché non hai verificato capienza reale per ${state.params.travelers} adulti.</p>
+        <h2>Alloggi live — hotel e case</h2>
+        <p>Ricerca reale su ${escapeHtml(region)} per ${state.params.travelers} adulti, ${nights} notti (${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)}). ${state.params.prefs?.noHostels !== false ? "Ostelli esclusi." : ""}</p>
+        <p class="pv-callout">Oltre ai risultati live puoi aprire
+          <a href="${escapeAttr(currentOfficial().booking)}" target="_blank" rel="noopener">Booking</a> e
+          <a href="${escapeAttr(currentOfficial().airbnb)}" target="_blank" rel="noopener">Airbnb</a>
+          con le stesse date/ospiti.</p>
+        <div class="pv-prev-actions">
+          <button type="button" class="primary" data-act="search-stays" ${busy ? "disabled" : ""}>${busy ? "Ricerca in corso…" : "Cerca hotel e case live"}</button>
+          <button type="button" class="ghost" data-act="save-local">Salva alloggi</button>
+        </div>
+        ${meta?.fetchedAt ? `<p class="pv-prev-muted">Ultima ricerca: ${escapeHtml(meta.fetchedAt)} · ${meta.count || 0} risultati</p>` : ""}
       </div>
-      ${cards}
-      <div class="pv-prev-actions"><button type="button" class="primary" data-act="save-local">Salva alloggi</button></div>`;
+      ${liveCards || `<div class="pv-prev-card"><p class="pv-prev-muted">${busy ? "Ricerca in corso…" : "Premi «Cerca hotel e case live» per prezzi e disponibilità reali."}</p></div>`}
+      <div class="pv-prev-card"><h2>Selezione nel preventivo</h2><p class="pv-prev-muted">Le opzioni sotto restano modificabili a mano dopo aver applicato un risultato live.</p></div>
+      ${cards}`;
   }
 
   function transportHtml() {
@@ -1767,6 +2035,20 @@
     root.querySelectorAll("[data-act]").forEach((btn) => {
       btn.addEventListener("click", () => void onAction(btn.getAttribute("data-act")));
     });
+    root.querySelectorAll("[data-apply-flight]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-apply-flight");
+        const offer = (state.liveFlights || []).find((f) => f.id === id);
+        applyLiveFlight(offer);
+      });
+    });
+    root.querySelectorAll("[data-apply-stay]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-apply-stay");
+        const stay = (state.liveStays || []).find((s) => s.id === id);
+        applyLiveStay(stay);
+      });
+    });
     root.querySelectorAll("[data-param]").forEach((el) => {
       el.addEventListener("change", () => {
         const key = el.getAttribute("data-param");
@@ -1891,6 +2173,9 @@
         state.stayConfigs = defaultStayConfigs(state.params);
         state.sources = defaultSources(state.params);
         state.transport = { strategy: "A", notes: "" };
+        state.liveFlights = [];
+        state.liveStays = [];
+        state.searchMeta = { flights: null, stays: null };
         persistState();
         state.status = "Caricato esempio Islanda (opzionale). Puoi modificarlo o tornare al vuoto.";
         render();
@@ -1943,6 +2228,14 @@
         render();
         return;
       }
+      if (act === "search-flights") {
+        await searchFlightsLive();
+        return;
+      }
+      if (act === "search-stays") {
+        await searchStaysLive();
+        return;
+      }
       if (act === "fetch-safety") {
         state.status = "Scarico clima…";
         render();
@@ -1968,6 +2261,7 @@
         return;
       }
     } catch (err) {
+      state.searchBusy = "";
       state.status = err?.message || "Operazione non riuscita";
       render();
     }

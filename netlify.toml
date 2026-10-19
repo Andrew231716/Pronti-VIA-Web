@@ -6,6 +6,10 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[functions.search]
+  # Live aggregator + hotel polling needs a longer window than default.
+  timeout = 26
+
 [[redirects]]
   from = "/api/account"
   to = "/.netlify/functions/account"
@@ -51,6 +55,18 @@
 [[redirects]]
   from = "/api/share/*"
   to = "/.netlify/functions/share/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/search"
+  to = "/.netlify/functions/search"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/search/*"
+  to = "/.netlify/functions/search"
   status = 200
   force = true
 
