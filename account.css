@@ -204,6 +204,11 @@ body.pv-account-ready {
   cursor: pointer;
 }
 
+#pv-account-chip #pv-account-delete {
+  background: #f3e4e2;
+  color: #7a2e28;
+}
+
 .share-inputs {
   display: flex;
   align-items: center;

@@ -185,6 +185,7 @@ function ensureUi() {
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
     <button type="button" id="pv-account-logout">Esci</button>
+    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina</button>
   `;
   document.body.appendChild(chip);
 
@@ -194,6 +195,7 @@ function ensureUi() {
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
   chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
+  chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
 }
 
 function setMode(mode) {
@@ -359,6 +361,87 @@ async function onLogout() {
   showGate();
   location.hash = "";
   location.reload();
+}
+
+function wipeLocalUser(username) {
+  const users = readUsers();
+  const key = normalizeUsername(username);
+  if (users[key]) {
+    delete users[key];
+    writeUsers(users);
+  }
+}
+
+async function onDeleteAccount() {
+  const username = state.user?.username || "";
+  if (!username) return;
+  const ok = window.confirm(
+    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+  );
+  if (!ok) return;
+  const password = window.prompt("Conferma con la password dell’account:");
+  if (password == null) return;
+  if (!String(password).trim()) {
+    window.alert("Password obbligatoria per eliminare l’account.");
+    return;
+  }
+  try {
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("delete-account", {
+        token: state.token,
+        body: { username, password },
+      });
+    } else {
+      // Local-only account: verify password then wipe.
+      await loginLocal(username, password);
+    }
+  } catch (err) {
+    // Still try cloud delete if local verify failed but cloud may have the account.
+    try {
+      await api("delete-account", {
+        token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+        body: { username, password },
+      });
+    } catch (cloudErr) {
+      window.alert(cloudErr.message || err.message || "Eliminazione non riuscita.");
+      return;
+    }
+  }
+  wipeLocalUser(username);
+  try {
+    localStorage.removeItem("viavia-preventivo-v2");
+    localStorage.removeItem("viavia-preventivo-v1");
+  } catch {
+    /* ignore */
+  }
+  state.token = null;
+  state.user = null;
+  writeSession(null);
+  window.alert("Account eliminato.");
+  showGate();
+  location.hash = "";
+  location.reload();
+}
+
+/** One-shot: remove stale local copy of deleted cloud usernames. */
+function purgeKnownDeletedLocalUsers() {
+  try {
+    const users = readUsers();
+    let changed = false;
+    for (const name of ["andrea"]) {
+      if (users[name]) {
+        delete users[name];
+        changed = true;
+      }
+    }
+    if (changed) writeUsers(users);
+    const session = readSession();
+    if (session?.user?.username && normalizeUsername(session.user.username) === "andrea") {
+      writeSession(null);
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function activateSession(data, { bootApp = true } = {}) {
@@ -534,6 +617,7 @@ function makeGuestSession() {
 
 async function boot() {
   ensureUi();
+  purgeKnownDeletedLocalUsers();
   const session = readSession();
   if (!session?.user?.username) {
     // Shared trip links should open without forcing registration.
