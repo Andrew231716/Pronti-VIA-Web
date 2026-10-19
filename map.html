@@ -61,7 +61,9 @@
         showFallback("Leaflet assente");
         return;
       }
-      const map = L.map("map", { scrollWheelZoom: false }).setView([37, 19], 4);
+      const DEFAULT_VIEW = [41.9, 12.5];
+      const DEFAULT_ZOOM = 4;
+      const map = L.map("map", { scrollWheelZoom: false }).setView(DEFAULT_VIEW, DEFAULT_ZOOM);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution:
@@ -71,6 +73,20 @@
       let pick = false;
       let route = null;
       const fallbackColors = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545"];
+
+      function applyDestinationCenter(dest) {
+        const d = String(dest || "").toLowerCase();
+        if (/islanda|iceland|reykjav|keflav/.test(d)) {
+          map.setView([64.8, -18.7], 6);
+          return true;
+        }
+        if (/roma|italy|italia/.test(d)) {
+          map.setView([41.9, 12.5], 6);
+          return true;
+        }
+        return false;
+      }
+
       addEventListener("message", (e) => {
         if (e.source !== parent || e.origin !== location.origin || e.data?.type !== "viavia-map") return;
         layers.clearLayers();
@@ -107,6 +123,8 @@
             pts.map((p) => [p.lat, p.lng]),
             { padding: [30, 30], maxZoom: 13 }
           );
+        } else if (e.data.destination) {
+          applyDestinationCenter(e.data.destination);
         }
         map.invalidateSize();
       });

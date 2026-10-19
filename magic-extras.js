@@ -2266,7 +2266,7 @@ Regole pv-places:
   }
 
   function ensureMapIframe() {
-    const MAP_VER = "20260918b";
+    const MAP_VER = "20261019c";
     const iframes = [...document.querySelectorAll('iframe[src*="map.html"]')];
     for (const iframe of iframes) {
       try {
@@ -2859,7 +2859,16 @@ Regole pv-places:
           color: DAY_COLORS[(dayIndex[s.day] ?? days.length) % DAY_COLORS.length],
           day: s.day || "",
         }));
-      iframe.contentWindow.postMessage({ type: "viavia-map", points, selected: null, pick: false }, location.origin);
+      iframe.contentWindow.postMessage(
+        {
+          type: "viavia-map",
+          points,
+          selected: null,
+          pick: false,
+          destination: data.trip.destination || data.trip.title || "",
+        },
+        location.origin
+      );
     } catch {
       /* ignore */
     }
@@ -3070,39 +3079,77 @@ Regole pv-places:
       root.innerText ||
       "";
     if (!/islanda|iceland|reykjav/i.test(dest)) return;
-    const coastCandidates = [
-      new URL("coast.jpg", location.href).href,
-      new URL("./coast.jpg", location.href).href,
-    ];
-    for (const img of root.querySelectorAll("img")) {
-      const alt = `${img.alt || ""} ${img.src || ""}`;
-      const wrong =
-        /balos|creta|crete|greece|santorini|mykonos/i.test(alt) ||
-        /balos|crete|greece/i.test(img.src || "");
-      if (!wrong && !/cover|hero|banner|coast/i.test(alt + img.className)) continue;
-      if (wrong || /balos/i.test(img.src || "")) {
-        if (!img.dataset.pvIcelandSwap) {
-          img.dataset.pvIcelandSwap = "1";
-          img.dataset.pvPrevSrc = img.src;
-          img.src = coastCandidates[0];
-          img.alt = "Copertina Islanda";
-          img.onerror = () => {
-            if (img.src !== coastCandidates[1]) img.src = coastCandidates[1];
-          };
+    const icelandSrc = new URL("iceland.svg", location.href).href;
+    const heroImgs = [...root.querySelectorAll("img")].filter((img) => {
+      const alt = `${img.alt || ""} ${img.src || ""} ${img.className || ""}`;
+      return (
+        /balos|creta|crete|greece|santorini|mykonos|coast|cover|hero|banner|copertina/i.test(alt) ||
+        /balos|crete|greece|coast\.jpg/i.test(img.src || "") ||
+        (img.width > 400 || img.clientWidth > 400)
+      );
+    });
+    for (const img of heroImgs.slice(0, 2)) {
+      if (img.dataset.pvIcelandSwap === "1" && /iceland\.svg/i.test(img.src || "")) continue;
+      img.dataset.pvIcelandSwap = "1";
+      img.dataset.pvPrevSrc = img.src;
+      img.src = icelandSrc;
+      img.alt = "Copertina Islanda";
+      // Hide stale "Copertina: Balos" credits near the image.
+      const wrap = img.closest("div,section,article,figure") || img.parentElement;
+      if (wrap) {
+        for (const el of wrap.querySelectorAll("small, span, p, figcaption")) {
+          const t = (el.textContent || "").trim();
+          if (/copertina\s*:\s*balos|balos|creta|crete/i.test(t) && t.length < 80) {
+            el.textContent = "Copertina: Islanda";
+          }
         }
         if (!img.dataset.pvIcelandNote) {
           img.dataset.pvIcelandNote = "1";
+          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
           const note = document.createElement("div");
           note.className = "pv-cover-note";
           note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
           note.style.cssText =
             "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
-          const wrap = img.closest("div,section,article") || img.parentElement;
-          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
-          if (wrap) wrap.appendChild(note);
+          wrap.appendChild(note);
         }
       }
     }
+  }
+
+  function injectCloudStatusBanner() {
+    if (window.__pvCloudBannerBound) return;
+    window.__pvCloudBannerBound = true;
+    const NETLIFY = "https://pronti-via-k7es.netlify.app/api/trips";
+    const run = async () => {
+      let ok = false;
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 4000);
+        const res = await fetch(NETLIFY, { method: "GET", signal: ctrl.signal, cache: "no-store" });
+        clearTimeout(t);
+        ok = res.status < 500;
+      } catch {
+        ok = false;
+      }
+      let el = document.getElementById("pv-cloud-status-banner");
+      if (ok) {
+        if (el) el.remove();
+        return;
+      }
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-cloud-status-banner";
+        el.setAttribute("role", "status");
+        el.style.cssText =
+          "position:sticky;top:0;z-index:71;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
+        document.body.prepend(el);
+      }
+      el.textContent =
+        "Cloud temporaneamente non raggiungibile: i viaggi restano su questo dispositivo. Condividi solo dopo aver ottenuto un link con snapshot (s=…).";
+    };
+    void run();
+    setInterval(run, 120000);
   }
 
   function injectPreventivoTripBanner() {
@@ -3184,6 +3231,7 @@ Regole pv-places:
     fixItalianTappeGrammar();
     preferIcelandCover();
     ensureShareToast();
+    injectCloudStatusBanner();
   }
 
   function markPrivateBudgetLabels() {

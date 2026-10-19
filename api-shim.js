@@ -1,7 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019b — share snapshots: Netlify Blobs first, then bytebin; refuse copy without s=.
+ * v=20261019c — share snapshots: Netlify Blobs first, then bytebin; refuse copy without s=.
  */
 (() => {
   const TRIPS_BASE =
