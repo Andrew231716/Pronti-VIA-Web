@@ -1,9 +1,9 @@
 /**
- * Trips API with Supabase proxy + Netlify Blobs fallback.
- * When Supabase is down, Blobs keep create/get/put working for GitHub Pages clients.
+ * Trips API with Supabase proxy + Blobs/file KV fallback.
+ * When Supabase is down, durable store keeps create/get/put working for Pages clients.
  */
-import { getStore } from "@netlify/blobs";
 import { randomBytes, randomUUID } from "node:crypto";
+import { createKv } from "./_store.mjs";
 
 const TRIPS_BASE =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
@@ -27,18 +27,7 @@ function json(status, body) {
   };
 }
 
-function getTripsStore() {
-  const siteID =
-    process.env.SITE_ID || process.env.NETLIFY_SITE_ID || process.env.BLOBS_SITE_ID;
-  const token =
-    process.env.NETLIFY_BLOBS_TOKEN ||
-    process.env.NETLIFY_API_TOKEN ||
-    process.env.BLOBS_TOKEN;
-  if (siteID && token) {
-    return getStore({ name: "pronti-via-trips", siteID, token });
-  }
-  return getStore("pronti-via-trips");
-}
+const tripsKv = createKv("pronti-via-trips");
 
 function tripsPath(event) {
   const candidates = [
@@ -121,8 +110,7 @@ async function proxySupabase(event, path) {
   };
 }
 
-async function blobsHandler(event, path) {
-  const store = getTripsStore();
+async function storeHandler(event, path) {
   const method = event.httpMethod.toUpperCase();
   const parts = path.replace(/^\/trips\/?/, "").split("/").filter(Boolean);
   const id = parts[0] ? decodeURIComponent(parts[0]) : "";
@@ -146,9 +134,9 @@ async function blobsHandler(event, path) {
       trip: { ...trip, budget: typeof trip.budget === "number" ? trip.budget : 0 },
       revision: 1,
       updated: new Date().toISOString(),
-      source: "blobs",
+      source: "store",
     };
-    await store.setJSON(`trip:${newId}`, record);
+    const saved = await tripsKv.setJSON(`trip:${newId}`, record);
     return json(200, {
       id: newId,
       key,
@@ -157,13 +145,13 @@ async function blobsHandler(event, path) {
       revision: 1,
       canEdit: true,
       local: false,
-      source: "blobs",
+      source: saved.backend || "store",
     });
   }
 
   if (!id) return json(404, { error: "Viaggio non trovato." });
 
-  const record = await store.get(`trip:${id}`, { type: "json" });
+  const record = await tripsKv.getJSON(`trip:${id}`);
   if (!record?.trip) return json(404, { error: "Viaggio non trovato." });
 
   const canEdit = token && token === record.key;
@@ -179,7 +167,7 @@ async function blobsHandler(event, path) {
       revision: record.revision || 1,
       canEdit: !!canEdit,
       local: false,
-      source: "blobs",
+      source: "store",
     });
   }
 
@@ -197,9 +185,9 @@ async function blobsHandler(event, path) {
       trip: { ...nextTrip, budget: typeof nextTrip.budget === "number" ? nextTrip.budget : 0 },
       revision: revision + 1,
       updated: new Date().toISOString(),
-      source: "blobs",
+      source: "store",
     };
-    await store.setJSON(`trip:${id}`, updated);
+    await tripsKv.setJSON(`trip:${id}`, updated);
     return json(200, {
       id,
       key: record.key,
@@ -208,7 +196,7 @@ async function blobsHandler(event, path) {
       revision: updated.revision,
       canEdit: true,
       local: false,
-      source: "blobs",
+      source: "store",
     });
   }
 
@@ -231,7 +219,7 @@ export async function handler(event) {
   }
 
   try {
-    return await blobsHandler(event, path);
+    return await storeHandler(event, path);
   } catch (err) {
     return json(502, {
       error: "Proxy viaggi non disponibile.",

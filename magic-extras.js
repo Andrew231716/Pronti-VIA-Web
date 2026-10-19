@@ -3120,17 +3120,26 @@ Regole pv-places:
   function injectCloudStatusBanner() {
     if (window.__pvCloudBannerBound) return;
     window.__pvCloudBannerBound = true;
-    const NETLIFY = "https://pronti-via-k7es.netlify.app/api/trips";
+    const ENDPOINTS = [
+      "https://like-success-universities-old.trycloudflare.com/api/trips",
+      "https://pronti-via-k7es.netlify.app/api/trips",
+    ];
     const run = async () => {
       let ok = false;
-      try {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 4000);
-        const res = await fetch(NETLIFY, { method: "GET", signal: ctrl.signal, cache: "no-store" });
-        clearTimeout(t);
-        ok = res.status < 500;
-      } catch {
-        ok = false;
+      for (const url of ENDPOINTS) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 4000);
+          // GET without id returns 404 from a healthy API, 502 when down.
+          const res = await fetch(url, { method: "GET", signal: ctrl.signal, cache: "no-store" });
+          clearTimeout(t);
+          if (res.status < 500) {
+            ok = true;
+            break;
+          }
+        } catch {
+          /* try next */
+        }
       }
       let el = document.getElementById("pv-cloud-status-banner");
       if (ok) {

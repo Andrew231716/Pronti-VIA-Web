@@ -1,14 +1,15 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019c — share snapshots: Netlify Blobs first, then bytebin; refuse copy without s=.
+ * v=20261019d — share snapshots: Netlify/CF API first, then bytebin; refuse copy without s=.
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-  // Dead CF tunnels removed — they only slowed Promise.any and forced local fallback.
-  const TRIPS_PROXIES = [];
-  const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
+  // Live Cloudflare tunnel while Netlify production is 502 / awaiting auth.
+  // Prefer the working tunnel; keep Netlify as secondary for when credits return.
+  const NETLIFY_API = "https://like-success-universities-old.trycloudflare.com";
+  const TRIPS_PROXIES = ["https://pronti-via-k7es.netlify.app"];
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
   const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
   const SHARE_BLOBS_KEY = "viavia-share-blobs-v1";

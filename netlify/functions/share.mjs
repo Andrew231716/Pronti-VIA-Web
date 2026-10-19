@@ -1,10 +1,10 @@
 /**
- * First-party share snapshots (Netlify Blobs).
+ * First-party share snapshots (Netlify Blobs, else file/memory KV).
  * POST { record } -> { key: "n:<id>" }
  * GET  /api/share/:id -> record JSON
  */
-import { getStore } from "@netlify/blobs";
 import { randomBytes } from "node:crypto";
+import { createKv } from "./_store.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,6 +12,8 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Max-Age": "86400",
 };
+
+const shareKv = createKv("pronti-via-shares");
 
 function json(status, body) {
   return {
@@ -23,19 +25,6 @@ function json(status, body) {
     },
     body: JSON.stringify(body),
   };
-}
-
-function getShareStore() {
-  const siteID =
-    process.env.SITE_ID || process.env.NETLIFY_SITE_ID || process.env.BLOBS_SITE_ID;
-  const token =
-    process.env.NETLIFY_BLOBS_TOKEN ||
-    process.env.NETLIFY_API_TOKEN ||
-    process.env.BLOBS_TOKEN;
-  if (siteID && token) {
-    return getStore({ name: "pronti-via-shares", siteID, token });
-  }
-  return getStore("pronti-via-shares");
 }
 
 function shareIdFromPath(event) {
@@ -68,7 +57,6 @@ export async function handler(event) {
   }
 
   try {
-    const store = getShareStore();
     const method = event.httpMethod.toUpperCase();
 
     if (method === "POST") {
@@ -83,7 +71,7 @@ export async function handler(event) {
         return json(400, { error: "Manca il record del viaggio." });
       }
       const id = randomBytes(9).toString("base64url");
-      await store.setJSON(`share:${id}`, {
+      await shareKv.setJSON(`share:${id}`, {
         ...record,
         publishedAt: new Date().toISOString(),
       });
@@ -93,7 +81,7 @@ export async function handler(event) {
     if (method === "GET") {
       const id = shareIdFromPath(event).replace(/^n:/, "");
       if (!id) return json(400, { error: "Manca l'id dello snapshot." });
-      const record = await store.get(`share:${id}`, { type: "json" });
+      const record = await shareKv.getJSON(`share:${id}`);
       if (!record) return json(404, { error: "Snapshot non trovato o scaduto." });
       return json(200, record);
     }

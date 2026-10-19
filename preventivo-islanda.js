@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019c";
+  const VERSION = "20261019d";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -1092,7 +1092,10 @@
         lng: s.lng,
       })),
     ];
-    iframe.contentWindow.postMessage({ type: "viavia-map", points }, location.origin);
+    iframe.contentWindow.postMessage(
+      { type: "viavia-map", points, destination: state.params.destination || "Islanda" },
+      location.origin
+    );
   }
 
   function sectionHtml() {
