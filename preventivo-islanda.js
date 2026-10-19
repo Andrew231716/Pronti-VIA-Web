@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019a";
+  const VERSION = "20261019b";
 
   const SECTIONS = [
     ["overview", "Panoramica"],
@@ -644,7 +644,8 @@
       expenses: [],
       transfers: [],
       checklist,
-      notes,
+      notes: stampPreventivoNotes(notes),
+      meta: { preventivo: buildPreventivoMeta() },
     };
 
     const res = await fetch("/api/trips", {
@@ -700,6 +701,124 @@
     }
   }
 
+  function buildPreventivoMeta() {
+    ensureBudgetLines();
+    const tot = budgetTotals();
+    return {
+      version: VERSION,
+      updated: nowIso(),
+      scenario: state.scenario,
+      params: {
+        title: state.params.title,
+        destination: state.params.destination,
+        start: state.params.start,
+        end: state.params.end,
+        travelers: state.params.travelers,
+        currency: state.params.currency || "EUR",
+        airportIn: state.params.airportIn,
+        departureCity: state.params.departureCity,
+      },
+      totals: {
+        groupCents: tot.group,
+        perPersonCents: tot.pp,
+        perDayPpCents: tot.perDay,
+        byStatus: tot.byStatus,
+      },
+      lines: (state.lines || []).map((l) => ({
+        id: l.id,
+        title: l.title,
+        status: l.status,
+        totalCents: lineTotal(l),
+        source: l.source || "",
+      })),
+      transport: state.transport || { strategy: "A", notes: "" },
+      flightNotes: (state.flightNotes || []).slice(0, 12).map((f) => ({
+        from: f.from,
+        to: f.to,
+        airline: f.airline || "",
+        stops: f.stops || "",
+        perPersonCents: f.perPersonCents || 0,
+        status: f.status || "DA VERIFICARE",
+        url: f.url || "",
+      })),
+      stayConfigs: (state.stayConfigs || []).map((s) => ({
+        id: s.id,
+        title: s.title,
+        totalCents: s.totalCents || 0,
+        status: s.status || "DA VERIFICARE",
+        notes: s.notes || "",
+      })),
+      sources: (state.sources || []).slice(0, 20).map((s) => ({
+        title: s.title,
+        url: s.url,
+        kind: s.kind || "altro",
+      })),
+    };
+  }
+
+  function applyPreventivoMeta(meta) {
+    if (!meta || typeof meta !== "object") return false;
+    if (meta.params) state.params = mergeParams(meta.params);
+    if (meta.scenario) state.scenario = meta.scenario;
+    if (Array.isArray(meta.lines) && meta.lines.length) {
+      state.lines = meta.lines.map((l) => ({
+        id: l.id || uid(),
+        title: l.title || "Voce",
+        unitCents: Number(l.totalCents) || 0,
+        qty: 1,
+        status: l.status || "STIMA",
+        source: l.source || "",
+        url: l.url || "",
+        verifiedAt: "",
+      }));
+    }
+    if (meta.transport) state.transport = { strategy: "A", notes: "", ...meta.transport };
+    if (Array.isArray(meta.flightNotes) && meta.flightNotes.length) state.flightNotes = meta.flightNotes;
+    if (Array.isArray(meta.stayConfigs) && meta.stayConfigs.length) state.stayConfigs = meta.stayConfigs;
+    if (Array.isArray(meta.sources) && meta.sources.length) {
+      state.sources = meta.sources.map((s) => ({
+        id: uid(),
+        title: s.title || "Fonte",
+        url: s.url || "",
+        kind: s.kind || "altro",
+      }));
+    }
+    return true;
+  }
+
+  async function refreshShareAfterSave(auth) {
+    try {
+      if (auth?.id && auth?.key && typeof window.__pvPrepareShare === "function") {
+        await window.__pvPrepareShare(auth.id, auth.key);
+      }
+    } catch {
+      /* share refresh best-effort */
+    }
+  }
+
+  function stampPreventivoNotes(notes, extra) {
+    const tot = budgetTotals();
+    const stamp = `\n\n[Preventivo ${state.scenario} ${nowIso()}] Totale gruppo ${fmtMoney(tot.group)} · ${fmtMoney(tot.pp)}/pp (include STIMA/DA VERIFICARE).${extra ? " " + extra : ""}`;
+    const cleaned = String(notes || "").replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "");
+    return (cleaned + stamp).slice(0, 4000);
+  }
+
+  async function syncPreventivoIntoTrip() {
+    const packed = await loadTripRecord();
+    if (!packed) throw new Error("Apri un viaggio per sincronizzare il preventivo");
+    const { auth, data } = packed;
+    const trip = { ...data.trip };
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes);
+    persistState();
+    const saved = await saveTripRecord(auth, trip, data.revision);
+    await refreshShareAfterSave(auth);
+    state.status = "Preventivo scritto nel viaggio (viaggia con il link di condivisione).";
+    return saved;
+  }
+
   async function syncItineraryToTrip() {
     const packed = await loadTripRecord();
     if (!packed) throw new Error("Apri un viaggio per sincronizzare");
@@ -723,8 +842,13 @@
       });
     }
     trip.stops = [...(trip.stops || []), ...add].slice(0, 500);
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes, `Itinerario +${add.length} tappe.`);
     const saved = await saveTripRecord(auth, trip, data.revision);
-    state.status = `Itinerario sincronizzato (+${add.length} tappe).`;
+    await refreshShareAfterSave(auth);
+    state.status = `Itinerario sincronizzato (+${add.length} tappe). Preventivo nel payload.`;
     return saved;
   }
 
@@ -759,9 +883,12 @@
         };
       });
     trip.expenses = [...(trip.expenses || []), ...newExpenses].slice(0, 1000);
-    const noteLine = `\n\n[Preventivo ${state.scenario} — ${nowIso()}] Spese STIMA aggiunte. Verificare e correggere.`;
-    trip.notes = ((trip.notes || "") + noteLine).slice(0, 3000);
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    meta.preventivo = buildPreventivoMeta();
+    trip.meta = meta;
+    trip.notes = stampPreventivoNotes(trip.notes, "Spese STIMA aggiunte. Verificare e correggere.");
     await saveTripRecord(auth, trip, data.revision);
+    await refreshShareAfterSave(auth);
     state.status = `Aggiunte ${newExpenses.length} spese stimate alle Spese di gruppo.`;
   }
 
@@ -888,20 +1015,36 @@
   async function hydrateParamsFromOpenTrip() {
     try {
       const packed = await loadTripRecord();
-      if (!packed?.data?.trip) return false;
+      if (!packed?.data?.trip) return { ok: false, fromMeta: false };
       const trip = packed.data.trip;
-      const next = mergeParams({
-        title: trip.title,
-        destination: trip.destination,
-        start: trip.start,
-        end: trip.end,
-        travelers: Array.isArray(trip.members) && trip.members.length ? trip.members.length : state.params.travelers,
-      });
-      state.params = next;
+      const fromMeta = applyPreventivoMeta(trip.meta?.preventivo);
+      if (!fromMeta) {
+        const next = mergeParams({
+          title: trip.title,
+          destination: trip.destination,
+          start: trip.start,
+          end: trip.end,
+          travelers: Array.isArray(trip.members) && trip.members.length ? trip.members.length : state.params.travelers,
+        });
+        state.params = next;
+      } else {
+        // Keep trip title/dates as source of truth when present.
+        state.params = mergeParams({
+          ...state.params,
+          title: trip.title || state.params.title,
+          destination: trip.destination || state.params.destination,
+          start: trip.start || state.params.start,
+          end: trip.end || state.params.end,
+          travelers:
+            Array.isArray(trip.members) && trip.members.length
+              ? trip.members.length
+              : state.params.travelers,
+        });
+      }
       persistState();
-      return true;
+      return { ok: true, fromMeta };
     } catch {
-      return false;
+      return { ok: false, fromMeta: false };
     }
   }
 
@@ -914,9 +1057,13 @@
       initWorkingState(auth.id, usable ? saved : null);
       if (!usable) {
         const fromTrip = await hydrateParamsFromOpenTrip();
-        state.status = fromTrip
-          ? "Parametri presi dal viaggio aperto."
-          : "Preventivo pronto con preset Islanda (bozza precedente vuota ignorata).";
+        if (fromTrip.fromMeta) {
+          state.status = "Preventivo recuperato dal viaggio condiviso.";
+        } else if (fromTrip.ok) {
+          state.status = "Parametri presi dal viaggio aperto.";
+        } else {
+          state.status = "Preventivo pronto con preset Islanda (bozza precedente vuota ignorata).";
+        }
       } else {
         state.status = "Preventivo caricato dal dispositivo.";
       }
@@ -1000,12 +1147,21 @@
           </label>
         </div>
         <div class="pv-prev-actions">
-          <button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
-          <button type="button" class="ghost" data-act="save-local">Salva parametri</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="primary" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>
+          <button type="button" class="ghost" data-act="save-local">Salva sul dispositivo</button>`
+              : `<button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
+          <button type="button" class="ghost" data-act="save-local">Salva parametri</button>`
+          }
           <button type="button" class="ghost" data-act="reset-island-preset">Ripristina preset Islanda</button>
           <button type="button" class="ghost" data-act="clear-draft">Pulisci bozza salvata</button>
         </div>
-        <p class="pv-prev-muted">Preferenze attive: no ostelli · cucina preferita · febbraio winter-safe · confronto trasporti.</p>
+        <p class="pv-prev-muted">Preferenze attive: no ostelli · cucina preferita · febbraio winter-safe · confronto trasporti.${
+          state.tripId
+            ? " Le stime nel viaggio viaggiano con il link di condivisione (meta.preventivo)."
+            : ""
+        }</p>
       </div>`;
   }
 
@@ -1229,6 +1385,11 @@
           <button type="button" class="primary" data-act="save-local">Salva budget</button>
           <button type="button" class="ghost" data-act="reset-budget">Ricarica template scenario</button>
           <button type="button" class="ghost" data-act="sync-expenses">Copia stime in Spese di gruppo</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
+              : ""
+          }
         </div>
       </div>`;
   }
@@ -1279,6 +1440,11 @@
           <button type="button" class="primary" data-act="export-print">Stampa / Salva PDF</button>
           <button type="button" class="ghost" data-act="export-csv">Scarica CSV budget</button>
           <button type="button" class="ghost" data-act="export-summary">Copia riepilogo</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
+              : ""
+          }
         </div>
       </div>`;
   }
@@ -1454,6 +1620,11 @@
       }
       if (act === "sync-itinerary") {
         await syncItineraryToTrip();
+        render();
+        return;
+      }
+      if (act === "sync-preventivo") {
+        await syncPreventivoIntoTrip();
         render();
         return;
       }

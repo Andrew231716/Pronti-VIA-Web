@@ -3016,6 +3016,158 @@ Regole pv-places:
     );
   }
 
+  function injectLocalOnlyBanner() {
+    const openTrip = (() => {
+      try {
+        const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+        return p.get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const isLocal =
+      openTrip &&
+      typeof window.__pvIsTripLocalOnly === "function" &&
+      window.__pvIsTripLocalOnly(openTrip);
+    let banner = document.getElementById("pv-local-only-banner");
+    if (!isLocal) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-local-only-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:70;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    banner.textContent =
+      "Questo viaggio è salvato su questo dispositivo. Usa «Condividi viaggio» e attendi il link con snapshot (s=…) prima di inviarlo agli amici.";
+  }
+
+  function fixItalianTappeGrammar() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const t = node.nodeValue || "";
+      if (!t.includes("tappe")) continue;
+      const next = t
+        .replace(/\b1 tappe\b/g, "1 tappa")
+        .replace(/\b0 tappe\b/g, "0 tappe");
+      if (next !== t) node.nodeValue = next;
+    }
+  }
+
+  function preferIcelandCover() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const dest =
+      root.querySelector("h1, h2, .hero, [class*='destination']")?.textContent ||
+      root.innerText ||
+      "";
+    if (!/islanda|iceland|reykjav/i.test(dest)) return;
+    const coastCandidates = [
+      new URL("coast.jpg", location.href).href,
+      new URL("./coast.jpg", location.href).href,
+    ];
+    for (const img of root.querySelectorAll("img")) {
+      const alt = `${img.alt || ""} ${img.src || ""}`;
+      const wrong =
+        /balos|creta|crete|greece|santorini|mykonos/i.test(alt) ||
+        /balos|crete|greece/i.test(img.src || "");
+      if (!wrong && !/cover|hero|banner|coast/i.test(alt + img.className)) continue;
+      if (wrong || /balos/i.test(img.src || "")) {
+        if (!img.dataset.pvIcelandSwap) {
+          img.dataset.pvIcelandSwap = "1";
+          img.dataset.pvPrevSrc = img.src;
+          img.src = coastCandidates[0];
+          img.alt = "Copertina Islanda";
+          img.onerror = () => {
+            if (img.src !== coastCandidates[1]) img.src = coastCandidates[1];
+          };
+        }
+        if (!img.dataset.pvIcelandNote) {
+          img.dataset.pvIcelandNote = "1";
+          const note = document.createElement("div");
+          note.className = "pv-cover-note";
+          note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
+          note.style.cssText =
+            "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
+          const wrap = img.closest("div,section,article") || img.parentElement;
+          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+          if (wrap) wrap.appendChild(note);
+        }
+      }
+    }
+  }
+
+  function injectPreventivoTripBanner() {
+    const openTrip = (() => {
+      try {
+        return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (!openTrip) {
+      document.getElementById("pv-preventivo-trip-banner")?.remove();
+      return;
+    }
+    let pv = null;
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      const db = raw ? JSON.parse(raw) : null;
+      const rec = db?.[openTrip];
+      pv = rec?.trip?.meta?.preventivo || null;
+    } catch {
+      pv = null;
+    }
+    let banner = document.getElementById("pv-preventivo-trip-banner");
+    if (!pv?.totals) {
+      if (banner) banner.remove();
+      return;
+    }
+    const group = Math.round((Number(pv.totals.groupCents) || 0) / 100);
+    const pp = Math.round((Number(pv.totals.perPersonCents) || 0) / 100);
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-preventivo-trip-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:69;margin:0;padding:8px 14px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    // Sit below local-only banner if present.
+    const local = document.getElementById("pv-local-only-banner");
+    if (local && banner.previousElementSibling !== local) {
+      local.after(banner);
+    }
+    banner.textContent = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
+  }
+
+  function ensureShareToast() {
+    if (window.__pvShareToastBound) return;
+    window.__pvShareToastBound = true;
+    window.addEventListener("pv-share-blocked", (ev) => {
+      const msg = ev?.detail?.message || "Condivisione non pronta.";
+      let el = document.getElementById("pv-share-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-share-toast";
+        el.style.cssText =
+          "position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;max-width:min(420px,92vw);background:#7a1f1f;color:#fff;padding:12px 14px;border-radius:12px;font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)";
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.remove(), 5200);
+    });
+  }
+
   function tick() {
     renderFab();
     injectPackingTemplates();
@@ -3027,6 +3179,11 @@ Regole pv-places:
     injectLinksAfterNotes();
     void enhanceExpenseCurrencyField();
     markPrivateBudgetLabels();
+    injectLocalOnlyBanner();
+    injectPreventivoTripBanner();
+    fixItalianTappeGrammar();
+    preferIcelandCover();
+    ensureShareToast();
   }
 
   function markPrivateBudgetLabels() {

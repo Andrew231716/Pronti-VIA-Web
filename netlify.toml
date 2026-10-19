@@ -42,6 +42,18 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/share"
+  to = "/.netlify/functions/share"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/share/*"
+  to = "/.netlify/functions/share/:splat"
+  status = 200
+  force = true
+
 # CORS-safe proxy for remaining /api routes (never raw-proxy Supabase: no ACAO).
 [[redirects]]
   from = "/api/*"

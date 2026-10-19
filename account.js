@@ -478,10 +478,36 @@ function startTripSync() {
   startMemberJoinSync();
 }
 
+function hashHasSharedTrip() {
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    return Boolean(params.get("trip") && params.get("key"));
+  } catch {
+    return false;
+  }
+}
+
+function makeGuestSession() {
+  const suffix = Date.now().toString(36).slice(-5);
+  const username = `ospite-${suffix}`;
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: "Ospite" },
+    trips: readLocalTrips(),
+    guest: true,
+  };
+}
+
 async function boot() {
   ensureUi();
   const session = readSession();
   if (!session?.user?.username) {
+    // Shared trip links should open without forcing registration.
+    if (hashHasSharedTrip()) {
+      const guest = makeGuestSession();
+      await activateSession(guest, { bootApp: true });
+      return;
+    }
     showGate();
     return;
   }

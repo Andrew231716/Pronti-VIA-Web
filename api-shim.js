@@ -1,7 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20260920c — short share links via bytebin so WhatsApp/iOS keep the trip snapshot.
+ * v=20261019b — share snapshots: Netlify Blobs first, then bytebin; refuse copy without s=.
  */
 (() => {
   const TRIPS_BASE =
@@ -326,8 +326,20 @@
     return JSON.parse(raw);
   }
 
-  async function publishShareBlob(record, shareKey) {
-    const slim = slimShareRecord(record, shareKey);
+  async function publishNetlifyShare(slim) {
+    const res = await originalFetch(`${NETLIFY_API}/api/share`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ record: slim }),
+    });
+    if (!res.ok) throw new Error(`netlify-share-${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    const key = String(data.key || "").replace(/^n:/, "");
+    if (!key) throw new Error("netlify-share-empty");
+    return `n:${key}`;
+  }
+
+  async function publishBytebinShare(slim) {
     const res = await originalFetch(`${BYTEBIN}/post`, {
       method: "POST",
       headers: {
@@ -340,13 +352,32 @@
     const data = await res.json().catch(() => ({}));
     const key = data.key || String(res.headers.get("location") || "").replace(/^\/+/, "");
     if (!key) throw new Error("bytebin-empty");
-    const ref = `b:${key}`;
+    return `b:${key}`;
+  }
+
+  async function publishShareBlob(record, shareKey) {
+    const slim = slimShareRecord(record, shareKey);
+    let ref = "";
+    try {
+      ref = await publishNetlifyShare(slim);
+    } catch {
+      ref = await publishBytebinShare(slim);
+    }
     setCachedShareRef(record.id, shareKey, ref, slim.revision);
     return ref;
   }
 
-  async function fetchShareBlob(binKey) {
-    const res = await originalFetch(`${BYTEBIN}/${encodeURIComponent(binKey)}`, {
+  async function fetchShareBlob(token) {
+    const parsed = parseSharePayloadToken(token.startsWith("b:") || token.startsWith("n:") ? token : `b:${token}`);
+    if (parsed.kind === "netlify") {
+      const res = await originalFetch(`${NETLIFY_API}/api/share/${encodeURIComponent(parsed.value)}`, {
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`netlify-share-get-${res.status}`);
+      return res.json();
+    }
+    const res = await originalFetch(`${BYTEBIN}/${encodeURIComponent(parsed.value)}`, {
       headers: { Accept: "application/json" },
       cache: "no-store",
     });
@@ -356,6 +387,7 @@
 
   function parseSharePayloadToken(payload) {
     const raw = String(payload || "");
+    if (raw.startsWith("n:")) return { kind: "netlify", value: raw.slice(2) };
     if (raw.startsWith("b:")) return { kind: "bin", value: raw.slice(2) };
     if (raw.startsWith("i:")) return { kind: "inline", value: raw.slice(2) };
     // Legacy bare base64 payload
@@ -392,18 +424,32 @@
     const payload = params.get("s") || params.get("payload") || "";
     if (!id || !payload) return;
     if (tripIdHint && id !== tripIdHint) return;
-    if (readLocalTrips()[id]?.trip) return;
 
+    const existing = readLocalTrips()[id];
     const parsed = parseSharePayloadToken(payload);
+
+    const applyIncoming = (json) => {
+      const incomingRev = Number(json?.revision) || 1;
+      const localRev = Number(existing?.revision) || 0;
+      // Refresh when missing locally or snapshot is newer.
+      if (!existing?.trip || incomingRev >= localRev) {
+        applySeededRecord(id, key, json);
+      }
+    };
+
     if (parsed.kind === "inline") {
       try {
-        applySeededRecord(id, key, decodeInlineSharePayload(parsed.value));
+        applyIncoming(decodeInlineSharePayload(parsed.value));
       } catch {
         /* ignore */
       }
       return;
     }
-    if (parsed.kind !== "bin" || !parsed.value) return;
+    if ((parsed.kind !== "bin" && parsed.kind !== "netlify") || !parsed.value) return;
+    // Already have same-or-newer local copy: skip network.
+    if (existing?.trip && !params.get("force")) {
+      /* still allow fetch for first open on another device — existing empty above */
+    }
 
     if (hydrateInFlight) {
       try {
@@ -414,8 +460,9 @@
       return;
     }
     hydrateInFlight = (async () => {
-      const json = await fetchShareBlob(parsed.value);
-      applySeededRecord(id, key, json);
+      const prefix = parsed.kind === "netlify" ? "n:" : "b:";
+      const json = await fetchShareBlob(prefix + parsed.value);
+      applyIncoming(json);
     })();
     try {
       await hydrateInFlight;
@@ -441,6 +488,18 @@
       return "";
     }
   }
+
+  window.__pvIsTripLocalOnly = function isTripLocalOnly(tripId) {
+    const id =
+      tripId ||
+      new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") ||
+      "";
+    if (!id) return false;
+    return Boolean(readLocalTrips()[id]?.local);
+  };
+  window.__pvHasShareSnapshot = function hasShareSnapshot(tripId, shareKey) {
+    return Boolean(getCachedShareRef(tripId, shareKey));
+  };
 
   seedSharePayloadFromHash();
   window.addEventListener("hashchange", () => {
@@ -527,22 +586,62 @@
     }
   }
 
+  function shareUrlHasSnapshot(text) {
+    try {
+      const url = new URL(String(text || ""));
+      const params = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const s = params.get("s") || "";
+      return /^[nbi]:/.test(s) || s.length > 20;
+    } catch {
+      return false;
+    }
+  }
+
+  function notifyShareBlocked(message) {
+    try {
+      window.dispatchEvent(new CustomEvent("pv-share-blocked", { detail: { message } }));
+    } catch {
+      /* ignore */
+    }
+    try {
+      console.warn("[pronti-via]", message);
+    } catch {
+      /* ignore */
+    }
+  }
+
   const originalWriteText = navigator.clipboard?.writeText?.bind(navigator.clipboard);
   if (originalWriteText) {
     navigator.clipboard.writeText = async (text) => {
-      try {
-        const raw = String(text || "");
-        if (raw.includes("trip=") && raw.includes("key=")) {
+      const raw = String(text || "");
+      if (raw.includes("trip=") && raw.includes("key=")) {
+        try {
           const url = new URL(raw);
           const params = new URLSearchParams(url.hash.replace(/^#/, ""));
           const tripId = params.get("trip");
           const key = params.get("key");
-          if (tripId && key) await resolveShareRef(tripId, key);
+          if (tripId && key) {
+            const ref = await resolveShareRef(tripId, key);
+            if (!ref) {
+              const msg =
+                "Link non pronto: lo snapshot di condivisione non è riuscito. Riprova tra qualche secondo.";
+              notifyShareBlocked(msg);
+              throw new Error(msg);
+            }
+          }
+        } catch (err) {
+          if (err && /snapshot|Link non pronto/i.test(String(err.message || ""))) throw err;
         }
-      } catch {
-        /* ignore */
+        const enriched = enrichShareUrl(raw);
+        if (!shareUrlHasSnapshot(enriched)) {
+          const msg =
+            "Link incompleto: manca lo snapshot (s=). Non condividerlo finché non è pronto.";
+          notifyShareBlocked(msg);
+          throw new Error(msg);
+        }
+        return originalWriteText(enriched);
       }
-      return originalWriteText(enrichShareUrl(text));
+      return originalWriteText(text);
     };
   }
 
@@ -551,18 +650,32 @@
     const originalShare = navigator.share.bind(navigator);
     navigator.share = async (data = {}) => {
       const next = { ...data };
-      if (typeof next.url === "string") next.url = enrichShareUrl(next.url);
       try {
         const url = new URL(String(next.url || location.href));
         const params = new URLSearchParams(url.hash.replace(/^#/, ""));
         const tripId = params.get("trip");
         const key = params.get("key");
         if (tripId && key) {
-          await resolveShareRef(tripId, key);
+          const ref = await resolveShareRef(tripId, key);
+          if (!ref) {
+            const msg =
+              "Condivisione non pronta: impossibile creare lo snapshot. Riprova tra poco.";
+            notifyShareBlocked(msg);
+            throw new Error(msg);
+          }
           next.url = enrichShareUrl(next.url || url.toString());
+          if (!shareUrlHasSnapshot(next.url)) {
+            const msg = "Link incompleto senza snapshot. Condivisione annullata.";
+            notifyShareBlocked(msg);
+            throw new Error(msg);
+          }
+        } else if (typeof next.url === "string") {
+          next.url = enrichShareUrl(next.url);
         }
-      } catch {
-        /* ignore */
+      } catch (err) {
+        if (err && /snapshot|Condivisione|Link incompleto/i.test(String(err.message || ""))) {
+          throw err;
+        }
       }
       return originalShare(next);
     };
