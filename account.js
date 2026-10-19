@@ -335,6 +335,7 @@ async function activateSession(data, { bootApp = true } = {}) {
   writeSession({
     token: data.token,
     user: data.user,
+    guest: Boolean(data.guest),
     remembered: true,
     savedAt: new Date().toISOString(),
   });
