@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019j";
+  const VERSION = "20261019k";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v2";
   const FAB_SAFE = "max(36px, env(safe-area-inset-bottom, 0px) + 16px)";
   const FAB_DOCK_RIGHT = 18;
@@ -1502,7 +1502,21 @@
     } else {
       document.documentElement.style.overflow = "";
     }
-    if (open) render();
+    if (open) {
+      render();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (typeof window.__pvParkFabsAboveSheet === "function") {
+            window.__pvParkFabsAboveSheet();
+          }
+        });
+      });
+    } else {
+      const magicOpen = document.getElementById("pv-magic-root")?.classList.contains("pv-open");
+      if (!magicOpen && typeof window.__pvRestoreFabsFromPark === "function") {
+        window.__pvRestoreFabsFromPark();
+      }
+    }
   }
 
   async function hydrateParamsFromOpenTrip() {

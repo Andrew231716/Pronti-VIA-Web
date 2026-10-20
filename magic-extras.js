@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261019j") return;
+    if (style && style.dataset.pvReady === "20261019k") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -231,7 +231,107 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261019j";
+    style.dataset.pvReady = "20261019k";
+  }
+
+  function fabNodes() {
+    return {
+      pronty: document.querySelector("#pv-magic-open"),
+      prev: document.querySelector(".pv-prev-launch"),
+    };
+  }
+
+  function activeSheetEl() {
+    const magic = document.querySelector("#pv-magic-panel");
+    if (magic && !magic.hidden) return magic;
+    const prev = document.querySelector("#pv-preventivo-root.open .pv-prev-shell");
+    if (prev) return prev;
+    return null;
+  }
+
+  function snapshotFabStyle(el) {
+    if (!el || el.dataset.pvParkSnap) return;
+    el.dataset.pvParkSnap = JSON.stringify({
+      left: el.style.left || "",
+      top: el.style.top || "",
+      right: el.style.right || "",
+      bottom: el.style.bottom || "",
+      transition: el.style.transition || "",
+      animation: el.style.animation || "",
+    });
+  }
+
+  function restoreFabStyle(el) {
+    if (!el) return;
+    let snap = null;
+    try {
+      snap = JSON.parse(el.dataset.pvParkSnap || "null");
+    } catch {
+      snap = null;
+    }
+    delete el.dataset.pvParkSnap;
+    delete el.dataset.pvParked;
+    if (!snap) {
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+      el.style.transition = "";
+      el.style.animation = "";
+      return;
+    }
+    el.style.left = snap.left;
+    el.style.top = snap.top;
+    el.style.right = snap.right;
+    el.style.bottom = snap.bottom;
+    el.style.transition = snap.transition || "";
+    el.style.animation = snap.animation || "";
+  }
+
+  /** Park both tondini stacked on the right, just above the open sheet (as in the reference). */
+  function parkFabsAboveSheet() {
+    const { pronty, prev } = fabNodes();
+    const sheet = activeSheetEl();
+    const size = Math.round(
+      parseFloat(getComputedStyle(pronty || prev).width) ||
+        pronty?.offsetWidth ||
+        prev?.offsetWidth ||
+        58
+    );
+    const gap = 18;
+    const marginRight = 16;
+    const marginAbove = 16;
+    let sheetTop;
+    if (sheet) {
+      sheetTop = sheet.getBoundingClientRect().top;
+    } else if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      sheetTop = window.innerHeight * 0.12;
+    } else {
+      sheetTop = window.innerHeight - 120;
+    }
+    const left = Math.max(8, window.innerWidth - marginRight - size);
+    const lowerTop = Math.max(8, sheetTop - marginAbove - size);
+    const upperTop = Math.max(8, lowerTop - gap - size);
+    const place = (el, top) => {
+      if (!el) return;
+      snapshotFabStyle(el);
+      el.dataset.pvParked = "1";
+      el.style.animation = "none";
+      el.style.transition = "left .28s ease, top .28s ease";
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+    };
+    // Pronty (smile) on top, Preventivo (doc) below — same order as the screenshot.
+    place(pronty, upperTop);
+    place(prev, lowerTop);
+  }
+
+  function restoreFabsFromPark() {
+    const { pronty, prev } = fabNodes();
+    restoreFabStyle(pronty);
+    restoreFabStyle(prev);
   }
 
   function setMagicOpen(open) {
@@ -248,7 +348,15 @@
     } else {
       document.documentElement.style.overflow = "";
     }
+    if (open) {
+      requestAnimationFrame(() => requestAnimationFrame(parkFabsAboveSheet));
+    } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
+      restoreFabsFromPark();
+    }
   }
+
+  window.__pvParkFabsAboveSheet = parkFabsAboveSheet;
+  window.__pvRestoreFabsFromPark = restoreFabsFromPark;
 
   /** Shared draggable helper for floating FABs / panels. Click still fires if movement is tiny. */
   function makeDraggable(el, { storageKey, handle, onTap, axis = "both" } = {}) {
@@ -326,7 +434,8 @@
         /* ignore */
       }
       const pos = clamp();
-      if (storageKey) {
+      // Don't overwrite idle dock coords while FABs are auto-parked above a sheet.
+      if (storageKey && el.dataset.pvParked !== "1") {
         try {
           localStorage.setItem(storageKey, JSON.stringify(pos));
         } catch {
