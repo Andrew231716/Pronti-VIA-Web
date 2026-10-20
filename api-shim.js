@@ -1,7 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019h — live flight/stay search via /api/search; share via Blobs + bytebin.
+ * v=20261019i — account sync via Netlify; live search; share via Blobs + bytebin.
  */
 (() => {
   const TRIPS_BASE =
@@ -961,7 +961,12 @@
     }
 
     if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/account")) {
-      return jsonResponse(503, { error: "Sync cloud non disponibile su questo host." });
+      const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
+      try {
+        return await remoteTrips(suffix, init);
+      } catch {
+        return jsonResponse(503, { error: "Sync account non disponibile. Controlla la rete e riprova." });
+      }
     }
 
     if (
