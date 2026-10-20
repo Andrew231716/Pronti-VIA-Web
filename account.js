@@ -127,20 +127,40 @@ async function api(action, { method = "POST", body, token } = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   const isGet = method === "GET";
   if (!isGet) headers["Content-Type"] = "application/json";
-  const url = isGet ? `${API}?action=${encodeURIComponent(action)}` : API;
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: isGet ? undefined : JSON.stringify({ action, ...(body || {}) }),
-    cache: "no-store",
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.error || "Operazione non riuscita.");
-    error.status = response.status;
-    throw error;
+  const payload = isGet ? undefined : JSON.stringify({ action, ...(body || {}) });
+  const query = isGet ? `?action=${encodeURIComponent(action)}` : "";
+  // Same-origin first (Netlify / shim), then direct Netlify fallback for GitHub Pages.
+  const targets = [
+    `${API}${query}`,
+    `https://pronti-via-k7es.netlify.app/api/account${query}`,
+  ];
+  let lastErr;
+  for (const url of targets) {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: payload,
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || "Operazione non riuscita.");
+        error.status = response.status;
+        // Soft-fail only transport/host issues to the next target.
+        if (response.status === 503 || response.status === 502 || response.status === 404) {
+          lastErr = error;
+          continue;
+        }
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      lastErr = err;
+      if (err?.status && err.status !== 503 && err.status !== 502 && err.status !== 404) throw err;
+    }
   }
-  return data;
+  throw lastErr || new Error("Sync account non disponibile.");
 }
 
 function ensureUi() {
@@ -238,7 +258,7 @@ function showChip() {
   document.body.classList.add("pv-account-ready");
 }
 
-async function registerLocal(usernameRaw, password) {
+async function upsertLocalUser(usernameRaw, password, displayName) {
   const username = normalizeUsername(usernameRaw);
   if (username.length < 3 || username.length > 32) {
     throw new Error("Il nome utente deve avere tra 3 e 32 caratteri.");
@@ -249,23 +269,29 @@ async function registerLocal(usernameRaw, password) {
   if (!password || password.length < 4) {
     throw new Error("La password deve avere almeno 4 caratteri.");
   }
-
   const users = readUsers();
-  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
-
   const { salt, hash } = await hashPassword(password);
+  const prev = users[username];
   users[username] = {
     username,
-    displayName: usernameRaw.trim().slice(0, 40) || username,
+    displayName: String(displayName || usernameRaw || username).trim().slice(0, 40) || username,
     salt,
     hash,
-    createdAt: new Date().toISOString(),
+    createdAt: prev?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   writeUsers(users);
+  return users[username];
+}
 
+async function registerLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  const users = readUsers();
+  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
+  const saved = await upsertLocalUser(usernameRaw, password, usernameRaw);
   return {
     token: `local:${username}`,
-    user: { username, displayName: users[username].displayName },
+    user: { username, displayName: saved.displayName },
     trips: readLocalTrips(),
   };
 }
@@ -313,8 +339,14 @@ async function onSubmit(event) {
         });
         if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
         data = { token: cloud.token, user: cloud.user, trips: cloud.trips || [] };
-      } catch {
-        throw localError || new Error("Nome utente o password non corretti.");
+        // Cache credentials locally so next login works offline too.
+        try {
+          await upsertLocalUser(username, password, data.user?.displayName || username);
+        } catch {
+          /* local write failed — ignore */
+        }
+      } catch (cloudErr) {
+        throw localError || cloudErr || new Error("Nome utente o password non corretti.");
       }
     } else {
       // Mirror local accounts when cloud storage is available.
@@ -421,27 +453,6 @@ async function onDeleteAccount() {
   showGate();
   location.hash = "";
   location.reload();
-}
-
-/** One-shot: remove stale local copy of deleted cloud usernames. */
-function purgeKnownDeletedLocalUsers() {
-  try {
-    const users = readUsers();
-    let changed = false;
-    for (const name of ["andrea"]) {
-      if (users[name]) {
-        delete users[name];
-        changed = true;
-      }
-    }
-    if (changed) writeUsers(users);
-    const session = readSession();
-    if (session?.user?.username && normalizeUsername(session.user.username) === "andrea") {
-      writeSession(null);
-    }
-  } catch {
-    /* ignore */
-  }
 }
 
 async function activateSession(data, { bootApp = true } = {}) {
@@ -617,7 +628,6 @@ function makeGuestSession() {
 
 async function boot() {
   ensureUi();
-  purgeKnownDeletedLocalUsers();
   const session = readSession();
   if (!session?.user?.username) {
     // Shared trip links should open without forcing registration.
