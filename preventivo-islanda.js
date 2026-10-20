@@ -9,8 +9,13 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019h";
-  const FAB_POS_KEY = "viavia-preventivo-fab-pos";
+  const VERSION = "20261019j";
+  const FAB_POS_KEY = "viavia-preventivo-fab-pos-v2";
+  const FAB_SAFE = "max(36px, env(safe-area-inset-bottom, 0px) + 16px)";
+  const FAB_DOCK_RIGHT = 18;
+  const FAB_SIZE = 62;
+  // Lower dock slot — Pronty sits above this one.
+  const PREV_FAB_BOTTOM = `calc(${FAB_SAFE})`;
   const PANEL_POS_KEY = "viavia-preventivo-panel-pos";
 
   const SECTIONS = [
@@ -1379,7 +1384,7 @@
       #${ROOT_ID}.open{display:block}
       #${ROOT_ID} .pv-prev-scrim{position:fixed;inset:0;background:rgba(12,32,36,.22);pointer-events:auto}
       #${ROOT_ID} .pv-prev-shell{
-        position:fixed;left:16px;bottom:92px;z-index:2;pointer-events:auto;
+        position:fixed;right:16px;bottom:calc(${FAB_SAFE} + ${FAB_SIZE * 2 + 28}px);z-index:2;pointer-events:auto;
         width:min(420px,calc(100vw - 24px));height:min(78vh,700px);
         display:flex;flex-direction:column;background:#f4fafb;
         border:1px solid #d0e0e0;border-radius:22px;
@@ -1415,23 +1420,28 @@
       #${ROOT_ID} .pv-callout{padding:10px 12px;border-radius:12px;background:#eaf5f5;border:1px solid #d5e8e8;color:#0f2c31;font-size:.88rem;margin:0 0 12px}
       #${ROOT_ID} a{color:#007d82;font-weight:600}
       .pv-prev-launch{
-        appearance:none;border:0;position:fixed;left:16px;bottom:18px;z-index:85;
-        width:62px;height:62px;border-radius:50%;padding:0;display:none;
+        appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PREV_FAB_BOTTOM};z-index:85;
+        width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;display:none;
         background:radial-gradient(circle at 30% 28%,#3a6b72 0%,#124048 58%,#0a2c32 100%);
-        color:#fff;box-shadow:0 12px 28px rgba(0,40,50,.35),inset 0 1px 0 rgba(255,255,255,.2);
+        color:#fff;box-shadow:0 14px 32px rgba(0,40,50,.38),inset 0 1px 0 rgba(255,255,255,.2);
         cursor:grab;align-items:center;justify-content:center;touch-action:none;user-select:none;
+        animation:pv-fab-float 3.6s ease-in-out infinite;
+        animation-delay:.4s;
       }
-      .pv-prev-launch:active,.pv-prev-launch.pv-dragging{cursor:grabbing;transform:scale(1.04)}
+      .pv-prev-launch:active,.pv-prev-launch.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04)}
       .pv-prev-launch svg{width:28px;height:28px;display:block}
       .pv-prev-launch .pv-prev-fab-label{
-        position:absolute;left:68px;bottom:14px;white-space:nowrap;
+        position:absolute;right:68px;bottom:14px;white-space:nowrap;
         background:#0f2c31;color:#fff;font:700 11px/1 inherit;padding:6px 10px;border-radius:999px;
-        box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(-6px);pointer-events:none;transition:opacity .15s,transform .15s;
+        box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
       }
       .pv-prev-launch:hover .pv-prev-fab-label,.pv-prev-launch:focus-visible .pv-prev-fab-label{opacity:1;transform:none}
       body.pv-account-ready .pv-prev-launch{display:inline-flex}
       @media (max-width:640px){
-        .pv-prev-launch{left:12px;bottom:16px;width:58px;height:58px}
+        .pv-prev-launch{
+          right:16px;width:58px;height:58px;
+          bottom:calc(max(40px, env(safe-area-inset-bottom, 0px) + 18px));
+        }
         .pv-prev-launch .pv-prev-fab-label{display:none}
         #${ROOT_ID} .pv-prev-shell{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
