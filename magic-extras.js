@@ -10,8 +10,16 @@
   const STYLE_ID = "pv-magic-extras-css";
   const ROOT_ID = "pv-magic-root";
   const AI_NAME = "Pronty";
-  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos";
+  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos-v2";
   const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
+  // Dock: both FABs stack on the right, clear of the home indicator.
+  const FAB_SAFE = "max(36px, env(safe-area-inset-bottom, 0px) + 16px)";
+  const FAB_GAP = 22;
+  const FAB_SIZE = 62;
+  const FAB_DOCK_RIGHT = 18;
+  // Lower slot offset from safe bottom, then Pronty sits one slot above.
+  const FAB_SLOT = FAB_SIZE + FAB_GAP;
+  const PRONTY_FAB_BOTTOM = `calc(${FAB_SAFE} + ${FAB_SLOT}px)`;
   const DAY_COLORS = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545", "#2a9d8f", "#e76f51"];
   const WMO = {
     0: "Sereno",
@@ -74,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "1") return;
+    if (style && style.dataset.pvReady === "20261019k") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -86,17 +94,22 @@
       #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.28);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
       #${ROOT_ID} .pv-magic-btn{
-        appearance:none;border:0;position:fixed;right:16px;bottom:18px;z-index:2;
-        width:62px;height:62px;border-radius:50%;padding:0;
+        appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PRONTY_FAB_BOTTOM};z-index:2;
+        width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;
         background:radial-gradient(circle at 30% 28%,#2bb7bc 0%,#007d82 55%,#0a5c60 100%);
-        color:#fff;box-shadow:0 12px 28px rgba(0,70,80,.35),inset 0 1px 0 rgba(255,255,255,.25);
+        color:#fff;box-shadow:0 14px 32px rgba(0,70,80,.38),inset 0 1px 0 rgba(255,255,255,.25);
         cursor:grab;display:inline-flex;align-items:center;justify-content:center;
         touch-action:none;user-select:none;-webkit-user-select:none;
         transition:transform .15s ease,box-shadow .15s ease;
+        animation:pv-fab-float 3.2s ease-in-out infinite;
       }
-      #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;transform:scale(.96)}
-      #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;transform:scale(1.04);box-shadow:0 16px 36px rgba(0,70,80,.42)}
-      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait}
+      @keyframes pv-fab-float{
+        0%,100%{transform:translateY(0)}
+        50%{transform:translateY(-5px)}
+      }
+      #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;animation:none;transform:scale(.96)}
+      #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04);box-shadow:0 18px 40px rgba(0,70,80,.45)}
+      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait;animation:none}
       #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:42px;height:42px;display:block}
       #${ROOT_ID} .pv-magic-btn .pv-pronty-label{
         position:absolute;right:68px;bottom:14px;white-space:nowrap;
@@ -106,7 +119,7 @@
       }
       #${ROOT_ID} .pv-magic-btn:hover .pv-pronty-label,#${ROOT_ID} .pv-magic-btn:focus-visible .pv-pronty-label{opacity:1;transform:none}
       #${ROOT_ID} .pv-magic-panel{
-        position:fixed;right:16px;bottom:92px;z-index:1;
+        position:fixed;right:16px;bottom:calc(${FAB_SAFE} + ${FAB_SIZE * 2 + FAB_GAP * 2}px);z-index:1;
         width:min(400px,calc(100vw - 24px));max-height:min(78vh,680px);
         overflow:hidden;display:flex;flex-direction:column;background:#fff;
         border:1px solid #d0e0e0;border-radius:22px;
@@ -161,7 +174,10 @@
       #${ROOT_ID} .pv-phrase strong{display:block;font-size:.86rem;color:#122f34}
       #${ROOT_ID} .pv-phrase span{display:block;font-size:.78rem;color:#4d676e;margin-top:2px}
       @media (max-width:640px){
-        #${ROOT_ID} .pv-magic-btn{right:12px;bottom:16px;width:58px;height:58px}
+        #${ROOT_ID} .pv-magic-btn{
+          right:16px;width:58px;height:58px;
+          bottom:calc(max(40px, env(safe-area-inset-bottom, 0px) + 18px) + 80px);
+        }
         #${ROOT_ID} .pv-magic-panel{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
           width:100%;max-width:none;max-height:min(88dvh,88vh);
@@ -211,8 +227,111 @@
       .pv-links-box .pv-action-list a:first-child,.pv-links-box .pv-action-list button:first-child{padding-top:0}
       .pv-links-box .pv-action-list .hint{font-size:.78rem;font-weight:600;color:#7a9096}
       .pv-links-box .pv-status{min-height:1.1em;margin:10px 0 0;font-size:.82rem;color:#5b7076}
+      @media (prefers-reduced-motion: reduce){
+        #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
+      }
     `;
-    style.dataset.pvReady = "1";
+    style.dataset.pvReady = "20261019k";
+  }
+
+  function fabNodes() {
+    return {
+      pronty: document.querySelector("#pv-magic-open"),
+      prev: document.querySelector(".pv-prev-launch"),
+    };
+  }
+
+  function activeSheetEl() {
+    const magic = document.querySelector("#pv-magic-panel");
+    if (magic && !magic.hidden) return magic;
+    const prev = document.querySelector("#pv-preventivo-root.open .pv-prev-shell");
+    if (prev) return prev;
+    return null;
+  }
+
+  function snapshotFabStyle(el) {
+    if (!el || el.dataset.pvParkSnap) return;
+    el.dataset.pvParkSnap = JSON.stringify({
+      left: el.style.left || "",
+      top: el.style.top || "",
+      right: el.style.right || "",
+      bottom: el.style.bottom || "",
+      transition: el.style.transition || "",
+      animation: el.style.animation || "",
+    });
+  }
+
+  function restoreFabStyle(el) {
+    if (!el) return;
+    let snap = null;
+    try {
+      snap = JSON.parse(el.dataset.pvParkSnap || "null");
+    } catch {
+      snap = null;
+    }
+    delete el.dataset.pvParkSnap;
+    delete el.dataset.pvParked;
+    if (!snap) {
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+      el.style.transition = "";
+      el.style.animation = "";
+      return;
+    }
+    el.style.left = snap.left;
+    el.style.top = snap.top;
+    el.style.right = snap.right;
+    el.style.bottom = snap.bottom;
+    el.style.transition = snap.transition || "";
+    el.style.animation = snap.animation || "";
+  }
+
+  /** Park both tondini stacked on the right, just above the open sheet (as in the reference). */
+  function parkFabsAboveSheet() {
+    const { pronty, prev } = fabNodes();
+    const sheet = activeSheetEl();
+    const size = Math.round(
+      parseFloat(getComputedStyle(pronty || prev).width) ||
+        pronty?.offsetWidth ||
+        prev?.offsetWidth ||
+        58
+    );
+    const gap = 18;
+    const marginRight = 16;
+    const marginAbove = 16;
+    let sheetTop;
+    if (sheet) {
+      sheetTop = sheet.getBoundingClientRect().top;
+    } else if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      sheetTop = window.innerHeight * 0.12;
+    } else {
+      sheetTop = window.innerHeight - 120;
+    }
+    const left = Math.max(8, window.innerWidth - marginRight - size);
+    const lowerTop = Math.max(8, sheetTop - marginAbove - size);
+    const upperTop = Math.max(8, lowerTop - gap - size);
+    const place = (el, top) => {
+      if (!el) return;
+      snapshotFabStyle(el);
+      el.dataset.pvParked = "1";
+      el.style.animation = "none";
+      el.style.transition = "left .28s ease, top .28s ease";
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+    };
+    // Pronty (smile) on top, Preventivo (doc) below — same order as the screenshot.
+    place(pronty, upperTop);
+    place(prev, lowerTop);
+  }
+
+  function restoreFabsFromPark() {
+    const { pronty, prev } = fabNodes();
+    restoreFabStyle(pronty);
+    restoreFabStyle(prev);
   }
 
   function setMagicOpen(open) {
@@ -229,7 +348,15 @@
     } else {
       document.documentElement.style.overflow = "";
     }
+    if (open) {
+      requestAnimationFrame(() => requestAnimationFrame(parkFabsAboveSheet));
+    } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
+      restoreFabsFromPark();
+    }
   }
+
+  window.__pvParkFabsAboveSheet = parkFabsAboveSheet;
+  window.__pvRestoreFabsFromPark = restoreFabsFromPark;
 
   /** Shared draggable helper for floating FABs / panels. Click still fires if movement is tiny. */
   function makeDraggable(el, { storageKey, handle, onTap, axis = "both" } = {}) {
@@ -273,7 +400,9 @@
 
     const onPointerDown = (ev) => {
       if (ev.button != null && ev.button !== 0) return;
-      if (ev.target?.closest?.("button, a, input, select, textarea, label")) return;
+      // Skip nested controls, but allow drag when the FAB itself is the button.
+      const hit = ev.target?.closest?.("button, a, input, select, textarea, label");
+      if (hit && hit !== el) return;
       const rect = el.getBoundingClientRect();
       startX = ev.clientX;
       startY = ev.clientY;
@@ -305,7 +434,8 @@
         /* ignore */
       }
       const pos = clamp();
-      if (storageKey) {
+      // Don't overwrite idle dock coords while FABs are auto-parked above a sheet.
+      if (storageKey && el.dataset.pvParked !== "1") {
         try {
           localStorage.setItem(storageKey, JSON.stringify(pos));
         } catch {
