@@ -26,6 +26,10 @@ function json(status, body, extraHeaders = {}) {
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
+      // Required for GitHub Pages → Netlify account API (browser CORS).
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
       ...extraHeaders,
     },
     body: JSON.stringify(body),
