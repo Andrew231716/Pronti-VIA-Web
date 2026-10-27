@@ -9,9 +9,9 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261019k";
-  const FAB_POS_KEY = "viavia-preventivo-fab-pos-v2";
-  const FAB_SAFE = "max(36px, env(safe-area-inset-bottom, 0px) + 16px)";
+  const VERSION = "20261027a";
+  const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
+  const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
   const FAB_SIZE = 62;
   // Lower dock slot — Pronty sits above this one.
@@ -1132,8 +1132,12 @@
         id: l.id,
         title: l.title,
         status: l.status,
+        unitCents: Number(l.unitCents) || 0,
+        qty: Number(l.qty) || 0,
         totalCents: lineTotal(l),
         source: l.source || "",
+        key: l.key || "",
+        mode: l.mode || "",
       })),
       transport: state.transport || { strategy: "A", notes: "" },
       flightNotes: (state.flightNotes || []).slice(0, 12).map((f) => ({
@@ -1165,16 +1169,25 @@
     if (meta.params) state.params = mergeParams(meta.params);
     if (meta.scenario) state.scenario = meta.scenario;
     if (Array.isArray(meta.lines) && meta.lines.length) {
-      state.lines = meta.lines.map((l) => ({
-        id: l.id || uid(),
-        title: l.title || "Voce",
-        unitCents: Number(l.totalCents) || 0,
-        qty: 1,
-        status: l.status || "STIMA",
-        source: l.source || "",
-        url: l.url || "",
-        verifiedAt: "",
-      }));
+      state.lines = meta.lines.map((l) => {
+        const qty = Number(l.qty);
+        const unit = Number(l.unitCents);
+        const total = Number(l.totalCents);
+        // Prefer original unit×qty when present; otherwise flatten total into unit×1.
+        const hasUnitQty = Number.isFinite(unit) && Number.isFinite(qty) && qty > 0;
+        return {
+          id: l.id || uid(),
+          title: l.title || "Voce",
+          unitCents: hasUnitQty ? unit : Number.isFinite(total) ? total : 0,
+          qty: hasUnitQty ? qty : 1,
+          status: l.status || "STIMA",
+          source: l.source || "",
+          url: l.url || "",
+          verifiedAt: l.verifiedAt || "",
+          key: l.key || "",
+          mode: l.mode || "",
+        };
+      });
     }
     if (meta.transport) state.transport = { strategy: "A", notes: "", ...meta.transport };
     if (Array.isArray(meta.flightNotes) && meta.flightNotes.length) state.flightNotes = meta.flightNotes;
@@ -1217,9 +1230,40 @@
     trip.meta = meta;
     trip.notes = stampPreventivoNotes(trip.notes);
     persistState();
-    const saved = await saveTripRecord(auth, trip, data.revision);
+    let saved;
+    try {
+      saved = await saveTripRecord(auth, trip, data.revision);
+    } catch (err) {
+      // One retry after fresh GET (stale revision / concurrent SPA poll).
+      const again = await loadTripRecord();
+      if (!again) throw err;
+      const trip2 = { ...again.data.trip };
+      const meta2 = { ...(trip2.meta && typeof trip2.meta === "object" ? trip2.meta : {}) };
+      meta2.preventivo = buildPreventivoMeta();
+      trip2.meta = meta2;
+      trip2.notes = stampPreventivoNotes(trip2.notes);
+      saved = await saveTripRecord(again.auth, trip2, again.data.revision);
+    }
+    // Keep local trip cache (banner) in sync even if share refresh fails.
+    try {
+      const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+      const slot = db[auth.id] || { id: auth.id, key: auth.key };
+      slot.trip = saved.trip || trip;
+      slot.revision = saved.revision || (Number(data.revision) || 1) + 1;
+      slot.key = auth.key;
+      slot.updated = new Date().toISOString();
+      db[auth.id] = slot;
+      localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+    } catch {
+      /* ignore */
+    }
     await refreshShareAfterSave(auth);
-    state.status = "Preventivo scritto nel viaggio (viaggia con il link di condivisione).";
+    try {
+      window.dispatchEvent(new CustomEvent("pv-preventivo-synced", { detail: { tripId: auth.id } }));
+    } catch {
+      /* ignore */
+    }
+    state.status = "Preventivo salvato nel viaggio. Il banner in alto è aggiornato.";
     return saved;
   }
 
@@ -1440,12 +1484,13 @@
       @media (max-width:640px){
         .pv-prev-launch{
           right:16px;width:58px;height:58px;
-          bottom:calc(max(40px, env(safe-area-inset-bottom, 0px) + 18px));
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px));
         }
         .pv-prev-launch .pv-prev-fab-label{display:none}
         #${ROOT_ID} .pv-prev-shell{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
-          width:100%;height:min(88dvh,88vh);border-radius:18px 18px 0 0;
+          /* Leave room above for the two floating FABs (screenshot layout). */
+          width:100%;height:min(72dvh,72vh);border-radius:18px 18px 0 0;
         }
       }
     `;
@@ -1504,13 +1549,14 @@
     }
     if (open) {
       render();
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (typeof window.__pvParkFabsAboveSheet === "function") {
-            window.__pvParkFabsAboveSheet();
-          }
-        });
-      });
+      const park = () => {
+        if (typeof window.__pvParkFabsAboveSheet === "function") {
+          window.__pvParkFabsAboveSheet();
+        }
+      };
+      requestAnimationFrame(() => requestAnimationFrame(park));
+      setTimeout(park, 120);
+      setTimeout(park, 400);
     } else {
       const magicOpen = document.getElementById("pv-magic-root")?.classList.contains("pv-open");
       if (!magicOpen && typeof window.__pvRestoreFabsFromPark === "function") {
@@ -1670,8 +1716,8 @@
         <div class="pv-prev-actions">
           ${
             state.tripId
-              ? `<button type="button" class="primary" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>
-          <button type="button" class="ghost" data-act="save-local">Salva sul dispositivo</button>`
+              ? `<button type="button" class="primary" data-act="sync-preventivo">Salva preventivo nel viaggio</button>
+          <button type="button" class="ghost" data-act="save-local">Salva (anche nel viaggio)</button>`
               : `<button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
           <button type="button" class="ghost" data-act="save-local">Salva parametri</button>`
           }
@@ -2245,6 +2291,14 @@
       if (act === "save-local") {
         state.params = mergeParams(state.params);
         persistState();
+        // If a trip is open, "Salva" must also write into the shared trip payload.
+        if (state.tripId && tripAuth()) {
+          state.status = "Salvataggio nel viaggio…";
+          render();
+          await syncPreventivoIntoTrip();
+          render();
+          return;
+        }
         state.status = "Salvato su questo dispositivo.";
         render();
         return;
