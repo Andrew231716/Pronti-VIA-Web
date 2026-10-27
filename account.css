@@ -162,6 +162,25 @@ body.pv-account-ready {
   line-height: 1.4;
 }
 
+.pv-account-forgot {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+  border: 0;
+  background: transparent;
+  color: var(--pv-account-teal);
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.9rem;
+  cursor: pointer;
+  text-align: center;
+  padding: 6px;
+}
+
+.pv-account-forgot:hover {
+  text-decoration: underline;
+}
+
 #pv-account-chip {
   position: fixed;
   top: 0;

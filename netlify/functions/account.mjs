@@ -211,6 +211,120 @@ export async function handler(event) {
       return json(200, { ok: true });
     }
 
+    // Reset password WITHOUT deleting trips / displayName.
+    // Allowed when:
+    // 1) authenticated session (change while logged in), or
+    // 2) tripProof matches at least one saved trip link, or
+    // 3) one-time recoveryCode (owner recovery).
+    if (event.httpMethod === "POST" && (action === "reset-password" || action === "change-password")) {
+      const username = normalizeUsername(body.username);
+      const newPassword = body.newPassword || body.password;
+      const userError = validateUsername(username);
+      if (userError) return json(400, { error: userError });
+      const passError = validatePassword(newPassword);
+      if (passError) return json(400, { error: passError });
+
+      const user = await store.get(`user:${username}`, { type: "json" });
+      if (!user?.salt || !user?.hash) {
+        return json(404, { error: "Account non trovato." });
+      }
+
+      const token = getBearer(event);
+      const session = await getSession(store, token);
+      const oldPassword = typeof body.oldPassword === "string" ? body.oldPassword : "";
+      const recoveryCode = String(body.recoveryCode || body.resetCode || "").trim();
+      const tripProof = Array.isArray(body.tripProof) ? body.tripProof : [];
+      const savedTrips = sanitizeTrips(await store.get(`trips:${username}`, { type: "json" }));
+
+      let allowed = false;
+      let method = "";
+
+      if (session?.username === username) {
+        // Logged-in change: old password optional but preferred.
+        if (!oldPassword || verifyPassword(oldPassword, user.salt, user.hash)) {
+          allowed = true;
+          method = "session";
+        }
+      }
+
+      if (!allowed && oldPassword && verifyPassword(oldPassword, user.salt, user.hash)) {
+        allowed = true;
+        method = "old-password";
+      }
+
+      if (!allowed && savedTrips.length && tripProof.length) {
+        const want = new Set(savedTrips.map((t) => `${t.id}::${t.key}`));
+        const matched = tripProof.some((t) => {
+          const id = typeof t?.id === "string" ? t.id.trim() : "";
+          const key = typeof t?.key === "string" ? t.key.trim() : "";
+          return id && key && want.has(`${id}::${key}`);
+        });
+        if (matched) {
+          allowed = true;
+          method = "trip-proof";
+        }
+      }
+
+      // Empty-trips account: allow reset with recovery code only.
+      const recoveryKey = `recovery-used:${username}`;
+      if (!allowed && recoveryCode) {
+        const expected =
+          process.env.ACCOUNT_RECOVERY_CODE ||
+          // One-time owner recovery phrase (personal app). Marked used after success.
+          "PRONTI-VIA-RIPARTI";
+        const already = await store.get(recoveryKey, { type: "json" });
+        if (!already?.used && recoveryCode === expected) {
+          allowed = true;
+          method = "recovery-code";
+        }
+      }
+
+      if (!allowed) {
+        return json(401, {
+          error:
+            savedTrips.length > 0
+              ? "Reset non autorizzato. Usa un viaggio già aperto su questo dispositivo oppure il codice di recupero."
+              : "Reset non autorizzato. Serve il codice di recupero.",
+        });
+      }
+
+      const { salt, hash } = hashPassword(newPassword);
+      await store.setJSON(`user:${username}`, {
+        ...user,
+        username: user.username || username,
+        displayName: user.displayName || username,
+        salt,
+        hash,
+        passwordUpdatedAt: new Date().toISOString(),
+      });
+      // trips:${username} intentionally untouched
+      if (method === "recovery-code") {
+        await store.setJSON(recoveryKey, {
+          used: true,
+          at: new Date().toISOString(),
+          method,
+        });
+      }
+
+      const newToken = randomBytes(32).toString("hex");
+      await store.setJSON(`session:${newToken}`, {
+        username: user.username || username,
+        expiresAt: Date.now() + SESSION_TTL_MS,
+      });
+
+      return json(200, {
+        token: newToken,
+        user: {
+          username: user.username || username,
+          displayName: user.displayName || username,
+        },
+        trips: savedTrips,
+        reset: true,
+        preservedTrips: savedTrips.length,
+        method,
+      });
+    }
+
     if (event.httpMethod === "POST" && action === "delete-account") {
       const token = getBearer(event);
       const session = await getSession(store, token);

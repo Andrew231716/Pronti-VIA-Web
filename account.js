@@ -6,7 +6,7 @@ const API = "/api/account";
 const state = {
   token: null,
   user: null,
-  mode: "login",
+  mode: "login", // login | register | reset
 };
 
 function readJson(key, fallback) {
@@ -185,14 +185,19 @@ function ensureUi() {
           <label for="pv-username">Nome utente</label>
           <input id="pv-username" name="username" autocomplete="username" required minlength="3" maxlength="32" placeholder="es. anna">
         </div>
-        <div class="pv-account-field">
-          <label for="pv-password">Password</label>
+        <div class="pv-account-field" id="pv-password-wrap">
+          <label for="pv-password" id="pv-password-label">Password</label>
           <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="4" maxlength="72" placeholder="almeno 4 caratteri">
+        </div>
+        <div class="pv-account-field" id="pv-recovery-wrap" hidden>
+          <label for="pv-recovery">Codice recupero (opzionale)</label>
+          <input id="pv-recovery" name="recoveryCode" type="text" autocomplete="off" maxlength="64" placeholder="se ce l’hai — i viaggi restano">
         </div>
         <div class="pv-account-error" id="pv-account-error" aria-live="polite"></div>
         <button class="pv-account-submit" type="submit">Entra</button>
       </form>
-      <div class="pv-account-note">
+      <button type="button" class="pv-account-forgot" id="pv-account-forgot">Hai dimenticato la password?</button>
+      <div class="pv-account-note" id="pv-account-note">
         L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.
       </div>
     </div>
@@ -214,22 +219,89 @@ function ensureUi() {
   });
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
+  gate.querySelector("#pv-account-forgot").addEventListener("click", () => {
+    setMode(state.mode === "reset" ? "login" : "reset");
+  });
   chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
   chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
 }
 
+function collectTripProof() {
+  const out = [];
+  const seen = new Set();
+  const push = (id, key) => {
+    const i = String(id || "").trim();
+    const k = String(key || "").trim();
+    if (!i || !k || seen.has(i)) return;
+    seen.add(i);
+    out.push({ id: i, key: k });
+  };
+  try {
+    const recent = JSON.parse(localStorage.getItem("viavia-recent-links-v1") || "[]");
+    if (Array.isArray(recent)) recent.forEach((t) => push(t.id, t.key));
+  } catch {
+    /* ignore */
+  }
+  try {
+    const local = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+    if (local && typeof local === "object") {
+      for (const [id, rec] of Object.entries(local)) push(id, rec?.key || rec?.editKey);
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const hash = String(location.hash || "").replace(/^#/, "");
+    const p = new URLSearchParams(hash);
+    push(p.get("trip"), p.get("key"));
+  } catch {
+    /* ignore */
+  }
+  return out.slice(0, 40);
+}
+
 function setMode(mode) {
-  state.mode = mode === "register" ? "register" : "login";
+  state.mode = mode === "register" ? "register" : mode === "reset" ? "reset" : "login";
   const gate = document.getElementById("pv-account-gate");
   gate.querySelectorAll("[data-mode]").forEach((button) => {
-    button.setAttribute("aria-selected", String(button.dataset.mode === state.mode));
+    button.setAttribute(
+      "aria-selected",
+      String(state.mode !== "reset" && button.dataset.mode === state.mode)
+    );
   });
-  gate.querySelector("#pv-account-title").textContent =
-    state.mode === "register" ? "Crea il tuo account" : "Accedi al tuo spazio";
-  gate.querySelector(".pv-account-submit").textContent =
-    state.mode === "register" ? "Crea account" : "Entra";
+  const title = gate.querySelector("#pv-account-title");
+  const submit = gate.querySelector(".pv-account-submit");
+  const note = gate.querySelector("#pv-account-note");
+  const forgot = gate.querySelector("#pv-account-forgot");
+  const recoveryWrap = gate.querySelector("#pv-recovery-wrap");
+  const passLabel = gate.querySelector("#pv-password-label");
+  if (state.mode === "register") {
+    title.textContent = "Crea il tuo account";
+    submit.textContent = "Crea account";
+    note.textContent =
+      "L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.";
+    forgot.hidden = true;
+    recoveryWrap.hidden = true;
+  } else if (state.mode === "reset") {
+    title.textContent = "Reimposta la password";
+    submit.textContent = "Salva nuova password";
+    note.textContent =
+      "I tuoi viaggi non vengono cancellati. Se hai già aperto un viaggio su questo telefono, basta la nuova password. Altrimenti usa il codice di recupero.";
+    forgot.hidden = false;
+    forgot.textContent = "Torna all’accesso";
+    recoveryWrap.hidden = false;
+  } else {
+    title.textContent = "Accedi al tuo spazio";
+    submit.textContent = "Entra";
+    note.textContent =
+      "L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.";
+    forgot.hidden = false;
+    forgot.textContent = "Hai dimenticato la password?";
+    recoveryWrap.hidden = true;
+  }
+  passLabel.textContent = state.mode === "reset" ? "Nuova password" : "Password";
   gate.querySelector("#pv-password").autocomplete =
-    state.mode === "register" ? "new-password" : "current-password";
+    state.mode === "login" ? "current-password" : "new-password";
   gate.querySelector("#pv-account-error").textContent = "";
 }
 
@@ -318,9 +390,33 @@ async function onSubmit(event) {
   const mode = state.mode;
   const username = form.username.value;
   const password = form.password.value;
+  const recoveryCode = form.recoveryCode?.value || "";
   submit.disabled = true;
   error.textContent = "";
   try {
+    if (mode === "reset") {
+      const tripProof = collectTripProof();
+      const cloud = await api("reset-password", {
+        body: {
+          username,
+          newPassword: password,
+          recoveryCode: recoveryCode.trim() || undefined,
+          tripProof,
+        },
+      });
+      if (!cloud?.token || !cloud?.user?.username) throw new Error("Reset non riuscito.");
+      try {
+        await upsertLocalUser(username, password, cloud.user?.displayName || username);
+      } catch {
+        /* ignore */
+      }
+      // Merge any local trip links so nothing is lost on this device.
+      const trips = mergeTrips(cloud.trips || [], readLocalTrips());
+      writeLocalTrips(trips);
+      await activateSession({ token: cloud.token, user: cloud.user, trips });
+      return;
+    }
+
     let data;
     let localError;
     try {
