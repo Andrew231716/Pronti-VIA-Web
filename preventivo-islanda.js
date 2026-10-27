@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261027a";
+  const VERSION = "20261027c";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -1473,7 +1473,7 @@
         animation-delay:.4s;
       }
       .pv-prev-launch:active,.pv-prev-launch.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04)}
-      .pv-prev-launch svg{width:28px;height:28px;display:block}
+      .pv-prev-launch svg{width:30px;height:30px;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
       .pv-prev-launch .pv-prev-fab-label{
         position:absolute;right:68px;bottom:14px;white-space:nowrap;
         background:#0f2c31;color:#fff;font:700 11px/1 inherit;padding:6px 10px;border-radius:999px;
@@ -1498,10 +1498,30 @@
   }
 
   function preventivoIcon() {
-    return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="3" width="16" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/>
-      <path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-      <circle cx="17" cy="17" r="3.2" fill="#2bb7bc" stroke="#fff" stroke-width="1.2"/>
+    const gid = `pvPrev${Math.random().toString(36).slice(2, 7)}`;
+    return `<svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="${gid}Paper" x1="8" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="100%" stop-color="#d7ecee"/>
+        </linearGradient>
+        <linearGradient id="${gid}Badge" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#4fd0d4"/>
+          <stop offset="100%" stop-color="#007d82"/>
+        </linearGradient>
+      </defs>
+      <!-- soft shadow -->
+      <rect x="7.5" y="5.5" width="17" height="21" rx="3.5" fill="rgba(0,0,0,.12)"/>
+      <!-- paper -->
+      <rect x="6.5" y="4" width="17" height="21" rx="3.5" fill="url(#${gid}Paper)" stroke="rgba(255,255,255,.55)" stroke-width="1"/>
+      <!-- folded corner -->
+      <path d="M18.5 4h5v5h-2.2c-1.55 0-2.8-1.25-2.8-2.8V4z" fill="#9fc9cd" opacity=".9"/>
+      <path d="M18.5 4v2.2c0 1.55 1.25 2.8 2.8 2.8H24" fill="none" stroke="rgba(15,44,49,.18)" stroke-width=".8"/>
+      <!-- lines -->
+      <path d="M10.2 11.2h9.6M10.2 15h9.6M10.2 18.8h6.4" stroke="#124048" stroke-width="1.7" stroke-linecap="round" opacity=".88"/>
+      <!-- euro badge -->
+      <circle cx="22.2" cy="22.2" r="5.1" fill="url(#${gid}Badge)" stroke="#fff" stroke-width="1.4"/>
+      <path d="M20.5 22.2h3.4M23.2 20.2c-.45-.7-1.2-1.1-2.05-1.1-1.45 0-2.45 1.1-2.45 3.1s1 3.1 2.45 3.1c.9 0 1.65-.4 2.1-1.15" stroke="#fff" stroke-width="1.35" stroke-linecap="round" fill="none"/>
     </svg>`;
   }
 
