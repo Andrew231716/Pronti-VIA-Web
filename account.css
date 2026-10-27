@@ -228,6 +228,15 @@ body.pv-account-ready {
   color: #7a2e28;
 }
 
+#pv-account-chip #pv-account-login {
+  background: #007d82;
+  color: #fff;
+}
+
+#pv-account-chip.is-guest strong {
+  color: #7a5a12;
+}
+
 .share-inputs {
   display: flex;
   align-items: center;

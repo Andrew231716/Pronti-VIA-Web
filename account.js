@@ -6,6 +6,7 @@ const API = "/api/account";
 const state = {
   token: null,
   user: null,
+  guest: false,
   mode: "login", // login | register | reset
 };
 
@@ -209,6 +210,7 @@ function ensureUi() {
   chip.hidden = true;
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
+    <button type="button" id="pv-account-login" hidden>Accedi</button>
     <button type="button" id="pv-account-logout">Esci</button>
     <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina</button>
   `;
@@ -222,8 +224,16 @@ function ensureUi() {
   gate.querySelector("#pv-account-forgot").addEventListener("click", () => {
     setMode(state.mode === "reset" ? "login" : "reset");
   });
+  chip.querySelector("#pv-account-login").addEventListener("click", onGuestLogin);
   chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
   chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
+}
+
+function isGuestUser(user = state.user, sessionGuest = false) {
+  if (sessionGuest || state.guest) return true;
+  const username = String(user?.username || "");
+  const display = String(user?.displayName || "");
+  return display === "Ospite" || /^ospite-/i.test(username);
 }
 
 function collectTripProof() {
@@ -325,9 +335,37 @@ function showChip() {
   ensureUi();
   const chip = document.getElementById("pv-account-chip");
   const label = document.getElementById("pv-account-chip-label");
-  label.textContent = state.user?.displayName || state.user?.username || "Account";
+  const guest = isGuestUser();
+  label.textContent = guest
+    ? "Ospite"
+    : state.user?.displayName || state.user?.username || "Account";
+  const loginBtn = chip.querySelector("#pv-account-login");
+  const logoutBtn = chip.querySelector("#pv-account-logout");
+  const deleteBtn = chip.querySelector("#pv-account-delete");
+  if (loginBtn) loginBtn.hidden = !guest;
+  if (logoutBtn) logoutBtn.hidden = guest;
+  if (deleteBtn) deleteBtn.hidden = guest;
+  chip.classList.toggle("is-guest", guest);
   chip.hidden = false;
   document.body.classList.add("pv-account-ready");
+}
+
+/** Upgrade from temporary guest → real login, keep open trip hash. */
+function onGuestLogin() {
+  state.token = null;
+  state.user = null;
+  state.guest = false;
+  writeSession(null);
+  setMode("login");
+  showGate("");
+  try {
+    const userInput = document.getElementById("pv-username");
+    const passInput = document.getElementById("pv-password");
+    if (userInput && !userInput.value) userInput.value = "Andrea";
+    if (passInput) passInput.focus();
+  } catch {
+    /* ignore */
+  }
 }
 
 async function upsertLocalUser(usernameRaw, password, displayName) {
@@ -554,14 +592,25 @@ async function onDeleteAccount() {
 async function activateSession(data, { bootApp = true } = {}) {
   state.token = data.token;
   state.user = data.user;
-  // Persist until the browser site data is cleared (or explicit logout).
-  writeSession({
-    token: data.token,
-    user: data.user,
-    guest: Boolean(data.guest),
-    remembered: true,
-    savedAt: new Date().toISOString(),
-  });
+  state.guest = Boolean(data.guest) || isGuestUser(data.user, Boolean(data.guest));
+  // Guest is temporary (shared-link only). Real accounts persist until Esci / cache clear.
+  if (state.guest) {
+    writeSession({
+      token: data.token,
+      user: data.user,
+      guest: true,
+      remembered: false,
+      savedAt: new Date().toISOString(),
+    });
+  } else {
+    writeSession({
+      token: data.token,
+      user: data.user,
+      guest: false,
+      remembered: true,
+      savedAt: new Date().toISOString(),
+    });
+  }
 
   const merged = mergeTrips(data.trips || [], readLocalTrips());
   writeLocalTrips(merged);
@@ -605,6 +654,7 @@ function namesMatch(a, b) {
 }
 
 async function ensureCurrentUserOnTrip() {
+  if (isGuestUser()) return;
   const name = currentDisplayName();
   if (!name) return;
 
@@ -724,7 +774,14 @@ function makeGuestSession() {
 
 async function boot() {
   ensureUi();
-  const session = readSession();
+  let session = readSession();
+  // Guest sessions are only for opening a shared trip link — never sticky home logins.
+  if (session?.user?.username && isGuestUser(session.user, Boolean(session.guest))) {
+    if (!hashHasSharedTrip()) {
+      writeSession(null);
+      session = null;
+    }
+  }
   if (!session?.user?.username) {
     // Shared trip links should open without forcing registration.
     if (hashHasSharedTrip()) {
@@ -741,6 +798,7 @@ async function boot() {
     {
       token: session.token || `local:${session.user.username}`,
       user: session.user,
+      guest: Boolean(session.guest),
       trips: readLocalTrips(),
     },
     { bootApp: true }
