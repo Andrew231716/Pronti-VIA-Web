@@ -14,7 +14,7 @@
   const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
   // Dock: both FABs stack on the right, clear of the home indicator.
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
-  const FAB_GAP = 24;
+  const FAB_GAP = 28;
   const FAB_SIZE = 62;
   const FAB_DOCK_RIGHT = 18;
   // Lower slot offset from safe bottom, then Pronty sits one slot above.
@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261027a") return;
+    if (style && style.dataset.pvReady === "20261027b") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -105,12 +105,12 @@
       }
       @keyframes pv-fab-float{
         0%,100%{transform:translateY(0)}
-        50%{transform:translateY(-5px)}
+        50%{transform:translateY(-3px)}
       }
       #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;animation:none;transform:scale(.96)}
       #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04);box-shadow:0 18px 40px rgba(0,70,80,.45)}
       #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait;animation:none}
-      #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:42px;height:42px;display:block}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:44px;height:44px;display:block;filter:drop-shadow(0 1px 2px rgba(0,40,50,.18))}
       #${ROOT_ID} .pv-magic-btn .pv-pronty-label{
         position:absolute;right:68px;bottom:14px;white-space:nowrap;
         background:#0f2c31;color:#fff;font:700 11px/1 inherit;letter-spacing:.02em;
@@ -176,7 +176,7 @@
       @media (max-width:640px){
         #${ROOT_ID} .pv-magic-btn{
           right:16px;width:58px;height:58px;
-          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 82px);
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 86px);
         }
         #${ROOT_ID} .pv-magic-panel{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
@@ -231,7 +231,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261027a";
+    style.dataset.pvReady = "20261027b";
   }
 
   function fabNodes() {
@@ -708,18 +708,49 @@
     return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20 L14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4 l1.2 2.4 2.6.4-1.9 1.9.5 2.6L13 10.2 10.6 11.3l.5-2.6L9.2 6.8l2.6-.4L13 4z" fill="currentColor"/><path d="M16.5 14.5 l.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2.7-1.4z" fill="currentColor"/></svg>`;
   }
 
-  /** Cute round face for Pronty FAB */
+  /** Polished travel-companion face for Pronty FAB */
   function prontyFace() {
+    const gid = `pvPronty${Math.random().toString(36).slice(2, 7)}`;
     return `<svg class="pv-pronty-face" viewBox="0 0 64 64" aria-hidden="true">
-      <circle cx="32" cy="32" r="28" fill="#e8fafa"/>
-      <circle cx="32" cy="32" r="28" fill="url(#pvProntyGlow)" opacity=".35"/>
-      <defs><radialGradient id="pvProntyGlow" cx="30%" cy="30%"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#007d82"/></radialGradient></defs>
-      <circle cx="23" cy="28" r="3.2" fill="#0f2c31"/>
-      <circle cx="41" cy="28" r="3.2" fill="#0f2c31"/>
-      <path d="M22 38c3.5 5 16.5 5 20 0" fill="none" stroke="#0f2c31" stroke-width="2.6" stroke-linecap="round"/>
-      <circle cx="18" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
-      <circle cx="46" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
-      <path d="M44 14l1.1 2.2 2.4.3-1.7 1.7.4 2.4-2.2-1.1-2.2 1.1.4-2.4-1.7-1.7 2.4-.3L44 14z" fill="#ffd56a"/>
+      <defs>
+        <radialGradient id="${gid}Face" cx="32%" cy="28%" r="70%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="55%" stop-color="#dff7f7"/>
+          <stop offset="100%" stop-color="#b9e8ea"/>
+        </radialGradient>
+        <linearGradient id="${gid}Cheek" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffb7ae"/>
+          <stop offset="100%" stop-color="#ff8f7a"/>
+        </linearGradient>
+        <linearGradient id="${gid}Star" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffe89a"/>
+          <stop offset="100%" stop-color="#f0b429"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="27" fill="url(#${gid}Face)"/>
+      <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(15,44,49,.08)" stroke-width="1"/>
+      <!-- soft highlight -->
+      <ellipse cx="24" cy="20" rx="10" ry="6" fill="#fff" opacity=".55"/>
+      <!-- eyes -->
+      <ellipse cx="23.5" cy="29" rx="3.4" ry="3.8" fill="#0f2c31"/>
+      <ellipse cx="40.5" cy="29" rx="3.4" ry="3.8" fill="#0f2c31"/>
+      <circle cx="24.6" cy="27.8" r="1.15" fill="#fff" opacity=".95"/>
+      <circle cx="41.6" cy="27.8" r="1.15" fill="#fff" opacity=".95"/>
+      <!-- brows -->
+      <path d="M19.5 23.5c2.2-1.6 5.2-1.7 7.2-.2" fill="none" stroke="#0f2c31" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+      <path d="M37.3 23.3c2.2-1.5 5.1-1.5 7.1.1" fill="none" stroke="#0f2c31" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+      <!-- smile -->
+      <path d="M22.5 38.5c3.2 5.2 15.8 5.2 19 0" fill="none" stroke="#0f2c31" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- cheeks -->
+      <circle cx="17.5" cy="35" r="3.4" fill="url(#${gid}Cheek)" opacity=".8"/>
+      <circle cx="46.5" cy="35" r="3.4" fill="url(#${gid}Cheek)" opacity=".8"/>
+      <!-- magic spark -->
+      <g transform="translate(45.5 12.5)">
+        <path d="M0-5.2l1.35 3.3 3.55.35-2.7 2.45.85 3.45L0 2.5l-3.05 1.85.85-3.45-2.7-2.45 3.55-.35z" fill="url(#${gid}Star)"/>
+        <circle cx="0" cy="0" r="1.1" fill="#fff8dc"/>
+      </g>
+      <circle cx="12" cy="18" r="1.2" fill="#ffe08a" opacity=".9"/>
+      <circle cx="51" cy="40" r=".9" fill="#fff" opacity=".7"/>
     </svg>`;
   }
 
