@@ -6,7 +6,8 @@ const API = "/api/account";
 const state = {
   token: null,
   user: null,
-  mode: "login",
+  guest: false,
+  mode: "login", // login | register | reset
 };
 
 function readJson(key, fallback) {
@@ -127,20 +128,40 @@ async function api(action, { method = "POST", body, token } = {}) {
   if (token) headers.Authorization = `Bearer ${token}`;
   const isGet = method === "GET";
   if (!isGet) headers["Content-Type"] = "application/json";
-  const url = isGet ? `${API}?action=${encodeURIComponent(action)}` : API;
-  const response = await fetch(url, {
-    method,
-    headers,
-    body: isGet ? undefined : JSON.stringify({ action, ...(body || {}) }),
-    cache: "no-store",
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error(data.error || "Operazione non riuscita.");
-    error.status = response.status;
-    throw error;
+  const payload = isGet ? undefined : JSON.stringify({ action, ...(body || {}) });
+  const query = isGet ? `?action=${encodeURIComponent(action)}` : "";
+  // Same-origin first (Netlify / shim), then direct Netlify fallback for GitHub Pages.
+  const targets = [
+    `${API}${query}`,
+    `https://pronti-via-k7es.netlify.app/api/account${query}`,
+  ];
+  let lastErr;
+  for (const url of targets) {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: payload,
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || "Operazione non riuscita.");
+        error.status = response.status;
+        // Soft-fail only transport/host issues to the next target.
+        if (response.status === 503 || response.status === 502 || response.status === 404) {
+          lastErr = error;
+          continue;
+        }
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      lastErr = err;
+      if (err?.status && err.status !== 503 && err.status !== 502 && err.status !== 404) throw err;
+    }
   }
-  return data;
+  throw lastErr || new Error("Sync account non disponibile.");
 }
 
 function ensureUi() {
@@ -151,7 +172,7 @@ function ensureUi() {
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
       <div class="pv-account-brand">
-        <img class="pv-account-mark" src="/logo.png" width="34" height="34" alt="">
+        <img class="pv-account-mark" src="./logo.png" width="34" height="34" alt="">
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
@@ -165,14 +186,19 @@ function ensureUi() {
           <label for="pv-username">Nome utente</label>
           <input id="pv-username" name="username" autocomplete="username" required minlength="3" maxlength="32" placeholder="es. anna">
         </div>
-        <div class="pv-account-field">
-          <label for="pv-password">Password</label>
+        <div class="pv-account-field" id="pv-password-wrap">
+          <label for="pv-password" id="pv-password-label">Password</label>
           <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="4" maxlength="72" placeholder="almeno 4 caratteri">
+        </div>
+        <div class="pv-account-field" id="pv-recovery-wrap" hidden>
+          <label for="pv-recovery">Codice recupero (opzionale)</label>
+          <input id="pv-recovery" name="recoveryCode" type="text" autocomplete="off" maxlength="64" placeholder="se ce l’hai — i viaggi restano">
         </div>
         <div class="pv-account-error" id="pv-account-error" aria-live="polite"></div>
         <button class="pv-account-submit" type="submit">Entra</button>
       </form>
-      <div class="pv-account-note">
+      <button type="button" class="pv-account-forgot" id="pv-account-forgot">Hai dimenticato la password?</button>
+      <div class="pv-account-note" id="pv-account-note">
         L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.
       </div>
     </div>
@@ -184,35 +210,133 @@ function ensureUi() {
   chip.hidden = true;
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
-    <button type="button" id="pv-account-logout">Esci</button>
+    <button type="button" id="pv-account-login" hidden>Accedi</button>
+    <button type="button" id="pv-account-manage-btn">Gestione</button>
   `;
   document.body.appendChild(chip);
+
+  const manage = document.createElement("div");
+  manage.id = "pv-account-manage-panel";
+  manage.hidden = true;
+  manage.innerHTML = `
+    <div class="pv-manage-backdrop" data-manage-close></div>
+    <div class="pv-manage-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-manage-title">
+      <header class="pv-manage-head">
+        <div>
+          <p class="pv-manage-kicker">Pronti? VIA!</p>
+          <h2 id="pv-manage-title">Gestione account</h2>
+        </div>
+        <button type="button" class="pv-manage-close" data-manage-close aria-label="Chiudi">×</button>
+      </header>
+      <div id="pv-manage-body" class="pv-manage-body"></div>
+    </div>
+  `;
+  document.body.appendChild(manage);
 
   gate.querySelectorAll("[data-mode]").forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode));
   });
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
-  chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
+  gate.querySelector("#pv-account-forgot").addEventListener("click", () => {
+    setMode(state.mode === "reset" ? "login" : "reset");
+  });
+  chip.querySelector("#pv-account-login").addEventListener("click", onGuestLogin);
+  chip.querySelector("#pv-account-manage-btn").addEventListener("click", openAccountManage);
+  manage.addEventListener("click", (event) => {
+    if (event.target?.closest?.("[data-manage-close]")) closeAccountManage();
+  });
+}
+
+function isGuestUser(user = state.user, sessionGuest = false) {
+  if (sessionGuest || state.guest) return true;
+  const username = String(user?.username || "");
+  const display = String(user?.displayName || "");
+  return display === "Ospite" || /^ospite-/i.test(username);
+}
+
+function collectTripProof() {
+  const out = [];
+  const seen = new Set();
+  const push = (id, key) => {
+    const i = String(id || "").trim();
+    const k = String(key || "").trim();
+    if (!i || !k || seen.has(i)) return;
+    seen.add(i);
+    out.push({ id: i, key: k });
+  };
+  try {
+    const recent = JSON.parse(localStorage.getItem("viavia-recent-links-v1") || "[]");
+    if (Array.isArray(recent)) recent.forEach((t) => push(t.id, t.key));
+  } catch {
+    /* ignore */
+  }
+  try {
+    const local = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+    if (local && typeof local === "object") {
+      for (const [id, rec] of Object.entries(local)) push(id, rec?.key || rec?.editKey);
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const hash = String(location.hash || "").replace(/^#/, "");
+    const p = new URLSearchParams(hash);
+    push(p.get("trip"), p.get("key"));
+  } catch {
+    /* ignore */
+  }
+  return out.slice(0, 40);
 }
 
 function setMode(mode) {
-  state.mode = mode === "register" ? "register" : "login";
+  state.mode = mode === "register" ? "register" : mode === "reset" ? "reset" : "login";
   const gate = document.getElementById("pv-account-gate");
   gate.querySelectorAll("[data-mode]").forEach((button) => {
-    button.setAttribute("aria-selected", String(button.dataset.mode === state.mode));
+    button.setAttribute(
+      "aria-selected",
+      String(state.mode !== "reset" && button.dataset.mode === state.mode)
+    );
   });
-  gate.querySelector("#pv-account-title").textContent =
-    state.mode === "register" ? "Crea il tuo account" : "Accedi al tuo spazio";
-  gate.querySelector(".pv-account-submit").textContent =
-    state.mode === "register" ? "Crea account" : "Entra";
+  const title = gate.querySelector("#pv-account-title");
+  const submit = gate.querySelector(".pv-account-submit");
+  const note = gate.querySelector("#pv-account-note");
+  const forgot = gate.querySelector("#pv-account-forgot");
+  const recoveryWrap = gate.querySelector("#pv-recovery-wrap");
+  const passLabel = gate.querySelector("#pv-password-label");
+  if (state.mode === "register") {
+    title.textContent = "Crea il tuo account";
+    submit.textContent = "Crea account";
+    note.textContent =
+      "L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.";
+    forgot.hidden = true;
+    recoveryWrap.hidden = true;
+  } else if (state.mode === "reset") {
+    title.textContent = "Reimposta la password";
+    submit.textContent = "Salva nuova password";
+    note.textContent =
+      "I tuoi viaggi non vengono cancellati. Se hai già aperto un viaggio su questo telefono, basta la nuova password. Altrimenti usa il codice di recupero.";
+    forgot.hidden = false;
+    forgot.textContent = "Torna all’accesso";
+    recoveryWrap.hidden = false;
+  } else {
+    title.textContent = "Accedi al tuo spazio";
+    submit.textContent = "Entra";
+    note.textContent =
+      "L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.";
+    forgot.hidden = false;
+    forgot.textContent = "Hai dimenticato la password?";
+    recoveryWrap.hidden = true;
+  }
+  passLabel.textContent = state.mode === "reset" ? "Nuova password" : "Password";
   gate.querySelector("#pv-password").autocomplete =
-    state.mode === "register" ? "new-password" : "current-password";
+    state.mode === "login" ? "current-password" : "new-password";
   gate.querySelector("#pv-account-error").textContent = "";
 }
 
 function showGate(message = "") {
   ensureUi();
+  closeAccountManage();
   const gate = document.getElementById("pv-account-gate");
   gate.hidden = false;
   document.getElementById("pv-account-chip").hidden = true;
@@ -231,12 +355,209 @@ function showChip() {
   ensureUi();
   const chip = document.getElementById("pv-account-chip");
   const label = document.getElementById("pv-account-chip-label");
-  label.textContent = state.user?.displayName || state.user?.username || "Account";
+  const guest = isGuestUser();
+  label.textContent = guest
+    ? "Ospite"
+    : state.user?.displayName || state.user?.username || "Account";
+  const loginBtn = chip.querySelector("#pv-account-login");
+  const manageBtn = chip.querySelector("#pv-account-manage-btn");
+  if (loginBtn) loginBtn.hidden = !guest;
+  if (manageBtn) manageBtn.hidden = false;
+  chip.classList.toggle("is-guest", guest);
   chip.hidden = false;
   document.body.classList.add("pv-account-ready");
+  if (!document.getElementById("pv-account-manage-panel")?.hidden) {
+    renderAccountManage();
+  }
 }
 
-async function registerLocal(usernameRaw, password) {
+function closeAccountManage() {
+  const manage = document.getElementById("pv-account-manage-panel");
+  if (manage) manage.hidden = true;
+  document.documentElement.style.overflow = "";
+}
+
+function openAccountManage() {
+  ensureUi();
+  const manage = document.getElementById("pv-account-manage-panel");
+  if (!manage) return;
+  manage.hidden = false;
+  document.documentElement.style.overflow = "hidden";
+  renderAccountManage();
+}
+
+function renderAccountManage() {
+  const body = document.getElementById("pv-manage-body");
+  if (!body) return;
+  const guest = isGuestUser();
+  const name = state.user?.displayName || state.user?.username || "Account";
+  const username = state.user?.username || "";
+  const trips = readLocalTrips();
+
+  if (guest) {
+    body.innerHTML = `
+      <section class="pv-manage-section">
+        <h3>Sei in modalità ospite</h3>
+        <p>Puoi vedere i viaggi condivisi, ma per salvare i tuoi serve un account.</p>
+        <button type="button" class="pv-manage-primary" id="pv-manage-login">Accedi o crea account</button>
+      </section>
+    `;
+    body.querySelector("#pv-manage-login")?.addEventListener("click", () => {
+      closeAccountManage();
+      onGuestLogin();
+    });
+    return;
+  }
+
+  const tripRows = trips.length
+    ? trips
+        .map(
+          (t) => `
+      <li>
+        <button type="button" class="pv-manage-trip" data-trip-id="${escapeHtml(t.id)}" data-trip-key="${escapeHtml(t.key)}">
+          <strong>${escapeHtml(t.title || "Viaggio")}</strong>
+          <span>Apri</span>
+        </button>
+      </li>`
+        )
+        .join("")
+    : `<li class="pv-manage-empty">Nessun viaggio salvato su questo account.</li>`;
+
+  body.innerHTML = `
+    <section class="pv-manage-section">
+      <h3>Profilo</h3>
+      <div class="pv-manage-profile">
+        <div class="pv-manage-avatar" aria-hidden="true">${escapeHtml((name || "?").slice(0, 1).toUpperCase())}</div>
+        <div>
+          <strong id="pv-manage-displayname">${escapeHtml(name)}</strong>
+          <p>@${escapeHtml(username)}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="pv-manage-section">
+      <h3>I miei viaggi <em>${trips.length}</em></h3>
+      <ul class="pv-manage-trips">${tripRows}</ul>
+    </section>
+
+    <section class="pv-manage-section">
+      <h3>Cambia password</h3>
+      <p>I viaggi restano al loro posto.</p>
+      <form id="pv-manage-password-form" class="pv-manage-form">
+        <label>
+          Password attuale
+          <input name="oldPassword" type="password" autocomplete="current-password" required minlength="4" maxlength="72">
+        </label>
+        <label>
+          Nuova password
+          <input name="newPassword" type="password" autocomplete="new-password" required minlength="4" maxlength="72">
+        </label>
+        <div class="pv-account-error" id="pv-manage-password-error" aria-live="polite"></div>
+        <button type="submit" class="pv-manage-primary">Salva password</button>
+      </form>
+    </section>
+
+    <section class="pv-manage-section pv-manage-actions">
+      <button type="button" class="pv-manage-secondary" id="pv-manage-logout">Esci dall’account</button>
+      <button type="button" class="pv-manage-danger" id="pv-manage-delete">Elimina account</button>
+    </section>
+  `;
+
+  body.querySelectorAll("[data-trip-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-trip-id");
+      const key = btn.getAttribute("data-trip-key");
+      if (!id || !key) return;
+      closeAccountManage();
+      location.hash = `trip=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`;
+    });
+  });
+
+  body.querySelector("#pv-manage-password-form")?.addEventListener("submit", onChangePasswordFromManage);
+  body.querySelector("#pv-manage-logout")?.addEventListener("click", () => {
+    closeAccountManage();
+    onLogout();
+  });
+  body.querySelector("#pv-manage-delete")?.addEventListener("click", () => {
+    closeAccountManage();
+    onDeleteAccount();
+  });
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function onChangePasswordFromManage(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const error = document.getElementById("pv-manage-password-error");
+  const submit = form.querySelector('button[type="submit"]');
+  const oldPassword = form.oldPassword.value;
+  const newPassword = form.newPassword.value;
+  if (error) error.textContent = "";
+  if (submit) submit.disabled = true;
+  try {
+    const username = state.user?.username;
+    if (!username) throw new Error("Sessione non valida.");
+    const cloud = await api("change-password", {
+      token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+      body: { username, oldPassword, newPassword },
+    });
+    try {
+      await upsertLocalUser(username, newPassword, cloud.user?.displayName || state.user?.displayName || username);
+    } catch {
+      /* ignore */
+    }
+    if (cloud?.token) {
+      state.token = cloud.token;
+      writeSession({
+        token: cloud.token,
+        user: cloud.user || state.user,
+        guest: false,
+        remembered: true,
+        savedAt: new Date().toISOString(),
+      });
+    }
+    form.reset();
+    if (error) {
+      error.style.color = "var(--pv-account-teal)";
+      error.textContent = "Password aggiornata.";
+    }
+  } catch (err) {
+    if (error) {
+      error.style.color = "";
+      error.textContent = err.message || "Cambio password non riuscito.";
+    }
+  } finally {
+    if (submit) submit.disabled = false;
+  }
+}
+
+/** Upgrade from temporary guest → real login, keep open trip hash. */
+function onGuestLogin() {
+  closeAccountManage();
+  state.token = null;
+  state.user = null;
+  state.guest = false;
+  writeSession(null);
+  setMode("login");
+  showGate("");
+  try {
+    const userInput = document.getElementById("pv-username");
+    const passInput = document.getElementById("pv-password");
+    if (userInput && !userInput.value) userInput.value = "Andrea";
+    if (passInput) passInput.focus();
+  } catch {
+    /* ignore */
+  }
+}
+
+async function upsertLocalUser(usernameRaw, password, displayName) {
   const username = normalizeUsername(usernameRaw);
   if (username.length < 3 || username.length > 32) {
     throw new Error("Il nome utente deve avere tra 3 e 32 caratteri.");
@@ -247,23 +568,29 @@ async function registerLocal(usernameRaw, password) {
   if (!password || password.length < 4) {
     throw new Error("La password deve avere almeno 4 caratteri.");
   }
-
   const users = readUsers();
-  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
-
   const { salt, hash } = await hashPassword(password);
+  const prev = users[username];
   users[username] = {
     username,
-    displayName: usernameRaw.trim().slice(0, 40) || username,
+    displayName: String(displayName || usernameRaw || username).trim().slice(0, 40) || username,
     salt,
     hash,
-    createdAt: new Date().toISOString(),
+    createdAt: prev?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
   writeUsers(users);
+  return users[username];
+}
 
+async function registerLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  const users = readUsers();
+  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
+  const saved = await upsertLocalUser(usernameRaw, password, usernameRaw);
   return {
     token: `local:${username}`,
-    user: { username, displayName: users[username].displayName },
+    user: { username, displayName: saved.displayName },
     trips: readLocalTrips(),
   };
 }
@@ -290,9 +617,33 @@ async function onSubmit(event) {
   const mode = state.mode;
   const username = form.username.value;
   const password = form.password.value;
+  const recoveryCode = form.recoveryCode?.value || "";
   submit.disabled = true;
   error.textContent = "";
   try {
+    if (mode === "reset") {
+      const tripProof = collectTripProof();
+      const cloud = await api("reset-password", {
+        body: {
+          username,
+          newPassword: password,
+          recoveryCode: recoveryCode.trim() || undefined,
+          tripProof,
+        },
+      });
+      if (!cloud?.token || !cloud?.user?.username) throw new Error("Reset non riuscito.");
+      try {
+        await upsertLocalUser(username, password, cloud.user?.displayName || username);
+      } catch {
+        /* ignore */
+      }
+      // Merge any local trip links so nothing is lost on this device.
+      const trips = mergeTrips(cloud.trips || [], readLocalTrips());
+      writeLocalTrips(trips);
+      await activateSession({ token: cloud.token, user: cloud.user, trips });
+      return;
+    }
+
     let data;
     let localError;
     try {
@@ -311,8 +662,14 @@ async function onSubmit(event) {
         });
         if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
         data = { token: cloud.token, user: cloud.user, trips: cloud.trips || [] };
-      } catch {
-        throw localError || new Error("Nome utente o password non corretti.");
+        // Cache credentials locally so next login works offline too.
+        try {
+          await upsertLocalUser(username, password, data.user?.displayName || username);
+        } catch {
+          /* local write failed — ignore */
+        }
+      } catch (cloudErr) {
+        throw localError || cloudErr || new Error("Nome utente o password non corretti.");
       }
     } else {
       // Mirror local accounts when cloud storage is available.
@@ -361,16 +718,88 @@ async function onLogout() {
   location.reload();
 }
 
+function wipeLocalUser(username) {
+  const users = readUsers();
+  const key = normalizeUsername(username);
+  if (users[key]) {
+    delete users[key];
+    writeUsers(users);
+  }
+}
+
+async function onDeleteAccount() {
+  const username = state.user?.username || "";
+  if (!username) return;
+  const ok = window.confirm(
+    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+  );
+  if (!ok) return;
+  const password = window.prompt("Conferma con la password dell’account:");
+  if (password == null) return;
+  if (!String(password).trim()) {
+    window.alert("Password obbligatoria per eliminare l’account.");
+    return;
+  }
+  try {
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("delete-account", {
+        token: state.token,
+        body: { username, password },
+      });
+    } else {
+      // Local-only account: verify password then wipe.
+      await loginLocal(username, password);
+    }
+  } catch (err) {
+    // Still try cloud delete if local verify failed but cloud may have the account.
+    try {
+      await api("delete-account", {
+        token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+        body: { username, password },
+      });
+    } catch (cloudErr) {
+      window.alert(cloudErr.message || err.message || "Eliminazione non riuscita.");
+      return;
+    }
+  }
+  wipeLocalUser(username);
+  try {
+    localStorage.removeItem("viavia-preventivo-v2");
+    localStorage.removeItem("viavia-preventivo-v1");
+  } catch {
+    /* ignore */
+  }
+  state.token = null;
+  state.user = null;
+  writeSession(null);
+  window.alert("Account eliminato.");
+  showGate();
+  location.hash = "";
+  location.reload();
+}
+
 async function activateSession(data, { bootApp = true } = {}) {
   state.token = data.token;
   state.user = data.user;
-  // Persist until the browser site data is cleared (or explicit logout).
-  writeSession({
-    token: data.token,
-    user: data.user,
-    remembered: true,
-    savedAt: new Date().toISOString(),
-  });
+  state.guest = Boolean(data.guest) || isGuestUser(data.user, Boolean(data.guest));
+  // Guest is temporary (shared-link only). Real accounts persist until Esci / cache clear.
+  if (state.guest) {
+    writeSession({
+      token: data.token,
+      user: data.user,
+      guest: true,
+      remembered: false,
+      savedAt: new Date().toISOString(),
+    });
+  } else {
+    writeSession({
+      token: data.token,
+      user: data.user,
+      guest: false,
+      remembered: true,
+      savedAt: new Date().toISOString(),
+    });
+  }
 
   const merged = mergeTrips(data.trips || [], readLocalTrips());
   writeLocalTrips(merged);
@@ -397,7 +826,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix.js");
+  await import("/assets/index-loadfix-20260920g.js");
 }
 
 let syncTimer = null;
@@ -414,6 +843,7 @@ function namesMatch(a, b) {
 }
 
 async function ensureCurrentUserOnTrip() {
+  if (isGuestUser()) return;
   const name = currentDisplayName();
   if (!name) return;
 
@@ -465,13 +895,8 @@ async function ensureCurrentUserOnTrip() {
     });
     if (save.ok) {
       joinedTrips.add(joinKey);
-      const refreshKey = `pv-joined-refresh:${joinKey}`;
-      if (!sessionStorage.getItem(refreshKey)) {
-        sessionStorage.setItem(refreshKey, "1");
-        setTimeout(() => {
-          if (location.hash.includes(tripId)) location.reload();
-        }, 400);
-      }
+      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
+      // Safari stuck on the loading screen when the trips proxy is slow.
     }
   } catch {
     /* ignore transient join failures */
@@ -516,10 +941,43 @@ function startTripSync() {
   startMemberJoinSync();
 }
 
+function hashHasSharedTrip() {
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    return Boolean(params.get("trip") && params.get("key"));
+  } catch {
+    return false;
+  }
+}
+
+function makeGuestSession() {
+  const suffix = Date.now().toString(36).slice(-5);
+  const username = `ospite-${suffix}`;
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: "Ospite" },
+    trips: readLocalTrips(),
+    guest: true,
+  };
+}
+
 async function boot() {
   ensureUi();
-  const session = readSession();
+  let session = readSession();
+  // Guest sessions are only for opening a shared trip link — never sticky home logins.
+  if (session?.user?.username && isGuestUser(session.user, Boolean(session.guest))) {
+    if (!hashHasSharedTrip()) {
+      writeSession(null);
+      session = null;
+    }
+  }
   if (!session?.user?.username) {
+    // Shared trip links should open without forcing registration.
+    if (hashHasSharedTrip()) {
+      const guest = makeGuestSession();
+      await activateSession(guest, { bootApp: true });
+      return;
+    }
     showGate();
     return;
   }
@@ -529,6 +987,7 @@ async function boot() {
     {
       token: session.token || `local:${session.user.username}`,
       user: session.user,
+      guest: Boolean(session.guest),
       trips: readLocalTrips(),
     },
     { bootApp: true }

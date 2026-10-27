@@ -2,18 +2,30 @@
   "name": "Pronti? VIA! — Viaggi insieme",
   "short_name": "Pronti? VIA!",
   "id": "./",
-  "start_url": "./",
+  "start_url": "./?v=20261027d",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f9fb",
+  "background_color": "#007d82",
   "theme_color": "#007d82",
   "lang": "it",
   "icons": [
     {
-      "src": "./logo.png",
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "./logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "./favicon.svg",

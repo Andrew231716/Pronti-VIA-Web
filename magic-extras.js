@@ -1,7 +1,7 @@
 /**
  * Free Wanderlog-parity extras for Pronti? VIA!
- * - Bacchetta magica: Idee + chat suggerimenti (OSM/Wikipedia/TripAdvisor link)
- *   e sezione Lingua (frasario + traduzione simultanea)
+ * - Pronty (Bacchetta magica): AI floating companion — Idee + chat + Lingua
+ *   Funziona prima e durante il viaggio; FAB a tondino spostabile
  * - Packing list templates
  * - Budget privato + expense category breakdown
  * - Day-colored map pins, distances, meteo, FX in Spese, link utili
@@ -9,6 +9,17 @@
 (() => {
   const STYLE_ID = "pv-magic-extras-css";
   const ROOT_ID = "pv-magic-root";
+  const AI_NAME = "Pronty";
+  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos-v3";
+  const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
+  // Dock: both FABs stack on the right, clear of the home indicator.
+  const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
+  const FAB_GAP = 28;
+  const FAB_SIZE = 62;
+  const FAB_DOCK_RIGHT = 18;
+  // Lower slot offset from safe bottom, then Pronty sits one slot above.
+  const FAB_SLOT = FAB_SIZE + FAB_GAP;
+  const PRONTY_FAB_BOTTOM = `calc(${FAB_SAFE} + ${FAB_SLOT}px)`;
   const DAY_COLORS = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545", "#2a9d8f", "#e76f51"];
   const WMO = {
     0: "Sereno",
@@ -71,24 +82,53 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "1") return;
+    if (style && style.dataset.pvReady === "20261027c") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:auto 14px 14px auto;z-index:80;display:flex;flex-direction:column;align-items:flex-end;gap:0;font-family:inherit;pointer-events:none}
+      #${ROOT_ID}{position:fixed;inset:0;z-index:80;pointer-events:none;font-family:inherit}
       #${ROOT_ID} > *{pointer-events:auto}
-      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0;pointer-events:auto}
-      #${ROOT_ID}.pv-open{inset:0;align-items:stretch;justify-content:flex-end}
+      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.28);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
-      #${ROOT_ID}.pv-open .pv-magic-btn{display:none}
-      #${ROOT_ID} .pv-magic-btn{appearance:none;border:0;border-radius:999px;background:#007d82;color:#fff;padding:12px 16px;font:600 14px/1.2 inherit;box-shadow:0 10px 30px rgba(0,80,90,.28);cursor:pointer;display:inline-flex;align-items:center;gap:8px;position:relative;z-index:2}
-      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait}
-      #${ROOT_ID} .pv-magic-btn svg{width:18px;height:18px;flex:0 0 auto}
-      #${ROOT_ID} .pv-magic-panel{position:relative;z-index:1;width:min(440px,calc(100vw - 24px));max-height:min(82vh,720px);overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #d0e0e0;border-radius:20px;box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0}
+      #${ROOT_ID} .pv-magic-btn{
+        appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PRONTY_FAB_BOTTOM};z-index:2;
+        width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;
+        background:radial-gradient(circle at 30% 28%,#2bb7bc 0%,#007d82 55%,#0a5c60 100%);
+        color:#fff;box-shadow:0 14px 32px rgba(0,70,80,.38),inset 0 1px 0 rgba(255,255,255,.25);
+        cursor:grab;display:inline-flex;align-items:center;justify-content:center;
+        touch-action:none;user-select:none;-webkit-user-select:none;
+        transition:transform .15s ease,box-shadow .15s ease;
+        animation:pv-fab-float 3.2s ease-in-out infinite;
+      }
+      @keyframes pv-fab-float{
+        0%,100%{transform:translateY(0)}
+        50%{transform:translateY(-3px)}
+      }
+      #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;animation:none;transform:scale(.96)}
+      #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04);box-shadow:0 18px 40px rgba(0,70,80,.45)}
+      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait;animation:none}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:44px;height:44px;display:block;filter:drop-shadow(0 1px 2px rgba(0,40,50,.18))}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-label{
+        position:absolute;right:68px;bottom:14px;white-space:nowrap;
+        background:#0f2c31;color:#fff;font:700 11px/1 inherit;letter-spacing:.02em;
+        padding:6px 10px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.18);
+        opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
+      }
+      #${ROOT_ID} .pv-magic-btn:hover .pv-pronty-label,#${ROOT_ID} .pv-magic-btn:focus-visible .pv-pronty-label{opacity:1;transform:none}
+      #${ROOT_ID} .pv-magic-panel{
+        position:fixed;right:16px;bottom:calc(${FAB_SAFE} + ${FAB_SIZE * 2 + FAB_GAP * 2}px);z-index:1;
+        width:min(400px,calc(100vw - 24px));max-height:min(78vh,680px);
+        overflow:hidden;display:flex;flex-direction:column;background:#fff;
+        border:1px solid #d0e0e0;border-radius:22px;
+        box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0;
+        touch-action:none;
+      }
       #${ROOT_ID} .pv-magic-panel[hidden]{display:none !important}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle{cursor:grab;touch-action:none}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle:active{cursor:grabbing}
       #${ROOT_ID} .pv-panel-head{flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid #e8f0f0;background:#f7fbfb}
       #${ROOT_ID} .pv-panel-body{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 8px}
       #${ROOT_ID} .pv-panel-foot{flex:0 0 auto;padding:10px 14px 14px;border-top:1px solid #e8f0f0;background:#fff}
@@ -134,9 +174,16 @@
       #${ROOT_ID} .pv-phrase strong{display:block;font-size:.86rem;color:#122f34}
       #${ROOT_ID} .pv-phrase span{display:block;font-size:.78rem;color:#4d676e;margin-top:2px}
       @media (max-width:640px){
-        #${ROOT_ID}{inset:auto 10px 10px auto}
-        #${ROOT_ID}.pv-open{inset:0;padding:0}
-        #${ROOT_ID}.pv-open .pv-magic-panel{width:100%;max-width:none;max-height:min(92dvh,92vh);border-radius:18px 18px 0 0;margin-top:auto;border-left:0;border-right:0;border-bottom:0}
+        #${ROOT_ID} .pv-magic-btn{
+          right:16px;width:58px;height:58px;
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 86px);
+        }
+        #${ROOT_ID} .pv-magic-panel{
+          left:0!important;right:0!important;bottom:0!important;top:auto!important;
+          width:100%;max-width:none;max-height:min(72dvh,72vh);
+          border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
+        }
+        #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
         #${ROOT_ID} .pv-place-card{grid-template-columns:56px 1fr;gap:10px;padding:12px}
         #${ROOT_ID} .pv-place-card img,#${ROOT_ID} .pv-place-card .pv-ph{width:56px;height:56px}
         #${ROOT_ID} .pv-card-actions{grid-template-columns:1fr 1fr}
@@ -180,18 +227,276 @@
       .pv-links-box .pv-action-list a:first-child,.pv-links-box .pv-action-list button:first-child{padding-top:0}
       .pv-links-box .pv-action-list .hint{font-size:.78rem;font-weight:600;color:#7a9096}
       .pv-links-box .pv-status{min-height:1.1em;margin:10px 0 0;font-size:.82rem;color:#5b7076}
+      @media (prefers-reduced-motion: reduce){
+        #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
+      }
     `;
-    style.dataset.pvReady = "1";
+    style.dataset.pvReady = "20261027c";
+  }
+
+  function fabNodes() {
+    return {
+      pronty: document.querySelector("#pv-magic-open"),
+      prev: document.querySelector(".pv-prev-launch"),
+    };
+  }
+
+  function activeSheetEl() {
+    const magic = document.querySelector("#pv-magic-panel");
+    if (magic && !magic.hidden) return magic;
+    const prev = document.querySelector("#pv-preventivo-root.open .pv-prev-shell");
+    if (prev) return prev;
+    return null;
+  }
+
+  function snapshotFabStyle(el) {
+    if (!el || el.dataset.pvParkSnap) return;
+    el.dataset.pvParkSnap = JSON.stringify({
+      left: el.style.left || "",
+      top: el.style.top || "",
+      right: el.style.right || "",
+      bottom: el.style.bottom || "",
+      transition: el.style.transition || "",
+      animation: el.style.animation || "",
+    });
+  }
+
+  function restoreFabStyle(el) {
+    if (!el) return;
+    let snap = null;
+    try {
+      snap = JSON.parse(el.dataset.pvParkSnap || "null");
+    } catch {
+      snap = null;
+    }
+    delete el.dataset.pvParkSnap;
+    delete el.dataset.pvParked;
+    if (!snap) {
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+      el.style.transition = "";
+      el.style.animation = "";
+      return;
+    }
+    el.style.left = snap.left;
+    el.style.top = snap.top;
+    el.style.right = snap.right;
+    el.style.bottom = snap.bottom;
+    el.style.transition = snap.transition || "";
+    el.style.animation = snap.animation || "";
+  }
+
+  /** Park both tondini stacked on the right, just above the open sheet (as in the reference). */
+  function parkFabsAboveSheet() {
+    const { pronty, prev } = fabNodes();
+    if (!pronty && !prev) return;
+    const sheet = activeSheetEl();
+    // Prefer measured size, but never trust 0/NaN (can happen mid-layout).
+    let size = 58;
+    try {
+      const raw =
+        Number((pronty || prev)?.offsetWidth) ||
+        parseFloat(getComputedStyle(pronty || prev).width) ||
+        58;
+      if (Number.isFinite(raw) && raw >= 40 && raw <= 96) size = Math.round(raw);
+    } catch {
+      size = 58;
+    }
+    const gap = 20;
+    const marginRight = 16;
+    const marginAbove = 18;
+    let sheetTop;
+    if (sheet) {
+      sheetTop = sheet.getBoundingClientRect().top;
+    } else if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      sheetTop = window.innerHeight * 0.28;
+    } else {
+      sheetTop = window.innerHeight - 120;
+    }
+    // If sheet measurement is still collapsing, assume ~72vh sheet (28% free above).
+    if (!Number.isFinite(sheetTop) || sheetTop < 80 || sheetTop > window.innerHeight - 80) {
+      sheetTop = Math.round(window.innerHeight * 0.28);
+    }
+    const left = Math.max(8, window.innerWidth - marginRight - size);
+    let lowerTop = sheetTop - marginAbove - size;
+    let upperTop = lowerTop - gap - size;
+    if (upperTop < 8) {
+      upperTop = 8;
+      lowerTop = upperTop + size + gap;
+    }
+    const place = (el, top) => {
+      if (!el) return;
+      snapshotFabStyle(el);
+      el.dataset.pvParked = "1";
+      el.style.animation = "none";
+      el.style.transition = "left .28s ease, top .28s ease";
+      el.style.left = `${left}px`;
+      el.style.top = `${Math.round(top)}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      el.style.zIndex = "120";
+    };
+    // Pronty (smile) on top, Preventivo (doc) below — same order as the screenshot.
+    place(pronty, upperTop);
+    place(prev, lowerTop);
+  }
+
+  function restoreFabsFromPark() {
+    const { pronty, prev } = fabNodes();
+    restoreFabStyle(pronty);
+    restoreFabStyle(prev);
   }
 
   function setMagicOpen(open) {
     panelOpen = open;
     const root = document.getElementById(ROOT_ID);
     const panel = root?.querySelector("#pv-magic-panel");
+    const fab = root?.querySelector("#pv-magic-open");
     if (root) root.classList.toggle("pv-open", open);
     if (panel) panel.hidden = !open;
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    // Don't lock the whole page — Pronty is a floating companion.
+    if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
+    if (open) {
+      requestAnimationFrame(() => requestAnimationFrame(parkFabsAboveSheet));
+    } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
+      restoreFabsFromPark();
+    }
   }
+
+  window.__pvParkFabsAboveSheet = parkFabsAboveSheet;
+  window.__pvRestoreFabsFromPark = restoreFabsFromPark;
+
+  /** Shared draggable helper for floating FABs / panels. Click still fires if movement is tiny. */
+  function makeDraggable(el, { storageKey, handle, onTap, axis = "both" } = {}) {
+    if (!el || el.dataset.pvDragBound === "1") return;
+    el.dataset.pvDragBound = "1";
+    const target = handle || el;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+    let moved = false;
+    let dragging = false;
+
+    const clamp = () => {
+      const rect = el.getBoundingClientRect();
+      const maxL = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxT = Math.max(8, window.innerHeight - rect.height - 8);
+      let left = parseFloat(el.style.left || String(rect.left));
+      let top = parseFloat(el.style.top || String(rect.top));
+      left = Math.min(maxL, Math.max(8, left));
+      top = Math.min(maxT, Math.max(8, top));
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      return { left, top };
+    };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        el.style.left = `${saved.left}px`;
+        el.style.top = `${saved.top}px`;
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        requestAnimationFrame(clamp);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const onPointerDown = (ev) => {
+      if (ev.button != null && ev.button !== 0) return;
+      // Skip nested controls, but allow drag when the FAB itself is the button.
+      const hit = ev.target?.closest?.("button, a, input, select, textarea, label");
+      if (hit && hit !== el) return;
+      const rect = el.getBoundingClientRect();
+      startX = ev.clientX;
+      startY = ev.clientY;
+      origLeft = rect.left;
+      origTop = rect.top;
+      moved = false;
+      dragging = true;
+      el.classList.add("pv-dragging");
+      target.setPointerCapture?.(ev.pointerId);
+    };
+    const onPointerMove = (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+      if (axis !== "y") el.style.left = `${origLeft + dx}px`;
+      if (axis !== "x") el.style.top = `${origTop + dy}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      clamp();
+    };
+    const onPointerUp = (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove("pv-dragging");
+      try {
+        target.releasePointerCapture?.(ev.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const pos = clamp();
+      // Don't overwrite idle dock coords while FABs are auto-parked above a sheet.
+      if (storageKey && el.dataset.pvParked !== "1") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(pos));
+        } catch {
+          /* ignore */
+        }
+      }
+      if (moved) {
+        el.dataset.pvDidDrag = "1";
+        // Swallow the synthetic click that follows a drag.
+        const swallow = (ce) => {
+          ce.preventDefault();
+          ce.stopPropagation();
+          el.removeEventListener("click", swallow, true);
+        };
+        el.addEventListener("click", swallow, true);
+        setTimeout(() => el.removeEventListener("click", swallow, true), 400);
+      } else if (typeof onTap === "function") {
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      }
+    };
+    target.addEventListener("pointerdown", onPointerDown);
+    target.addEventListener("pointermove", onPointerMove);
+    target.addEventListener("pointerup", onPointerUp);
+    target.addEventListener("pointercancel", onPointerUp);
+    // Reliable open path for browsers / automation that prefer click over pointerup-tap.
+    if (typeof onTap === "function") {
+      el.addEventListener("click", (ev) => {
+        if (el.dataset.pvDidDrag === "1") {
+          el.dataset.pvDidDrag = "0";
+          return;
+        }
+        // Avoid double-open when pointerup already called onTap.
+        if (el.dataset.pvTapLock === "1") return;
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      });
+    }
+  }
+  window.__pvMakeDraggable = makeDraggable;
 
   function tripAuth() {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -201,28 +506,43 @@
     return { id, key };
   }
 
-  function emptyTripContext() {
-    return {
-      title: "Il tuo prossimo viaggio",
-      destination: "",
-      start: "",
-      end: "",
-      members: [],
-      stops: [],
-    };
-  }
+  let tripLoadInflight = null;
+  let tripLoadCache = null; // { id, at, payload }
+  const TRIP_LOAD_TTL_MS = 4000;
 
-  async function loadTrip() {
+  async function loadTrip({ force = false } = {}) {
     const auth = tripAuth();
     if (!auth) throw new Error("Apri un viaggio salvato per usare questa funzione.");
-    const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
-      headers: { Authorization: `Bearer ${auth.key}` },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
-    if (data.canEdit === false) throw new Error("Serve il link di modifica.");
-    return { auth, data };
+    const now = Date.now();
+    if (
+      !force &&
+      tripLoadCache &&
+      tripLoadCache.id === auth.id &&
+      now - tripLoadCache.at < TRIP_LOAD_TTL_MS
+    ) {
+      return tripLoadCache.payload;
+    }
+    if (!force && tripLoadInflight && tripLoadInflight.id === auth.id) {
+      return tripLoadInflight.promise;
+    }
+    const promise = (async () => {
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
+      if (data.canEdit === false) throw new Error("Serve il link di modifica.");
+      const payload = { auth, data };
+      tripLoadCache = { id: auth.id, at: Date.now(), payload };
+      return payload;
+    })();
+    tripLoadInflight = { id: auth.id, promise };
+    try {
+      return await promise;
+    } finally {
+      if (tripLoadInflight?.promise === promise) tripLoadInflight = null;
+    }
   }
 
   async function saveTrip(auth, trip, revision) {
@@ -236,6 +556,12 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito");
+    // Keep local extras cache aligned so subsequent reads don't overwrite with stale GET.
+    tripLoadCache = {
+      id: auth.id,
+      at: Date.now(),
+      payload: { auth, data },
+    };
     return data;
   }
 
@@ -382,6 +708,52 @@
     return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20 L14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4 l1.2 2.4 2.6.4-1.9 1.9.5 2.6L13 10.2 10.6 11.3l.5-2.6L9.2 6.8l2.6-.4L13 4z" fill="currentColor"/><path d="M16.5 14.5 l.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2.7-1.4z" fill="currentColor"/></svg>`;
   }
 
+  /** Polished travel-companion face for Pronty FAB */
+  function prontyFace() {
+    const gid = `pvPronty${Math.random().toString(36).slice(2, 7)}`;
+    return `<svg class="pv-pronty-face" viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <radialGradient id="${gid}Face" cx="32%" cy="28%" r="70%">
+          <stop offset="0%" stop-color="#ffffff"/>
+          <stop offset="55%" stop-color="#dff7f7"/>
+          <stop offset="100%" stop-color="#b9e8ea"/>
+        </radialGradient>
+        <linearGradient id="${gid}Cheek" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffb7ae"/>
+          <stop offset="100%" stop-color="#ff8f7a"/>
+        </linearGradient>
+        <linearGradient id="${gid}Star" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffe89a"/>
+          <stop offset="100%" stop-color="#f0b429"/>
+        </linearGradient>
+      </defs>
+      <circle cx="32" cy="32" r="27" fill="url(#${gid}Face)"/>
+      <circle cx="32" cy="32" r="27" fill="none" stroke="rgba(15,44,49,.08)" stroke-width="1"/>
+      <!-- soft highlight -->
+      <ellipse cx="24" cy="20" rx="10" ry="6" fill="#fff" opacity=".55"/>
+      <!-- eyes -->
+      <ellipse cx="23.5" cy="29" rx="3.4" ry="3.8" fill="#0f2c31"/>
+      <ellipse cx="40.5" cy="29" rx="3.4" ry="3.8" fill="#0f2c31"/>
+      <circle cx="24.6" cy="27.8" r="1.15" fill="#fff" opacity=".95"/>
+      <circle cx="41.6" cy="27.8" r="1.15" fill="#fff" opacity=".95"/>
+      <!-- brows -->
+      <path d="M19.5 23.5c2.2-1.6 5.2-1.7 7.2-.2" fill="none" stroke="#0f2c31" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+      <path d="M37.3 23.3c2.2-1.5 5.1-1.5 7.1.1" fill="none" stroke="#0f2c31" stroke-width="1.5" stroke-linecap="round" opacity=".55"/>
+      <!-- smile -->
+      <path d="M22.5 38.5c3.2 5.2 15.8 5.2 19 0" fill="none" stroke="#0f2c31" stroke-width="2.5" stroke-linecap="round"/>
+      <!-- cheeks -->
+      <circle cx="17.5" cy="35" r="3.4" fill="url(#${gid}Cheek)" opacity=".8"/>
+      <circle cx="46.5" cy="35" r="3.4" fill="url(#${gid}Cheek)" opacity=".8"/>
+      <!-- magic spark -->
+      <g transform="translate(45.5 12.5)">
+        <path d="M0-5.2l1.35 3.3 3.55.35-2.7 2.45.85 3.45L0 2.5l-3.05 1.85.85-3.45-2.7-2.45 3.55-.35z" fill="url(#${gid}Star)"/>
+        <circle cx="0" cy="0" r="1.1" fill="#fff8dc"/>
+      </g>
+      <circle cx="12" cy="18" r="1.2" fill="#ffe08a" opacity=".9"/>
+      <circle cx="51" cy="40" r=".9" fill="#fff" opacity=".7"/>
+    </svg>`;
+  }
+
   function ensureRoot() {
     ensureStyles();
     let root = document.getElementById(ROOT_ID);
@@ -403,7 +775,7 @@
   function magicTabsHtml(active) {
     return `
       <div class="pv-tabs" role="tablist">
-        ${tripAuth() ? `<button type="button" data-tab="idee" class="${active === "idee" ? "active" : ""}">Idee</button>` : ""}
+        <button type="button" data-tab="idee" class="${active === "idee" ? "active" : ""}">Idee</button>
         <button type="button" data-tab="chiedi" class="${active === "chiedi" ? "active" : ""}">Chiedi</button>
         <button type="button" data-tab="lingua" class="${active === "lingua" ? "active" : ""}">Lingua</button>
       </div>`;
@@ -431,40 +803,71 @@
 
     root.innerHTML = `
       <div class="pv-magic-scrim" id="pv-magic-scrim"></div>
-      <button type="button" class="pv-magic-btn" id="pv-magic-open">${wandIcon()} Bacchetta magica</button>
+      <button type="button" class="pv-magic-btn" id="pv-magic-open" aria-label="${AI_NAME} — Bacchetta magica" title="${AI_NAME}">
+        ${prontyFace()}
+        <span class="pv-pronty-label">${AI_NAME} · Bacchetta magica</span>
+      </button>
       <div class="pv-magic-panel" id="pv-magic-panel" hidden></div>
     `;
     const openPanel = () => {
       setMagicOpen(true);
       void showMagicPanel(root.querySelector("#pv-magic-panel"), magicTab || "chiedi");
     };
-    root.querySelector("#pv-magic-open").onclick = openPanel;
+    const fab = root.querySelector("#pv-magic-open");
+    makeDraggable(fab, { storageKey: AI_FAB_POS_KEY, onTap: openPanel });
     root.querySelector("#pv-magic-scrim").onclick = () => setMagicOpen(false);
   }
 
-  async function showMagicPanel(panel, tab = "chiedi") {
-    magicTab = !tripAuth() && tab === "idee" ? "chiedi" : tab;
+  function bindPanelChrome(panel) {
+    const close = panel.querySelector("#pv-magic-close");
+    if (close) close.onclick = () => setMagicOpen(false);
+    const handle = panel.querySelector(".pv-drag-handle") || panel.querySelector(".pv-panel-head");
+    if (handle && !(window.matchMedia && window.matchMedia("(max-width:640px)").matches)) {
+      makeDraggable(panel, { storageKey: AI_PANEL_POS_KEY, handle });
+    }
+  }
+
+  function readPreventivoDraft() {
     try {
-      if (!magicTripCache) {
-        if (tripAuth()) {
+      const raw = JSON.parse(localStorage.getItem("viavia-preventivo-v2") || "null");
+      const draft = raw?.__draft__?.params || null;
+      if (draft && (draft.destination || draft.title)) return draft;
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  async function showMagicPanel(panel, tab = "chiedi") {
+    magicTab = tab;
+    const auth = tripAuth();
+    if (auth) {
+      try {
+        if (!magicTripCache) {
           const { data } = await loadTrip();
           magicTripCache = data.trip;
-        } else {
-          magicTripCache = emptyTripContext();
         }
+      } catch (err) {
+        // Keep Pronty usable even if trip load fails (pre-trip / offline).
+        magicTripCache = magicTripCache || null;
+        console.warn("[pronty]", err);
       }
-    } catch (err) {
-      panel.innerHTML = `
-        <div class="pv-panel-body">
-          <h3>Bacchetta magica</h3>
-          <p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Errore")}</p>
-          <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
-        </div>
-      `;
-      panel.querySelector("#pv-magic-close").onclick = () => {
-        setMagicOpen(false);
-      };
-      return;
+    } else {
+      // Before a trip is open: seed context from preventivo draft if any.
+      const draft = readPreventivoDraft();
+      if (draft && !magicTripCache) {
+        magicTripCache = {
+          title: draft.title || "",
+          destination: draft.destination || "",
+          start: draft.start || "",
+          end: draft.end || "",
+          members: Array.from({ length: Number(draft.travelers) || 2 }, (_, i) => ({
+            name: i === 0 ? "Tu" : `Viaggiatore ${i + 1}`,
+          })),
+          stops: [],
+          _draftOnly: true,
+        };
+      }
     }
 
     if (tab === "idee") return void runMagicSuggest(panel);
@@ -474,10 +877,29 @@
 
   async function runMagicSuggest(panel) {
     panel.innerHTML = `
-      <div class="pv-panel-head">${magicTabsHtml("idee")}<h3>Idee per l’itinerario</h3></div>
+      <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3><p class="pv-lead">Bacchetta magica — proposte per l’itinerario</p></div>
       <div class="pv-panel-body"><p class="pv-status">Cerco luoghi intorno alla destinazione…</p></div>`;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     try {
+      if (!tripAuth()) {
+        panel.innerHTML = `
+          <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3></div>
+          <div class="pv-panel-body">
+            <p class="pv-lead">Apri o crea un viaggio per ricevere idee geolocalizzate da aggiungere alle tappe. Prima del viaggio puoi comunque chattare con ${AI_NAME} o aprire il Preventivo intelligente.</p>
+            <div class="pv-actions">
+              <button type="button" class="primary" id="pv-pronty-open-prev">Apri Preventivo</button>
+              <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+            </div>
+          </div>`;
+        bindMagicTabs(panel);
+        bindPanelChrome(panel);
+        panel.querySelector("#pv-pronty-open-prev")?.addEventListener("click", () => {
+          setMagicOpen(false);
+          if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+        });
+        return;
+      }
       const { data } = await loadTrip();
       const trip = data.trip;
       magicTripCache = trip;
@@ -486,9 +908,9 @@
       pendingPois = pois;
       const existing = new Set((trip.stops || []).map((s) => String(s.title || "").toLowerCase()));
       panel.innerHTML = `
-        <div class="pv-panel-head">
+        <div class="pv-panel-head pv-drag-handle">
           ${magicTabsHtml("idee")}
-          <h3>Idee per l’itinerario</h3>
+          <h3>${AI_NAME} · Idee per l’itinerario</h3>
           <p class="pv-lead">Proposte intorno a <strong>${escapeHtml(trip.destination)}</strong>. Scegli cosa aggiungere.</p>
         </div>
         <div class="pv-panel-body"><div id="pv-magic-list"></div></div>
@@ -501,6 +923,7 @@
         </div>
       `;
       bindMagicTabs(panel);
+      bindPanelChrome(panel);
       const list = panel.querySelector("#pv-magic-list");
       pois.forEach((poi, idx) => {
         const already = existing.has(poi.title.toLowerCase());
@@ -1191,9 +1614,7 @@
             ${
               isWeb
                 ? ""
-                : tripAuth()
-                  ? `<button type="button" class="primary" data-add="${idx}">Aggiungi all’itinerario</button>`
-                  : `<span class="pv-save-hint">Apri un viaggio salvato per aggiungere questo luogo</span>`
+                : `<button type="button" class="primary" data-add="${idx}">Aggiungi all’itinerario</button>`
             }
             ${
               poi.tripadvisorUrl
@@ -1264,20 +1685,23 @@
 
   async function renderChatTab(panel) {
     const dest = magicTripCache?.destination || "";
-    const greetingWhere = dest ? formatDestGreeting(dest, magicTripCache?.title || "") : "";
-    const promptWhere = greetingWhere || "per la tua destinazione";
+    const greetingWhere = dest
+      ? formatDestGreeting(dest, magicTripCache?.title || "")
+      : "per il tuo prossimo viaggio";
     const trip = magicTripCache;
-    const days = trip ? tripDays(trip) : [];
+    const days = trip && !trip._draftOnly ? tripDays(trip) : [];
+    const duringTrip = Boolean(tripAuth());
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("chiedi")}
-        <h3>Chiedi alla bacchetta</h3>
-        <p class="pv-lead">AI gratuita senza chiave API, quando disponibile; in alternativa risposte e guide locali. Indica la destinazione per consigli mirati.</p>
+        <h3>${AI_NAME}</h3>
+        <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, idee e gestione pratica.</p>
         <div class="pv-chips" id="pv-chat-chips">
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
           <button type="button" data-q="Cosa non perdere in 2 giorni?">Cosa vedere</button>
           <button type="button" data-q="Idee per una giornata con natura e panorami">Natura</button>
           <button type="button" data-q="Consigli pratici per il viaggio (soldi, clima, trasporti)">Consigli</button>
+          <button type="button" data-q="Come organizzare bagagli, budget e checklist prima di partire?">Prima di partire</button>
           <button type="button" data-q="Frasi utili e come comportarsi con la gente del posto">Lingua</button>
         </div>
       </div>
@@ -1287,7 +1711,7 @@
       </div>
       <div class="pv-panel-foot">
         <form class="pv-chat-form" id="pv-chat-form">
-          <input type="text" id="pv-chat-input" placeholder="Scrivi pure… es. ristoranti ${escapeHtml(promptWhere)}" autocomplete="off" />
+          <input type="text" id="pv-chat-input" placeholder="Scrivi a ${AI_NAME}… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
           <button type="submit">Invia</button>
         </form>
         <div class="pv-actions">
@@ -1298,19 +1722,20 @@
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const log = panel.querySelector("#pv-chat-log");
     if (!chatHistory.length) {
-      const hello = `Ciao! Sono la tua assistente AI${greetingWhere ? ` ${greetingWhere}` : " di viaggio"}${
+      const phase = duringTrip
+        ? "Sono con te durante il viaggio"
+        : "Ti aiuto a preparare il viaggio (e resto con te anche dopo)";
+      const hello = `Ciao! Sono ${AI_NAME}, la Bacchetta magica di Pronti? VIA!. ${phase} ${greetingWhere}${
         days.length ? ` (${days.length} giorni)` : ""
-      }. Chiedimi cosa vuoi sapere: posti, cibo, itinerari, consigli. Quando troviamo luoghi utili, puoi aggiungerli al programma.`;
+      }. Chiedimi posti, cibo, itinerari, budget, bagagli o consigli pratici.`;
       chatHistory = [{ role: "assistant", content: hello }];
     }
     for (const msg of chatHistory) {
       appendBubble(log, msg.role === "user" ? "user" : "bot", msg.content);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
     panel.querySelector("#pv-chat-reset").onclick = () => {
       chatHistory = [];
       chatPlaces = [];
@@ -1355,29 +1780,35 @@
   }
 
   function buildTravelSystemPrompt(trip) {
-    const city = searchCityForDestination(trip.destination, trip.title);
-    const where = formatDestGreeting(trip.destination, trip.title);
-    const members = (trip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
-    const stops = (trip.stops || [])
+    const safeTrip = trip || { title: "", destination: "", start: "", end: "", members: [], stops: [] };
+    const city = searchCityForDestination(safeTrip.destination, safeTrip.title);
+    const where = safeTrip.destination
+      ? formatDestGreeting(safeTrip.destination, safeTrip.title)
+      : "un viaggio ancora da definire";
+    const members = (safeTrip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
+    const stops = (safeTrip.stops || [])
       .slice(0, 12)
       .map((s) => s.title)
       .filter(Boolean)
       .join("; ");
-    return `Sei la Bacchetta magica di Pronti? VIA!, un'assistente AI di viaggio conversazionale.
+    const phase = tripAuth()
+      ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
+      : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
+    return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — un companion AI di viaggio simpatico e concreto.
 Rispondi SEMPRE in italiano, come una chat: tono cordiale, chiaro, concreto. Usa 2–6 frasi (o elenchi brevi), niente markdown pesante.
+${phase}
 Contesto viaggio:
-- Titolo: ${trip.title || "—"}
-- Destinazione: ${trip.destination || city} (${where})
-- Città di riferimento: ${city}
-- Date: ${trip.start || "?"} → ${trip.end || "?"}
+- Titolo: ${safeTrip.title || "—"}
+- Destinazione: ${safeTrip.destination || city || "da scegliere"} (${where})
+- Città di riferimento: ${city || "—"}
+- Date: ${safeTrip.start || "?"} → ${safeTrip.end || "?"}
 - Compagni: ${members}
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
 
 Compiti:
-1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari.
+1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari, bagagli e organizzazione.
 2) Tieni conto del contesto del viaggio e dei messaggi precedenti (multi-turno).
-3) Se manca una destinazione, chiedi prima dove si svolge il viaggio.
-4) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
+3) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
 
 \`\`\`pv-places
 [{"title":"Nome posto","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché consigliarlo"}]
@@ -1698,7 +2129,26 @@ Regole pv-places:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
-      const trip = magicTripCache || (tripAuth() ? (await loadTrip()).data.trip : emptyTripContext());
+      let trip = magicTripCache;
+      if (!trip && tripAuth()) {
+        try {
+          trip = (await loadTrip()).data.trip;
+        } catch {
+          trip = null;
+        }
+      }
+      if (!trip) {
+        const draft = readPreventivoDraft();
+        trip = {
+          title: draft?.title || "",
+          destination: draft?.destination || "",
+          start: draft?.start || "",
+          end: draft?.end || "",
+          members: [],
+          stops: [],
+          _draftOnly: true,
+        };
+      }
       magicTripCache = trip;
       const cityHint = searchCityForDestination(trip.destination, trip.title);
       let aiText = "";
@@ -1724,7 +2174,6 @@ Regole pv-places:
 
         if (aiText) {
           ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
-          if (!trip.destination) aiPlaces = [];
           chatHistory.push({ role: "assistant", content: aiText });
         } else {
           const local = localTravelReply(trip, text);
@@ -1743,7 +2192,7 @@ Regole pv-places:
         /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere/i.test(
           text
         );
-      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal && trip.destination) {
+      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal) {
         try {
           place = await geocodeDestination(
             /^(island|ísland|iceland)$/i.test(String(trip.destination || "").trim())
@@ -1760,7 +2209,7 @@ Regole pv-places:
         status.textContent = "Verifico i posti sulle mappe…";
         cards = await resolveAiPlaces(aiPlaces, trip.destination, trip.title, place.lat, place.lng);
         cards = await enrichWithWikipedia(cards);
-      } else if (!aiText && placeAsk && trip.destination) {
+      } else if (!aiText && placeAsk) {
         status.textContent = "Integro con mappe e guide…";
         const found = await searchPlacesForIntent(
           trip.destination,
@@ -1989,17 +2438,32 @@ Regole pv-places:
   }
 
   async function renderLanguageTab(panel) {
-    const trip = magicTripCache || (await loadTrip()).data.trip;
-    magicTripCache = trip;
+    let trip = magicTripCache;
+    if (!trip && tripAuth()) {
+      try {
+        trip = (await loadTrip()).data.trip;
+      } catch {
+        trip = null;
+      }
+    }
+    if (!trip) {
+      const draft = readPreventivoDraft();
+      trip = {
+        destination: draft?.destination || "la destinazione",
+        title: draft?.title || "",
+        _draftOnly: true,
+      };
+    }
+    magicTripCache = { ...(magicTripCache || {}), ...trip };
     const lang = languageForDestination(trip.destination);
     const phrases = PHRASEBOOK[lang.code] || PHRASEBOOK.en;
     const [src, dst] = lang.pair.split("|");
 
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("lingua")}
-        <h3>Lingua di viaggio</h3>
-        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination)}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
+        <h3>${AI_NAME} · Lingua</h3>
+        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination || "il viaggio")}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
       </div>
       <div class="pv-panel-body">
         <div id="pv-phrases"></div>
@@ -2019,6 +2483,7 @@ Regole pv-places:
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const phraseHost = panel.querySelector("#pv-phrases");
     for (const [local, it] of phrases) {
       const btn = document.createElement("button");
@@ -2032,9 +2497,6 @@ Regole pv-places:
       };
       phraseHost.appendChild(btn);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
 
     let tIt = 0;
     let tLocal = 0;
@@ -2280,7 +2742,7 @@ Regole pv-places:
   }
 
   function ensureMapIframe() {
-    const MAP_VER = "20260918b";
+    const MAP_VER = "20261019c";
     const iframes = [...document.querySelectorAll('iframe[src*="map.html"]')];
     for (const iframe of iframes) {
       try {
@@ -2309,7 +2771,10 @@ Regole pv-places:
     }
 
     // Fallback distance notes when React route-hop is missing (e.g. unordered lists).
+    // Mark attempted so trips with 0 geo-stops don't refetch forever (save races).
     if (document.querySelector(".route-hop") || !tripAuth()) return;
+    if (document.documentElement.dataset.pvDistAttempted === "1") return;
+    document.documentElement.dataset.pvDistAttempted = "1";
     void annotateStopDistances();
   }
 
@@ -2339,7 +2804,7 @@ Regole pv-places:
         cards[i].insertAdjacentElement("afterend", note);
       }
     } catch {
-      /* ignore */
+      /* ignore — already marked attempted */
     }
   }
 
@@ -2873,7 +3338,16 @@ Regole pv-places:
           color: DAY_COLORS[(dayIndex[s.day] ?? days.length) % DAY_COLORS.length],
           day: s.day || "",
         }));
-      iframe.contentWindow.postMessage({ type: "viavia-map", points, selected: null, pick: false }, location.origin);
+      iframe.contentWindow.postMessage(
+        {
+          type: "viavia-map",
+          points,
+          selected: null,
+          pick: false,
+          destination: data.trip.destination || data.trip.title || "",
+        },
+        location.origin
+      );
     } catch {
       /* ignore */
     }
@@ -3030,6 +3504,218 @@ Regole pv-places:
     );
   }
 
+  function injectLocalOnlyBanner() {
+    const openTrip = (() => {
+      try {
+        const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+        return p.get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const isLocal =
+      openTrip &&
+      typeof window.__pvIsTripLocalOnly === "function" &&
+      window.__pvIsTripLocalOnly(openTrip);
+    let banner = document.getElementById("pv-local-only-banner");
+    if (!isLocal) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-local-only-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:70;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    banner.textContent =
+      "Questo viaggio è salvato su questo dispositivo. Usa «Condividi viaggio» e attendi il link con snapshot (s=…) prima di inviarlo agli amici.";
+  }
+
+  function fixItalianTappeGrammar() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const t = node.nodeValue || "";
+      if (!t.includes("tappe")) continue;
+      const next = t
+        .replace(/\b1 tappe\b/g, "1 tappa")
+        .replace(/\b0 tappe\b/g, "0 tappe");
+      if (next !== t) node.nodeValue = next;
+    }
+  }
+
+  function preferIcelandCover() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const dest =
+      root.querySelector("h1, h2, .hero, [class*='destination']")?.textContent ||
+      root.innerText ||
+      "";
+    if (!/islanda|iceland|reykjav/i.test(dest)) return;
+    const icelandSrc = new URL("iceland.svg", location.href).href;
+    const heroImgs = [...root.querySelectorAll("img")].filter((img) => {
+      const alt = `${img.alt || ""} ${img.src || ""} ${img.className || ""}`;
+      return (
+        /balos|creta|crete|greece|santorini|mykonos|coast|cover|hero|banner|copertina/i.test(alt) ||
+        /balos|crete|greece|coast\.jpg/i.test(img.src || "") ||
+        (img.width > 400 || img.clientWidth > 400)
+      );
+    });
+    for (const img of heroImgs.slice(0, 2)) {
+      if (img.dataset.pvIcelandSwap === "1" && /iceland\.svg/i.test(img.src || "")) continue;
+      img.dataset.pvIcelandSwap = "1";
+      img.dataset.pvPrevSrc = img.src;
+      img.src = icelandSrc;
+      img.alt = "Copertina Islanda";
+      // Hide stale "Copertina: Balos" credits near the image.
+      const wrap = img.closest("div,section,article,figure") || img.parentElement;
+      if (wrap) {
+        for (const el of wrap.querySelectorAll("small, span, p, figcaption")) {
+          const t = (el.textContent || "").trim();
+          if (/copertina\s*:\s*balos|balos|creta|crete/i.test(t) && t.length < 80) {
+            el.textContent = "Copertina: Islanda";
+          }
+        }
+        if (!img.dataset.pvIcelandNote) {
+          img.dataset.pvIcelandNote = "1";
+          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+          const note = document.createElement("div");
+          note.className = "pv-cover-note";
+          note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
+          note.style.cssText =
+            "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
+          wrap.appendChild(note);
+        }
+      }
+    }
+  }
+
+  function injectCloudStatusBanner() {
+    if (window.__pvCloudBannerBound) return;
+    window.__pvCloudBannerBound = true;
+    const ENDPOINTS = [
+      "https://pronti-via-k7es.netlify.app/api/trips",
+      "https://like-success-universities-old.trycloudflare.com/api/trips",
+    ];
+    const run = async () => {
+      let ok = false;
+      for (const url of ENDPOINTS) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 4000);
+          // GET without id returns 404 from a healthy API, 502 when down.
+          const res = await fetch(url, { method: "GET", signal: ctrl.signal, cache: "no-store" });
+          clearTimeout(t);
+          if (res.status < 500) {
+            ok = true;
+            break;
+          }
+        } catch {
+          /* try next */
+        }
+      }
+      let el = document.getElementById("pv-cloud-status-banner");
+      if (ok) {
+        if (el) el.remove();
+        return;
+      }
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-cloud-status-banner";
+        el.setAttribute("role", "status");
+        el.style.cssText =
+          "position:sticky;top:0;z-index:71;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
+        document.body.prepend(el);
+      }
+      el.textContent =
+        "Cloud temporaneamente non raggiungibile: i viaggi restano su questo dispositivo. Condividi solo dopo aver ottenuto un link con snapshot (s=…).";
+    };
+    void run();
+    setInterval(run, 120000);
+  }
+
+  function injectPreventivoTripBanner() {
+    const openTrip = (() => {
+      try {
+        return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    if (!openTrip) {
+      document.getElementById("pv-preventivo-trip-banner")?.remove();
+      return;
+    }
+    let pv = null;
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      const db = raw ? JSON.parse(raw) : null;
+      const rec = db?.[openTrip];
+      pv = rec?.trip?.meta?.preventivo || null;
+    } catch {
+      pv = null;
+    }
+    let banner = document.getElementById("pv-preventivo-trip-banner");
+    if (!pv?.totals) {
+      if (banner) banner.remove();
+      return;
+    }
+    const group = Math.round((Number(pv.totals.groupCents) || 0) / 100);
+    const pp = Math.round((Number(pv.totals.perPersonCents) || 0) / 100);
+    const nextText = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-preventivo-trip-banner";
+      banner.setAttribute("role", "status");
+      banner.style.cssText =
+        "position:sticky;top:44px;z-index:69;margin:0;padding:8px 14px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    // Sit below local-only banner if present.
+    const local = document.getElementById("pv-local-only-banner");
+    if (local && banner.previousElementSibling !== local) {
+      local.after(banner);
+    }
+    // Avoid MutationObserver churn when nothing changed.
+    if (banner.textContent !== nextText) banner.textContent = nextText;
+  }
+
+  if (!window.__pvPreventivoBannerBound) {
+    window.__pvPreventivoBannerBound = true;
+    window.addEventListener("pv-preventivo-synced", () => {
+      try {
+        injectPreventivoTripBanner();
+      } catch {
+        /* ignore */
+      }
+    });
+  }
+
+  function ensureShareToast() {
+    if (window.__pvShareToastBound) return;
+    window.__pvShareToastBound = true;
+    window.addEventListener("pv-share-blocked", (ev) => {
+      const msg = ev?.detail?.message || "Condivisione non pronta.";
+      let el = document.getElementById("pv-share-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-share-toast";
+        el.style.cssText =
+          "position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;max-width:min(420px,92vw);background:#7a1f1f;color:#fff;padding:12px 14px;border-radius:12px;font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)";
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.remove(), 5200);
+    });
+  }
+
   function tick() {
     renderFab();
     injectPackingTemplates();
@@ -3041,6 +3727,12 @@ Regole pv-places:
     injectLinksAfterNotes();
     void enhanceExpenseCurrencyField();
     markPrivateBudgetLabels();
+    injectLocalOnlyBanner();
+    injectPreventivoTripBanner();
+    fixItalianTappeGrammar();
+    preferIcelandCover();
+    ensureShareToast();
+    injectCloudStatusBanner();
   }
 
   function markPrivateBudgetLabels() {
@@ -3068,8 +3760,19 @@ Regole pv-places:
   }
 
   const obs = new MutationObserver(() => {
+    if (tick._running) return;
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 250);
+    tick._t = setTimeout(() => {
+      tick._running = true;
+      try {
+        tick();
+      } finally {
+        // Allow a short quiet window so our own DOM writes don't re-enter immediately.
+        setTimeout(() => {
+          tick._running = false;
+        }, 400);
+      }
+    }, 400);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
@@ -3077,15 +3780,17 @@ Regole pv-places:
     weatherShownForDay = null;
     fxDoneKey = "";
     magicTripCache = null;
+    tripLoadCache = null;
+    tripLoadInflight = null;
     chatPlaces = [];
     chatHistory = [];
     chatAskBusy = false;
     pendingPois = [];
+    delete document.documentElement.dataset.pvDistAttempted;
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);
     if (root) root.innerHTML = "";
-    if (!tripAuth()) magicTab = "chiedi";
     setTimeout(tick, 300);
   });
   setTimeout(tick, 800);
