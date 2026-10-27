@@ -223,18 +223,253 @@ body.pv-account-ready {
   cursor: pointer;
 }
 
-#pv-account-chip #pv-account-delete {
-  background: #f3e4e2;
-  color: #7a2e28;
-}
-
-#pv-account-chip #pv-account-login {
+#pv-account-chip #pv-account-login,
+#pv-account-chip #pv-account-manage {
   background: #007d82;
   color: #fff;
 }
 
 #pv-account-chip.is-guest strong {
   color: #7a5a12;
+}
+
+#pv-account-manage {
+  position: fixed;
+  inset: 0;
+  z-index: 100010;
+  display: grid;
+  place-items: end center;
+  padding: 0;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  color: var(--pv-account-ink);
+}
+
+#pv-account-manage[hidden] {
+  display: none !important;
+}
+
+.pv-manage-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 32, 40, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.pv-manage-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  max-height: min(88vh, 760px);
+  overflow: auto;
+  background: #f7fafb;
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 -18px 50px rgba(21, 59, 71, 0.18);
+  padding: 18px 18px 28px;
+}
+
+.pv-manage-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.pv-manage-kicker {
+  margin: 0 0 2px;
+  color: var(--pv-account-teal);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pv-manage-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.03em;
+}
+
+.pv-manage-close {
+  border: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--pv-account-sand);
+  color: var(--pv-account-ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pv-manage-body {
+  display: grid;
+  gap: 14px;
+}
+
+.pv-manage-section {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(21, 59, 71, 0.08);
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.pv-manage-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pv-manage-section h3 em {
+  font-style: normal;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--pv-account-teal);
+  background: rgba(0, 125, 130, 0.1);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.pv-manage-section > p {
+  margin: 0 0 12px;
+  color: var(--pv-account-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.pv-manage-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pv-manage-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(180deg, var(--pv-account-teal), var(--pv-account-teal-deep));
+  color: #fff;
+  font-weight: 800;
+}
+
+.pv-manage-profile strong {
+  display: block;
+  font-size: 1.05rem;
+}
+
+.pv-manage-profile p {
+  margin: 2px 0 0;
+  color: var(--pv-account-muted);
+  font-size: 0.88rem;
+}
+
+.pv-manage-trips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.pv-manage-trip {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--pv-account-line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pv-manage-trip strong {
+  font-size: 0.92rem;
+}
+
+.pv-manage-trip span {
+  color: var(--pv-account-teal);
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.pv-manage-empty {
+  color: var(--pv-account-muted);
+  font-size: 0.9rem;
+  padding: 4px 0;
+}
+
+.pv-manage-form {
+  display: grid;
+  gap: 10px;
+}
+
+.pv-manage-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.pv-manage-form input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--pv-account-line);
+  border-radius: 12px;
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.pv-manage-primary,
+.pv-manage-secondary,
+.pv-manage-danger {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pv-manage-primary {
+  color: #fff;
+  background: linear-gradient(180deg, var(--pv-account-teal), var(--pv-account-teal-deep));
+}
+
+.pv-manage-secondary {
+  background: var(--pv-account-sand);
+  color: var(--pv-account-ink);
+}
+
+.pv-manage-danger {
+  background: #f3e4e2;
+  color: #7a2e28;
+}
+
+.pv-manage-actions {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  #pv-account-manage {
+    place-items: center;
+    padding: 24px 16px;
+  }
+
+  .pv-manage-sheet {
+    border-radius: 22px;
+    max-height: min(84vh, 720px);
+  }
 }
 
 .share-inputs {

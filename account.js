@@ -211,10 +211,27 @@ function ensureUi() {
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
     <button type="button" id="pv-account-login" hidden>Accedi</button>
-    <button type="button" id="pv-account-logout">Esci</button>
-    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina</button>
+    <button type="button" id="pv-account-manage">Gestione</button>
   `;
   document.body.appendChild(chip);
+
+  const manage = document.createElement("div");
+  manage.id = "pv-account-manage";
+  manage.hidden = true;
+  manage.innerHTML = `
+    <div class="pv-manage-backdrop" data-manage-close></div>
+    <div class="pv-manage-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-manage-title">
+      <header class="pv-manage-head">
+        <div>
+          <p class="pv-manage-kicker">Pronti? VIA!</p>
+          <h2 id="pv-manage-title">Gestione account</h2>
+        </div>
+        <button type="button" class="pv-manage-close" data-manage-close aria-label="Chiudi">×</button>
+      </header>
+      <div id="pv-manage-body" class="pv-manage-body"></div>
+    </div>
+  `;
+  document.body.appendChild(manage);
 
   gate.querySelectorAll("[data-mode]").forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode));
@@ -225,8 +242,10 @@ function ensureUi() {
     setMode(state.mode === "reset" ? "login" : "reset");
   });
   chip.querySelector("#pv-account-login").addEventListener("click", onGuestLogin);
-  chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
-  chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
+  chip.querySelector("#pv-account-manage").addEventListener("click", openAccountManage);
+  manage.addEventListener("click", (event) => {
+    if (event.target?.closest?.("[data-manage-close]")) closeAccountManage();
+  });
 }
 
 function isGuestUser(user = state.user, sessionGuest = false) {
@@ -317,6 +336,7 @@ function setMode(mode) {
 
 function showGate(message = "") {
   ensureUi();
+  closeAccountManage();
   const gate = document.getElementById("pv-account-gate");
   gate.hidden = false;
   document.getElementById("pv-account-chip").hidden = true;
@@ -340,18 +360,187 @@ function showChip() {
     ? "Ospite"
     : state.user?.displayName || state.user?.username || "Account";
   const loginBtn = chip.querySelector("#pv-account-login");
-  const logoutBtn = chip.querySelector("#pv-account-logout");
-  const deleteBtn = chip.querySelector("#pv-account-delete");
+  const manageBtn = chip.querySelector("#pv-account-manage");
   if (loginBtn) loginBtn.hidden = !guest;
-  if (logoutBtn) logoutBtn.hidden = guest;
-  if (deleteBtn) deleteBtn.hidden = guest;
+  if (manageBtn) manageBtn.hidden = false;
   chip.classList.toggle("is-guest", guest);
   chip.hidden = false;
   document.body.classList.add("pv-account-ready");
+  if (!document.getElementById("pv-account-manage")?.hidden) {
+    renderAccountManage();
+  }
+}
+
+function closeAccountManage() {
+  const manage = document.getElementById("pv-account-manage");
+  if (manage) manage.hidden = true;
+  document.documentElement.style.overflow = "";
+}
+
+function openAccountManage() {
+  ensureUi();
+  const manage = document.getElementById("pv-account-manage");
+  if (!manage) return;
+  manage.hidden = false;
+  document.documentElement.style.overflow = "hidden";
+  renderAccountManage();
+}
+
+function renderAccountManage() {
+  const body = document.getElementById("pv-manage-body");
+  if (!body) return;
+  const guest = isGuestUser();
+  const name = state.user?.displayName || state.user?.username || "Account";
+  const username = state.user?.username || "";
+  const trips = readLocalTrips();
+
+  if (guest) {
+    body.innerHTML = `
+      <section class="pv-manage-section">
+        <h3>Sei in modalità ospite</h3>
+        <p>Puoi vedere i viaggi condivisi, ma per salvare i tuoi serve un account.</p>
+        <button type="button" class="pv-manage-primary" id="pv-manage-login">Accedi o crea account</button>
+      </section>
+    `;
+    body.querySelector("#pv-manage-login")?.addEventListener("click", () => {
+      closeAccountManage();
+      onGuestLogin();
+    });
+    return;
+  }
+
+  const tripRows = trips.length
+    ? trips
+        .map(
+          (t) => `
+      <li>
+        <button type="button" class="pv-manage-trip" data-trip-id="${escapeHtml(t.id)}" data-trip-key="${escapeHtml(t.key)}">
+          <strong>${escapeHtml(t.title || "Viaggio")}</strong>
+          <span>Apri</span>
+        </button>
+      </li>`
+        )
+        .join("")
+    : `<li class="pv-manage-empty">Nessun viaggio salvato su questo account.</li>`;
+
+  body.innerHTML = `
+    <section class="pv-manage-section">
+      <h3>Profilo</h3>
+      <div class="pv-manage-profile">
+        <div class="pv-manage-avatar" aria-hidden="true">${escapeHtml((name || "?").slice(0, 1).toUpperCase())}</div>
+        <div>
+          <strong id="pv-manage-displayname">${escapeHtml(name)}</strong>
+          <p>@${escapeHtml(username)}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="pv-manage-section">
+      <h3>I miei viaggi <em>${trips.length}</em></h3>
+      <ul class="pv-manage-trips">${tripRows}</ul>
+    </section>
+
+    <section class="pv-manage-section">
+      <h3>Cambia password</h3>
+      <p>I viaggi restano al loro posto.</p>
+      <form id="pv-manage-password-form" class="pv-manage-form">
+        <label>
+          Password attuale
+          <input name="oldPassword" type="password" autocomplete="current-password" required minlength="4" maxlength="72">
+        </label>
+        <label>
+          Nuova password
+          <input name="newPassword" type="password" autocomplete="new-password" required minlength="4" maxlength="72">
+        </label>
+        <div class="pv-account-error" id="pv-manage-password-error" aria-live="polite"></div>
+        <button type="submit" class="pv-manage-primary">Salva password</button>
+      </form>
+    </section>
+
+    <section class="pv-manage-section pv-manage-actions">
+      <button type="button" class="pv-manage-secondary" id="pv-manage-logout">Esci dall’account</button>
+      <button type="button" class="pv-manage-danger" id="pv-manage-delete">Elimina account</button>
+    </section>
+  `;
+
+  body.querySelectorAll("[data-trip-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-trip-id");
+      const key = btn.getAttribute("data-trip-key");
+      if (!id || !key) return;
+      closeAccountManage();
+      location.hash = `trip=${encodeURIComponent(id)}&key=${encodeURIComponent(key)}`;
+    });
+  });
+
+  body.querySelector("#pv-manage-password-form")?.addEventListener("submit", onChangePasswordFromManage);
+  body.querySelector("#pv-manage-logout")?.addEventListener("click", () => {
+    closeAccountManage();
+    onLogout();
+  });
+  body.querySelector("#pv-manage-delete")?.addEventListener("click", () => {
+    closeAccountManage();
+    onDeleteAccount();
+  });
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function onChangePasswordFromManage(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const error = document.getElementById("pv-manage-password-error");
+  const submit = form.querySelector('button[type="submit"]');
+  const oldPassword = form.oldPassword.value;
+  const newPassword = form.newPassword.value;
+  if (error) error.textContent = "";
+  if (submit) submit.disabled = true;
+  try {
+    const username = state.user?.username;
+    if (!username) throw new Error("Sessione non valida.");
+    const cloud = await api("change-password", {
+      token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+      body: { username, oldPassword, newPassword },
+    });
+    try {
+      await upsertLocalUser(username, newPassword, cloud.user?.displayName || state.user?.displayName || username);
+    } catch {
+      /* ignore */
+    }
+    if (cloud?.token) {
+      state.token = cloud.token;
+      writeSession({
+        token: cloud.token,
+        user: cloud.user || state.user,
+        guest: false,
+        remembered: true,
+        savedAt: new Date().toISOString(),
+      });
+    }
+    form.reset();
+    if (error) {
+      error.style.color = "var(--pv-account-teal)";
+      error.textContent = "Password aggiornata.";
+    }
+  } catch (err) {
+    if (error) {
+      error.style.color = "";
+      error.textContent = err.message || "Cambio password non riuscito.";
+    }
+  } finally {
+    if (submit) submit.disabled = false;
+  }
 }
 
 /** Upgrade from temporary guest → real login, keep open trip hash. */
 function onGuestLogin() {
+  closeAccountManage();
   state.token = null;
   state.user = null;
   state.guest = false;
