@@ -10,11 +10,11 @@
   const STYLE_ID = "pv-magic-extras-css";
   const ROOT_ID = "pv-magic-root";
   const AI_NAME = "Pronty";
-  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos-v2";
+  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos-v3";
   const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
   // Dock: both FABs stack on the right, clear of the home indicator.
-  const FAB_SAFE = "max(36px, env(safe-area-inset-bottom, 0px) + 16px)";
-  const FAB_GAP = 22;
+  const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
+  const FAB_GAP = 24;
   const FAB_SIZE = 62;
   const FAB_DOCK_RIGHT = 18;
   // Lower slot offset from safe bottom, then Pronty sits one slot above.
@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261019k") return;
+    if (style && style.dataset.pvReady === "20261027a") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -176,11 +176,11 @@
       @media (max-width:640px){
         #${ROOT_ID} .pv-magic-btn{
           right:16px;width:58px;height:58px;
-          bottom:calc(max(40px, env(safe-area-inset-bottom, 0px) + 18px) + 80px);
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 82px);
         }
         #${ROOT_ID} .pv-magic-panel{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
-          width:100%;max-width:none;max-height:min(88dvh,88vh);
+          width:100%;max-width:none;max-height:min(72dvh,72vh);
           border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
         }
         #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
@@ -231,7 +231,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261019k";
+    style.dataset.pvReady = "20261027a";
   }
 
   function fabNodes() {
@@ -291,27 +291,41 @@
   /** Park both tondini stacked on the right, just above the open sheet (as in the reference). */
   function parkFabsAboveSheet() {
     const { pronty, prev } = fabNodes();
+    if (!pronty && !prev) return;
     const sheet = activeSheetEl();
-    const size = Math.round(
-      parseFloat(getComputedStyle(pronty || prev).width) ||
-        pronty?.offsetWidth ||
-        prev?.offsetWidth ||
-        58
-    );
-    const gap = 18;
+    // Prefer measured size, but never trust 0/NaN (can happen mid-layout).
+    let size = 58;
+    try {
+      const raw =
+        Number((pronty || prev)?.offsetWidth) ||
+        parseFloat(getComputedStyle(pronty || prev).width) ||
+        58;
+      if (Number.isFinite(raw) && raw >= 40 && raw <= 96) size = Math.round(raw);
+    } catch {
+      size = 58;
+    }
+    const gap = 20;
     const marginRight = 16;
-    const marginAbove = 16;
+    const marginAbove = 18;
     let sheetTop;
     if (sheet) {
       sheetTop = sheet.getBoundingClientRect().top;
     } else if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
-      sheetTop = window.innerHeight * 0.12;
+      sheetTop = window.innerHeight * 0.28;
     } else {
       sheetTop = window.innerHeight - 120;
     }
+    // If sheet measurement is still collapsing, assume ~72vh sheet (28% free above).
+    if (!Number.isFinite(sheetTop) || sheetTop < 80 || sheetTop > window.innerHeight - 80) {
+      sheetTop = Math.round(window.innerHeight * 0.28);
+    }
     const left = Math.max(8, window.innerWidth - marginRight - size);
-    const lowerTop = Math.max(8, sheetTop - marginAbove - size);
-    const upperTop = Math.max(8, lowerTop - gap - size);
+    let lowerTop = sheetTop - marginAbove - size;
+    let upperTop = lowerTop - gap - size;
+    if (upperTop < 8) {
+      upperTop = 8;
+      lowerTop = upperTop + size + gap;
+    }
     const place = (el, top) => {
       if (!el) return;
       snapshotFabStyle(el);
@@ -319,9 +333,10 @@
       el.style.animation = "none";
       el.style.transition = "left .28s ease, top .28s ease";
       el.style.left = `${left}px`;
-      el.style.top = `${top}px`;
+      el.style.top = `${Math.round(top)}px`;
       el.style.right = "auto";
       el.style.bottom = "auto";
+      el.style.zIndex = "120";
     };
     // Pronty (smile) on top, Preventivo (doc) below — same order as the screenshot.
     place(pronty, upperTop);
@@ -491,17 +506,43 @@
     return { id, key };
   }
 
-  async function loadTrip() {
+  let tripLoadInflight = null;
+  let tripLoadCache = null; // { id, at, payload }
+  const TRIP_LOAD_TTL_MS = 4000;
+
+  async function loadTrip({ force = false } = {}) {
     const auth = tripAuth();
     if (!auth) throw new Error("Apri un viaggio salvato per usare questa funzione.");
-    const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
-      headers: { Authorization: `Bearer ${auth.key}` },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
-    if (data.canEdit === false) throw new Error("Serve il link di modifica.");
-    return { auth, data };
+    const now = Date.now();
+    if (
+      !force &&
+      tripLoadCache &&
+      tripLoadCache.id === auth.id &&
+      now - tripLoadCache.at < TRIP_LOAD_TTL_MS
+    ) {
+      return tripLoadCache.payload;
+    }
+    if (!force && tripLoadInflight && tripLoadInflight.id === auth.id) {
+      return tripLoadInflight.promise;
+    }
+    const promise = (async () => {
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
+      if (data.canEdit === false) throw new Error("Serve il link di modifica.");
+      const payload = { auth, data };
+      tripLoadCache = { id: auth.id, at: Date.now(), payload };
+      return payload;
+    })();
+    tripLoadInflight = { id: auth.id, promise };
+    try {
+      return await promise;
+    } finally {
+      if (tripLoadInflight?.promise === promise) tripLoadInflight = null;
+    }
   }
 
   async function saveTrip(auth, trip, revision) {
@@ -515,6 +556,12 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito");
+    // Keep local extras cache aligned so subsequent reads don't overwrite with stale GET.
+    tripLoadCache = {
+      id: auth.id,
+      at: Date.now(),
+      payload: { auth, data },
+    };
     return data;
   }
 
@@ -2693,7 +2740,10 @@ Regole pv-places:
     }
 
     // Fallback distance notes when React route-hop is missing (e.g. unordered lists).
+    // Mark attempted so trips with 0 geo-stops don't refetch forever (save races).
     if (document.querySelector(".route-hop") || !tripAuth()) return;
+    if (document.documentElement.dataset.pvDistAttempted === "1") return;
+    document.documentElement.dataset.pvDistAttempted = "1";
     void annotateStopDistances();
   }
 
@@ -2723,7 +2773,7 @@ Regole pv-places:
         cards[i].insertAdjacentElement("afterend", note);
       }
     } catch {
-      /* ignore */
+      /* ignore — already marked attempted */
     }
   }
 
@@ -3587,6 +3637,7 @@ Regole pv-places:
     }
     const group = Math.round((Number(pv.totals.groupCents) || 0) / 100);
     const pp = Math.round((Number(pv.totals.perPersonCents) || 0) / 100);
+    const nextText = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
     if (!banner) {
       banner = document.createElement("div");
       banner.id = "pv-preventivo-trip-banner";
@@ -3600,7 +3651,19 @@ Regole pv-places:
     if (local && banner.previousElementSibling !== local) {
       local.after(banner);
     }
-    banner.textContent = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
+    // Avoid MutationObserver churn when nothing changed.
+    if (banner.textContent !== nextText) banner.textContent = nextText;
+  }
+
+  if (!window.__pvPreventivoBannerBound) {
+    window.__pvPreventivoBannerBound = true;
+    window.addEventListener("pv-preventivo-synced", () => {
+      try {
+        injectPreventivoTripBanner();
+      } catch {
+        /* ignore */
+      }
+    });
   }
 
   function ensureShareToast() {
@@ -3666,8 +3729,19 @@ Regole pv-places:
   }
 
   const obs = new MutationObserver(() => {
+    if (tick._running) return;
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 250);
+    tick._t = setTimeout(() => {
+      tick._running = true;
+      try {
+        tick();
+      } finally {
+        // Allow a short quiet window so our own DOM writes don't re-enter immediately.
+        setTimeout(() => {
+          tick._running = false;
+        }, 400);
+      }
+    }, 400);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
@@ -3675,10 +3749,13 @@ Regole pv-places:
     weatherShownForDay = null;
     fxDoneKey = "";
     magicTripCache = null;
+    tripLoadCache = null;
+    tripLoadInflight = null;
     chatPlaces = [];
     chatHistory = [];
     chatAskBusy = false;
     pendingPois = [];
+    delete document.documentElement.dataset.pvDistAttempted;
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);

@@ -1,7 +1,7 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019j — account sync via Netlify; live search; share via Blobs + bytebin.
+ * v=20261027a — account sync via Netlify; live search; share via Blobs + bytebin.
  */
 (() => {
   const TRIPS_BASE =
