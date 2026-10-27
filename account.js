@@ -211,12 +211,12 @@ function ensureUi() {
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
     <button type="button" id="pv-account-login" hidden>Accedi</button>
-    <button type="button" id="pv-account-manage">Gestione</button>
+    <button type="button" id="pv-account-manage-btn">Gestione</button>
   `;
   document.body.appendChild(chip);
 
   const manage = document.createElement("div");
-  manage.id = "pv-account-manage";
+  manage.id = "pv-account-manage-panel";
   manage.hidden = true;
   manage.innerHTML = `
     <div class="pv-manage-backdrop" data-manage-close></div>
@@ -242,7 +242,7 @@ function ensureUi() {
     setMode(state.mode === "reset" ? "login" : "reset");
   });
   chip.querySelector("#pv-account-login").addEventListener("click", onGuestLogin);
-  chip.querySelector("#pv-account-manage").addEventListener("click", openAccountManage);
+  chip.querySelector("#pv-account-manage-btn").addEventListener("click", openAccountManage);
   manage.addEventListener("click", (event) => {
     if (event.target?.closest?.("[data-manage-close]")) closeAccountManage();
   });
@@ -360,26 +360,26 @@ function showChip() {
     ? "Ospite"
     : state.user?.displayName || state.user?.username || "Account";
   const loginBtn = chip.querySelector("#pv-account-login");
-  const manageBtn = chip.querySelector("#pv-account-manage");
+  const manageBtn = chip.querySelector("#pv-account-manage-btn");
   if (loginBtn) loginBtn.hidden = !guest;
   if (manageBtn) manageBtn.hidden = false;
   chip.classList.toggle("is-guest", guest);
   chip.hidden = false;
   document.body.classList.add("pv-account-ready");
-  if (!document.getElementById("pv-account-manage")?.hidden) {
+  if (!document.getElementById("pv-account-manage-panel")?.hidden) {
     renderAccountManage();
   }
 }
 
 function closeAccountManage() {
-  const manage = document.getElementById("pv-account-manage");
+  const manage = document.getElementById("pv-account-manage-panel");
   if (manage) manage.hidden = true;
   document.documentElement.style.overflow = "";
 }
 
 function openAccountManage() {
   ensureUi();
-  const manage = document.getElementById("pv-account-manage");
+  const manage = document.getElementById("pv-account-manage-panel");
   if (!manage) return;
   manage.hidden = false;
   document.documentElement.style.overflow = "hidden";
