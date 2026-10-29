@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261027a";
+  const VERSION = "20261029a";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -23,6 +23,7 @@
     ["flights", "Voli"],
     ["stays", "Alloggi"],
     ["transport", "Trasporti"],
+    ["esim", "eSIM"],
     ["itinerary", "Itinerario"],
     ["activities", "Attività"],
     ["budget", "Budget"],
@@ -950,6 +951,9 @@
     state.liveStays = saved?.liveStays || [];
     state.searchMeta = saved?.searchMeta || { flights: null, stays: null };
     state.searchBusy = "";
+    state.esim =
+      saved?.esim ||
+      buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
     state.section = "overview";
   }
 
@@ -1019,11 +1023,12 @@
     ];
     const notes = [
       "Preventivo intelligente — bozza automatica.",
-      "Tutti i prezzi nel modulo partono come STIMA o DA VERIFICARE.",
+      "Il dettaglio costi è nella sezione Preventivo del viaggio (non nelle note).",
+      "Tutti i prezzi partono come STIMA o DA VERIFICARE.",
       `Destinazione: ${p.destination}. Preferenze: no ostelli; max ${p.prefs.maxStops} scali.`,
-      `Apri «Preventivo intelligente» (v${VERSION}) per voli, alloggi, trasporti, budget e fonti.`,
     ].join("\n");
 
+    state.esim = buildEsimCatalog(p.destination, p.start, p.end);
     const trip = {
       title: p.title,
       destination: p.destination,
@@ -1036,7 +1041,7 @@
       expenses: [],
       transfers: [],
       checklist,
-      notes: stampPreventivoNotes(notes),
+      notes,
       meta: { preventivo: buildPreventivoMeta() },
     };
 
@@ -1161,6 +1166,7 @@
         url: s.url,
         kind: s.kind || "altro",
       })),
+      esim: state.esim || buildEsimCatalog(state.params.destination, state.params.start, state.params.end),
     };
   }
 
@@ -1200,6 +1206,11 @@
         kind: s.kind || "altro",
       }));
     }
+    if (meta.esim && typeof meta.esim === "object") {
+      state.esim = meta.esim;
+    } else {
+      state.esim = buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
+    }
     return true;
   }
 
@@ -1213,11 +1224,176 @@
     }
   }
 
-  function stampPreventivoNotes(notes, extra) {
-    const tot = budgetTotals();
-    const stamp = `\n\n[Preventivo ${state.scenario} ${nowIso()}] Totale gruppo ${fmtMoney(tot.group)} · ${fmtMoney(tot.pp)}/pp (include STIMA/DA VERIFICARE).${extra ? " " + extra : ""}`;
-    const cleaned = String(notes || "").replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "");
-    return (cleaned + stamp).slice(0, 4000);
+  /** Keep notes clean: preventivo lives in trip.meta.preventivo, not in notes. */
+  function stripPreventivoNotes(notes) {
+    return String(notes || "")
+      .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
+      .replace(/\[Preventivo [^\]]*\][^\n]*/g, "")
+      .trim()
+      .slice(0, 4000);
+  }
+
+  function stampPreventivoNotes(notes) {
+    // Back-compat alias: no longer appends to notes.
+    return stripPreventivoNotes(notes);
+  }
+
+  function resolveEsimCountry(destination) {
+    const q = String(destination || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "");
+    const rules = [
+      { re: /ghana|accra|kumasi/, country: "Ghana", code: "gh", slug: "ghana" },
+      { re: /islanda|iceland|reykjav/, country: "Islanda", code: "is", slug: "iceland" },
+      { re: /italia|italy|roma|milan/, country: "Italia", code: "it", slug: "italy" },
+      { re: /spagna|spain|barcellona|madrid/, country: "Spagna", code: "es", slug: "spain" },
+      { re: /francia|france|parigi|paris/, country: "Francia", code: "fr", slug: "france" },
+      { re: /germania|germany|berlino|berlin/, country: "Germania", code: "de", slug: "germany" },
+      { re: /portogallo|portugal|lisbon/, country: "Portogallo", code: "pt", slug: "portugal" },
+      { re: /grecia|greece|atene|athens/, country: "Grecia", code: "gr", slug: "greece" },
+      { re: /turchia|turkey|istanbul/, country: "Turchia", code: "tr", slug: "turkey" },
+      { re: /giappone|japan|tokyo/, country: "Giappone", code: "jp", slug: "japan" },
+      { re: /thailand|bangkok/, country: "Thailandia", code: "th", slug: "thailand" },
+      { re: /usa|stati uniti|new york|miami/, country: "Stati Uniti", code: "us", slug: "united-states" },
+      { re: /uk|regno unito|londra|london/, country: "Regno Unito", code: "gb", slug: "united-kingdom" },
+      { re: /marocco|morocco|marrakech/, country: "Marocco", code: "ma", slug: "morocco" },
+      { re: /egitto|egypt|cairo/, country: "Egitto", code: "eg", slug: "egypt" },
+      { re: /kenya|nairobi/, country: "Kenya", code: "ke", slug: "kenya" },
+      { re: /tanzania|zanzibar/, country: "Tanzania", code: "tz", slug: "tanzania" },
+      { re: /sudafrica|south africa|citt[aà] del capo/, country: "Sudafrica", code: "za", slug: "south-africa" },
+    ];
+    for (const rule of rules) {
+      if (rule.re.test(q)) return rule;
+    }
+    const fallback = String(destination || "destinazione").trim() || "destinazione";
+    return {
+      country: fallback,
+      code: "",
+      slug: fallback.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "travel",
+    };
+  }
+
+  function stayDaysBetween(start, end) {
+    if (!start || !end) return Math.max(1, Number(state.params?.days) || 7);
+    const a = new Date(`${start}T12:00:00`);
+    const b = new Date(`${end}T12:00:00`);
+    if (Number.isNaN(+a) || Number.isNaN(+b) || b < a) return Math.max(1, Number(state.params?.days) || 7);
+    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+  }
+
+  function buildEsimCatalog(destination, start, end) {
+    const info = resolveEsimCountry(destination);
+    const days = stayDaysBetween(start, end);
+    const q = encodeURIComponent(info.country);
+    const slug = info.slug;
+    // Indicative STIMA bands for traveler eSIM (EUR) — always DA VERIFICARE on vendor sites.
+    const light = days <= 7 ? { gb: 3, from: 8, to: 15 } : days <= 15 ? { gb: 5, from: 12, to: 22 } : { gb: 10, from: 18, to: 35 };
+    const mid = days <= 7 ? { gb: 5, from: 14, to: 25 } : days <= 15 ? { gb: 10, from: 20, to: 38 } : { gb: 20, from: 30, to: 55 };
+    const heavy = days <= 7 ? { gb: 10, from: 22, to: 40 } : days <= 15 ? { gb: 20, from: 35, to: 60 } : { gb: 50, from: 50, to: 90 };
+    const providers = [
+      {
+        id: "airalo",
+        name: "Airalo",
+        trust: "Marketplace eSIM molto usato · prezzi trasparenti",
+        url: `https://www.airalo.com/search?q=${q}`,
+        plans: [
+          { label: `Light ~${light.gb} GB / ${days} gg`, price: `~€${light.from}–${light.to}`, note: "STIMA" },
+          { label: `Media ~${mid.gb} GB / ${days} gg`, price: `~€${mid.from}–${mid.to}`, note: "STIMA" },
+        ],
+      },
+      {
+        id: "holafly",
+        name: "Holafly",
+        trust: "Piani spesso illimitati per paese · costo più alto",
+        url: `https://esim.holafly.com/esim-${slug}/`,
+        plans: [
+          { label: `Illimitato ~${days} giorni`, price: days <= 7 ? "~€19–29" : days <= 15 ? "~€34–47" : "~€47–69", note: "STIMA" },
+        ],
+      },
+      {
+        id: "nomad",
+        name: "Nomad",
+        trust: "Buono per confronti GB/giorno",
+        url: `https://www.getnomad.app/en/search?q=${q}`,
+        plans: [
+          { label: `Media ~${mid.gb} GB`, price: `~€${mid.from}–${mid.to}`, note: "STIMA" },
+          { label: `Heavy ~${heavy.gb} GB`, price: `~€${heavy.from}–${heavy.to}`, note: "STIMA" },
+        ],
+      },
+      {
+        id: "saily",
+        name: "Saily (NordVPN)",
+        trust: "App chiara · checkout in-app",
+        url: `https://saily.com/destinations/${slug}/`,
+        plans: [{ label: `Light/Media ${days} gg`, price: `~€${light.from}–${mid.to}`, note: "STIMA" }],
+      },
+      {
+        id: "gigsky",
+        name: "GigSky",
+        trust: "Operatore eSIM globale",
+        url: `https://www.gigsky.com/destinations`,
+        plans: [{ label: `Pay-as-you-go / pacchetti`, price: "varia", note: "DA VERIFICARE" }],
+      },
+    ];
+    const searchLinks = [
+      {
+        title: `Confronta eSIM ${info.country} su Google`,
+        url: `https://www.google.com/search?q=${encodeURIComponent(`best esim ${info.country} ${days} days price comparison`)}`,
+      },
+      {
+        title: "Airalo store",
+        url: `https://www.airalo.com/search?q=${q}`,
+      },
+      {
+        title: "Holafly destinazione",
+        url: `https://esim.holafly.com/esim-${slug}/`,
+      },
+    ];
+    return {
+      country: info.country,
+      countryCode: info.code,
+      days,
+      start: start || "",
+      end: end || "",
+      providers,
+      searchLinks,
+      disclaimer:
+        "Prezzi e GB sono STIMA indicative: verifica sempre tariffe aggiornate sui siti ufficiali prima dell’acquisto. Serve uno smartphone eSIM-compatible.",
+    };
+  }
+
+  function esimBlockHtml(catalog, { compact = false } = {}) {
+    const c = catalog || buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
+    const providers = (c.providers || [])
+      .map(
+        (p) => `<article class="pv-esim-card">
+        <header>
+          <strong>${escapeHtml(p.name)}</strong>
+          <span class="pv-prev-muted">${escapeHtml(p.trust || "")}</span>
+        </header>
+        <ul>${(p.plans || [])
+          .map(
+            (plan) =>
+              `<li><span>${escapeHtml(plan.label)}</span> <em>${escapeHtml(plan.price)}</em> <span class="pv-badge ${plan.note === "STIMA" ? "STIMA" : "WARN"}">${escapeHtml(plan.note || "STIMA")}</span></li>`
+          )
+          .join("")}</ul>
+        <a class="pv-esim-link" href="${escapeAttr(p.url)}" target="_blank" rel="noopener noreferrer">Apri ${escapeHtml(p.name)}</a>
+      </article>`
+      )
+      .join("");
+    const searches = (c.searchLinks || [])
+      .map((s) => `<a href="${escapeAttr(s.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(s.title)}</a>`)
+      .join(" · ");
+    return `
+      <div class="pv-esim-block" data-esim-root="1">
+        <p class="pv-callout">eSIM per <strong>${escapeHtml(c.country)}</strong> · permanenza <strong>${c.days} giorni</strong>${
+          c.start && c.end ? ` (${escapeHtml(c.start)} → ${escapeHtml(c.end)})` : ""
+        }. Solo operatori/app attendibili; i costi sotto sono <span class="pv-badge STIMA">STIMA</span>.</p>
+        ${compact ? "" : `<p class="pv-prev-muted">${escapeHtml(c.disclaimer)}</p>`}
+        <div class="pv-esim-grid">${providers}</div>
+        <p class="pv-esim-search">Ricerca diretta: ${searches}</p>
+      </div>`;
   }
 
   async function syncPreventivoIntoTrip() {
@@ -1226,9 +1402,11 @@
     const { auth, data } = packed;
     const trip = { ...data.trip };
     const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    state.esim = buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
     meta.preventivo = buildPreventivoMeta();
     trip.meta = meta;
-    trip.notes = stampPreventivoNotes(trip.notes);
+    // Preventivo stays in meta — strip legacy stamps from notes.
+    trip.notes = stripPreventivoNotes(trip.notes);
     persistState();
     let saved;
     try {
@@ -1241,7 +1419,7 @@
       const meta2 = { ...(trip2.meta && typeof trip2.meta === "object" ? trip2.meta : {}) };
       meta2.preventivo = buildPreventivoMeta();
       trip2.meta = meta2;
-      trip2.notes = stampPreventivoNotes(trip2.notes);
+      trip2.notes = stripPreventivoNotes(trip2.notes);
       saved = await saveTripRecord(again.auth, trip2, again.data.revision);
     }
     // Keep local trip cache (banner) in sync even if share refresh fails.
@@ -1293,10 +1471,10 @@
     const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
     meta.preventivo = buildPreventivoMeta();
     trip.meta = meta;
-    trip.notes = stampPreventivoNotes(trip.notes, `Itinerario +${add.length} tappe.`);
+    trip.notes = stripPreventivoNotes(trip.notes);
     const saved = await saveTripRecord(auth, trip, data.revision);
     await refreshShareAfterSave(auth);
-    state.status = `Itinerario sincronizzato (+${add.length} tappe). Preventivo nel payload.`;
+    state.status = `Itinerario sincronizzato (+${add.length} tappe). Preventivo nella sezione dedicata.`;
     return saved;
   }
 
@@ -1334,7 +1512,7 @@
     const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
     meta.preventivo = buildPreventivoMeta();
     trip.meta = meta;
-    trip.notes = stampPreventivoNotes(trip.notes, "Spese STIMA aggiunte. Verificare e correggere.");
+    trip.notes = stripPreventivoNotes(trip.notes);
     await saveTripRecord(auth, trip, data.revision);
     await refreshShareAfterSave(auth);
     state.status = `Aggiunte ${newExpenses.length} spese stimate alle Spese di gruppo.`;
@@ -1463,6 +1641,14 @@
       #${ROOT_ID} .pv-status{margin:8px 0 0;font-size:.82rem;color:#5b7076;min-height:1.2em}
       #${ROOT_ID} .pv-callout{padding:10px 12px;border-radius:12px;background:#eaf5f5;border:1px solid #d5e8e8;color:#0f2c31;font-size:.88rem;margin:0 0 12px}
       #${ROOT_ID} a{color:#007d82;font-weight:600}
+      #${ROOT_ID} .pv-esim-grid{display:grid;gap:10px;grid-template-columns:1fr}
+      #${ROOT_ID} .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
+      #${ROOT_ID} .pv-esim-card header{display:grid;gap:2px;margin-bottom:8px}
+      #${ROOT_ID} .pv-esim-card ul{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+      #${ROOT_ID} .pv-esim-card li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.88rem}
+      #${ROOT_ID} .pv-esim-card li em{font-style:normal;font-weight:700;color:#0f2c31}
+      #${ROOT_ID} .pv-esim-link{display:inline-flex;align-items:center;min-height:36px;padding:8px 12px;border-radius:999px;background:#007d82;color:#fff!important;text-decoration:none;font-size:.85rem}
+      #${ROOT_ID} .pv-esim-search{font-size:.85rem;line-height:1.5}
       .pv-prev-launch{
         appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PREV_FAB_BOTTOM};z-index:85;
         width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;display:none;
@@ -1672,6 +1858,8 @@
         return staysHtml();
       case "transport":
         return transportHtml();
+      case "esim":
+        return esimHtml();
       case "itinerary":
         return itineraryHtml();
       case "activities":
@@ -1998,6 +2186,30 @@
     return `<div class="pv-prev-card"><h2>Attività</h2><p>${tip}</p></div>${cards}`;
   }
 
+  function esimHtml() {
+    state.esim = buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
+    return `
+      <div class="pv-prev-card">
+        <h2>eSIM dati per il viaggio</h2>
+        <p>Cerca tariffe su siti e app attendibili in base a destinazione e giorni di permanenza. I prezzi sono <span class="pv-badge STIMA">STIMA</span> — conferma sul sito prima di comprare.</p>
+        <div class="pv-prev-grid">
+          ${field("destination", "Paese / destinazione", state.params.destination)}
+          ${field("start", "Dal", state.params.start, "date")}
+          ${field("end", "Al", state.params.end, "date")}
+        </div>
+        <div class="pv-prev-actions" style="margin:10px 0 14px">
+          <button type="button" class="primary" data-act="refresh-esim">Aggiorna ricerca eSIM</button>
+          <button type="button" class="ghost" data-act="save-local">Salva nel preventivo</button>
+          ${
+            state.tripId
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Salva nel viaggio</button>`
+              : ""
+          }
+        </div>
+        ${esimBlockHtml(state.esim)}
+      </div>`;
+  }
+
   function budgetHtml() {
     ensureBudgetLines();
     const tot = budgetTotals();
@@ -2288,6 +2500,15 @@
         setOpen(false);
         return;
       }
+      if (act === "refresh-esim") {
+        state.params = refreshDerivedParams(mergeParams(state.params));
+        state.esim = buildEsimCatalog(state.params.destination, state.params.start, state.params.end);
+        state.section = "esim";
+        persistState();
+        state.status = `eSIM aggiornate per ${state.esim.country} · ${state.esim.days} giorni.`;
+        render();
+        return;
+      }
       if (act === "save-local") {
         state.params = mergeParams(state.params);
         persistState();
@@ -2508,6 +2729,18 @@
 
       tick();
       window.__pvOpenPreventivo = openPreventivo;
+      window.__pvOpenPreventivoSection = async (section) => {
+        const want = section ? String(section) : "";
+        await openPreventivo();
+        if (want) {
+          state.section = want;
+          render();
+        }
+      };
+      window.__pvBuildEsimCatalog = buildEsimCatalog;
+      window.__pvStripPreventivoNotes = stripPreventivoNotes;
+      window.__pvEsimBlockHtml = (destination, start, end, opts) =>
+        esimBlockHtml(buildEsimCatalog(destination, start, end), opts);
 
       // Avoid subtree MutationObserver + style rewrites (can freeze the page white).
       let scheduled = false;

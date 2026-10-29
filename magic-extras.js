@@ -3609,7 +3609,66 @@ Regole pv-places:
     setInterval(run, 120000);
   }
 
+  function readTripPreventivoFromCache(tripId) {
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      const db = raw ? JSON.parse(raw) : null;
+      return db?.[tripId]?.trip?.meta?.preventivo || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function ensurePreventivoSectionStyles() {
+    if (document.getElementById("pv-trip-preventivo-css")) return;
+    const style = document.createElement("style");
+    style.id = "pv-trip-preventivo-css";
+    style.textContent = `
+      #pv-preventivo-trip-banner{position:sticky;top:44px;z-index:69;margin:0;padding:8px 12px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+      #pv-preventivo-trip-banner button{appearance:none;border:0;border-radius:999px;padding:7px 12px;font:700 12px inherit;cursor:pointer;background:#007d82;color:#fff}
+      #pv-preventivo-trip-banner .pv-prev-banner-text{text-align:center}
+      #pv-trip-preventivo-panel{position:fixed;inset:0;z-index:100020;display:grid;place-items:end center}
+      #pv-trip-preventivo-panel[hidden]{display:none!important}
+      #pv-trip-preventivo-panel .pv-tp-backdrop{position:absolute;inset:0;background:rgba(12,32,40,.42)}
+      #pv-trip-preventivo-panel .pv-tp-sheet{position:relative;z-index:1;width:min(520px,100%);max-height:min(88vh,820px);overflow:auto;background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;box-shadow:0 -18px 50px rgba(21,59,71,.18);color:#153b47;font:500 14px/1.4 "Segoe UI","Helvetica Neue",sans-serif}
+      #pv-trip-preventivo-panel .pv-tp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+      #pv-trip-preventivo-panel .pv-tp-head h2{margin:0;font-size:1.3rem;letter-spacing:-.02em}
+      #pv-trip-preventivo-panel .pv-tp-close{border:0;width:36px;height:36px;border-radius:999px;background:#eef5f5;font-size:1.3rem;cursor:pointer}
+      #pv-trip-preventivo-panel .pv-tp-card{background:#fff;border:1px solid #d7e4e6;border-radius:16px;padding:14px;margin:0 0 12px}
+      #pv-trip-preventivo-panel .pv-tp-card h3{margin:0 0 8px;font-size:1rem}
+      #pv-trip-preventivo-panel .pv-tp-muted{color:#5b7380;font-size:.88rem;margin:0 0 10px}
+      #pv-trip-preventivo-panel .pv-tp-lines{display:grid;gap:8px}
+      #pv-trip-preventivo-panel .pv-tp-line{display:grid;grid-template-columns:1fr 88px 118px auto;gap:8px;align-items:center}
+      #pv-trip-preventivo-panel .pv-tp-line input,#pv-trip-preventivo-panel .pv-tp-line select{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:9px 10px;font:inherit}
+      #pv-trip-preventivo-panel .pv-tp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      #pv-trip-preventivo-panel .pv-tp-actions button{appearance:none;border:0;border-radius:999px;padding:11px 14px;font:700 13px inherit;cursor:pointer}
+      #pv-trip-preventivo-panel .pv-tp-primary{background:#007d82;color:#fff}
+      #pv-trip-preventivo-panel .pv-tp-ghost{background:#eef5f5;color:#153b47}
+      #pv-trip-preventivo-panel .pv-tp-danger{background:#f3e4e2;color:#7a2e28}
+      #pv-trip-preventivo-panel .pv-tp-status{min-height:1.2em;margin:8px 0 0;font-size:.85rem;color:#5b7380}
+      #pv-trip-preventivo-panel .pv-esim-grid{display:grid;gap:10px}
+      #pv-trip-preventivo-panel .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
+      #pv-trip-preventivo-panel .pv-esim-card ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+      #pv-trip-preventivo-panel .pv-esim-card li{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:.88rem}
+      #pv-trip-preventivo-panel .pv-esim-link{display:inline-flex;padding:8px 12px;border-radius:999px;background:#007d82;color:#fff;text-decoration:none;font-weight:700;font-size:.85rem}
+      #pv-trip-preventivo-panel .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700}
+      #pv-trip-preventivo-panel .pv-badge.STIMA{background:#fff3cd;color:#7a5b00}
+      #pv-trip-preventivo-panel .pv-badge.WARN,#pv-trip-preventivo-panel .pv-badge.DA\\ VERIFICARE{background:#fde8e8;color:#8a1f1f}
+      #pv-trip-preventivo-panel .pv-badge.VERIFICATO{background:#e3f6ea;color:#0f5a30}
+      @media (max-width:640px){
+        #pv-trip-preventivo-panel .pv-tp-line{grid-template-columns:1fr 1fr; }
+        #pv-trip-preventivo-panel .pv-tp-line input:first-child{grid-column:1/-1}
+      }
+      @media (min-width:720px){
+        #pv-trip-preventivo-panel{place-items:center;padding:24px 16px}
+        #pv-trip-preventivo-panel .pv-tp-sheet{border-radius:22px;max-height:min(84vh,760px)}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function injectPreventivoTripBanner() {
+    ensurePreventivoSectionStyles();
     const openTrip = (() => {
       try {
         return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
@@ -3621,38 +3680,272 @@ Regole pv-places:
       document.getElementById("pv-preventivo-trip-banner")?.remove();
       return;
     }
-    let pv = null;
-    try {
-      const raw = localStorage.getItem("viavia-local-trips-v1");
-      const db = raw ? JSON.parse(raw) : null;
-      const rec = db?.[openTrip];
-      pv = rec?.trip?.meta?.preventivo || null;
-    } catch {
-      pv = null;
-    }
+    let pv = readTripPreventivoFromCache(openTrip);
     let banner = document.getElementById("pv-preventivo-trip-banner");
-    if (!pv?.totals) {
-      if (banner) banner.remove();
+    if (!pv?.totals && !pv?.lines?.length) {
+      // Still show a CTA so user can open/create preventivo section.
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "pv-preventivo-trip-banner";
+        document.body.prepend(banner);
+      }
+      banner.innerHTML = `<span class="pv-prev-banner-text">Nessun preventivo nel viaggio</span>
+        <button type="button" data-pv-open-section>Apri sezione Preventivo</button>`;
+      banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
+      const local = document.getElementById("pv-local-only-banner");
+      if (local && banner.previousElementSibling !== local) local.after(banner);
       return;
     }
-    const group = Math.round((Number(pv.totals.groupCents) || 0) / 100);
-    const pp = Math.round((Number(pv.totals.perPersonCents) || 0) / 100);
-    const nextText = `Preventivo ${pv.scenario || ""} nel viaggio: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA — verifica fonti).`;
+    const group = Math.round((Number(pv.totals?.groupCents) || 0) / 100);
+    const pp = Math.round((Number(pv.totals?.perPersonCents) || 0) / 100);
+    const nextText = `Preventivo ${pv.scenario || ""}: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA)`;
     if (!banner) {
       banner = document.createElement("div");
       banner.id = "pv-preventivo-trip-banner";
-      banner.setAttribute("role", "status");
-      banner.style.cssText =
-        "position:sticky;top:44px;z-index:69;margin:0;padding:8px 14px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;text-align:center";
       document.body.prepend(banner);
     }
-    // Sit below local-only banner if present.
+    banner.innerHTML = `<span class="pv-prev-banner-text">${nextText}</span>
+      <button type="button" data-pv-open-section>Apri / modifica</button>`;
+    banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
     const local = document.getElementById("pv-local-only-banner");
-    if (local && banner.previousElementSibling !== local) {
-      local.after(banner);
+    if (local && banner.previousElementSibling !== local) local.after(banner);
+  }
+
+  function closeTripPreventivoSection() {
+    const panel = document.getElementById("pv-trip-preventivo-panel");
+    if (panel) panel.hidden = true;
+    document.documentElement.style.overflow = "";
+  }
+
+  async function openTripPreventivoSection() {
+    ensurePreventivoSectionStyles();
+    let panel = document.getElementById("pv-trip-preventivo-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "pv-trip-preventivo-panel";
+      panel.hidden = true;
+      panel.innerHTML = `
+        <div class="pv-tp-backdrop" data-tp-close></div>
+        <div class="pv-tp-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-tp-title">
+          <header class="pv-tp-head">
+            <div>
+              <p class="pv-tp-muted" style="margin:0 0 2px;font-weight:700;color:#007d82;text-transform:uppercase;font-size:.75rem;letter-spacing:.04em">Sezione viaggio</p>
+              <h2 id="pv-tp-title">Preventivo</h2>
+            </div>
+            <button type="button" class="pv-tp-close" data-tp-close aria-label="Chiudi">×</button>
+          </header>
+          <div id="pv-tp-body"></div>
+        </div>`;
+      document.body.appendChild(panel);
+      panel.addEventListener("click", (ev) => {
+        if (ev.target?.closest?.("[data-tp-close]")) closeTripPreventivoSection();
+      });
     }
-    // Avoid MutationObserver churn when nothing changed.
-    if (banner.textContent !== nextText) banner.textContent = nextText;
+    panel.hidden = false;
+    document.documentElement.style.overflow = "hidden";
+    await renderTripPreventivoSection();
+  }
+
+  function escapeTp(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  async function renderTripPreventivoSection() {
+    const body = document.getElementById("pv-tp-body");
+    if (!body) return;
+    body.innerHTML = `<p class="pv-tp-muted">Caricamento preventivo…</p>`;
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const trip = data.trip || {};
+      const pv = trip.meta?.preventivo || { scenario: "economico", lines: [], totals: {} };
+      const lines = Array.isArray(pv.lines) ? pv.lines : [];
+      const group = Number(pv.totals?.groupCents) || lines.reduce((s, l) => s + (Number(l.totalCents) || (Number(l.unitCents) || 0) * (Number(l.qty) || 1)), 0);
+      const travelers = Math.max(1, Number(pv.params?.travelers || trip.members?.length || 1));
+      const pp = Math.round(group / travelers);
+      const dest = pv.params?.destination || trip.destination || "";
+      const start = pv.params?.start || trip.start || "";
+      const end = pv.params?.end || trip.end || "";
+      const esimHtml =
+        typeof window.__pvEsimBlockHtml === "function"
+          ? window.__pvEsimBlockHtml(dest, start, end, { compact: true })
+          : `<p class="pv-tp-muted">Modulo eSIM non ancora caricato. Ricarica la pagina.</p>`;
+
+      const lineRows = lines.length
+        ? lines
+            .map(
+              (l, idx) => {
+                const total = Number(l.totalCents) || (Number(l.unitCents) || 0) * (Number(l.qty) || 1);
+                return `<div class="pv-tp-line" data-line-idx="${idx}">
+                  <input data-k="title" value="${escapeTp(l.title || "Voce")}" aria-label="Voce" />
+                  <input data-k="euros" type="number" min="0" step="1" value="${Math.round(total / 100)}" aria-label="Euro" />
+                  <select data-k="status" aria-label="Stato">
+                    ${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
+                      .map((s) => `<option value="${s}" ${l.status === s ? "selected" : ""}>${s}</option>`)
+                      .join("")}
+                  </select>
+                  <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>
+                </div>`;
+              }
+            )
+            .join("")
+        : `<p class="pv-tp-muted">Nessuna voce ancora. Aggiungine una o apri il Preventivo intelligente.</p>`;
+
+      body.innerHTML = `
+        <section class="pv-tp-card">
+          <h3>Riepilogo · scenario ${escapeTp(pv.scenario || "—")}</h3>
+          <p><strong>Gruppo:</strong> ${formatEuro(group)} · <strong>/persona:</strong> ${formatEuro(pp)}</p>
+          <p class="pv-tp-muted">Il preventivo non viene più scritto nelle note: resta in questa sezione e viaggia con il link di condivisione.</p>
+          <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
+          <div class="pv-tp-actions">
+            <button type="button" class="pv-tp-ghost" id="pv-tp-add-line">+ Aggiungi voce</button>
+            <button type="button" class="pv-tp-primary" id="pv-tp-save">Salva modifiche</button>
+            <button type="button" class="pv-tp-ghost" id="pv-tp-open-smart">Apri Preventivo intelligente</button>
+          </div>
+          <p class="pv-tp-status" id="pv-tp-status"></p>
+        </section>
+        <section class="pv-tp-card">
+          <h3>eSIM per ${escapeTp(dest || "destinazione")}</h3>
+          <p class="pv-tp-muted">Tariffe indicative per i giorni di permanenza. Tocca un operatore per verificare prezzi aggiornati.</p>
+          ${esimHtml}
+        </section>
+      `;
+
+      body.querySelectorAll("[data-remove-line]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          btn.closest(".pv-tp-line")?.remove();
+        });
+      });
+      body.querySelector("#pv-tp-add-line")?.addEventListener("click", () => {
+        const host = body.querySelector("#pv-tp-lines");
+        if (!host) return;
+        const empty = host.querySelector(".pv-tp-muted");
+        if (empty) empty.remove();
+        const row = document.createElement("div");
+        row.className = "pv-tp-line";
+        row.innerHTML = `
+          <input data-k="title" value="Nuova voce" aria-label="Voce" />
+          <input data-k="euros" type="number" min="0" step="1" value="0" aria-label="Euro" />
+          <select data-k="status" aria-label="Stato">
+            <option value="STIMA" selected>STIMA</option>
+            <option value="DA VERIFICARE">DA VERIFICARE</option>
+            <option value="VERIFICATO">VERIFICATO</option>
+            <option value="SCADUTO">SCADUTO</option>
+          </select>
+          <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>`;
+        row.querySelector("[data-remove-line]")?.addEventListener("click", () => row.remove());
+        host.appendChild(row);
+      });
+      body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
+        closeTripPreventivoSection();
+        if (typeof window.__pvOpenPreventivoSection === "function") window.__pvOpenPreventivoSection("budget");
+        else if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+      });
+      body.querySelector("#pv-tp-save")?.addEventListener("click", () =>
+        void saveTripPreventivoSection(auth, data, pv)
+      );
+    } catch (err) {
+      body.innerHTML = `<p class="pv-tp-status" style="color:#7a2e28">${escapeTp(err.message || "Preventivo non disponibile")}</p>`;
+    }
+  }
+
+  async function saveTripPreventivoSection(auth, data, prevPv) {
+    const status = document.getElementById("pv-tp-status");
+    const saveBtn = document.getElementById("pv-tp-save");
+    if (saveBtn) saveBtn.disabled = true;
+    if (status) status.textContent = "Salvataggio…";
+    try {
+      const rows = [...document.querySelectorAll("#pv-tp-lines .pv-tp-line")];
+      const lines = rows.map((row, i) => {
+        const title = row.querySelector('[data-k="title"]')?.value?.trim() || `Voce ${i + 1}`;
+        const euros = Number(row.querySelector('[data-k="euros"]')?.value || 0);
+        const statusVal = row.querySelector('[data-k="status"]')?.value || "STIMA";
+        const totalCents = Math.max(0, Math.round(euros * 100));
+        return {
+          id: prevPv?.lines?.[i]?.id || uid(),
+          title,
+          status: statusVal,
+          unitCents: totalCents,
+          qty: 1,
+          totalCents,
+          source: prevPv?.lines?.[i]?.source || "",
+          key: prevPv?.lines?.[i]?.key || "",
+          mode: prevPv?.lines?.[i]?.mode || "",
+        };
+      });
+      const groupCents = lines.reduce((s, l) => s + (l.totalCents || 0), 0);
+      const travelers = Math.max(1, Number(prevPv?.params?.travelers || data.trip?.members?.length || 1));
+      const dest = prevPv?.params?.destination || data.trip?.destination || "";
+      const start = prevPv?.params?.start || data.trip?.start || "";
+      const end = prevPv?.params?.end || data.trip?.end || "";
+      const esim =
+        typeof window.__pvBuildEsimCatalog === "function"
+          ? window.__pvBuildEsimCatalog(dest, start, end)
+          : prevPv?.esim || null;
+      const byStatus = { VERIFICATO: 0, STIMA: 0, "DA VERIFICARE": 0, SCADUTO: 0 };
+      for (const l of lines) {
+        const key = byStatus[l.status] != null ? l.status : "STIMA";
+        byStatus[key] = (byStatus[key] || 0) + (l.totalCents || 0);
+      }
+      const preventivo = {
+        ...(prevPv || {}),
+        version: prevPv?.version || "20261029a",
+        updated: new Date().toISOString(),
+        scenario: prevPv?.scenario || "economico",
+        params: {
+          title: prevPv?.params?.title || data.trip?.title || "",
+          destination: dest,
+          start,
+          end,
+          travelers,
+          currency: prevPv?.params?.currency || "EUR",
+          airportIn: prevPv?.params?.airportIn || "",
+          departureCity: prevPv?.params?.departureCity || "",
+        },
+        totals: {
+          groupCents,
+          perPersonCents: Math.round(groupCents / travelers),
+          perDayPpCents: Math.round(groupCents / travelers / Math.max(1, Number(esim?.days) || 1)),
+          byStatus,
+        },
+        lines,
+        esim,
+      };
+      const trip = { ...data.trip };
+      const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+      meta.preventivo = preventivo;
+      trip.meta = meta;
+      trip.notes =
+        typeof window.__pvStripPreventivoNotes === "function"
+          ? window.__pvStripPreventivoNotes(trip.notes)
+          : String(trip.notes || "")
+              .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
+              .trim();
+      const saved = await saveTrip(auth, trip, data.revision);
+      try {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+        const slot = db[auth.id] || { id: auth.id, key: auth.key };
+        slot.trip = saved.trip || trip;
+        slot.revision = saved.revision || (Number(data.revision) || 1) + 1;
+        slot.key = auth.key;
+        slot.updated = new Date().toISOString();
+        db[auth.id] = slot;
+        localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+      } catch {
+        /* ignore */
+      }
+      window.dispatchEvent(new CustomEvent("pv-preventivo-synced", { detail: { tripId: auth.id } }));
+      if (status) status.textContent = "Preventivo salvato nella sezione (non nelle note).";
+      injectPreventivoTripBanner();
+      await renderTripPreventivoSection();
+    } catch (err) {
+      if (status) status.textContent = err.message || "Salvataggio non riuscito.";
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+    }
   }
 
   if (!window.__pvPreventivoBannerBound) {
@@ -3664,6 +3957,7 @@ Regole pv-places:
         /* ignore */
       }
     });
+    window.__pvOpenTripPreventivoSection = openTripPreventivoSection;
   }
 
   function ensureShareToast() {
