@@ -3669,15 +3669,42 @@ Regole pv-places:
     document.head.appendChild(style);
   }
 
-  function clickPreventivoMainTab() {
-    const tab =
+  function findPreventivoMainTab() {
+    return (
       document.querySelector(".main-tabs .pv-tab-preventivo") ||
       [...document.querySelectorAll(".main-tabs [role='tab'], .main-tabs button")].find((el) =>
         /Preventivo/i.test(el.textContent || "")
-      );
+      ) ||
+      null
+    );
+  }
+
+  function isPreventivoTabActive() {
+    const tab = findPreventivoMainTab();
+    return Boolean(tab && tab.getAttribute("data-state") === "active");
+  }
+
+  function clickPreventivoMainTab() {
+    const tab = findPreventivoMainTab();
     if (!tab) return false;
+    try {
+      tab.scrollIntoView({ inline: "center", block: "nearest", behavior: "instant" });
+    } catch {
+      tab.scrollIntoView();
+    }
+    // Radix Tabs often needs a full pointer sequence; bare .click() can no-op.
+    const opts = { bubbles: true, cancelable: true, view: window, pointerId: 1, pointerType: "touch" };
+    try {
+      tab.dispatchEvent(new PointerEvent("pointerdown", opts));
+      tab.dispatchEvent(new PointerEvent("pointerup", opts));
+    } catch {
+      /* older engines */
+    }
+    tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    tab.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+    tab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
     tab.click();
-    return true;
+    return isPreventivoTabActive();
   }
 
   function mountPreventivoTabPanel() {
@@ -3693,14 +3720,13 @@ Regole pv-places:
           </div>
         </header>
         <div class="pv-tp-root" id="pv-tp-body"></div>`;
-      void renderTripPreventivoSection();
     }
     return true;
   }
 
   function injectPreventivoTripBanner() {
     ensurePreventivoSectionStyles();
-    mountPreventivoTabPanel();
+    if (isPreventivoTabActive()) mountPreventivoTabPanel();
     const openTrip = (() => {
       try {
         return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
@@ -3714,30 +3740,27 @@ Regole pv-places:
     }
     let pv = readTripPreventivoFromCache(openTrip);
     let banner = document.getElementById("pv-preventivo-trip-banner");
-    if (!pv?.totals && !pv?.lines?.length) {
-      if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "pv-preventivo-trip-banner";
-        document.body.prepend(banner);
-      }
-      banner.innerHTML = `<span class="pv-prev-banner-text">Nessun preventivo nel viaggio</span>
-        <button type="button" data-pv-open-section>Vai a Preventivo</button>`;
-      banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
-      const local = document.getElementById("pv-local-only-banner");
-      if (local && banner.previousElementSibling !== local) local.after(banner);
-      return;
-    }
-    const group = Math.round((Number(pv.totals?.groupCents) || 0) / 100);
-    const pp = Math.round((Number(pv.totals?.perPersonCents) || 0) / 100);
-    const nextText = `Preventivo ${pv.scenario || ""}: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA)`;
     if (!banner) {
       banner = document.createElement("div");
       banner.id = "pv-preventivo-trip-banner";
       document.body.prepend(banner);
     }
-    banner.innerHTML = `<span class="pv-prev-banner-text">${nextText}</span>
+    const nextHtml =
+      !pv?.totals && !pv?.lines?.length
+        ? `<span class="pv-prev-banner-text">Nessun preventivo nel viaggio</span>
+        <button type="button" data-pv-open-section>Vai a Preventivo</button>`
+        : (() => {
+            const group = Math.round((Number(pv.totals?.groupCents) || 0) / 100);
+            const pp = Math.round((Number(pv.totals?.perPersonCents) || 0) / 100);
+            const nextText = `Preventivo ${pv.scenario || ""}: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA)`;
+            return `<span class="pv-prev-banner-text">${nextText}</span>
       <button type="button" data-pv-open-section>Vai a Preventivo</button>`;
-    banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
+          })();
+    // Avoid wiping the button mid-tap (tick rewrites were swallowing clicks).
+    if (banner.dataset.pvHtml !== nextHtml) {
+      banner.dataset.pvHtml = nextHtml;
+      banner.innerHTML = nextHtml;
+    }
     const local = document.getElementById("pv-local-only-banner");
     if (local && banner.previousElementSibling !== local) local.after(banner);
   }
@@ -3748,22 +3771,7 @@ Regole pv-places:
     document.documentElement.style.overflow = "";
   }
 
-  async function openTripPreventivoSection() {
-    ensurePreventivoSectionStyles();
-    // Prefer the native workspace tab next to Itinerario / Esplora / Luoghi.
-    if (clickPreventivoMainTab()) {
-      // Wait a tick for Radix to mount TabsContent, then fill it.
-      requestAnimationFrame(() => {
-        mountPreventivoTabPanel();
-        void renderTripPreventivoSection();
-      });
-      setTimeout(() => {
-        mountPreventivoTabPanel();
-        void renderTripPreventivoSection();
-        document.getElementById("pv-preventivo-tab-mount")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 80);
-      return;
-    }
+  function ensurePreventivoSheet() {
     let panel = document.getElementById("pv-trip-preventivo-panel");
     if (!panel) {
       panel = document.createElement("div");
@@ -3779,13 +3787,45 @@ Regole pv-places:
             </div>
             <button type="button" class="pv-tp-close" data-tp-close aria-label="Chiudi">×</button>
           </header>
-          <div class="pv-tp-root" id="pv-tp-body"></div>
+          <div class="pv-tp-root" id="pv-tp-sheet-body"></div>
         </div>`;
       document.body.appendChild(panel);
       panel.addEventListener("click", (ev) => {
         if (ev.target?.closest?.("[data-tp-close]")) closeTripPreventivoSection();
       });
+    } else if (!document.getElementById("pv-tp-sheet-body") && document.getElementById("pv-tp-body")?.closest?.("#pv-trip-preventivo-panel")) {
+      // Migrate old sheet body id so it never steals getElementById from the tab mount.
+      document.getElementById("pv-tp-body").id = "pv-tp-sheet-body";
     }
+    return panel;
+  }
+
+  function getPreventivoRenderRoot() {
+    // Prefer the visible tab mount; otherwise the sheet body.
+    const mountBody = document.querySelector("#pv-preventivo-tab-mount #pv-tp-body");
+    if (mountBody && mountBody.offsetParent !== null) return mountBody;
+    const sheetBody = document.getElementById("pv-tp-sheet-body");
+    if (sheetBody) return sheetBody;
+    return document.querySelector("#pv-preventivo-tab-mount #pv-tp-body") || document.getElementById("pv-tp-body");
+  }
+
+  async function openTripPreventivoSection() {
+    ensurePreventivoSectionStyles();
+    // Try the native workspace tab first.
+    clickPreventivoMainTab();
+    for (let i = 0; i < 10; i++) {
+      if (isPreventivoTabActive() || document.getElementById("pv-preventivo-tab-mount")) {
+        if (mountPreventivoTabPanel()) {
+          await renderTripPreventivoSection();
+          document.getElementById("pv-preventivo-tab-mount")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 40));
+      if (!isPreventivoTabActive()) clickPreventivoMainTab();
+    }
+    // Reliable fallback: open the sheet so "Vai a Preventivo" never no-ops.
+    const panel = ensurePreventivoSheet();
     panel.hidden = false;
     document.documentElement.style.overflow = "hidden";
     await renderTripPreventivoSection();
@@ -3800,7 +3840,7 @@ Regole pv-places:
   }
 
   async function renderTripPreventivoSection() {
-    const body = document.getElementById("pv-tp-body");
+    const body = getPreventivoRenderRoot();
     if (!body) return;
     body.innerHTML = `<p class="pv-tp-muted">Caricamento preventivo…</p>`;
     try {
@@ -3900,12 +3940,13 @@ Regole pv-places:
   }
 
   async function saveTripPreventivoSection(auth, data, prevPv) {
-    const status = document.getElementById("pv-tp-status");
-    const saveBtn = document.getElementById("pv-tp-save");
+    const root = getPreventivoRenderRoot() || document;
+    const status = root.querySelector?.("#pv-tp-status") || document.getElementById("pv-tp-status");
+    const saveBtn = root.querySelector?.("#pv-tp-save") || document.getElementById("pv-tp-save");
     if (saveBtn) saveBtn.disabled = true;
     if (status) status.textContent = "Salvataggio…";
     try {
-      const rows = [...document.querySelectorAll("#pv-tp-lines .pv-tp-line")];
+      const rows = [...(root.querySelectorAll?.("#pv-tp-lines .pv-tp-line") || document.querySelectorAll("#pv-tp-lines .pv-tp-line"))];
       const lines = rows.map((row, i) => {
         const title = row.querySelector('[data-k="title"]')?.value?.trim() || `Voce ${i + 1}`;
         const euros = Number(row.querySelector('[data-k="euros"]')?.value || 0);
@@ -4004,17 +4045,23 @@ Regole pv-places:
         /* ignore */
       }
     });
+    // Delegated click: survives banner innerHTML rewrites from MutationObserver ticks.
     document.addEventListener(
       "click",
       (ev) => {
+        if (ev.target?.closest?.("[data-pv-open-section]")) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          void openTripPreventivoSection();
+          return;
+        }
         const tab = ev.target?.closest?.(".pv-tab-preventivo, .main-tabs [role='tab'], .main-tabs button");
         if (!tab) return;
         const isPreventivo =
           tab.classList?.contains("pv-tab-preventivo") || /Preventivo/i.test(tab.textContent || "");
         if (!isPreventivo) return;
         const fill = () => {
-          mountPreventivoTabPanel();
-          void renderTripPreventivoSection();
+          if (mountPreventivoTabPanel()) void renderTripPreventivoSection();
         };
         requestAnimationFrame(fill);
         setTimeout(fill, 40);
