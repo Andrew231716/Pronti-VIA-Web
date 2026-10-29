@@ -492,7 +492,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/Pronti-VIA-Web/assets/index-loadfix-20260920g.js");
+  await import("/Pronti-VIA-Web/assets/index-loadfix-20261029a.js");
 }
 
 let syncTimer = null;
