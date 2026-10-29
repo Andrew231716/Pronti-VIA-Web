@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Islanda  paesaggio invernale">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1c2c"/>
+      <stop offset="45%" stop-color="#163a4d"/>
+      <stop offset="100%" stop-color="#2a5560"/>
+    </linearGradient>
+    <linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#3dff9a" stop-opacity="0"/>
+      <stop offset="35%" stop-color="#46e8a0" stop-opacity=".55"/>
+      <stop offset="55%" stop-color="#7cf0ff" stop-opacity=".35"/>
+      <stop offset="80%" stop-color="#4dffb0" stop-opacity=".5"/>
+      <stop offset="100%" stop-color="#3dff9a" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d9e8ea"/>
+      <stop offset="100%" stop-color="#9bb4b8"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1e5c68"/>
+      <stop offset="100%" stop-color="#0f3340"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <path d="M0 260 C220 180 380 320 520 240 C700 140 860 300 1040 210 C1200 140 1380 250 1600 190 L1600 420 L0 420 Z" fill="url(#aurora)" opacity=".85"/>
+  <path d="M0 420 C180 360 320 470 480 400 C680 310 820 470 1020 390 C1180 330 1360 430 1600 370 L1600 520 L0 520 Z" fill="url(#aurora)" opacity=".45"/>
+  <circle cx="1280" cy="120" r="8" fill="#f4f7ea" opacity=".9"/>
+  <circle cx="240" cy="90" r="3" fill="#fff" opacity=".7"/>
+  <circle cx="420" cy="150" r="2" fill="#fff" opacity=".6"/>
+  <circle cx="980" cy="80" r="2.5" fill="#fff" opacity=".75"/>
+  <circle cx="700" cy="130" r="2" fill="#fff" opacity=".55"/>
+  <path d="M0 560 L180 470 L320 540 L460 420 L620 510 L780 390 L940 500 L1120 360 L1280 480 L1460 400 L1600 460 L1600 900 L0 900 Z" fill="#1a2f38"/>
+  <path d="M0 620 L220 540 L380 600 L560 500 L740 590 L920 480 L1100 580 L1300 470 L1500 560 L1600 530 L1600 900 L0 900 Z" fill="url(#snow)"/>
+  <path d="M0 760 C260 720 520 800 820 740 C1100 690 1340 780 1600 730 L1600 900 L0 900 Z" fill="url(#water)"/>
+  <path d="M620 760 C640 640 680 560 720 500 C760 560 800 640 820 760 Z" fill="#cfe3e6" opacity=".85"/>
+  <text x="56" y="840" fill="#e8f4f6" font-family="Georgia, serif" font-size="42" font-weight="700" opacity=".9">Islanda</text>
+  <text x="56" y="878" fill="#b7d0d4" font-family="system-ui,sans-serif" font-size="20" opacity=".85">inverno · aurora · strade aperte</text>
+</svg>
