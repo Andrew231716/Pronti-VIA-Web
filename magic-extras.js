@@ -3627,37 +3627,39 @@ Regole pv-places:
       #pv-preventivo-trip-banner{position:sticky;top:44px;z-index:69;margin:0;padding:8px 12px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
       #pv-preventivo-trip-banner button{appearance:none;border:0;border-radius:999px;padding:7px 12px;font:700 12px inherit;cursor:pointer;background:#007d82;color:#fff}
       #pv-preventivo-trip-banner .pv-prev-banner-text{text-align:center}
+      .pv-preventivo-workspace{padding:4px 0 28px;color:#153b47;font:500 14px/1.4 "Segoe UI","Helvetica Neue",sans-serif}
+      .pv-preventivo-workspace .pv-tp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin:0 0 14px}
+      .pv-preventivo-workspace .pv-tp-head h2{margin:0;font-size:1.35rem;letter-spacing:-.02em}
+      .pv-preventivo-workspace .pv-tp-eyebrow{margin:0 0 2px;font-weight:700;color:#007d82;text-transform:uppercase;font-size:.75rem;letter-spacing:.04em}
+      .pv-tp-root .pv-tp-card,.pv-preventivo-workspace .pv-tp-card{background:#fff;border:1px solid #d7e4e6;border-radius:16px;padding:14px;margin:0 0 12px}
+      .pv-tp-root .pv-tp-card h3,.pv-preventivo-workspace .pv-tp-card h3{margin:0 0 8px;font-size:1rem}
+      .pv-tp-root .pv-tp-muted,.pv-preventivo-workspace .pv-tp-muted{color:#5b7380;font-size:.88rem;margin:0 0 10px}
+      .pv-tp-root .pv-tp-lines,.pv-preventivo-workspace .pv-tp-lines{display:grid;gap:8px}
+      .pv-tp-root .pv-tp-line,.pv-preventivo-workspace .pv-tp-line{display:grid;grid-template-columns:1fr 88px 118px auto;gap:8px;align-items:center}
+      .pv-tp-root .pv-tp-line input,.pv-tp-root .pv-tp-line select,.pv-preventivo-workspace .pv-tp-line input,.pv-preventivo-workspace .pv-tp-line select{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:9px 10px;font:inherit}
+      .pv-tp-root .pv-tp-actions,.pv-preventivo-workspace .pv-tp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      .pv-tp-root .pv-tp-actions button,.pv-preventivo-workspace .pv-tp-actions button{appearance:none;border:0;border-radius:999px;padding:11px 14px;font:700 13px inherit;cursor:pointer}
+      .pv-tp-root .pv-tp-primary,.pv-preventivo-workspace .pv-tp-primary{background:#007d82;color:#fff}
+      .pv-tp-root .pv-tp-ghost,.pv-preventivo-workspace .pv-tp-ghost{background:#eef5f5;color:#153b47}
+      .pv-tp-root .pv-tp-danger,.pv-preventivo-workspace .pv-tp-danger{background:#f3e4e2;color:#7a2e28}
+      .pv-tp-root .pv-tp-status,.pv-preventivo-workspace .pv-tp-status{min-height:1.2em;margin:8px 0 0;font-size:.85rem;color:#5b7380}
+      .pv-tp-root .pv-esim-grid,.pv-preventivo-workspace .pv-esim-grid{display:grid;gap:10px}
+      .pv-tp-root .pv-esim-card,.pv-preventivo-workspace .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
+      .pv-tp-root .pv-esim-card ul,.pv-preventivo-workspace .pv-esim-card ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+      .pv-tp-root .pv-esim-card li,.pv-preventivo-workspace .pv-esim-card li{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:.88rem}
+      .pv-tp-root .pv-esim-link,.pv-preventivo-workspace .pv-esim-link{display:inline-flex;padding:8px 12px;border-radius:999px;background:#007d82;color:#fff;text-decoration:none;font-weight:700;font-size:.85rem}
+      .pv-tp-root .pv-badge,.pv-preventivo-workspace .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700}
+      .pv-tp-root .pv-badge.STIMA,.pv-preventivo-workspace .pv-badge.STIMA{background:#fff3cd;color:#7a5b00}
+      .pv-tp-root .pv-badge.WARN,.pv-tp-root .pv-badge.DA\\ VERIFICARE,.pv-preventivo-workspace .pv-badge.WARN,.pv-preventivo-workspace .pv-badge.DA\\ VERIFICARE{background:#fde8e8;color:#8a1f1f}
+      .pv-tp-root .pv-badge.VERIFICATO,.pv-preventivo-workspace .pv-badge.VERIFICATO{background:#e3f6ea;color:#0f5a30}
       #pv-trip-preventivo-panel{position:fixed;inset:0;z-index:100020;display:grid;place-items:end center}
       #pv-trip-preventivo-panel[hidden]{display:none!important}
       #pv-trip-preventivo-panel .pv-tp-backdrop{position:absolute;inset:0;background:rgba(12,32,40,.42)}
-      #pv-trip-preventivo-panel .pv-tp-sheet{position:relative;z-index:1;width:min(520px,100%);max-height:min(88vh,820px);overflow:auto;background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;box-shadow:0 -18px 50px rgba(21,59,71,.18);color:#153b47;font:500 14px/1.4 "Segoe UI","Helvetica Neue",sans-serif}
-      #pv-trip-preventivo-panel .pv-tp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
-      #pv-trip-preventivo-panel .pv-tp-head h2{margin:0;font-size:1.3rem;letter-spacing:-.02em}
+      #pv-trip-preventivo-panel .pv-tp-sheet{position:relative;z-index:1;width:min(520px,100%);max-height:min(88vh,820px);overflow:auto;background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;box-shadow:0 -18px 50px rgba(21,59,71,.18)}
       #pv-trip-preventivo-panel .pv-tp-close{border:0;width:36px;height:36px;border-radius:999px;background:#eef5f5;font-size:1.3rem;cursor:pointer}
-      #pv-trip-preventivo-panel .pv-tp-card{background:#fff;border:1px solid #d7e4e6;border-radius:16px;padding:14px;margin:0 0 12px}
-      #pv-trip-preventivo-panel .pv-tp-card h3{margin:0 0 8px;font-size:1rem}
-      #pv-trip-preventivo-panel .pv-tp-muted{color:#5b7380;font-size:.88rem;margin:0 0 10px}
-      #pv-trip-preventivo-panel .pv-tp-lines{display:grid;gap:8px}
-      #pv-trip-preventivo-panel .pv-tp-line{display:grid;grid-template-columns:1fr 88px 118px auto;gap:8px;align-items:center}
-      #pv-trip-preventivo-panel .pv-tp-line input,#pv-trip-preventivo-panel .pv-tp-line select{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:9px 10px;font:inherit}
-      #pv-trip-preventivo-panel .pv-tp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-      #pv-trip-preventivo-panel .pv-tp-actions button{appearance:none;border:0;border-radius:999px;padding:11px 14px;font:700 13px inherit;cursor:pointer}
-      #pv-trip-preventivo-panel .pv-tp-primary{background:#007d82;color:#fff}
-      #pv-trip-preventivo-panel .pv-tp-ghost{background:#eef5f5;color:#153b47}
-      #pv-trip-preventivo-panel .pv-tp-danger{background:#f3e4e2;color:#7a2e28}
-      #pv-trip-preventivo-panel .pv-tp-status{min-height:1.2em;margin:8px 0 0;font-size:.85rem;color:#5b7380}
-      #pv-trip-preventivo-panel .pv-esim-grid{display:grid;gap:10px}
-      #pv-trip-preventivo-panel .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
-      #pv-trip-preventivo-panel .pv-esim-card ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
-      #pv-trip-preventivo-panel .pv-esim-card li{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:.88rem}
-      #pv-trip-preventivo-panel .pv-esim-link{display:inline-flex;padding:8px 12px;border-radius:999px;background:#007d82;color:#fff;text-decoration:none;font-weight:700;font-size:.85rem}
-      #pv-trip-preventivo-panel .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700}
-      #pv-trip-preventivo-panel .pv-badge.STIMA{background:#fff3cd;color:#7a5b00}
-      #pv-trip-preventivo-panel .pv-badge.WARN,#pv-trip-preventivo-panel .pv-badge.DA\\ VERIFICARE{background:#fde8e8;color:#8a1f1f}
-      #pv-trip-preventivo-panel .pv-badge.VERIFICATO{background:#e3f6ea;color:#0f5a30}
       @media (max-width:640px){
-        #pv-trip-preventivo-panel .pv-tp-line{grid-template-columns:1fr 1fr; }
-        #pv-trip-preventivo-panel .pv-tp-line input:first-child{grid-column:1/-1}
+        .pv-tp-root .pv-tp-line,.pv-preventivo-workspace .pv-tp-line{grid-template-columns:1fr 1fr}
+        .pv-tp-root .pv-tp-line input:first-child,.pv-preventivo-workspace .pv-tp-line input:first-child{grid-column:1/-1}
       }
       @media (min-width:720px){
         #pv-trip-preventivo-panel{place-items:center;padding:24px 16px}
@@ -3667,8 +3669,38 @@ Regole pv-places:
     document.head.appendChild(style);
   }
 
+  function clickPreventivoMainTab() {
+    const tab =
+      document.querySelector(".main-tabs .pv-tab-preventivo") ||
+      [...document.querySelectorAll(".main-tabs [role='tab'], .main-tabs button")].find((el) =>
+        /Preventivo/i.test(el.textContent || "")
+      );
+    if (!tab) return false;
+    tab.click();
+    return true;
+  }
+
+  function mountPreventivoTabPanel() {
+    ensurePreventivoSectionStyles();
+    const mount = document.getElementById("pv-preventivo-tab-mount");
+    if (!mount) return false;
+    if (!mount.querySelector("#pv-tp-body")) {
+      mount.innerHTML = `
+        <header class="pv-tp-head">
+          <div>
+            <p class="pv-tp-eyebrow">STIMA DI VIAGGIO</p>
+            <h2 id="pv-tp-title">Preventivo</h2>
+          </div>
+        </header>
+        <div class="pv-tp-root" id="pv-tp-body"></div>`;
+      void renderTripPreventivoSection();
+    }
+    return true;
+  }
+
   function injectPreventivoTripBanner() {
     ensurePreventivoSectionStyles();
+    mountPreventivoTabPanel();
     const openTrip = (() => {
       try {
         return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
@@ -3683,14 +3715,13 @@ Regole pv-places:
     let pv = readTripPreventivoFromCache(openTrip);
     let banner = document.getElementById("pv-preventivo-trip-banner");
     if (!pv?.totals && !pv?.lines?.length) {
-      // Still show a CTA so user can open/create preventivo section.
       if (!banner) {
         banner = document.createElement("div");
         banner.id = "pv-preventivo-trip-banner";
         document.body.prepend(banner);
       }
       banner.innerHTML = `<span class="pv-prev-banner-text">Nessun preventivo nel viaggio</span>
-        <button type="button" data-pv-open-section>Apri sezione Preventivo</button>`;
+        <button type="button" data-pv-open-section>Vai a Preventivo</button>`;
       banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
       const local = document.getElementById("pv-local-only-banner");
       if (local && banner.previousElementSibling !== local) local.after(banner);
@@ -3705,7 +3736,7 @@ Regole pv-places:
       document.body.prepend(banner);
     }
     banner.innerHTML = `<span class="pv-prev-banner-text">${nextText}</span>
-      <button type="button" data-pv-open-section>Apri / modifica</button>`;
+      <button type="button" data-pv-open-section>Vai a Preventivo</button>`;
     banner.querySelector("[data-pv-open-section]")?.addEventListener("click", () => openTripPreventivoSection());
     const local = document.getElementById("pv-local-only-banner");
     if (local && banner.previousElementSibling !== local) local.after(banner);
@@ -3719,6 +3750,20 @@ Regole pv-places:
 
   async function openTripPreventivoSection() {
     ensurePreventivoSectionStyles();
+    // Prefer the native workspace tab next to Itinerario / Esplora / Luoghi.
+    if (clickPreventivoMainTab()) {
+      // Wait a tick for Radix to mount TabsContent, then fill it.
+      requestAnimationFrame(() => {
+        mountPreventivoTabPanel();
+        void renderTripPreventivoSection();
+      });
+      setTimeout(() => {
+        mountPreventivoTabPanel();
+        void renderTripPreventivoSection();
+        document.getElementById("pv-preventivo-tab-mount")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+      return;
+    }
     let panel = document.getElementById("pv-trip-preventivo-panel");
     if (!panel) {
       panel = document.createElement("div");
@@ -3729,12 +3774,12 @@ Regole pv-places:
         <div class="pv-tp-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-tp-title">
           <header class="pv-tp-head">
             <div>
-              <p class="pv-tp-muted" style="margin:0 0 2px;font-weight:700;color:#007d82;text-transform:uppercase;font-size:.75rem;letter-spacing:.04em">Sezione viaggio</p>
+              <p class="pv-tp-eyebrow">Sezione viaggio</p>
               <h2 id="pv-tp-title">Preventivo</h2>
             </div>
             <button type="button" class="pv-tp-close" data-tp-close aria-label="Chiudi">×</button>
           </header>
-          <div id="pv-tp-body"></div>
+          <div class="pv-tp-root" id="pv-tp-body"></div>
         </div>`;
       document.body.appendChild(panel);
       panel.addEventListener("click", (ev) => {
@@ -3840,7 +3885,9 @@ Regole pv-places:
         host.appendChild(row);
       });
       body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
-        closeTripPreventivoSection();
+        if (document.getElementById("pv-trip-preventivo-panel") && !document.getElementById("pv-trip-preventivo-panel").hidden) {
+          closeTripPreventivoSection();
+        }
         if (typeof window.__pvOpenPreventivoSection === "function") window.__pvOpenPreventivoSection("budget");
         else if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
       });
@@ -3957,6 +4004,24 @@ Regole pv-places:
         /* ignore */
       }
     });
+    document.addEventListener(
+      "click",
+      (ev) => {
+        const tab = ev.target?.closest?.(".pv-tab-preventivo, .main-tabs [role='tab'], .main-tabs button");
+        if (!tab) return;
+        const isPreventivo =
+          tab.classList?.contains("pv-tab-preventivo") || /Preventivo/i.test(tab.textContent || "");
+        if (!isPreventivo) return;
+        const fill = () => {
+          mountPreventivoTabPanel();
+          void renderTripPreventivoSection();
+        };
+        requestAnimationFrame(fill);
+        setTimeout(fill, 40);
+        setTimeout(fill, 160);
+      },
+      true
+    );
     window.__pvOpenTripPreventivoSection = openTripPreventivoSection;
   }
 
