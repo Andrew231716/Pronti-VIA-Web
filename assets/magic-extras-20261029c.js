@@ -3620,13 +3620,16 @@ Regole pv-places:
   }
 
   function ensurePreventivoSectionStyles() {
-    if (document.getElementById("pv-trip-preventivo-css")) return;
-    const style = document.createElement("style");
-    style.id = "pv-trip-preventivo-css";
+    let style = document.getElementById("pv-trip-preventivo-css");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pv-trip-preventivo-css";
+      document.head.appendChild(style);
+    }
+    // Keep style text replaceable so cache-busted deploys can fix layout without a hard reload of an old <style> tag.
     style.textContent = `
-      #pv-preventivo-trip-banner{position:sticky;top:44px;z-index:69;margin:0;padding:8px 12px;background:#eaf5f5;color:#0f2c31;border-bottom:1px solid #cfe3e3;font:600 12px/1.35 inherit;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
-      #pv-preventivo-trip-banner button{appearance:none;border:0;border-radius:999px;padding:7px 12px;font:700 12px inherit;cursor:pointer;background:#007d82;color:#fff}
-      #pv-preventivo-trip-banner .pv-prev-banner-text{text-align:center}
+      /* Banner removed: Preventivo lives in the main tabs; sticky strip was covering the page. */
+      #pv-preventivo-trip-banner{display:none!important}
       .pv-preventivo-workspace{padding:4px 0 28px;color:#153b47;font:500 14px/1.4 "Segoe UI","Helvetica Neue",sans-serif}
       .pv-preventivo-workspace .pv-tp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin:0 0 14px}
       .pv-preventivo-workspace .pv-tp-head h2{margin:0;font-size:1.35rem;letter-spacing:-.02em}
@@ -3666,7 +3669,6 @@ Regole pv-places:
         #pv-trip-preventivo-panel .pv-tp-sheet{border-radius:22px;max-height:min(84vh,760px)}
       }
     `;
-    document.head.appendChild(style);
   }
 
   function findPreventivoMainTab() {
@@ -3726,43 +3728,9 @@ Regole pv-places:
 
   function injectPreventivoTripBanner() {
     ensurePreventivoSectionStyles();
+    // Sticky top strip covered the trip header; Preventivo is in the main tabs instead.
+    document.getElementById("pv-preventivo-trip-banner")?.remove();
     if (isPreventivoTabActive()) mountPreventivoTabPanel();
-    const openTrip = (() => {
-      try {
-        return new URLSearchParams(String(location.hash || "").replace(/^#/, "")).get("trip") || "";
-      } catch {
-        return "";
-      }
-    })();
-    if (!openTrip) {
-      document.getElementById("pv-preventivo-trip-banner")?.remove();
-      return;
-    }
-    let pv = readTripPreventivoFromCache(openTrip);
-    let banner = document.getElementById("pv-preventivo-trip-banner");
-    if (!banner) {
-      banner = document.createElement("div");
-      banner.id = "pv-preventivo-trip-banner";
-      document.body.prepend(banner);
-    }
-    const nextHtml =
-      !pv?.totals && !pv?.lines?.length
-        ? `<span class="pv-prev-banner-text">Nessun preventivo nel viaggio</span>
-        <button type="button" data-pv-open-section>Vai a Preventivo</button>`
-        : (() => {
-            const group = Math.round((Number(pv.totals?.groupCents) || 0) / 100);
-            const pp = Math.round((Number(pv.totals?.perPersonCents) || 0) / 100);
-            const nextText = `Preventivo ${pv.scenario || ""}: ~€${group.toLocaleString("it-IT")} gruppo · ~€${pp.toLocaleString("it-IT")}/pp (STIMA)`;
-            return `<span class="pv-prev-banner-text">${nextText}</span>
-      <button type="button" data-pv-open-section>Vai a Preventivo</button>`;
-          })();
-    // Avoid wiping the button mid-tap (tick rewrites were swallowing clicks).
-    if (banner.dataset.pvHtml !== nextHtml) {
-      banner.dataset.pvHtml = nextHtml;
-      banner.innerHTML = nextHtml;
-    }
-    const local = document.getElementById("pv-local-only-banner");
-    if (local && banner.previousElementSibling !== local) local.after(banner);
   }
 
   function closeTripPreventivoSection() {
