@@ -585,7 +585,10 @@ function startMemberJoinSync() {
     ensureCurrentUserOnTrip();
   };
   run();
-  window.addEventListener("hashchange", () => setTimeout(run, 600));
+  window.addEventListener("hashchange", () => {
+    joinedTrips.clear();
+    setTimeout(run, 600);
+  });
   setTimeout(run, 1500);
   setTimeout(run, 4000);
 }
@@ -628,9 +631,10 @@ function hashHasSharedTrip() {
 function makeGuestSession() {
   const suffix = Date.now().toString(36).slice(-5);
   const username = `ospite-${suffix}`;
+  // Unique display name so one "Elimina" cannot block every future guest named "Ospite".
   return {
     token: `local:${username}`,
-    user: { username, displayName: "Ospite" },
+    user: { username, displayName: `Ospite ${suffix}` },
     trips: readLocalTrips(),
     guest: true,
   };

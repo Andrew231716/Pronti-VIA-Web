@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261027a") return;
+    if (style && style.dataset.pvReady === "20261102b") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -788,7 +788,7 @@
   }
 
   function bindPanelChrome(panel) {
-    const close = panel.querySelector("#pv-magic-close");
+    const close = panel.querySelector(".pv-magic-close");
     if (close) close.onclick = () => setMagicOpen(false);
     const handle = panel.querySelector(".pv-drag-handle") || panel.querySelector(".pv-panel-head");
     if (handle && !(window.matchMedia && window.matchMedia("(max-width:640px)").matches)) {
@@ -858,7 +858,7 @@
             <p class="pv-lead">Apri o crea un viaggio per ricevere idee geolocalizzate da aggiungere alle tappe. Prima del viaggio puoi comunque chattare con ${AI_NAME} o aprire il Preventivo intelligente.</p>
             <div class="pv-actions">
               <button type="button" class="primary" id="pv-pronty-open-prev">Apri Preventivo</button>
-              <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+              <button type="button" class="ghost pv-magic-close">Chiudi</button>
             </div>
           </div>`;
         bindMagicTabs(panel);
@@ -886,7 +886,7 @@
         <div class="pv-panel-foot">
           <div class="pv-actions">
             <button type="button" class="primary" id="pv-magic-add">Aggiungi selezionati</button>
-            <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+            <button type="button" class="ghost pv-magic-close">Chiudi</button>
           </div>
           <p class="pv-status" id="pv-magic-status"></p>
         </div>
@@ -906,7 +906,7 @@
         `;
         list.appendChild(label);
       });
-      panel.querySelector("#pv-magic-close").onclick = () => {
+      panel.querySelector(".pv-magic-close").onclick = () => {
         setMagicOpen(false);
       };
       panel.querySelector("#pv-magic-add").onclick = () => void addSelectedPois(panel);
@@ -915,11 +915,11 @@
         <div class="pv-panel-head">${magicTabsHtml("idee")}<h3>Idee per l’itinerario</h3></div>
         <div class="pv-panel-body">
           <p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Errore")}</p>
-          <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
+          <div class="pv-actions"><button type="button" class="ghost pv-magic-close">Chiudi</button></div>
         </div>
       `;
       bindMagicTabs(panel);
-      panel.querySelector("#pv-magic-close").onclick = () => {
+      panel.querySelector(".pv-magic-close").onclick = () => {
         setMagicOpen(false);
       };
     }
@@ -1685,7 +1685,7 @@
         </form>
         <div class="pv-actions">
           <button type="button" class="ghost" id="pv-chat-reset">Nuova chat</button>
-          <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+          <button type="button" class="ghost pv-magic-close">Chiudi</button>
         </div>
         <p class="pv-status" id="pv-chat-status"></p>
       </div>
@@ -2448,7 +2448,7 @@ Regole pv-places:
         <p class="pv-status" id="pv-tr-status">Digita sopra: traduco in entrambe le direzioni.</p>
       </div>
       <div class="pv-panel-foot">
-        <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
+        <div class="pv-actions"><button type="button" class="ghost pv-magic-close">Chiudi</button></div>
       </div>
     `;
     bindMagicTabs(panel);
@@ -3769,12 +3769,17 @@ Regole pv-places:
   }
 
   function getPreventivoRenderRoot() {
-    // Prefer the visible tab mount; otherwise the sheet body.
     const mountBody = document.querySelector("#pv-preventivo-tab-mount #pv-tp-body");
-    if (mountBody && mountBody.offsetParent !== null) return mountBody;
+    const sheet = document.getElementById("pv-trip-preventivo-panel");
     const sheetBody = document.getElementById("pv-tp-sheet-body");
-    if (sheetBody) return sheetBody;
-    return document.querySelector("#pv-preventivo-tab-mount #pv-tp-body") || document.getElementById("pv-tp-body");
+    const sheetOpen = Boolean(sheet && !sheet.hidden);
+    // Prefer the Preventivo tab whenever it is active, even if a sheet exists in the DOM.
+    if (typeof isPreventivoTabActive === "function" && isPreventivoTabActive() && mountBody) {
+      return mountBody;
+    }
+    if (sheetOpen && sheetBody) return sheetBody;
+    if (mountBody) return mountBody;
+    return sheetBody || document.getElementById("pv-tp-body");
   }
 
   async function openTripPreventivoSection() {
@@ -3980,7 +3985,24 @@ Regole pv-places:
           : String(trip.notes || "")
               .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
               .trim();
-      const saved = await saveTrip(auth, trip, data.revision);
+      let saved;
+      try {
+        saved = await saveTrip(auth, trip, data.revision);
+      } catch (err) {
+        // One retry after fresh GET (stale revision / concurrent SPA poll).
+        const again = await loadTrip({ force: true });
+        const trip2 = { ...again.data.trip };
+        const meta2 = { ...(trip2.meta && typeof trip2.meta === "object" ? trip2.meta : {}) };
+        meta2.preventivo = preventivo;
+        trip2.meta = meta2;
+        trip2.notes =
+          typeof window.__pvStripPreventivoNotes === "function"
+            ? window.__pvStripPreventivoNotes(trip2.notes)
+            : String(trip2.notes || "")
+                .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
+                .trim();
+        saved = await saveTrip(again.auth, trip2, again.data.revision);
+      }
       try {
         const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
         const slot = db[auth.id] || { id: auth.id, key: auth.key };

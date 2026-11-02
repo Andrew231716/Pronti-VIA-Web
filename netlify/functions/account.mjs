@@ -20,10 +20,17 @@ function getAccountStore() {
   return getStore("pronti-via-accounts");
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+};
+
 function json(status, body, extraHeaders = {}) {
   return {
     statusCode: status,
     headers: {
+      ...corsHeaders,
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
       ...extraHeaders,
@@ -115,11 +122,7 @@ export async function handler(event) {
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-      },
+      headers: corsHeaders,
       body: "",
     };
   }
