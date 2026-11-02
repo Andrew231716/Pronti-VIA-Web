@@ -1128,6 +1128,65 @@
       return runTripRequest();
     }
 
+    // Free invite-code shares: local durable map when Netlify share is unreachable.
+    if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/share")) {
+      const method = String(init.method || "GET").toUpperCase();
+      const INVITE_SHARES_KEY = "viavia-invite-shares-v1";
+      const readInviteShares = () => {
+        try {
+          return JSON.parse(localStorage.getItem(INVITE_SHARES_KEY) || "{}") || {};
+        } catch {
+          return {};
+        }
+      };
+      const writeInviteShares = (db) => {
+        localStorage.setItem(INVITE_SHARES_KEY, JSON.stringify(db));
+      };
+      const shareId = decodeURIComponent(
+        parsed.pathname.replace(/^\/api\/share\/?/, "").split("/")[0] || ""
+      );
+      let remoteRes = null;
+      try {
+        remoteRes = await remoteTrips(`/share${shareId ? `/${shareId}` : ""}${parsed.search}`, init);
+        if (remoteRes.ok) return remoteRes;
+      } catch {
+        remoteRes = null;
+      }
+      if (method === "POST") {
+        let body = {};
+        try {
+          body = JSON.parse(String(init.body || "{}"));
+        } catch {
+          body = {};
+        }
+        const record = body.record || body;
+        const inviteRaw = String(body.inviteCode || record.code || "")
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "");
+        const inviteOk =
+          /^[A-Z0-9]{6}$/.test(inviteRaw) && (record.kind === "invite" || body.inviteCode);
+        if (!inviteOk || !record || typeof record !== "object") {
+          return remoteRes || jsonResponse(400, { error: "Invito non valido." });
+        }
+        const id = `inv-${inviteRaw}`;
+        const db = readInviteShares();
+        db[id] = {
+          ...record,
+          kind: "invite",
+          code: inviteRaw,
+          publishedAt: new Date().toISOString(),
+        };
+        writeInviteShares(db);
+        return jsonResponse(201, { key: id, ref: `n:${id}` });
+      }
+      if (method === "GET" && shareId) {
+        const hit = readInviteShares()[shareId.replace(/^n:/, "")];
+        if (hit) return jsonResponse(200, hit);
+        return remoteRes || jsonResponse(404, { error: "Snapshot non trovato o scaduto." });
+      }
+      if (remoteRes) return remoteRes;
+    }
+
     if (
       parsed.origin === location.origin &&
       parsed.pathname.startsWith("/api/") &&

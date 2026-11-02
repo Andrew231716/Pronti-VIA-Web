@@ -70,9 +70,14 @@ export async function handler(event) {
       if (!record || typeof record !== "object") {
         return json(400, { error: "Manca il record del viaggio." });
       }
-      const id = randomBytes(9).toString("base64url");
+      // Optional free invite codes: POST { inviteCode: "ABC123", record: {...} }
+      // stored under share:inv-ABC123 so GET /api/share/inv-ABC123 works.
+      const inviteRaw = String(body.inviteCode || record.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+      const inviteOk = /^[A-Z0-9]{6}$/.test(inviteRaw) && (record.kind === "invite" || body.inviteCode);
+      const id = inviteOk ? `inv-${inviteRaw}` : randomBytes(9).toString("base64url");
       await shareKv.setJSON(`share:${id}`, {
         ...record,
+        ...(inviteOk ? { kind: "invite", code: inviteRaw } : {}),
         publishedAt: new Date().toISOString(),
       });
       return json(201, { key: id, ref: `n:${id}` });
