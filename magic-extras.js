@@ -1573,13 +1573,26 @@
     return { label: "Luogo", short: "POI" };
   }
 
-  function renderPlaceCards(host, places, startIdx = 0) {
+  function renderPlaceCards(host, places, startIdx = 0, opts = {}) {
     host.innerHTML = "";
+    const addable = places.filter((p) => !p.webOnly);
     if (places.length) {
       const title = document.createElement("div");
       title.className = "pv-results-title";
-      title.textContent = "Posti consigliati";
+      title.textContent = opts.itineraryMode ? "Itinerario suggerito · con foto" : "Posti consigliati · con foto";
       host.appendChild(title);
+    }
+    if (addable.length > 1) {
+      const bar = document.createElement("div");
+      bar.className = "pv-card-actions";
+      bar.style.margin = "0 0 12px";
+      bar.innerHTML = `
+        <button type="button" class="primary" id="pv-add-all-places">Aggiungi tutti all’itinerario (${addable.length})</button>
+        <button type="button" class="ghost" id="pv-spread-days">Distribuisci sui giorni</button>
+      `;
+      host.appendChild(bar);
+      bar.querySelector("#pv-add-all-places").onclick = () => void addManyPlaces(addable, false);
+      bar.querySelector("#pv-spread-days").onclick = () => void addManyPlaces(addable, true);
     }
     places.forEach((poi, i) => {
       const idx = startIdx + i;
@@ -1588,6 +1601,7 @@
       const isWeb = Boolean(poi.webOnly);
       const meta = placeKindMeta(isWeb ? "web" : poi.kind || poi.category);
       const extract = poi.extract || poi.notes || poi.address || "";
+      const dayLabel = poi.dayHint ? `Giorno ${poi.dayHint}` : poi.dayLabel || "";
       card.innerHTML = `
         ${
           poi.image
@@ -1596,6 +1610,7 @@
         }
         <div>
           <span class="pv-kind-tag">${escapeHtml(meta.label)}</span>
+          ${dayLabel ? `<span class="pv-kind-tag" style="background:#fff3cd;color:#7a5b00">${escapeHtml(dayLabel)}</span>` : ""}
           <strong>${escapeHtml(poi.title)}</strong>
           <p class="pv-extract">${escapeHtml(extract || "Apri i link per dettagli e recensioni.")}</p>
           <div class="pv-card-actions">
@@ -1629,6 +1644,87 @@
     host.querySelectorAll("[data-add]").forEach((btn) => {
       btn.onclick = () => void addSinglePlace(Number(btn.dataset.add), btn);
     });
+  }
+
+  async function ensurePlaceImages(places, cityHint) {
+    const out = [];
+    for (const place of places) {
+      if (place.webOnly) {
+        out.push(place);
+        continue;
+      }
+      if (place.image) {
+        out.push(place);
+        continue;
+      }
+      const next = { ...place };
+      // Wikimedia search as a second chance for a real photo.
+      try {
+        const q = `${place.title} ${cityHint || ""}`.trim();
+        const data = await fetch(
+          `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
+            q
+          )}&gsrlimit=1&prop=imageinfo&iiprop=url&iiurlwidth=320&format=json&origin=*`,
+          { signal: AbortSignal.timeout(8000) }
+        ).then((r) => r.json());
+        const page = Object.values(data?.query?.pages || {})[0];
+        const url = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || "";
+        if (url && /\.(jpe?g|png|webp)/i.test(url)) next.image = url;
+      } catch {
+        /* keep placeholder */
+      }
+      if (!next.image) {
+        // Deterministic scenic placeholder (no API key) so cards never look empty.
+        const seed = encodeURIComponent(String(place.title || "place").slice(0, 40));
+        next.image = `https://picsum.photos/seed/${seed}/320/240`;
+      }
+      out.push(next);
+    }
+    return out;
+  }
+
+  async function addManyPlaces(pois, spreadDays) {
+    const list = (pois || []).filter((p) => p && !p.webOnly);
+    if (!list.length) return;
+    try {
+      const { auth, data } = await loadTrip();
+      const trip = structuredClone(data.trip);
+      if (!Array.isArray(trip.stops)) trip.stops = [];
+      const days = tripDays(trip);
+      let added = 0;
+      list.forEach((poi, i) => {
+        const exists = trip.stops.some((s) => String(s.title || "").toLowerCase() === poi.title.toLowerCase());
+        if (exists) return;
+        let day = "";
+        if (poi.dayHint && days[poi.dayHint - 1]) day = days[poi.dayHint - 1];
+        else if (spreadDays && days.length) day = days[i % days.length];
+        else if (days.length) day = days[Math.min(trip.stops.length, days.length - 1)];
+        trip.stops.push({
+          id: uid(),
+          title: poi.title.slice(0, 120),
+          day: day || "",
+          time: "",
+          category: poi.category || "Visita",
+          address: (poi.address || "").slice(0, 300),
+          notes: (poi.notes || poi.extract || poi.why || "").slice(0, 3000),
+          lat: poi.lat ?? null,
+          lng: poi.lng ?? null,
+        });
+        added += 1;
+      });
+      if (!added) {
+        alert("Questi posti sono già nell’itinerario.");
+        return;
+      }
+      await saveTrip(auth, trip, data.revision);
+      alert(
+        spreadDays
+          ? `Aggiunti ${added} posti distribuiti sui giorni.`
+          : `Aggiunti ${added} posti all’itinerario.`
+      );
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Non riuscito");
+    }
   }
 
   async function addSinglePlace(idx, btn) {
@@ -1685,12 +1781,12 @@
         <h3>${AI_NAME}</h3>
         <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, idee e gestione pratica.</p>
         <div class="pv-chips" id="pv-chat-chips">
+          <button type="button" data-q="Posti da vedere e cose da fare con itinerario giorno per giorno">Itinerario</button>
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
-          <button type="button" data-q="Cosa non perdere in 2 giorni?">Cosa vedere</button>
+          <button type="button" data-q="Cosa non perdere: musei, monumenti e posti iconici">Cosa vedere</button>
           <button type="button" data-q="Idee per una giornata con natura e panorami">Natura</button>
-          <button type="button" data-q="Consigli pratici per il viaggio (soldi, clima, trasporti)">Consigli</button>
+          <button type="button" data-q="Consigli pratici per gestire il viaggio oggi (soldi, trasporti, orari)">Gestisci oggi</button>
           <button type="button" data-q="Come organizzare bagagli, budget e checklist prima di partire?">Prima di partire</button>
-          <button type="button" data-q="Frasi utili e come comportarsi con la gente del posto">Lingua</button>
         </div>
       </div>
       <div class="pv-panel-body">
@@ -1782,8 +1878,8 @@
     const phase = tripAuth()
       ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
       : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
-    return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — un companion AI di viaggio simpatico e concreto.
-Rispondi SEMPRE in italiano, come una chat: tono cordiale, chiaro, concreto. Usa 2–6 frasi (o elenchi brevi), niente markdown pesante.
+    return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — companion AI per GESTIRE il viaggio (non solo chiacchiere).
+Rispondi SEMPRE in italiano: tono cordiale, concreto, actionable. 2–6 frasi + elenco breve se serve. Niente markdown pesante.
 ${phase}
 Contesto viaggio:
 - Titolo: ${safeTrip.title || "—"}
@@ -1794,19 +1890,20 @@ Contesto viaggio:
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
 
 Compiti:
-1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari, bagagli e organizzazione.
-2) Tieni conto del contesto del viaggio e dei messaggi precedenti (multi-turno).
-3) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
+1) Aiuta a pianificare e gestire: posti, cibo, natura, itinerari giorno-per-giorno, budget, bagagli, trasporti, lingua.
+2) Quando proponi cose da fare/vedere/mangiare, dai nomi REALI e specifici della zona.
+3) Se la domanda riguarda posti, itinerario, cosa vedere/fare/mangiare, natura o tappe, DEVI chiudere con questo blocco (obbligatorio):
 
 \`\`\`pv-places
-[{"title":"Nome posto","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché consigliarlo"}]
+[{"title":"Nome posto reale","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché","day":1}]
 \`\`\`
 
 Regole pv-places:
-- Massimo 5 posti, nomi reali e specifici della zona (non il paese intero, non "Ísland"/"Iceland").
+- 3–5 posti massimi, nomi reali (non il paese intero).
+- "day" = numero giorno del viaggio (opzionale ma utile per itinerari).
 - kind obbligatorio tra quelli elencati.
-- Se la domanda NON chiede luoghi da aggiungere, NON mettere il blocco pv-places.
-- Non inventare indirizzi; spiega in linguaggio naturale e lascia il JSON solo nel fence.`;
+- Solo per domande NON legate a luoghi (es. solo lingua/fraseario) ometti il blocco.
+- Non inventare indirizzi; il JSON resta solo nel fence.`;
   }
 
   function parseAiPlaceBlock(text) {
@@ -1821,6 +1918,7 @@ Regole pv-places:
             title: String(p.title || p.name || "").trim().slice(0, 120),
             kind: String(p.kind || "attraction").toLowerCase(),
             why: String(p.why || p.reason || "").trim().slice(0, 200),
+            dayHint: Number(p.day) > 0 ? Number(p.day) : null,
           }))
           .filter((p) => p.title && !isCountryLikePlace({ type: "poi" }, p.title, ""));
       }
@@ -1831,6 +1929,62 @@ Regole pv-places:
       .replace(/```pv-places[\s\S]*?```/gi, "")
       .trim();
     return { reply, places };
+  }
+
+  /** When the model forgets the JSON fence, salvage place titles from lists / bold names. */
+  function extractPlacesFromFreeText(text, destination = "") {
+    const raw = String(text || "");
+    const found = [];
+    const seen = new Set();
+    const push = (title, kind, why, dayHint) => {
+      const clean = String(title || "")
+        .replace(/^[\s*•\-–—\d.)]+/, "")
+        .replace(/\*\*/g, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 120);
+      if (!clean || clean.length < 3) return;
+      const key = clean.toLowerCase();
+      if (seen.has(key)) return;
+      if (isCountryLikePlace({ type: "poi" }, clean, destination)) return;
+      if (/^(giorno|day|mattina|pomeriggio|sera|itinerario|ecco|perché)\b/i.test(clean)) return;
+      seen.add(key);
+      found.push({
+        title: clean,
+        kind: kind || guessKindFromTitle(clean),
+        why: String(why || "").trim().slice(0, 200),
+        dayHint: dayHint || null,
+      });
+    };
+
+    // **Name** — why   OR  1. Name: why
+    const patterns = [
+      /(?:^|\n)\s*(?:\*\*|__)?\s*([A-ZÀ-ÖØ-Þ][^:\n*]{2,80}?)\s*(?:\*\*|__)?\s*[:—–-]\s*([^\n]{0,160})/g,
+      /(?:^|\n)\s*(?:[-•*]|\d+[.)])\s+\*?\*?([A-ZÀ-ÖØ-Þ][^:\n*]{2,80}?)\*?\*?(?:\s*[:—–-]\s*([^\n]{0,160}))?/g,
+      /(?:Giorno|Day)\s*(\d+)\s*[:\-–—]?\s*([A-ZÀ-ÖØ-Þ][^\n]{2,90})/gi,
+    ];
+    for (const re of patterns) {
+      let m;
+      const r = new RegExp(re.source, re.flags);
+      while ((m = r.exec(raw)) && found.length < 8) {
+        if (re.source.includes("Giorno")) {
+          push(m[2], "attraction", `Suggerito per il giorno ${m[1]}`, Number(m[1]));
+        } else {
+          push(m[1], null, m[2] || "");
+        }
+      }
+    }
+    return found.slice(0, 6);
+  }
+
+  function guessKindFromTitle(title) {
+    const t = String(title || "").toLowerCase();
+    if (/beach|spiaggia|park|parco|garden|giardino|falls|cascata|lake|lago/.test(t)) return "nature";
+    if (/museum|museo|mausole|gallery|galleria|castle|castello|cathedral|cattedrale|church|chiesa|center|centre|memorial/.test(t))
+      return "museum";
+    if (/market|mercato|mall|shop|bazaar/.test(t)) return "shop";
+    if (/restaurant|ristor|cafe|caff|bar|kitchen|food|grill/.test(t)) return "restaurant";
+    return "attraction";
   }
 
   function isAiProviderError(text) {
@@ -2194,6 +2348,9 @@ Regole pv-places:
 
         if (aiText) {
           ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
+          if (!aiPlaces.length) {
+            aiPlaces = extractPlacesFromFreeText(aiText, trip.destination || cityHint);
+          }
           chatHistory.push({ role: "assistant", content: aiText });
         } else {
           const local = localTravelReply(trip, text);
@@ -2205,14 +2362,14 @@ Regole pv-places:
         }
       }
 
-      // Geocode when we need place cards / map enrichment (also with local intro text).
+      // Geocode / cards whenever the user asks for places OR the AI named some.
       let place = { lat: null, lng: null };
       const intent = parseChatIntent(text);
       const placeAsk =
-        /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato/i.test(
+        /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato|cose da fare|da fare|programma|giorni/i.test(
           text
         );
-      const needPlaces = aiPlaces.length > 0 || ((!aiText || usedLocal) && placeAsk);
+      const needPlaces = placeAsk || aiPlaces.length > 0;
       if (needPlaces) {
         try {
           place = await geocodeDestination(
@@ -2227,11 +2384,17 @@ Regole pv-places:
 
       let cards = [];
       if (aiPlaces.length) {
-        status.textContent = "Verifico i posti sulle mappe…";
+        status.textContent = "Preparo carte con foto e link…";
         cards = await resolveAiPlaces(aiPlaces, trip.destination, trip.title, place.lat, place.lng);
+        // Preserve day hints from the model / free-text parser.
+        cards = cards.map((c, i) => ({
+          ...c,
+          dayHint: aiPlaces[i]?.dayHint || c.dayHint || null,
+        }));
         cards = await enrichWithWikipedia(cards);
+        cards = await ensurePlaceImages(cards, cityHint || trip.destination || "");
       } else if (needPlaces) {
-        status.textContent = "Integro con mappe e guide…";
+        status.textContent = "Cerco posti con foto su mappe e guide…";
         const found = await searchPlacesForIntent(
           trip.destination,
           intent,
@@ -2243,10 +2406,11 @@ Regole pv-places:
         const webFallback = Array.isArray(found) ? [] : found.webLinks || [];
         places = distributeAcrossDays(places, tripDays(trip));
         places = await enrichWithWikipedia(places.filter((p) => !p.webOnly));
+        places = await ensurePlaceImages(places, cityHint || trip.destination || "");
         cards = [...places, ...webFallback];
         if (!reply || usedLocal) {
           const intro = places.length
-            ? `Ecco ${places.length} ${intentResultLabel(intent, places.length)} che ho trovato per te. Puoi aggiungerli all’itinerario o aprirli sulle guide.`
+            ? `Ecco ${places.length} ${intentResultLabel(intent, places.length)} con foto e link. Puoi aggiungerli all’itinerario.`
             : `Non ho trovato posti chiari adesso. Prova un chip (Dove mangiare / Cosa vedere) o apri le guide qui sotto.`;
           reply = usedLocal && reply ? `${reply}\n\n${intro}` : reply || intro;
         }
@@ -2254,24 +2418,26 @@ Regole pv-places:
 
       if (!reply) {
         reply =
-          "Dimmi pure cosa ti serve: ristoranti, musei, natura, budget/giornata o consigli pratici. Posso rispondere con stime e posti dalle guide anche senza cloud.";
+          "Dimmi pure cosa ti serve: ristoranti, musei, natura, itinerario giorno per giorno, budget o checklist. Ti mostro posti con foto da aggiungere al viaggio.";
       }
 
       thinking.textContent = formatChatDisplay(reply);
       if (!aiText && !usedLocal) chatHistory.push({ role: "assistant", content: reply });
 
-      const showWeb = aiPlaces.length > 0 || (!aiText && placeAsk) || cards.some((c) => c.webOnly);
+      const showWeb = needPlaces || cards.some((c) => c.webOnly);
       const webLinks = showWeb ? reliableWebSearches(cityHint, intent, trip.destination) : [];
       const combined = [...cards.filter((c) => !c.webOnly), ...webLinks];
       chatPlaces = combined;
-      if (combined.length) renderPlaceCards(results, combined);
-      else results.innerHTML = "";
-      status.textContent = aiText
-        ? aiPlaces.length
-          ? "Risposta AI · posti pronti da aggiungere"
-          : "Risposta AI"
-        : combined.length
-          ? "Posti da mappe e guide"
+      if (combined.length) {
+        renderPlaceCards(results, combined, 0, { itineraryMode: placeAsk || aiPlaces.length > 0 });
+        results.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } else {
+        results.innerHTML = "";
+      }
+      status.textContent = combined.some((c) => !c.webOnly)
+        ? `${combined.filter((c) => !c.webOnly).length} posti con foto · tocca «Aggiungi all’itinerario»`
+        : aiText
+          ? "Risposta AI"
           : usedLocal
             ? "Risposta locale"
             : "Prova un chip o riformula la domanda";
