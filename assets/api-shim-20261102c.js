@@ -1,19 +1,30 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261027a — account sync via Netlify; live search; share via Blobs + bytebin.
+ * v=20261029a — account sync via Netlify; live search; share via Blobs + bytebin.
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-  // Production Netlify restored (Blobs). Tunnel kept as emergency fallback only.
+  // Free production path: Netlify Functions + Blobs (no paid tunnel).
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
-  const TRIPS_PROXIES = ["https://like-success-universities-old.trycloudflare.com"];
+  const TRIPS_PROXIES = []; // dead trycloudflare tunnels removed
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
   const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
   const SHARE_BLOBS_KEY = "viavia-share-blobs-v1";
   const BYTEBIN = "https://bytebin.lucko.me";
   const PER_TRY_MS = 8000;
+  // Serialize trip writes so join / preventivo / React saves do not clobber each other.
+  let tripWriteChain = Promise.resolve();
+  function enqueueTripWrite(task) {
+    const run = tripWriteChain.then(task, task);
+    tripWriteChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+  window.__pvEnqueueTripWrite = enqueueTripWrite;
 
   const originalFetch = window.fetch.bind(window);
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
@@ -781,9 +792,21 @@
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
       const nextTrip = takeBudgetPrivate(id, body.trip || body);
-      const revision = Number(body.revision || record.revision || 1) + 1;
+      const serverRev = Number(record.revision) || 1;
+      const clientRev = Number(body.revision);
+      if (Number.isFinite(clientRev) && clientRev !== serverRev) {
+        return jsonResponse(409, {
+          error: "Versione non aggiornata. Ricarica e riprova.",
+          trip: applyPrivateBudgetView(id, record.trip),
+          revision: serverRev,
+          updated: record.updated,
+          canEdit: true,
+          viewToken: record.viewToken || "",
+          local: true,
+        });
+      }
       record.trip = nextTrip;
-      record.revision = revision;
+      record.revision = serverRev + 1;
       record.updated = new Date().toISOString();
       db[id] = record;
       writeLocalTrips(db);
@@ -904,7 +927,6 @@
     // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
     const isSearch = String(suffix || "").startsWith("/search");
-    // Live flight/stay search can take 15–40s; skip dead tunnel fallbacks.
     const candidates = isSearch
       ? [`${NETLIFY_API}/api${suffix}`]
       : onGitHubPages
@@ -973,6 +995,9 @@
       parsed.origin === location.origin &&
       parsed.pathname.startsWith("/api/trips")
     ) {
+      const methodEarly = (init.method || "GET").toUpperCase();
+      const runTripRequest = async () => {
+
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
       const method = (init.method || "GET").toUpperCase();
       const tripIdHint = decodeURIComponent(
@@ -1095,6 +1120,12 @@
         // All remote proxies failed — durable local fallback.
         return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
       }
+    
+      };
+      if (methodEarly === "PUT" || methodEarly === "PATCH" || methodEarly === "POST") {
+        return enqueueTripWrite(runTripRequest);
+      }
+      return runTripRequest();
     }
 
     if (

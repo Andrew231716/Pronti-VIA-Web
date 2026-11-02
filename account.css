@@ -230,3 +230,40 @@ body.pv-account-ready {
   color: #5b7380;
   font-size: 0.85rem;
 }
+
+/* Unified chrome under account chip */
+#pv-local-only-banner,
+#pv-cloud-status-banner {
+  position: relative !important;
+  top: auto !important;
+  margin: 0 !important;
+  z-index: 1 !important;
+}
+
+/* Print / PDF friendly */
+@media print {
+  #pv-account-chip,
+  #pv-account-gate,
+  #pv-magic-root,
+  #pv-ux-toolbar,
+  #pv-ux-toast,
+  #pv-offline-chip,
+  #pv-link-role-chip,
+  .pv-prev-launch,
+  button,
+  .main-tabs {
+    display: none !important;
+  }
+  body {
+    padding-top: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  a[href]::after {
+    content: none !important;
+  }
+  .trip-hero,
+  .workspace {
+    break-inside: avoid;
+  }
+}

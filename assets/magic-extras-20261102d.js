@@ -1,7 +1,7 @@
 /**
  * Free Wanderlog-parity extras for Pronti? VIA!
- * - Bacchetta magica: Idee + chat suggerimenti (OSM/Wikipedia/TripAdvisor link)
- *   e sezione Lingua (frasario + traduzione simultanea)
+ * - Pronty (Bacchetta magica): AI floating companion — Idee + chat + Lingua
+ *   Funziona prima e durante il viaggio; FAB a tondino spostabile
  * - Packing list templates
  * - Budget privato + expense category breakdown
  * - Day-colored map pins, distances, meteo, FX in Spese, link utili
@@ -9,6 +9,17 @@
 (() => {
   const STYLE_ID = "pv-magic-extras-css";
   const ROOT_ID = "pv-magic-root";
+  const AI_NAME = "Pronty";
+  const AI_FAB_POS_KEY = "viavia-pronty-fab-pos-v3";
+  const AI_PANEL_POS_KEY = "viavia-pronty-panel-pos";
+  // Dock: both FABs stack on the right, clear of the home indicator.
+  const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
+  const FAB_GAP = 24;
+  const FAB_SIZE = 62;
+  const FAB_DOCK_RIGHT = 18;
+  // Lower slot offset from safe bottom, then Pronty sits one slot above.
+  const FAB_SLOT = FAB_SIZE + FAB_GAP;
+  const PRONTY_FAB_BOTTOM = `calc(${FAB_SAFE} + ${FAB_SLOT}px)`;
   const DAY_COLORS = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545", "#2a9d8f", "#e76f51"];
   const WMO = {
     0: "Sereno",
@@ -71,24 +82,53 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "1") return;
+    if (style && style.dataset.pvReady === "20261102c") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:auto 14px 14px auto;z-index:80;display:flex;flex-direction:column;align-items:flex-end;gap:0;font-family:inherit;pointer-events:none}
+      #${ROOT_ID}{position:fixed;inset:0;z-index:80;pointer-events:none;font-family:inherit}
       #${ROOT_ID} > *{pointer-events:auto}
-      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.42);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0;pointer-events:auto}
-      #${ROOT_ID}.pv-open{inset:0;align-items:stretch;justify-content:flex-end}
+      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.28);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
-      #${ROOT_ID}.pv-open .pv-magic-btn{display:none}
-      #${ROOT_ID} .pv-magic-btn{appearance:none;border:0;border-radius:999px;background:#007d82;color:#fff;padding:12px 16px;font:600 14px/1.2 inherit;box-shadow:0 10px 30px rgba(0,80,90,.28);cursor:pointer;display:inline-flex;align-items:center;gap:8px;position:relative;z-index:2}
-      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait}
-      #${ROOT_ID} .pv-magic-btn svg{width:18px;height:18px;flex:0 0 auto}
-      #${ROOT_ID} .pv-magic-panel{position:relative;z-index:1;width:min(440px,calc(100vw - 24px));max-height:min(82vh,720px);overflow:hidden;display:flex;flex-direction:column;background:#fff;border:1px solid #d0e0e0;border-radius:20px;box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0}
+      #${ROOT_ID} .pv-magic-btn{
+        appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PRONTY_FAB_BOTTOM};z-index:2;
+        width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;
+        background:radial-gradient(circle at 30% 28%,#2bb7bc 0%,#007d82 55%,#0a5c60 100%);
+        color:#fff;box-shadow:0 14px 32px rgba(0,70,80,.38),inset 0 1px 0 rgba(255,255,255,.25);
+        cursor:grab;display:inline-flex;align-items:center;justify-content:center;
+        touch-action:none;user-select:none;-webkit-user-select:none;
+        transition:transform .15s ease,box-shadow .15s ease;
+        animation:pv-fab-float 3.2s ease-in-out infinite;
+      }
+      @keyframes pv-fab-float{
+        0%,100%{transform:translateY(0)}
+        50%{transform:translateY(-5px)}
+      }
+      #${ROOT_ID} .pv-magic-btn:active{cursor:grabbing;animation:none;transform:scale(.96)}
+      #${ROOT_ID} .pv-magic-btn.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04);box-shadow:0 18px 40px rgba(0,70,80,.45)}
+      #${ROOT_ID} .pv-magic-btn[disabled]{opacity:.6;cursor:wait;animation:none}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-face{width:42px;height:42px;display:block}
+      #${ROOT_ID} .pv-magic-btn .pv-pronty-label{
+        position:absolute;right:68px;bottom:14px;white-space:nowrap;
+        background:#0f2c31;color:#fff;font:700 11px/1 inherit;letter-spacing:.02em;
+        padding:6px 10px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.18);
+        opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
+      }
+      #${ROOT_ID} .pv-magic-btn:hover .pv-pronty-label,#${ROOT_ID} .pv-magic-btn:focus-visible .pv-pronty-label{opacity:1;transform:none}
+      #${ROOT_ID} .pv-magic-panel{
+        position:fixed;right:16px;bottom:calc(${FAB_SAFE} + ${FAB_SIZE * 2 + FAB_GAP * 2}px);z-index:1;
+        width:min(400px,calc(100vw - 24px));max-height:min(78vh,680px);
+        overflow:hidden;display:flex;flex-direction:column;background:#fff;
+        border:1px solid #d0e0e0;border-radius:22px;
+        box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0;
+        touch-action:none;
+      }
       #${ROOT_ID} .pv-magic-panel[hidden]{display:none !important}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle{cursor:grab;touch-action:none}
+      #${ROOT_ID} .pv-magic-panel .pv-drag-handle:active{cursor:grabbing}
       #${ROOT_ID} .pv-panel-head{flex:0 0 auto;padding:12px 14px 10px;border-bottom:1px solid #e8f0f0;background:#f7fbfb}
       #${ROOT_ID} .pv-panel-body{flex:1 1 auto;overflow:auto;-webkit-overflow-scrolling:touch;padding:12px 14px 8px}
       #${ROOT_ID} .pv-panel-foot{flex:0 0 auto;padding:10px 14px 14px;border-top:1px solid #e8f0f0;background:#fff}
@@ -134,9 +174,16 @@
       #${ROOT_ID} .pv-phrase strong{display:block;font-size:.86rem;color:#122f34}
       #${ROOT_ID} .pv-phrase span{display:block;font-size:.78rem;color:#4d676e;margin-top:2px}
       @media (max-width:640px){
-        #${ROOT_ID}{inset:auto 10px 10px auto}
-        #${ROOT_ID}.pv-open{inset:0;padding:0}
-        #${ROOT_ID}.pv-open .pv-magic-panel{width:100%;max-width:none;max-height:min(92dvh,92vh);border-radius:18px 18px 0 0;margin-top:auto;border-left:0;border-right:0;border-bottom:0}
+        #${ROOT_ID} .pv-magic-btn{
+          right:16px;width:58px;height:58px;
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 82px);
+        }
+        #${ROOT_ID} .pv-magic-panel{
+          left:0!important;right:0!important;bottom:0!important;top:auto!important;
+          width:100%;max-width:none;max-height:min(72dvh,72vh);
+          border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
+        }
+        #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
         #${ROOT_ID} .pv-place-card{grid-template-columns:56px 1fr;gap:10px;padding:12px}
         #${ROOT_ID} .pv-place-card img,#${ROOT_ID} .pv-place-card .pv-ph{width:56px;height:56px}
         #${ROOT_ID} .pv-card-actions{grid-template-columns:1fr 1fr}
@@ -180,18 +227,276 @@
       .pv-links-box .pv-action-list a:first-child,.pv-links-box .pv-action-list button:first-child{padding-top:0}
       .pv-links-box .pv-action-list .hint{font-size:.78rem;font-weight:600;color:#7a9096}
       .pv-links-box .pv-status{min-height:1.1em;margin:10px 0 0;font-size:.82rem;color:#5b7076}
+      @media (prefers-reduced-motion: reduce){
+        #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
+      }
     `;
-    style.dataset.pvReady = "1";
+    style.dataset.pvReady = "20261102c";
+  }
+
+  function fabNodes() {
+    return {
+      pronty: document.querySelector("#pv-magic-open"),
+      prev: document.querySelector(".pv-prev-launch"),
+    };
+  }
+
+  function activeSheetEl() {
+    const magic = document.querySelector("#pv-magic-panel");
+    if (magic && !magic.hidden) return magic;
+    const prev = document.querySelector("#pv-preventivo-root.open .pv-prev-shell");
+    if (prev) return prev;
+    return null;
+  }
+
+  function snapshotFabStyle(el) {
+    if (!el || el.dataset.pvParkSnap) return;
+    el.dataset.pvParkSnap = JSON.stringify({
+      left: el.style.left || "",
+      top: el.style.top || "",
+      right: el.style.right || "",
+      bottom: el.style.bottom || "",
+      transition: el.style.transition || "",
+      animation: el.style.animation || "",
+    });
+  }
+
+  function restoreFabStyle(el) {
+    if (!el) return;
+    let snap = null;
+    try {
+      snap = JSON.parse(el.dataset.pvParkSnap || "null");
+    } catch {
+      snap = null;
+    }
+    delete el.dataset.pvParkSnap;
+    delete el.dataset.pvParked;
+    if (!snap) {
+      el.style.left = "";
+      el.style.top = "";
+      el.style.right = "";
+      el.style.bottom = "";
+      el.style.transition = "";
+      el.style.animation = "";
+      return;
+    }
+    el.style.left = snap.left;
+    el.style.top = snap.top;
+    el.style.right = snap.right;
+    el.style.bottom = snap.bottom;
+    el.style.transition = snap.transition || "";
+    el.style.animation = snap.animation || "";
+  }
+
+  /** Park both tondini stacked on the right, just above the open sheet (as in the reference). */
+  function parkFabsAboveSheet() {
+    const { pronty, prev } = fabNodes();
+    if (!pronty && !prev) return;
+    const sheet = activeSheetEl();
+    // Prefer measured size, but never trust 0/NaN (can happen mid-layout).
+    let size = 58;
+    try {
+      const raw =
+        Number((pronty || prev)?.offsetWidth) ||
+        parseFloat(getComputedStyle(pronty || prev).width) ||
+        58;
+      if (Number.isFinite(raw) && raw >= 40 && raw <= 96) size = Math.round(raw);
+    } catch {
+      size = 58;
+    }
+    const gap = 20;
+    const marginRight = 16;
+    const marginAbove = 18;
+    let sheetTop;
+    if (sheet) {
+      sheetTop = sheet.getBoundingClientRect().top;
+    } else if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      sheetTop = window.innerHeight * 0.28;
+    } else {
+      sheetTop = window.innerHeight - 120;
+    }
+    // If sheet measurement is still collapsing, assume ~72vh sheet (28% free above).
+    if (!Number.isFinite(sheetTop) || sheetTop < 80 || sheetTop > window.innerHeight - 80) {
+      sheetTop = Math.round(window.innerHeight * 0.28);
+    }
+    const left = Math.max(8, window.innerWidth - marginRight - size);
+    let lowerTop = sheetTop - marginAbove - size;
+    let upperTop = lowerTop - gap - size;
+    if (upperTop < 8) {
+      upperTop = 8;
+      lowerTop = upperTop + size + gap;
+    }
+    const place = (el, top) => {
+      if (!el) return;
+      snapshotFabStyle(el);
+      el.dataset.pvParked = "1";
+      el.style.animation = "none";
+      el.style.transition = "left .28s ease, top .28s ease";
+      el.style.left = `${left}px`;
+      el.style.top = `${Math.round(top)}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      el.style.zIndex = "120";
+    };
+    // Pronty (smile) on top, Preventivo (doc) below — same order as the screenshot.
+    place(pronty, upperTop);
+    place(prev, lowerTop);
+  }
+
+  function restoreFabsFromPark() {
+    const { pronty, prev } = fabNodes();
+    restoreFabStyle(pronty);
+    restoreFabStyle(prev);
   }
 
   function setMagicOpen(open) {
     panelOpen = open;
     const root = document.getElementById(ROOT_ID);
     const panel = root?.querySelector("#pv-magic-panel");
+    const fab = root?.querySelector("#pv-magic-open");
     if (root) root.classList.toggle("pv-open", open);
     if (panel) panel.hidden = !open;
-    document.documentElement.style.overflow = open ? "hidden" : "";
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    // Don't lock the whole page — Pronty is a floating companion.
+    if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
+      document.documentElement.style.overflow = open ? "hidden" : "";
+    } else {
+      document.documentElement.style.overflow = "";
+    }
+    if (open) {
+      requestAnimationFrame(() => requestAnimationFrame(parkFabsAboveSheet));
+    } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
+      restoreFabsFromPark();
+    }
   }
+
+  window.__pvParkFabsAboveSheet = parkFabsAboveSheet;
+  window.__pvRestoreFabsFromPark = restoreFabsFromPark;
+
+  /** Shared draggable helper for floating FABs / panels. Click still fires if movement is tiny. */
+  function makeDraggable(el, { storageKey, handle, onTap, axis = "both" } = {}) {
+    if (!el || el.dataset.pvDragBound === "1") return;
+    el.dataset.pvDragBound = "1";
+    const target = handle || el;
+    let startX = 0;
+    let startY = 0;
+    let origLeft = 0;
+    let origTop = 0;
+    let moved = false;
+    let dragging = false;
+
+    const clamp = () => {
+      const rect = el.getBoundingClientRect();
+      const maxL = Math.max(8, window.innerWidth - rect.width - 8);
+      const maxT = Math.max(8, window.innerHeight - rect.height - 8);
+      let left = parseFloat(el.style.left || String(rect.left));
+      let top = parseFloat(el.style.top || String(rect.top));
+      left = Math.min(maxL, Math.max(8, left));
+      top = Math.min(maxT, Math.max(8, top));
+      el.style.left = `${left}px`;
+      el.style.top = `${top}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      return { left, top };
+    };
+
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (saved && Number.isFinite(saved.left) && Number.isFinite(saved.top)) {
+        el.style.left = `${saved.left}px`;
+        el.style.top = `${saved.top}px`;
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+        requestAnimationFrame(clamp);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const onPointerDown = (ev) => {
+      if (ev.button != null && ev.button !== 0) return;
+      // Skip nested controls, but allow drag when the FAB itself is the button.
+      const hit = ev.target?.closest?.("button, a, input, select, textarea, label");
+      if (hit && hit !== el) return;
+      const rect = el.getBoundingClientRect();
+      startX = ev.clientX;
+      startY = ev.clientY;
+      origLeft = rect.left;
+      origTop = rect.top;
+      moved = false;
+      dragging = true;
+      el.classList.add("pv-dragging");
+      target.setPointerCapture?.(ev.pointerId);
+    };
+    const onPointerMove = (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) + Math.abs(dy) > 6) moved = true;
+      if (axis !== "y") el.style.left = `${origLeft + dx}px`;
+      if (axis !== "x") el.style.top = `${origTop + dy}px`;
+      el.style.right = "auto";
+      el.style.bottom = "auto";
+      clamp();
+    };
+    const onPointerUp = (ev) => {
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove("pv-dragging");
+      try {
+        target.releasePointerCapture?.(ev.pointerId);
+      } catch {
+        /* ignore */
+      }
+      const pos = clamp();
+      // Don't overwrite idle dock coords while FABs are auto-parked above a sheet.
+      if (storageKey && el.dataset.pvParked !== "1") {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(pos));
+        } catch {
+          /* ignore */
+        }
+      }
+      if (moved) {
+        el.dataset.pvDidDrag = "1";
+        // Swallow the synthetic click that follows a drag.
+        const swallow = (ce) => {
+          ce.preventDefault();
+          ce.stopPropagation();
+          el.removeEventListener("click", swallow, true);
+        };
+        el.addEventListener("click", swallow, true);
+        setTimeout(() => el.removeEventListener("click", swallow, true), 400);
+      } else if (typeof onTap === "function") {
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      }
+    };
+    target.addEventListener("pointerdown", onPointerDown);
+    target.addEventListener("pointermove", onPointerMove);
+    target.addEventListener("pointerup", onPointerUp);
+    target.addEventListener("pointercancel", onPointerUp);
+    // Reliable open path for browsers / automation that prefer click over pointerup-tap.
+    if (typeof onTap === "function") {
+      el.addEventListener("click", (ev) => {
+        if (el.dataset.pvDidDrag === "1") {
+          el.dataset.pvDidDrag = "0";
+          return;
+        }
+        // Avoid double-open when pointerup already called onTap.
+        if (el.dataset.pvTapLock === "1") return;
+        el.dataset.pvTapLock = "1";
+        setTimeout(() => {
+          el.dataset.pvTapLock = "0";
+        }, 350);
+        onTap(ev);
+      });
+    }
+  }
+  window.__pvMakeDraggable = makeDraggable;
 
   function tripAuth() {
     const params = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -201,17 +506,43 @@
     return { id, key };
   }
 
-  async function loadTrip() {
+  let tripLoadInflight = null;
+  let tripLoadCache = null; // { id, at, payload }
+  const TRIP_LOAD_TTL_MS = 4000;
+
+  async function loadTrip({ force = false } = {}) {
     const auth = tripAuth();
     if (!auth) throw new Error("Apri un viaggio salvato per usare questa funzione.");
-    const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
-      headers: { Authorization: `Bearer ${auth.key}` },
-      cache: "no-store",
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
-    if (data.canEdit === false) throw new Error("Serve il link di modifica.");
-    return { auth, data };
+    const now = Date.now();
+    if (
+      !force &&
+      tripLoadCache &&
+      tripLoadCache.id === auth.id &&
+      now - tripLoadCache.at < TRIP_LOAD_TTL_MS
+    ) {
+      return tripLoadCache.payload;
+    }
+    if (!force && tripLoadInflight && tripLoadInflight.id === auth.id) {
+      return tripLoadInflight.promise;
+    }
+    const promise = (async () => {
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
+      if (data.canEdit === false) throw new Error("Serve il link di modifica.");
+      const payload = { auth, data };
+      tripLoadCache = { id: auth.id, at: Date.now(), payload };
+      return payload;
+    })();
+    tripLoadInflight = { id: auth.id, promise };
+    try {
+      return await promise;
+    } finally {
+      if (tripLoadInflight?.promise === promise) tripLoadInflight = null;
+    }
   }
 
   async function saveTrip(auth, trip, revision) {
@@ -225,6 +556,12 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito");
+    // Keep local extras cache aligned so subsequent reads don't overwrite with stale GET.
+    tripLoadCache = {
+      id: auth.id,
+      at: Date.now(),
+      payload: { auth, data },
+    };
     return data;
   }
 
@@ -371,6 +708,21 @@
     return `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20 L14.5 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M13 4 l1.2 2.4 2.6.4-1.9 1.9.5 2.6L13 10.2 10.6 11.3l.5-2.6L9.2 6.8l2.6-.4L13 4z" fill="currentColor"/><path d="M16.5 14.5 l.7 1.4 1.5.2-1.1 1.1.3 1.5-1.4-.7-1.4.7.3-1.5-1.1-1.1 1.5-.2.7-1.4z" fill="currentColor"/></svg>`;
   }
 
+  /** Cute round face for Pronty FAB */
+  function prontyFace() {
+    return `<svg class="pv-pronty-face" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="28" fill="#e8fafa"/>
+      <circle cx="32" cy="32" r="28" fill="url(#pvProntyGlow)" opacity=".35"/>
+      <defs><radialGradient id="pvProntyGlow" cx="30%" cy="30%"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#007d82"/></radialGradient></defs>
+      <circle cx="23" cy="28" r="3.2" fill="#0f2c31"/>
+      <circle cx="41" cy="28" r="3.2" fill="#0f2c31"/>
+      <path d="M22 38c3.5 5 16.5 5 20 0" fill="none" stroke="#0f2c31" stroke-width="2.6" stroke-linecap="round"/>
+      <circle cx="18" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
+      <circle cx="46" cy="34" r="3" fill="#ffb4a8" opacity=".85"/>
+      <path d="M44 14l1.1 2.2 2.4.3-1.7 1.7.4 2.4-2.2-1.1-2.2 1.1.4-2.4-1.7-1.7 2.4-.3L44 14z" fill="#ffd56a"/>
+    </svg>`;
+  }
+
   function ensureRoot() {
     ensureStyles();
     let root = document.getElementById(ROOT_ID);
@@ -409,12 +761,6 @@
 
   function renderFab() {
     if (!document.body.classList.contains("pv-account-ready")) return;
-    if (!tripAuth()) {
-      const existing = document.getElementById(ROOT_ID);
-      if (existing) existing.innerHTML = "";
-      setMagicOpen(false);
-      return;
-    }
     if (document.querySelector("main.loading")) return;
 
     const root = ensureRoot();
@@ -426,36 +772,71 @@
 
     root.innerHTML = `
       <div class="pv-magic-scrim" id="pv-magic-scrim"></div>
-      <button type="button" class="pv-magic-btn" id="pv-magic-open">${wandIcon()} Bacchetta magica</button>
+      <button type="button" class="pv-magic-btn" id="pv-magic-open" aria-label="${AI_NAME} — Bacchetta magica" title="${AI_NAME}">
+        ${prontyFace()}
+        <span class="pv-pronty-label">${AI_NAME} · Bacchetta magica</span>
+      </button>
       <div class="pv-magic-panel" id="pv-magic-panel" hidden></div>
     `;
     const openPanel = () => {
       setMagicOpen(true);
       void showMagicPanel(root.querySelector("#pv-magic-panel"), magicTab || "chiedi");
     };
-    root.querySelector("#pv-magic-open").onclick = openPanel;
+    const fab = root.querySelector("#pv-magic-open");
+    makeDraggable(fab, { storageKey: AI_FAB_POS_KEY, onTap: openPanel });
     root.querySelector("#pv-magic-scrim").onclick = () => setMagicOpen(false);
+  }
+
+  function bindPanelChrome(panel) {
+    const close = panel.querySelector(".pv-magic-close");
+    if (close) close.onclick = () => setMagicOpen(false);
+    const handle = panel.querySelector(".pv-drag-handle") || panel.querySelector(".pv-panel-head");
+    if (handle && !(window.matchMedia && window.matchMedia("(max-width:640px)").matches)) {
+      makeDraggable(panel, { storageKey: AI_PANEL_POS_KEY, handle });
+    }
+  }
+
+  function readPreventivoDraft() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-preventivo-v2") || "null");
+      const draft = raw?.__draft__?.params || null;
+      if (draft && (draft.destination || draft.title)) return draft;
+    } catch {
+      /* ignore */
+    }
+    return null;
   }
 
   async function showMagicPanel(panel, tab = "chiedi") {
     magicTab = tab;
-    try {
-      if (!magicTripCache) {
-        const { data } = await loadTrip();
-        magicTripCache = data.trip;
+    const auth = tripAuth();
+    if (auth) {
+      try {
+        if (!magicTripCache) {
+          const { data } = await loadTrip();
+          magicTripCache = data.trip;
+        }
+      } catch (err) {
+        // Keep Pronty usable even if trip load fails (pre-trip / offline).
+        magicTripCache = magicTripCache || null;
+        console.warn("[pronty]", err);
       }
-    } catch (err) {
-      panel.innerHTML = `
-        <div class="pv-panel-body">
-          <h3>Bacchetta magica</h3>
-          <p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Errore")}</p>
-          <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
-        </div>
-      `;
-      panel.querySelector("#pv-magic-close").onclick = () => {
-        setMagicOpen(false);
-      };
-      return;
+    } else {
+      // Before a trip is open: seed context from preventivo draft if any.
+      const draft = readPreventivoDraft();
+      if (draft && !magicTripCache) {
+        magicTripCache = {
+          title: draft.title || "",
+          destination: draft.destination || "",
+          start: draft.start || "",
+          end: draft.end || "",
+          members: Array.from({ length: Number(draft.travelers) || 2 }, (_, i) => ({
+            name: i === 0 ? "Tu" : `Viaggiatore ${i + 1}`,
+          })),
+          stops: [],
+          _draftOnly: true,
+        };
+      }
     }
 
     if (tab === "idee") return void runMagicSuggest(panel);
@@ -465,10 +846,29 @@
 
   async function runMagicSuggest(panel) {
     panel.innerHTML = `
-      <div class="pv-panel-head">${magicTabsHtml("idee")}<h3>Idee per l’itinerario</h3></div>
+      <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3><p class="pv-lead">Bacchetta magica — proposte per l’itinerario</p></div>
       <div class="pv-panel-body"><p class="pv-status">Cerco luoghi intorno alla destinazione…</p></div>`;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     try {
+      if (!tripAuth()) {
+        panel.innerHTML = `
+          <div class="pv-panel-head pv-drag-handle">${magicTabsHtml("idee")}<h3>${AI_NAME} · Idee</h3></div>
+          <div class="pv-panel-body">
+            <p class="pv-lead">Apri o crea un viaggio per ricevere idee geolocalizzate da aggiungere alle tappe. Prima del viaggio puoi comunque chattare con ${AI_NAME} o aprire il Preventivo intelligente.</p>
+            <div class="pv-actions">
+              <button type="button" class="primary" id="pv-pronty-open-prev">Apri Preventivo</button>
+              <button type="button" class="ghost pv-magic-close">Chiudi</button>
+            </div>
+          </div>`;
+        bindMagicTabs(panel);
+        bindPanelChrome(panel);
+        panel.querySelector("#pv-pronty-open-prev")?.addEventListener("click", () => {
+          setMagicOpen(false);
+          if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+        });
+        return;
+      }
       const { data } = await loadTrip();
       const trip = data.trip;
       magicTripCache = trip;
@@ -477,21 +877,22 @@
       pendingPois = pois;
       const existing = new Set((trip.stops || []).map((s) => String(s.title || "").toLowerCase()));
       panel.innerHTML = `
-        <div class="pv-panel-head">
+        <div class="pv-panel-head pv-drag-handle">
           ${magicTabsHtml("idee")}
-          <h3>Idee per l’itinerario</h3>
+          <h3>${AI_NAME} · Idee per l’itinerario</h3>
           <p class="pv-lead">Proposte intorno a <strong>${escapeHtml(trip.destination)}</strong>. Scegli cosa aggiungere.</p>
         </div>
         <div class="pv-panel-body"><div id="pv-magic-list"></div></div>
         <div class="pv-panel-foot">
           <div class="pv-actions">
             <button type="button" class="primary" id="pv-magic-add">Aggiungi selezionati</button>
-            <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+            <button type="button" class="ghost pv-magic-close">Chiudi</button>
           </div>
           <p class="pv-status" id="pv-magic-status"></p>
         </div>
       `;
       bindMagicTabs(panel);
+      bindPanelChrome(panel);
       const list = panel.querySelector("#pv-magic-list");
       pois.forEach((poi, idx) => {
         const already = existing.has(poi.title.toLowerCase());
@@ -505,7 +906,7 @@
         `;
         list.appendChild(label);
       });
-      panel.querySelector("#pv-magic-close").onclick = () => {
+      panel.querySelector(".pv-magic-close").onclick = () => {
         setMagicOpen(false);
       };
       panel.querySelector("#pv-magic-add").onclick = () => void addSelectedPois(panel);
@@ -514,11 +915,11 @@
         <div class="pv-panel-head">${magicTabsHtml("idee")}<h3>Idee per l’itinerario</h3></div>
         <div class="pv-panel-body">
           <p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Errore")}</p>
-          <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
+          <div class="pv-actions"><button type="button" class="ghost pv-magic-close">Chiudi</button></div>
         </div>
       `;
       bindMagicTabs(panel);
-      panel.querySelector("#pv-magic-close").onclick = () => {
+      panel.querySelector(".pv-magic-close").onclick = () => {
         setMagicOpen(false);
       };
     }
@@ -1252,20 +1653,24 @@
   }
 
   async function renderChatTab(panel) {
-    const dest = magicTripCache?.destination || "la destinazione";
-    const greetingWhere = formatDestGreeting(dest, magicTripCache?.title || "");
+    const dest = magicTripCache?.destination || "";
+    const greetingWhere = dest
+      ? formatDestGreeting(dest, magicTripCache?.title || "")
+      : "per il tuo prossimo viaggio";
     const trip = magicTripCache;
-    const days = trip ? tripDays(trip) : [];
+    const days = trip && !trip._draftOnly ? tripDays(trip) : [];
+    const duringTrip = Boolean(tripAuth());
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("chiedi")}
-        <h3>Chiedi alla bacchetta</h3>
-        <p class="pv-lead">Assistente AI del viaggio: domande, idee e tappe da aggiungere.</p>
+        <h3>${AI_NAME}</h3>
+        <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, idee e gestione pratica.</p>
         <div class="pv-chips" id="pv-chat-chips">
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
           <button type="button" data-q="Cosa non perdere in 2 giorni?">Cosa vedere</button>
           <button type="button" data-q="Idee per una giornata con natura e panorami">Natura</button>
           <button type="button" data-q="Consigli pratici per il viaggio (soldi, clima, trasporti)">Consigli</button>
+          <button type="button" data-q="Come organizzare bagagli, budget e checklist prima di partire?">Prima di partire</button>
           <button type="button" data-q="Frasi utili e come comportarsi con la gente del posto">Lingua</button>
         </div>
       </div>
@@ -1275,30 +1680,31 @@
       </div>
       <div class="pv-panel-foot">
         <form class="pv-chat-form" id="pv-chat-form">
-          <input type="text" id="pv-chat-input" placeholder="Scrivi pure… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
+          <input type="text" id="pv-chat-input" placeholder="Scrivi a ${AI_NAME}… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
           <button type="submit">Invia</button>
         </form>
         <div class="pv-actions">
           <button type="button" class="ghost" id="pv-chat-reset">Nuova chat</button>
-          <button type="button" class="ghost" id="pv-magic-close">Chiudi</button>
+          <button type="button" class="ghost pv-magic-close">Chiudi</button>
         </div>
         <p class="pv-status" id="pv-chat-status"></p>
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const log = panel.querySelector("#pv-chat-log");
     if (!chatHistory.length) {
-      const hello = `Ciao! Sono la tua assistente AI ${greetingWhere}${
+      const phase = duringTrip
+        ? "Sono con te durante il viaggio"
+        : "Ti aiuto a preparare il viaggio (e resto con te anche dopo)";
+      const hello = `Ciao! Sono ${AI_NAME}, la Bacchetta magica di Pronti? VIA!. ${phase} ${greetingWhere}${
         days.length ? ` (${days.length} giorni)` : ""
-      }. Chiedimi cosa vuoi sapere: posti, cibo, itinerari, consigli. Quando troviamo luoghi utili, puoi aggiungerli al programma.`;
+      }. Chiedimi posti, cibo, itinerari, budget, bagagli o consigli pratici.`;
       chatHistory = [{ role: "assistant", content: hello }];
     }
     for (const msg of chatHistory) {
       appendBubble(log, msg.role === "user" ? "user" : "bot", msg.content);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
     panel.querySelector("#pv-chat-reset").onclick = () => {
       chatHistory = [];
       chatPlaces = [];
@@ -1343,26 +1749,33 @@
   }
 
   function buildTravelSystemPrompt(trip) {
-    const city = searchCityForDestination(trip.destination, trip.title);
-    const where = formatDestGreeting(trip.destination, trip.title);
-    const members = (trip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
-    const stops = (trip.stops || [])
+    const safeTrip = trip || { title: "", destination: "", start: "", end: "", members: [], stops: [] };
+    const city = searchCityForDestination(safeTrip.destination, safeTrip.title);
+    const where = safeTrip.destination
+      ? formatDestGreeting(safeTrip.destination, safeTrip.title)
+      : "un viaggio ancora da definire";
+    const members = (safeTrip.members || []).map((m) => m.name).filter(Boolean).join(", ") || "viaggiatori";
+    const stops = (safeTrip.stops || [])
       .slice(0, 12)
       .map((s) => s.title)
       .filter(Boolean)
       .join("; ");
-    return `Sei la Bacchetta magica di Pronti? VIA!, un'assistente AI di viaggio conversazionale.
+    const phase = tripAuth()
+      ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
+      : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
+    return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — un companion AI di viaggio simpatico e concreto.
 Rispondi SEMPRE in italiano, come una chat: tono cordiale, chiaro, concreto. Usa 2–6 frasi (o elenchi brevi), niente markdown pesante.
+${phase}
 Contesto viaggio:
-- Titolo: ${trip.title || "—"}
-- Destinazione: ${trip.destination || city} (${where})
-- Città di riferimento: ${city}
-- Date: ${trip.start || "?"} → ${trip.end || "?"}
+- Titolo: ${safeTrip.title || "—"}
+- Destinazione: ${safeTrip.destination || city || "da scegliere"} (${where})
+- Città di riferimento: ${city || "—"}
+- Date: ${safeTrip.start || "?"} → ${safeTrip.end || "?"}
 - Compagni: ${members}
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
 
 Compiti:
-1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari.
+1) Rispondi a domande su luoghi, cibo, natura, trasporti, budget, clima, cultura, lingua, itinerari, bagagli e organizzazione.
 2) Tieni conto del contesto del viaggio e dei messaggi precedenti (multi-turno).
 3) Se suggerisci posti concreti da aggiungere all'itinerario, alla FINE della risposta aggiungi ESATTAMENTE un blocco:
 
@@ -1685,7 +2098,26 @@ Regole pv-places:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
-      const trip = magicTripCache || (await loadTrip()).data.trip;
+      let trip = magicTripCache;
+      if (!trip && tripAuth()) {
+        try {
+          trip = (await loadTrip()).data.trip;
+        } catch {
+          trip = null;
+        }
+      }
+      if (!trip) {
+        const draft = readPreventivoDraft();
+        trip = {
+          title: draft?.title || "",
+          destination: draft?.destination || "",
+          start: draft?.start || "",
+          end: draft?.end || "",
+          members: [],
+          stops: [],
+          _draftOnly: true,
+        };
+      }
       magicTripCache = trip;
       const cityHint = searchCityForDestination(trip.destination, trip.title);
       let aiText = "";
@@ -1975,17 +2407,32 @@ Regole pv-places:
   }
 
   async function renderLanguageTab(panel) {
-    const trip = magicTripCache || (await loadTrip()).data.trip;
-    magicTripCache = trip;
+    let trip = magicTripCache;
+    if (!trip && tripAuth()) {
+      try {
+        trip = (await loadTrip()).data.trip;
+      } catch {
+        trip = null;
+      }
+    }
+    if (!trip) {
+      const draft = readPreventivoDraft();
+      trip = {
+        destination: draft?.destination || "la destinazione",
+        title: draft?.title || "",
+        _draftOnly: true,
+      };
+    }
+    magicTripCache = { ...(magicTripCache || {}), ...trip };
     const lang = languageForDestination(trip.destination);
     const phrases = PHRASEBOOK[lang.code] || PHRASEBOOK.en;
     const [src, dst] = lang.pair.split("|");
 
     panel.innerHTML = `
-      <div class="pv-panel-head">
+      <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("lingua")}
-        <h3>Lingua di viaggio</h3>
-        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination)}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
+        <h3>${AI_NAME} · Lingua</h3>
+        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination || "il viaggio")}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
       </div>
       <div class="pv-panel-body">
         <div id="pv-phrases"></div>
@@ -2001,10 +2448,11 @@ Regole pv-places:
         <p class="pv-status" id="pv-tr-status">Digita sopra: traduco in entrambe le direzioni.</p>
       </div>
       <div class="pv-panel-foot">
-        <div class="pv-actions"><button type="button" class="ghost" id="pv-magic-close">Chiudi</button></div>
+        <div class="pv-actions"><button type="button" class="ghost pv-magic-close">Chiudi</button></div>
       </div>
     `;
     bindMagicTabs(panel);
+    bindPanelChrome(panel);
     const phraseHost = panel.querySelector("#pv-phrases");
     for (const [local, it] of phrases) {
       const btn = document.createElement("button");
@@ -2018,9 +2466,6 @@ Regole pv-places:
       };
       phraseHost.appendChild(btn);
     }
-    panel.querySelector("#pv-magic-close").onclick = () => {
-      setMagicOpen(false);
-    };
 
     let tIt = 0;
     let tLocal = 0;
@@ -2266,7 +2711,7 @@ Regole pv-places:
   }
 
   function ensureMapIframe() {
-    const MAP_VER = "20260918b";
+    const MAP_VER = "20261019c";
     const iframes = [...document.querySelectorAll('iframe[src*="map.html"]')];
     for (const iframe of iframes) {
       try {
@@ -2295,7 +2740,10 @@ Regole pv-places:
     }
 
     // Fallback distance notes when React route-hop is missing (e.g. unordered lists).
+    // Mark attempted so trips with 0 geo-stops don't refetch forever (save races).
     if (document.querySelector(".route-hop") || !tripAuth()) return;
+    if (document.documentElement.dataset.pvDistAttempted === "1") return;
+    document.documentElement.dataset.pvDistAttempted = "1";
     void annotateStopDistances();
   }
 
@@ -2325,7 +2773,7 @@ Regole pv-places:
         cards[i].insertAdjacentElement("afterend", note);
       }
     } catch {
-      /* ignore */
+      /* ignore — already marked attempted */
     }
   }
 
@@ -2859,7 +3307,16 @@ Regole pv-places:
           color: DAY_COLORS[(dayIndex[s.day] ?? days.length) % DAY_COLORS.length],
           day: s.day || "",
         }));
-      iframe.contentWindow.postMessage({ type: "viavia-map", points, selected: null, pick: false }, location.origin);
+      iframe.contentWindow.postMessage(
+        {
+          type: "viavia-map",
+          points,
+          selected: null,
+          pick: false,
+          destination: data.trip.destination || data.trip.title || "",
+        },
+        location.origin
+      );
     } catch {
       /* ignore */
     }
@@ -3016,6 +3473,809 @@ Regole pv-places:
     );
   }
 
+  function injectLocalOnlyBanner() {
+    const openTrip = (() => {
+      try {
+        const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+        return p.get("trip") || "";
+      } catch {
+        return "";
+      }
+    })();
+    const isLocal =
+      openTrip &&
+      typeof window.__pvIsTripLocalOnly === "function" &&
+      window.__pvIsTripLocalOnly(openTrip);
+    let banner = document.getElementById("pv-local-only-banner");
+    if (!isLocal) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "pv-local-only-banner";
+      banner.setAttribute("role", "status");
+      // Relative: sits in document flow under the fixed account chip (body padding-top).
+      banner.style.cssText =
+        "position:relative;top:auto;z-index:1;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+      document.body.prepend(banner);
+    }
+    banner.textContent =
+      "Questo viaggio è salvato su questo dispositivo. Usa «Condividi viaggio» e attendi il link con snapshot (s=…) prima di inviarlo agli amici.";
+  }
+
+  function fixItalianTappeGrammar() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    for (const node of nodes) {
+      const t = node.nodeValue || "";
+      if (!t.includes("tappe")) continue;
+      const next = t
+        .replace(/\b1 tappe\b/g, "1 tappa")
+        .replace(/\b0 tappe\b/g, "0 tappe");
+      if (next !== t) node.nodeValue = next;
+    }
+  }
+
+  function preferIcelandCover() {
+    const root = document.getElementById("root");
+    if (!root) return;
+    const dest =
+      root.querySelector("h1, h2, .hero, [class*='destination']")?.textContent ||
+      root.innerText ||
+      "";
+    if (!/islanda|iceland|reykjav/i.test(dest)) return;
+    const icelandSrc = new URL("iceland.svg", location.href).href;
+    const heroImgs = [...root.querySelectorAll("img")].filter((img) => {
+      const alt = `${img.alt || ""} ${img.src || ""} ${img.className || ""}`;
+      return (
+        /balos|creta|crete|greece|santorini|mykonos|coast|cover|hero|banner|copertina/i.test(alt) ||
+        /balos|crete|greece|coast\.jpg/i.test(img.src || "") ||
+        (img.width > 400 || img.clientWidth > 400)
+      );
+    });
+    for (const img of heroImgs.slice(0, 2)) {
+      if (img.dataset.pvIcelandSwap === "1" && /iceland\.svg/i.test(img.src || "")) continue;
+      img.dataset.pvIcelandSwap = "1";
+      img.dataset.pvPrevSrc = img.src;
+      img.src = icelandSrc;
+      img.alt = "Copertina Islanda";
+      // Hide stale "Copertina: Balos" credits near the image.
+      const wrap = img.closest("div,section,article,figure") || img.parentElement;
+      if (wrap) {
+        for (const el of wrap.querySelectorAll("small, span, p, figcaption")) {
+          const t = (el.textContent || "").trim();
+          if (/copertina\s*:\s*balos|balos|creta|crete/i.test(t) && t.length < 80) {
+            el.textContent = "Copertina: Islanda";
+          }
+        }
+        if (!img.dataset.pvIcelandNote) {
+          img.dataset.pvIcelandNote = "1";
+          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
+          const note = document.createElement("div");
+          note.className = "pv-cover-note";
+          note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
+          note.style.cssText =
+            "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
+          wrap.appendChild(note);
+        }
+      }
+    }
+  }
+
+  function injectCloudStatusBanner() {
+    if (window.__pvCloudBannerBound) return;
+    window.__pvCloudBannerBound = true;
+    // Free Netlify endpoint only (no dead paid/tunnel fallbacks).
+    const ENDPOINTS = ["https://pronti-via-k7es.netlify.app/api/trips"];
+    const run = async () => {
+      let ok = false;
+      for (const url of ENDPOINTS) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 4000);
+          // GET without id returns 404 from a healthy API, 502 when down.
+          const res = await fetch(url, { method: "GET", signal: ctrl.signal, cache: "no-store" });
+          clearTimeout(t);
+          if (res.status < 500) {
+            ok = true;
+            break;
+          }
+        } catch {
+          /* try next */
+        }
+      }
+      let el = document.getElementById("pv-cloud-status-banner");
+      if (ok) {
+        if (el) el.remove();
+        return;
+      }
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-cloud-status-banner";
+        el.setAttribute("role", "status");
+        el.style.cssText =
+          "position:relative;top:auto;z-index:1;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
+        document.body.prepend(el);
+      }
+      el.textContent =
+        "Cloud temporaneamente non raggiungibile: i viaggi restano su questo dispositivo. Condividi solo dopo aver ottenuto un link con snapshot (s=…).";
+    };
+    void run();
+    setInterval(run, 120000);
+  }
+
+  function readTripPreventivoFromCache(tripId) {
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      const db = raw ? JSON.parse(raw) : null;
+      return db?.[tripId]?.trip?.meta?.preventivo || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function ensurePreventivoSectionStyles() {
+    let style = document.getElementById("pv-trip-preventivo-css");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pv-trip-preventivo-css";
+      document.head.appendChild(style);
+    }
+    // Keep style text replaceable so cache-busted deploys can fix layout without a hard reload of an old <style> tag.
+    style.textContent = `
+      /* Banner removed: Preventivo lives in the main tabs; sticky strip was covering the page. */
+      #pv-preventivo-trip-banner{display:none!important}
+      .pv-preventivo-workspace{padding:4px 0 28px;color:#153b47;font:500 14px/1.4 "Segoe UI","Helvetica Neue",sans-serif}
+      .pv-preventivo-workspace .pv-tp-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin:0 0 14px}
+      .pv-preventivo-workspace .pv-tp-head h2{margin:0;font-size:1.35rem;letter-spacing:-.02em}
+      .pv-preventivo-workspace .pv-tp-eyebrow{margin:0 0 2px;font-weight:700;color:#007d82;text-transform:uppercase;font-size:.75rem;letter-spacing:.04em}
+      .pv-tp-root .pv-tp-card,.pv-preventivo-workspace .pv-tp-card{background:#fff;border:1px solid #d7e4e6;border-radius:16px;padding:14px;margin:0 0 12px}
+      .pv-tp-root .pv-tp-card h3,.pv-preventivo-workspace .pv-tp-card h3{margin:0 0 8px;font-size:1rem}
+      .pv-tp-root .pv-tp-muted,.pv-preventivo-workspace .pv-tp-muted{color:#5b7380;font-size:.88rem;margin:0 0 10px}
+      .pv-tp-root .pv-tp-lines,.pv-preventivo-workspace .pv-tp-lines{display:grid;gap:8px}
+      .pv-tp-root .pv-tp-line,.pv-preventivo-workspace .pv-tp-line{display:grid;grid-template-columns:1fr 88px 118px auto;gap:8px;align-items:center}
+      .pv-tp-root .pv-tp-line input,.pv-tp-root .pv-tp-line select,.pv-preventivo-workspace .pv-tp-line input,.pv-preventivo-workspace .pv-tp-line select{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:9px 10px;font:inherit}
+      .pv-tp-root .pv-tp-actions,.pv-preventivo-workspace .pv-tp-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      .pv-tp-root .pv-tp-actions button,.pv-preventivo-workspace .pv-tp-actions button{appearance:none;border:0;border-radius:999px;padding:11px 14px;font:700 13px inherit;cursor:pointer}
+      .pv-tp-root .pv-tp-primary,.pv-preventivo-workspace .pv-tp-primary{background:#007d82;color:#fff}
+      .pv-tp-root .pv-tp-ghost,.pv-preventivo-workspace .pv-tp-ghost{background:#eef5f5;color:#153b47}
+      .pv-tp-root .pv-tp-danger,.pv-preventivo-workspace .pv-tp-danger{background:#f3e4e2;color:#7a2e28}
+      .pv-tp-root .pv-tp-status,.pv-preventivo-workspace .pv-tp-status{min-height:1.2em;margin:8px 0 0;font-size:.85rem;color:#5b7380}
+      .pv-tp-root .pv-esim-grid,.pv-preventivo-workspace .pv-esim-grid{display:grid;gap:10px}
+      .pv-tp-root .pv-esim-card,.pv-preventivo-workspace .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
+      .pv-tp-root .pv-esim-card ul,.pv-preventivo-workspace .pv-esim-card ul{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+      .pv-tp-root .pv-esim-card li,.pv-preventivo-workspace .pv-esim-card li{display:flex;flex-wrap:wrap;gap:6px 10px;font-size:.88rem}
+      .pv-tp-root .pv-esim-link,.pv-preventivo-workspace .pv-esim-link{display:inline-flex;padding:8px 12px;border-radius:999px;background:#007d82;color:#fff;text-decoration:none;font-weight:700;font-size:.85rem}
+      .pv-tp-root .pv-badge,.pv-preventivo-workspace .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700}
+      .pv-tp-root .pv-badge.STIMA,.pv-preventivo-workspace .pv-badge.STIMA{background:#fff3cd;color:#7a5b00}
+      .pv-tp-root .pv-badge.WARN,.pv-tp-root .pv-badge.DA\\ VERIFICARE,.pv-preventivo-workspace .pv-badge.WARN,.pv-preventivo-workspace .pv-badge.DA\\ VERIFICARE{background:#fde8e8;color:#8a1f1f}
+      .pv-tp-root .pv-badge.VERIFICATO,.pv-preventivo-workspace .pv-badge.VERIFICATO{background:#e3f6ea;color:#0f5a30}
+      #pv-trip-preventivo-panel{position:fixed;inset:0;z-index:100020;display:grid;place-items:end center}
+      #pv-trip-preventivo-panel[hidden]{display:none!important}
+      #pv-trip-preventivo-panel .pv-tp-backdrop{position:absolute;inset:0;background:rgba(12,32,40,.42)}
+      #pv-trip-preventivo-panel .pv-tp-sheet{position:relative;z-index:1;width:min(520px,100%);max-height:min(88vh,820px);overflow:auto;background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;box-shadow:0 -18px 50px rgba(21,59,71,.18)}
+      #pv-trip-preventivo-panel .pv-tp-close{border:0;width:36px;height:36px;border-radius:999px;background:#eef5f5;font-size:1.3rem;cursor:pointer}
+      @media (max-width:640px){
+        .pv-tp-root .pv-tp-line,.pv-preventivo-workspace .pv-tp-line{grid-template-columns:1fr 1fr}
+        .pv-tp-root .pv-tp-line input:first-child,.pv-preventivo-workspace .pv-tp-line input:first-child{grid-column:1/-1}
+      }
+      @media (min-width:720px){
+        #pv-trip-preventivo-panel{place-items:center;padding:24px 16px}
+        #pv-trip-preventivo-panel .pv-tp-sheet{border-radius:22px;max-height:min(84vh,760px)}
+      }
+    `;
+  }
+
+  function findPreventivoMainTab() {
+    return (
+      document.querySelector(".main-tabs .pv-tab-preventivo") ||
+      [...document.querySelectorAll(".main-tabs [role='tab'], .main-tabs button")].find((el) =>
+        /Preventivo/i.test(el.textContent || "")
+      ) ||
+      null
+    );
+  }
+
+  function isPreventivoTabActive() {
+    const tab = findPreventivoMainTab();
+    return Boolean(tab && tab.getAttribute("data-state") === "active");
+  }
+
+  function clickPreventivoMainTab() {
+    const tab = findPreventivoMainTab();
+    if (!tab) return false;
+    try {
+      tab.scrollIntoView({ inline: "center", block: "nearest", behavior: "instant" });
+    } catch {
+      tab.scrollIntoView();
+    }
+    // Radix Tabs often needs a full pointer sequence; bare .click() can no-op.
+    const opts = { bubbles: true, cancelable: true, view: window, pointerId: 1, pointerType: "touch" };
+    try {
+      tab.dispatchEvent(new PointerEvent("pointerdown", opts));
+      tab.dispatchEvent(new PointerEvent("pointerup", opts));
+    } catch {
+      /* older engines */
+    }
+    tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true, view: window }));
+    tab.dispatchEvent(new MouseEvent("mouseup", { bubbles: true, cancelable: true, view: window }));
+    tab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+    tab.click();
+    return isPreventivoTabActive();
+  }
+
+  function mountPreventivoTabPanel() {
+    ensurePreventivoSectionStyles();
+    const mount = document.getElementById("pv-preventivo-tab-mount");
+    if (!mount) return false;
+    if (!mount.querySelector("#pv-tp-body")) {
+      mount.innerHTML = `
+        <header class="pv-tp-head">
+          <div>
+            <p class="pv-tp-eyebrow">STIMA DI VIAGGIO</p>
+            <h2 id="pv-tp-title">Preventivo</h2>
+          </div>
+        </header>
+        <div class="pv-tp-root" id="pv-tp-body"></div>`;
+    }
+    return true;
+  }
+
+  function injectPreventivoTripBanner() {
+    ensurePreventivoSectionStyles();
+    // Sticky top strip covered the trip header; Preventivo is in the main tabs instead.
+    document.getElementById("pv-preventivo-trip-banner")?.remove();
+    if (isPreventivoTabActive()) mountPreventivoTabPanel();
+  }
+
+  function closeTripPreventivoSection() {
+    const panel = document.getElementById("pv-trip-preventivo-panel");
+    if (panel) panel.hidden = true;
+    document.documentElement.style.overflow = "";
+  }
+
+  function ensurePreventivoSheet() {
+    let panel = document.getElementById("pv-trip-preventivo-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "pv-trip-preventivo-panel";
+      panel.hidden = true;
+      panel.innerHTML = `
+        <div class="pv-tp-backdrop" data-tp-close></div>
+        <div class="pv-tp-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-tp-title">
+          <header class="pv-tp-head">
+            <div>
+              <p class="pv-tp-eyebrow">Sezione viaggio</p>
+              <h2 id="pv-tp-title">Preventivo</h2>
+            </div>
+            <button type="button" class="pv-tp-close" data-tp-close aria-label="Chiudi">×</button>
+          </header>
+          <div class="pv-tp-root" id="pv-tp-sheet-body"></div>
+        </div>`;
+      document.body.appendChild(panel);
+      panel.addEventListener("click", (ev) => {
+        if (ev.target?.closest?.("[data-tp-close]")) closeTripPreventivoSection();
+      });
+    } else if (!document.getElementById("pv-tp-sheet-body") && document.getElementById("pv-tp-body")?.closest?.("#pv-trip-preventivo-panel")) {
+      // Migrate old sheet body id so it never steals getElementById from the tab mount.
+      document.getElementById("pv-tp-body").id = "pv-tp-sheet-body";
+    }
+    return panel;
+  }
+
+  function getPreventivoRenderRoot() {
+    const mountBody = document.querySelector("#pv-preventivo-tab-mount #pv-tp-body");
+    const sheet = document.getElementById("pv-trip-preventivo-panel");
+    const sheetBody = document.getElementById("pv-tp-sheet-body");
+    const sheetOpen = Boolean(sheet && !sheet.hidden);
+    // Prefer the Preventivo tab whenever it is active, even if a sheet exists in the DOM.
+    if (typeof isPreventivoTabActive === "function" && isPreventivoTabActive() && mountBody) {
+      return mountBody;
+    }
+    if (sheetOpen && sheetBody) return sheetBody;
+    if (mountBody) return mountBody;
+    return sheetBody || document.getElementById("pv-tp-body");
+  }
+
+  async function openTripPreventivoSection() {
+    ensurePreventivoSectionStyles();
+    // Try the native workspace tab first.
+    clickPreventivoMainTab();
+    for (let i = 0; i < 10; i++) {
+      if (isPreventivoTabActive() || document.getElementById("pv-preventivo-tab-mount")) {
+        if (mountPreventivoTabPanel()) {
+          await renderTripPreventivoSection();
+          document.getElementById("pv-preventivo-tab-mount")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+      await new Promise((r) => setTimeout(r, 40));
+      if (!isPreventivoTabActive()) clickPreventivoMainTab();
+    }
+    // Reliable fallback: open the sheet so "Vai a Preventivo" never no-ops.
+    const panel = ensurePreventivoSheet();
+    panel.hidden = false;
+    document.documentElement.style.overflow = "hidden";
+    await renderTripPreventivoSection();
+  }
+
+  function escapeTp(value) {
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  async function renderTripPreventivoSection() {
+    const body = getPreventivoRenderRoot();
+    if (!body) return;
+    body.innerHTML = `<p class="pv-tp-muted">Caricamento preventivo…</p>`;
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const trip = data.trip || {};
+      const pv = trip.meta?.preventivo || { scenario: "economico", lines: [], totals: {} };
+      const lines = Array.isArray(pv.lines) ? pv.lines : [];
+      const group = Number(pv.totals?.groupCents) || lines.reduce((s, l) => s + (Number(l.totalCents) || (Number(l.unitCents) || 0) * (Number(l.qty) || 1)), 0);
+      const travelers = Math.max(1, Number(pv.params?.travelers || trip.members?.length || 1));
+      const pp = Math.round(group / travelers);
+      const dest = pv.params?.destination || trip.destination || "";
+      const start = pv.params?.start || trip.start || "";
+      const end = pv.params?.end || trip.end || "";
+      const esimHtml =
+        typeof window.__pvEsimBlockHtml === "function"
+          ? window.__pvEsimBlockHtml(dest, start, end, { compact: true })
+          : `<p class="pv-tp-muted">Modulo eSIM non ancora caricato. Ricarica la pagina.</p>`;
+
+      const lineRows = lines.length
+        ? lines
+            .map(
+              (l, idx) => {
+                const total = Number(l.totalCents) || (Number(l.unitCents) || 0) * (Number(l.qty) || 1);
+                return `<div class="pv-tp-line" data-line-idx="${idx}">
+                  <input data-k="title" value="${escapeTp(l.title || "Voce")}" aria-label="Voce" />
+                  <input data-k="euros" type="number" min="0" step="1" value="${Math.round(total / 100)}" aria-label="Euro" />
+                  <select data-k="status" aria-label="Stato">
+                    ${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
+                      .map((s) => `<option value="${s}" ${l.status === s ? "selected" : ""}>${s}</option>`)
+                      .join("")}
+                  </select>
+                  <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>
+                </div>`;
+              }
+            )
+            .join("")
+        : `<p class="pv-tp-muted">Nessuna voce ancora. Aggiungine una o apri il Preventivo intelligente.</p>`;
+
+      body.innerHTML = `
+        <section class="pv-tp-card">
+          <h3>Riepilogo · scenario ${escapeTp(pv.scenario || "—")}</h3>
+          <p><strong>Gruppo:</strong> ${formatEuro(group)} · <strong>/persona:</strong> ${formatEuro(pp)}</p>
+          <p class="pv-tp-muted">Il preventivo non viene più scritto nelle note: resta in questa sezione e viaggia con il link di condivisione.</p>
+          <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
+          <div class="pv-tp-actions">
+            <button type="button" class="pv-tp-ghost" id="pv-tp-add-line">+ Aggiungi voce</button>
+            <button type="button" class="pv-tp-primary" id="pv-tp-save">Salva modifiche</button>
+            <button type="button" class="pv-tp-ghost" id="pv-tp-open-smart">Apri Preventivo intelligente</button>
+          </div>
+          <p class="pv-tp-status" id="pv-tp-status"></p>
+        </section>
+        <section class="pv-tp-card">
+          <h3>eSIM per ${escapeTp(dest || "destinazione")}</h3>
+          <p class="pv-tp-muted">Tariffe indicative per i giorni di permanenza. Tocca un operatore per verificare prezzi aggiornati.</p>
+          ${esimHtml}
+        </section>
+      `;
+
+      body.querySelectorAll("[data-remove-line]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          btn.closest(".pv-tp-line")?.remove();
+        });
+      });
+      body.querySelector("#pv-tp-add-line")?.addEventListener("click", () => {
+        const host = body.querySelector("#pv-tp-lines");
+        if (!host) return;
+        const empty = host.querySelector(".pv-tp-muted");
+        if (empty) empty.remove();
+        const row = document.createElement("div");
+        row.className = "pv-tp-line";
+        row.innerHTML = `
+          <input data-k="title" value="Nuova voce" aria-label="Voce" />
+          <input data-k="euros" type="number" min="0" step="1" value="0" aria-label="Euro" />
+          <select data-k="status" aria-label="Stato">
+            <option value="STIMA" selected>STIMA</option>
+            <option value="DA VERIFICARE">DA VERIFICARE</option>
+            <option value="VERIFICATO">VERIFICATO</option>
+            <option value="SCADUTO">SCADUTO</option>
+          </select>
+          <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>`;
+        row.querySelector("[data-remove-line]")?.addEventListener("click", () => row.remove());
+        host.appendChild(row);
+      });
+      body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
+        if (document.getElementById("pv-trip-preventivo-panel") && !document.getElementById("pv-trip-preventivo-panel").hidden) {
+          closeTripPreventivoSection();
+        }
+        if (typeof window.__pvOpenPreventivoSection === "function") window.__pvOpenPreventivoSection("budget");
+        else if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+      });
+      body.querySelector("#pv-tp-save")?.addEventListener("click", () =>
+        void saveTripPreventivoSection(auth, data, pv)
+      );
+    } catch (err) {
+      body.innerHTML = `<p class="pv-tp-status" style="color:#7a2e28">${escapeTp(err.message || "Preventivo non disponibile")}</p>`;
+    }
+  }
+
+  async function saveTripPreventivoSection(auth, data, prevPv) {
+    const root = getPreventivoRenderRoot() || document;
+    const status = root.querySelector?.("#pv-tp-status") || document.getElementById("pv-tp-status");
+    const saveBtn = root.querySelector?.("#pv-tp-save") || document.getElementById("pv-tp-save");
+    if (saveBtn) saveBtn.disabled = true;
+    if (status) status.textContent = "Salvataggio…";
+    try {
+      const rows = [...(root.querySelectorAll?.("#pv-tp-lines .pv-tp-line") || document.querySelectorAll("#pv-tp-lines .pv-tp-line"))];
+      const lines = rows.map((row, i) => {
+        const title = row.querySelector('[data-k="title"]')?.value?.trim() || `Voce ${i + 1}`;
+        const euros = Number(row.querySelector('[data-k="euros"]')?.value || 0);
+        const statusVal = row.querySelector('[data-k="status"]')?.value || "STIMA";
+        const totalCents = Math.max(0, Math.round(euros * 100));
+        return {
+          id: prevPv?.lines?.[i]?.id || uid(),
+          title,
+          status: statusVal,
+          unitCents: totalCents,
+          qty: 1,
+          totalCents,
+          source: prevPv?.lines?.[i]?.source || "",
+          key: prevPv?.lines?.[i]?.key || "",
+          mode: prevPv?.lines?.[i]?.mode || "",
+        };
+      });
+      const groupCents = lines.reduce((s, l) => s + (l.totalCents || 0), 0);
+      const travelers = Math.max(1, Number(prevPv?.params?.travelers || data.trip?.members?.length || 1));
+      const dest = prevPv?.params?.destination || data.trip?.destination || "";
+      const start = prevPv?.params?.start || data.trip?.start || "";
+      const end = prevPv?.params?.end || data.trip?.end || "";
+      const esim =
+        typeof window.__pvBuildEsimCatalog === "function"
+          ? window.__pvBuildEsimCatalog(dest, start, end)
+          : prevPv?.esim || null;
+      const byStatus = { VERIFICATO: 0, STIMA: 0, "DA VERIFICARE": 0, SCADUTO: 0 };
+      for (const l of lines) {
+        const key = byStatus[l.status] != null ? l.status : "STIMA";
+        byStatus[key] = (byStatus[key] || 0) + (l.totalCents || 0);
+      }
+      const preventivo = {
+        ...(prevPv || {}),
+        version: prevPv?.version || "20261029a",
+        updated: new Date().toISOString(),
+        scenario: prevPv?.scenario || "economico",
+        params: {
+          title: prevPv?.params?.title || data.trip?.title || "",
+          destination: dest,
+          start,
+          end,
+          travelers,
+          currency: prevPv?.params?.currency || "EUR",
+          airportIn: prevPv?.params?.airportIn || "",
+          departureCity: prevPv?.params?.departureCity || "",
+        },
+        totals: {
+          groupCents,
+          perPersonCents: Math.round(groupCents / travelers),
+          perDayPpCents: Math.round(groupCents / travelers / Math.max(1, Number(esim?.days) || 1)),
+          byStatus,
+        },
+        lines,
+        esim,
+      };
+      const trip = { ...data.trip };
+      const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+      meta.preventivo = preventivo;
+      trip.meta = meta;
+      trip.notes =
+        typeof window.__pvStripPreventivoNotes === "function"
+          ? window.__pvStripPreventivoNotes(trip.notes)
+          : String(trip.notes || "")
+              .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
+              .trim();
+      let saved;
+      try {
+        saved = await saveTrip(auth, trip, data.revision);
+      } catch (err) {
+        // One retry after fresh GET (stale revision / concurrent SPA poll).
+        const again = await loadTrip({ force: true });
+        const trip2 = { ...again.data.trip };
+        const meta2 = { ...(trip2.meta && typeof trip2.meta === "object" ? trip2.meta : {}) };
+        meta2.preventivo = preventivo;
+        trip2.meta = meta2;
+        trip2.notes =
+          typeof window.__pvStripPreventivoNotes === "function"
+            ? window.__pvStripPreventivoNotes(trip2.notes)
+            : String(trip2.notes || "")
+                .replace(/\n\n\[Preventivo [^\]]*\][^\n]*/g, "")
+                .trim();
+        saved = await saveTrip(again.auth, trip2, again.data.revision);
+      }
+      try {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+        const slot = db[auth.id] || { id: auth.id, key: auth.key };
+        slot.trip = saved.trip || trip;
+        slot.revision = saved.revision || (Number(data.revision) || 1) + 1;
+        slot.key = auth.key;
+        slot.updated = new Date().toISOString();
+        db[auth.id] = slot;
+        localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+      } catch {
+        /* ignore */
+      }
+      window.dispatchEvent(new CustomEvent("pv-preventivo-synced", { detail: { tripId: auth.id } }));
+      if (status) status.textContent = "Preventivo salvato nella sezione (non nelle note).";
+      injectPreventivoTripBanner();
+      await renderTripPreventivoSection();
+    } catch (err) {
+      if (status) status.textContent = err.message || "Salvataggio non riuscito.";
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+    }
+  }
+
+  if (!window.__pvPreventivoBannerBound) {
+    window.__pvPreventivoBannerBound = true;
+    window.addEventListener("pv-preventivo-synced", () => {
+      try {
+        injectPreventivoTripBanner();
+      } catch {
+        /* ignore */
+      }
+    });
+    // Delegated click: survives banner innerHTML rewrites from MutationObserver ticks.
+    document.addEventListener(
+      "click",
+      (ev) => {
+        if (ev.target?.closest?.("[data-pv-open-section]")) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          void openTripPreventivoSection();
+          return;
+        }
+        const tab = ev.target?.closest?.(".pv-tab-preventivo, .main-tabs [role='tab'], .main-tabs button");
+        if (!tab) return;
+        const isPreventivo =
+          tab.classList?.contains("pv-tab-preventivo") || /Preventivo/i.test(tab.textContent || "");
+        if (!isPreventivo) return;
+        const fill = () => {
+          if (mountPreventivoTabPanel()) void renderTripPreventivoSection();
+        };
+        requestAnimationFrame(fill);
+        setTimeout(fill, 40);
+        setTimeout(fill, 160);
+      },
+      true
+    );
+    window.__pvOpenTripPreventivoSection = openTripPreventivoSection;
+  }
+
+  function ensureShareToast() {
+    if (window.__pvShareToastBound) return;
+    window.__pvShareToastBound = true;
+    window.addEventListener("pv-share-blocked", (ev) => {
+      const msg = ev?.detail?.message || "Condivisione non pronta.";
+      let el = document.getElementById("pv-share-toast");
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "pv-share-toast";
+        el.style.cssText =
+          "position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;max-width:min(420px,92vw);background:#7a1f1f;color:#fff;padding:12px 14px;border-radius:12px;font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)";
+        document.body.appendChild(el);
+      }
+      el.textContent = msg;
+      clearTimeout(el._t);
+      el._t = setTimeout(() => el.remove(), 5200);
+    });
+  }
+
+  function ensureMemberRemoveStyles() {
+    let style = document.getElementById("pv-member-remove-css");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pv-member-remove-css";
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      .members-list > div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .members-list > div .pv-member-remove{
+        appearance:none;border:0;margin-left:auto;border-radius:999px;padding:7px 11px;
+        background:#f3e4e2;color:#7a2e28;font:700 12px inherit;cursor:pointer
+      }
+      .members-list > div .pv-member-remove:disabled{opacity:.55;cursor:wait}
+      .pv-member-remove-note{margin:8px 0 0;color:#5b7380;font-size:.82rem;line-height:1.35}
+      .pv-member-remove-toast{
+        position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;
+        max-width:min(420px,92vw);background:#153b47;color:#fff;padding:12px 14px;border-radius:12px;
+        font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)
+      }
+      .pv-member-remove-toast.err{background:#7a1f1f}
+    `;
+  }
+
+  function showMemberRemoveToast(msg, isErr) {
+    let el = document.getElementById("pv-member-remove-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "pv-member-remove-toast";
+      el.className = "pv-member-remove-toast";
+      document.body.appendChild(el);
+    }
+    el.className = "pv-member-remove-toast" + (isErr ? " err" : "");
+    el.textContent = msg;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.remove(), 4200);
+  }
+
+  function scrubTripMemberRefs(trip, memberId) {
+    const expenses = Array.isArray(trip.expenses) ? trip.expenses : [];
+    const transfers = Array.isArray(trip.transfers) ? trip.transfers : [];
+    const nextExpenses = [];
+    for (const exp of expenses) {
+      if (exp?.payer === memberId) continue;
+      const shares = (Array.isArray(exp.shares) ? exp.shares : []).filter((s) => s?.member !== memberId);
+      if (!shares.length) continue;
+      const sum = shares.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+      const amount = Number(exp.amount) || 0;
+      if (sum === amount) {
+        nextExpenses.push({ ...exp, shares });
+        continue;
+      }
+      // Redistribute remaining shares to match the expense total.
+      if (shares.length && amount > 0) {
+        const base = Math.floor(amount / shares.length);
+        let rem = amount - base * shares.length;
+        const fixed = shares.map((s, i) => ({
+          ...s,
+          amount: base + (i < rem ? 1 : 0),
+        }));
+        nextExpenses.push({ ...exp, shares: fixed });
+      }
+    }
+    const nextTransfers = transfers.filter((t) => t?.from !== memberId && t?.to !== memberId);
+    return { ...trip, expenses: nextExpenses, transfers: nextTransfers };
+  }
+
+  function currentAccountNames() {
+    try {
+      const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return {
+        displayName: String(a?.user?.displayName || "").trim(),
+        username: String(a?.user?.username || "").trim(),
+        guest: Boolean(a?.guest),
+      };
+    } catch {
+      return { displayName: "", username: "", guest: true };
+    }
+  }
+
+  function isTripCreator(members) {
+    const list = Array.isArray(members) ? members : [];
+    const creator = list[0];
+    if (!creator) return false;
+    const me = currentAccountNames();
+    if (me.guest) return false;
+    return (
+      namesMatchMember(me.displayName, creator.name) || namesMatchMember(me.username, creator.name)
+    );
+  }
+
+  async function removeSharedMemberByName(name) {
+    const want = String(name || "").trim();
+    if (!want) return;
+    if (!window.confirm(`Rimuovere «${want}» dal viaggio?\nNon potrà rientrare automaticamente con lo stesso nome dal link.`)) {
+      return;
+    }
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const trip = { ...(data.trip || {}) };
+      const members = Array.isArray(trip.members) ? trip.members : [];
+      if (members.length <= 1) throw new Error("Serve almeno un viaggiatore.");
+      if (!isTripCreator(members)) throw new Error("Solo chi ha creato il viaggio può eliminare i partecipanti.");
+      const creator = members[0];
+      if (namesMatchMember(want, creator?.name)) throw new Error("Non puoi eliminare il creatore del viaggio.");
+      const target = members.find((m) => String(m?.name || "").trim().toLowerCase() === want.toLowerCase());
+      if (!target) throw new Error("Persona non trovata.");
+      const nextMembers = members.filter((m) => m.id !== target.id);
+      if (!nextMembers.length) throw new Error("Serve almeno un viaggiatore.");
+      let nextTrip = scrubTripMemberRefs({ ...trip, members: nextMembers }, target.id);
+      const meta = { ...(nextTrip.meta && typeof nextTrip.meta === "object" ? nextTrip.meta : {}) };
+      const blocked = Array.isArray(meta.blockedMembers) ? meta.blockedMembers.slice() : [];
+      const key = want.toLowerCase();
+      if (!blocked.some((b) => String(typeof b === "string" ? b : b?.name || "").toLowerCase() === key)) {
+        blocked.push({ name: want, blockedAt: new Date().toISOString() });
+      }
+      meta.blockedMembers = blocked.slice(-50);
+      nextTrip.meta = meta;
+      await saveTrip(auth, nextTrip, data.revision);
+      try {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+        const slot = db[auth.id] || { id: auth.id, key: auth.key };
+        slot.trip = nextTrip;
+        slot.revision = (Number(data.revision) || 1) + 1;
+        slot.key = auth.key;
+        slot.updated = new Date().toISOString();
+        db[auth.id] = slot;
+        localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+      } catch {
+        /* ignore */
+      }
+      showMemberRemoveToast(`«${want}» rimosso dal viaggio`);
+      // Refresh React UI by nudging hash (keeps trip/key).
+      const hash = location.hash.replace(/^#/, "");
+      history.replaceState(null, "", `#${hash}&_rm=${Date.now().toString(36)}`);
+      setTimeout(() => {
+        history.replaceState(null, "", `#${hash}`);
+        location.reload();
+      }, 120);
+    } catch (err) {
+      showMemberRemoveToast(err.message || "Rimozione non riuscita", true);
+    }
+  }
+
+  function namesMatchMember(a, b) {
+    return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  }
+
+  function injectMemberRemoveControls() {
+    ensureMemberRemoveStyles();
+    const list = document.querySelector(".members-list");
+    if (!list) return;
+    const host = list.parentElement;
+    if (!host) return;
+    // Edit mode only: the add-member field is present when the link can modify.
+    const canEdit = Boolean(
+      host.querySelector('input[placeholder*="Nome"], input[placeholder*="compagno"], label.field input')
+    );
+    const names = [...list.querySelectorAll(":scope > div strong")].map((el) => (el.textContent || "").trim());
+    const creatorName = names[0] || "";
+    const canManage = canEdit && isTripCreator(names.map((n, i) => ({ id: String(i), name: n })));
+    if (!canManage) {
+      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
+      host.querySelector(".pv-member-remove-note")?.remove();
+      return;
+    }
+    if (!host.querySelector(".pv-member-remove-note")) {
+      const note = document.createElement("p");
+      note.className = "pv-member-remove-note";
+      note.textContent =
+        "Come creatore puoi eliminare chi è entrato dal link. Non rientrerà in automatico con lo stesso nome.";
+      list.after(note);
+    }
+    for (const row of list.querySelectorAll(":scope > div")) {
+      if (row.querySelector(".pv-member-remove")) continue;
+      const name = (row.querySelector("strong")?.textContent || "").trim();
+      if (!name) continue;
+      if (namesMatchMember(name, creatorName)) continue; // never delete the creator row
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pv-member-remove";
+      btn.dataset.pvRemoveMember = name;
+      btn.setAttribute("aria-label", `Rimuovi ${name}`);
+      btn.textContent = "Elimina";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        btn.disabled = true;
+        void removeSharedMemberByName(name).finally(() => {
+          btn.disabled = false;
+        });
+      });
+      row.appendChild(btn);
+    }
+  }
+
   function tick() {
     renderFab();
     injectPackingTemplates();
@@ -3027,6 +4287,13 @@ Regole pv-places:
     injectLinksAfterNotes();
     void enhanceExpenseCurrencyField();
     markPrivateBudgetLabels();
+    injectLocalOnlyBanner();
+    injectPreventivoTripBanner();
+    injectMemberRemoveControls();
+    fixItalianTappeGrammar();
+    preferIcelandCover();
+    ensureShareToast();
+    injectCloudStatusBanner();
   }
 
   function markPrivateBudgetLabels() {
@@ -3054,8 +4321,19 @@ Regole pv-places:
   }
 
   const obs = new MutationObserver(() => {
+    if (tick._running) return;
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 250);
+    tick._t = setTimeout(() => {
+      tick._running = true;
+      try {
+        tick();
+      } finally {
+        // Allow a short quiet window so our own DOM writes don't re-enter immediately.
+        setTimeout(() => {
+          tick._running = false;
+        }, 400);
+      }
+    }, 400);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
@@ -3063,10 +4341,13 @@ Regole pv-places:
     weatherShownForDay = null;
     fxDoneKey = "";
     magicTripCache = null;
+    tripLoadCache = null;
+    tripLoadInflight = null;
     chatPlaces = [];
     chatHistory = [];
     chatAskBusy = false;
     pendingPois = [];
+    delete document.documentElement.dataset.pvDistAttempted;
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);

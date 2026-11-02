@@ -187,7 +187,7 @@ function ensureUi() {
         </div>
         <div class="pv-account-field">
           <label for="pv-password">Password</label>
-          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="4" maxlength="72" placeholder="almeno 4 caratteri">
+          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="min. 8 caratteri, lettera e numero">
         </div>
         <div class="pv-account-error" id="pv-account-error" aria-live="polite"></div>
         <button class="pv-account-submit" type="submit">Entra</button>
@@ -266,8 +266,11 @@ async function upsertLocalUser(usernameRaw, password, displayName) {
   if (!/^[a-z0-9._ -]+$/i.test(username)) {
     throw new Error("Usa solo lettere, numeri, spazi, punti, _ e -.");
   }
-  if (!password || password.length < 4) {
-    throw new Error("La password deve avere almeno 4 caratteri.");
+  if (!password || password.length < 8) {
+    throw new Error("La password deve avere almeno 8 caratteri.");
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new Error("Usa almeno una lettera e un numero nella password.");
   }
   const users = readUsers();
   const { salt, hash } = await hashPassword(password);
@@ -587,6 +590,21 @@ function startMemberJoinSync() {
   run();
   window.addEventListener("hashchange", () => {
     joinedTrips.clear();
+    // Leaving a shared link while guest → back to login gate (free, no sticky ospite).
+    if (!hashHasSharedTrip()) {
+      const session = readSession();
+      if (session?.guest) {
+        clearGuestSession();
+        showGate();
+        return;
+      }
+    } else {
+      const session = readSession();
+      if (!session?.user?.username) {
+        void activateSession(makeGuestSession(), { bootApp: true });
+        return;
+      }
+    }
     setTimeout(run, 600);
   });
   setTimeout(run, 1500);
@@ -640,6 +658,21 @@ function makeGuestSession() {
   };
 }
 
+function clearGuestSession() {
+  const session = readSession();
+  if (!session?.guest) return false;
+  writeSession(null);
+  state.token = null;
+  state.user = null;
+  try {
+    document.getElementById("pv-account-chip").hidden = true;
+  } catch {
+    /* ignore */
+  }
+  document.body.classList.remove("pv-account-ready");
+  return true;
+}
+
 async function boot() {
   ensureUi();
   const session = readSession();
@@ -654,12 +687,20 @@ async function boot() {
     return;
   }
 
+  // Guest sessions are only for shared links — do not stick around on the home page.
+  if (session.guest && !hashHasSharedTrip()) {
+    clearGuestSession();
+    showGate();
+    return;
+  }
+
   // Local session is enough: stay logged in across reloads until cache/site data is cleared.
   await activateSession(
     {
       token: session.token || `local:${session.user.username}`,
       user: session.user,
       trips: readLocalTrips(),
+      guest: Boolean(session.guest),
     },
     { bootApp: true }
   );
