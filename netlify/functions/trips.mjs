@@ -179,11 +179,26 @@ async function storeHandler(event, path) {
       return json(400, { error: "Dati viaggio non validi." });
     }
     const nextTrip = normalizeTripBody(body);
-    const revision = Number(body.revision) || record.revision || 1;
+    const serverRev = Number(record.revision) || 1;
+    const clientRev = Number(body.revision);
+    // Optimistic lock: reject stale PUTs so concurrent saves don't silently clobber.
+    if (Number.isFinite(clientRev) && clientRev !== serverRev) {
+      return json(409, {
+        error: "Versione non aggiornata. Ricarica e riprova.",
+        id,
+        key: record.key,
+        viewToken: record.viewToken,
+        trip: record.trip,
+        revision: serverRev,
+        canEdit: true,
+        local: false,
+        source: "store",
+      });
+    }
     const updated = {
       ...record,
       trip: { ...nextTrip, budget: typeof nextTrip.budget === "number" ? nextTrip.budget : 0 },
-      revision: revision + 1,
+      revision: serverRev + 1,
       updated: new Date().toISOString(),
       source: "store",
     };

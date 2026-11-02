@@ -781,9 +781,21 @@
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
       const nextTrip = takeBudgetPrivate(id, body.trip || body);
-      const revision = Number(body.revision || record.revision || 1) + 1;
+      const serverRev = Number(record.revision) || 1;
+      const clientRev = Number(body.revision);
+      if (Number.isFinite(clientRev) && clientRev !== serverRev) {
+        return jsonResponse(409, {
+          error: "Versione non aggiornata. Ricarica e riprova.",
+          trip: applyPrivateBudgetView(id, record.trip),
+          revision: serverRev,
+          updated: record.updated,
+          canEdit: true,
+          viewToken: record.viewToken || "",
+          local: true,
+        });
+      }
       record.trip = nextTrip;
-      record.revision = revision;
+      record.revision = serverRev + 1;
       record.updated = new Date().toISOString();
       db[id] = record;
       writeLocalTrips(db);

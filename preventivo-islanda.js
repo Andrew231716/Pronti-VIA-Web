@@ -1485,7 +1485,8 @@
     const trip = { ...data.trip };
     const members = trip.members || [];
     if (!members.length) throw new Error("Aggiungi almeno un membro");
-    const payer = members[0].name;
+    // React schema expects member ids (not display names) for payer/shares.
+    const payer = members[0].id;
     ensureBudgetLines();
     const stamp = nowIso().slice(0, 10);
     const newExpenses = state.lines
@@ -1495,7 +1496,7 @@
         const shareEach = Math.floor(amount / members.length);
         let rem = amount - shareEach * members.length;
         const shares = members.map((m, i) => ({
-          member: m.name,
+          member: m.id,
           amount: shareEach + (i < rem ? 1 : 0),
         }));
         return {
