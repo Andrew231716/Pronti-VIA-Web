@@ -120,17 +120,32 @@
       #pv-offline-chip{bottom:calc(18px + env(safe-area-inset-bottom,0px));background:#7a1f1f;color:#fff;display:none}
       #pv-offline-chip.show{display:inline-flex}
       #pv-link-role-chip{top:52px;background:#e8f4f4;color:#0f5a5e}
-      /* Toolbar suite */
+      /* Toolbar suite — fixed under account chip so it is always visible */
       #pv-ux-toolbar{
-        display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center;
-        margin:8px 12px 4px;padding:0
+        position:fixed;top:44px;left:0;right:0;z-index:99970;
+        display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start;
+        margin:0;padding:8px 12px;background:rgba(238,246,246,.96);
+        border-bottom:1px solid var(--pv-line);backdrop-filter:blur(8px);
+        max-height:42vh;overflow:auto;-webkit-overflow-scrolling:touch
+      }
+      body.pv-account-ready.pv-ux-toolbar-on{padding-top:96px}
+      #pv-ux-toolbar .pv-ux-toolbar-label{
+        font:800 11px/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:var(--pv-teal);
+        margin-right:4px
       }
       #pv-ux-toolbar button,#pv-ux-search{
         appearance:none;border:1px solid var(--pv-line);background:#fff;color:var(--pv-ink);
         border-radius:999px;padding:8px 12px;font:650 12px inherit;cursor:pointer
       }
-      #pv-ux-search{min-width:min(220px,70vw);flex:1}
+      #pv-ux-search{min-width:min(180px,55vw);flex:1 1 160px}
       #pv-ux-search:focus{outline:2px solid rgba(0,125,130,.35);border-color:var(--pv-teal)}
+      #pv-ux-tools-fab{
+        position:fixed;left:calc(12px + env(safe-area-inset-left,0px));
+        bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:99975;
+        appearance:none;border:0;border-radius:999px;padding:12px 14px;
+        background:#007d82;color:#fff;font:800 13px inherit;cursor:pointer;
+        box-shadow:0 10px 28px rgba(0,80,90,.35)
+      }
       /* Modal shell */
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
@@ -304,7 +319,10 @@
   }
 
   function shortenTabs() {
-    for (const btn of document.querySelectorAll(".main-tabs button, .main-tabs [role='tab']")) {
+    const tabs = document.querySelectorAll(
+      ".main-tabs button, .main-tabs [role='tab'], [role='tablist'] [role='tab'], [role='tablist'] button"
+    );
+    for (const btn of tabs) {
       if (btn.dataset.pvShort) continue;
       const raw = (btn.textContent || "").replace(/\s+/g, " ").trim();
       if (!raw) continue;
@@ -321,6 +339,8 @@
       sh.textContent = short;
       btn.appendChild(full);
       btn.appendChild(sh);
+      // Help CSS target Radix tab strips too.
+      btn.closest("[role='tablist']")?.classList.add("main-tabs");
     }
   }
 
@@ -443,16 +463,32 @@
     chip.classList.toggle("show", !navigator.onLine);
   }
 
+  function runUxAction(act) {
+    if (act === "activity") void showActivity();
+    if (act === "checklist") void showChecklist();
+    if (act === "compare") void showCompare();
+    if (act === "templates") showTemplates();
+    if (act === "invite") void showInvite();
+    if (act === "revisions") void showRevisions();
+    if (act === "export") void exportTripText();
+  }
+
   function injectToolbar() {
     if (!tripAuth()) {
       document.getElementById("pv-ux-toolbar")?.remove();
+      document.getElementById("pv-ux-tools-fab")?.remove();
+      document.body.classList.remove("pv-ux-toolbar-on");
       return;
     }
+    document.body.classList.add("pv-ux-toolbar-on");
     let bar = document.getElementById("pv-ux-toolbar");
     if (!bar) {
       bar = document.createElement("div");
       bar.id = "pv-ux-toolbar";
+      bar.setAttribute("role", "region");
+      bar.setAttribute("aria-label", "Strumenti viaggio");
       bar.innerHTML = `
+        <span class="pv-ux-toolbar-label">Strumenti</span>
         <input id="pv-ux-search" type="search" placeholder="Cerca tappe, spese, note…" aria-label="Cerca nel viaggio" />
         <button type="button" data-ux="activity">Attività</button>
         <button type="button" data-ux="checklist">Pre-partenza</button>
@@ -461,25 +497,51 @@
         <button type="button" data-ux="invite">Codice invito</button>
         <button type="button" data-ux="revisions">Versioni</button>
         <button type="button" data-ux="export">Export</button>`;
-      const anchor =
-        document.querySelector(".workspace-tabs, .main-tabs")?.parentElement ||
-        document.querySelector(".trip-toolbar") ||
-        document.getElementById("root");
-      anchor?.prepend?.(bar);
+      document.body.appendChild(bar);
       bar.addEventListener("input", (ev) => {
         if (ev.target?.id === "pv-ux-search") filterTripContent(ev.target.value);
       });
       bar.addEventListener("click", (ev) => {
         const btn = ev.target?.closest?.("button[data-ux]");
         if (!btn) return;
-        const act = btn.getAttribute("data-ux");
-        if (act === "activity") void showActivity();
-        if (act === "checklist") void showChecklist();
-        if (act === "compare") void showCompare();
-        if (act === "templates") showTemplates();
-        if (act === "invite") void showInvite();
-        if (act === "revisions") void showRevisions();
-        if (act === "export") exportTripText();
+        runUxAction(btn.getAttribute("data-ux"));
+      });
+    }
+    let fab = document.getElementById("pv-ux-tools-fab");
+    if (!fab) {
+      fab = document.createElement("button");
+      fab.type = "button";
+      fab.id = "pv-ux-tools-fab";
+      fab.textContent = "Strumenti";
+      fab.setAttribute("aria-controls", "pv-ux-toolbar");
+      document.body.appendChild(fab);
+      fab.addEventListener("click", () => {
+        const el = document.getElementById("pv-ux-toolbar");
+        if (!el) return;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        openModal(
+          "Strumenti viaggio",
+          `<p>Scegli uno strumento (tutto gratuito):</p>
+           <div class="pv-ux-actions">
+             <button type="button" class="pv-ux-primary" data-ux="compare">Preventivo vs spese</button>
+             <button type="button" class="pv-ux-primary" data-ux="checklist">Pre-partenza</button>
+             <button type="button" class="pv-ux-primary" data-ux="invite">Codice invito</button>
+             <button type="button" class="pv-ux-ghost" data-ux="activity">Attività</button>
+             <button type="button" class="pv-ux-ghost" data-ux="templates">Template</button>
+             <button type="button" class="pv-ux-ghost" data-ux="revisions">Versioni</button>
+             <button type="button" class="pv-ux-ghost" data-ux="export">Export</button>
+           </div>`,
+          {
+            onMount: (body) => {
+              body.querySelectorAll("button[data-ux]").forEach((b) => {
+                b.addEventListener("click", () => {
+                  closeModal();
+                  runUxAction(b.getAttribute("data-ux"));
+                });
+              });
+            },
+          }
+        );
       });
     }
   }
