@@ -93,12 +93,18 @@
         box-shadow:0 6px 16px rgba(0,0,0,.12)
       }
       #pv-offline-chip.show{display:inline-flex}
-      #pv-account-chip #pv-ux-tools-btn,
-      #pv-account-chip #pv-ux-companions-btn{
-        border:0;border-radius:999px;padding:7px 12px;background:#007d82;color:#fff;
-        font:inherit;cursor:pointer;white-space:nowrap
+      .pv-menu-section{margin:0 0 14px}
+      .pv-menu-section h3{
+        margin:0 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7380
       }
-      #pv-account-chip #pv-ux-companions-btn{background:#1f5b63}
+      .pv-menu-grid{display:grid;gap:8px}
+      .pv-menu-grid button{
+        appearance:none;border:1px solid var(--pv-line);border-radius:14px;padding:12px 14px;
+        background:#fff;color:var(--pv-ink);font:650 14px/1.35 inherit;cursor:pointer;text-align:left
+      }
+      .pv-menu-grid button strong{display:block;font-weight:800;margin-bottom:2px}
+      .pv-menu-grid button span{display:block;color:#5b7380;font-size:.82rem;font-weight:500}
+      .pv-menu-grid button.danger{border-color:#efcdc8;background:#fdf4f2;color:#7a2e28}
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
       .pv-ux-modal .pv-ux-back{position:absolute;inset:0;background:rgba(12,32,40,.45)}
@@ -134,7 +140,7 @@
         .pv-ux-modal{place-items:center;padding:24px 16px}
         .pv-ux-modal .pv-ux-sheet{border-radius:22px}
       }
-      .pv-ux-modal button:focus-visible,#pv-account-chip #pv-ux-tools-btn:focus-visible{
+      .pv-ux-modal button:focus-visible,#pv-account-chip #pv-account-menu:focus-visible{
         outline:3px solid rgba(0,125,130,.45);outline-offset:2px
       }
       @media print{
@@ -272,6 +278,7 @@
     const modal = document.getElementById("pv-ux-modal");
     if (modal) modal.hidden = true;
     document.documentElement.style.overflow = "";
+    document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
   }
 
   function cleanupLegacyChrome() {
@@ -279,76 +286,84 @@
     document.getElementById("pv-ux-tools-fab")?.remove();
     document.getElementById("pv-link-role-chip")?.remove();
     document.body.classList.remove("pv-ux-toolbar-on");
+    cleanupChipExtras();
   }
 
-  function injectToolsButton() {
-    const chip = document.getElementById("pv-account-chip");
-    const auth = tripAuth();
-    if (!chip || chip.hidden || !auth) {
-      document.getElementById("pv-ux-tools-btn")?.remove();
-      document.getElementById("pv-ux-companions-btn")?.remove();
-      return;
-    }
-    if (!document.getElementById("pv-ux-tools-btn")) {
-      const next = document.createElement("button");
-      next.type = "button";
-      next.id = "pv-ux-tools-btn";
-      next.textContent = "Strumenti";
-      next.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        openToolsMenu();
-      });
-      const logout = chip.querySelector("#pv-account-logout") || chip.querySelector("button");
-      if (logout) chip.insertBefore(next, logout);
-      else chip.appendChild(next);
-    }
-    if (!document.getElementById("pv-ux-companions-btn")) {
-      const next = document.createElement("button");
-      next.type = "button";
-      next.id = "pv-ux-companions-btn";
-      next.textContent = "Compagni";
-      next.title = "Gestisci chi è nel viaggio (elimina Ospite dal link)";
-      next.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        void openCompanionsManager();
-      });
-      const tools = document.getElementById("pv-ux-tools-btn");
-      if (tools) tools.after(next);
-      else {
-        const logout = chip.querySelector("#pv-account-logout");
-        if (logout) chip.insertBefore(next, logout);
-        else chip.appendChild(next);
-      }
-    }
+  function cleanupChipExtras() {
+    document.getElementById("pv-ux-tools-btn")?.remove();
+    document.getElementById("pv-ux-companions-btn")?.remove();
+    // Legacy buttons if an older account.js chip is still in memory somehow.
+    document.getElementById("pv-account-logout")?.remove();
+    document.getElementById("pv-account-delete")?.remove();
   }
 
-  function openToolsMenu() {
-    const role = inferLinkRole();
+  function openAccountMenu() {
+    const inTrip = Boolean(tripAuth());
+    const menuBtn = document.getElementById("pv-account-menu");
+    menuBtn?.setAttribute("aria-expanded", "true");
     openModal(
-      "Strumenti viaggio",
-      `<p class="pv-tp-muted" style="margin:0 0 10px;color:#3d5a62;font-size:.9rem">${escapeHtml(role)}</p>
-       <label for="pv-ux-search-input" style="font:700 12px inherit">Cerca nel viaggio</label>
+      "Menu",
+      `${
+        inTrip
+          ? `<div class="pv-menu-section">
+              <h3>Questo viaggio</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
+                <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
+                <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
+                <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
+                <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
+                <button type="button" data-ux="more"><strong>Altro</strong><span>Attività, template, versioni, export</span></button>
+              </div>
+            </div>`
+          : `<div class="pv-menu-section">
+              <h3>Viaggi</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Gli strumenti del viaggio compaiono qui dentro</span></button>
+              </div>
+            </div>`
+      }
+       <div class="pv-menu-section">
+         <h3>Il tuo account</h3>
+         <div class="pv-menu-grid">
+           <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
+           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella definitivamente il login su questo dispositivo/cloud</span></button>
+         </div>
+       </div>`,
+      {
+        onMount: (body) => {
+          body.querySelectorAll("button[data-ux]").forEach((b) => {
+            b.addEventListener("click", () => {
+              const act = b.getAttribute("data-ux");
+              closeModal();
+              menuBtn?.setAttribute("aria-expanded", "false");
+              if (act === "companions") void openCompanionsManager();
+              else if (act === "search") openSearchSheet();
+              else if (act === "more") openMoreTools();
+              else if (act === "home-hint") toast("Apri un viaggio dalla lista o creane uno nuovo", "ok");
+              else if (act === "logout") {
+                if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
+              } else if (act === "delete-account") {
+                if (typeof window.__pvAccountDelete === "function") window.__pvAccountDelete();
+              } else runUxAction(act);
+            });
+          });
+        },
+      }
+    );
+  }
+  window.__pvOpenAccountMenu = openAccountMenu;
+
+  function openSearchSheet() {
+    openModal(
+      "Cerca nel viaggio",
+      `<label for="pv-ux-search-input" style="font:700 12px inherit">Parola da cercare</label>
        <input id="pv-ux-search-input" type="search" placeholder="Es. hotel, volo, museo…" />
-       <div class="pv-ux-actions" style="margin-top:0">
+       <div class="pv-ux-actions">
          <button type="button" id="pv-ux-search-go">Cerca</button>
          <button type="button" class="pv-ux-ghost" id="pv-ux-search-clear">Azzera</button>
-       </div>
-       <div class="pv-ux-actions">
-         <button type="button" class="pv-ux-primary" data-ux="companions">Gestione compagni</button>
-         <button type="button" class="pv-ux-primary" data-ux="compare">Preventivo vs spese</button>
-         <button type="button" class="pv-ux-primary" data-ux="checklist">Pre-partenza</button>
-         <button type="button" class="pv-ux-primary" data-ux="invite">Codice invito</button>
-         <button type="button" class="pv-ux-ghost" data-ux="activity">Attività</button>
-         <button type="button" class="pv-ux-ghost" data-ux="templates">Template</button>
-         <button type="button" class="pv-ux-ghost" data-ux="revisions">Versioni</button>
-         <button type="button" class="pv-ux-ghost" data-ux="export">Export</button>
-       </div>
-       <p style="margin:14px 0 0;color:#5b7380;font-size:.82rem;line-height:1.4">
-         <strong>Account</strong> (tuo login): Esci / Elimina account in alto.<br>
-         <strong>Compagni del viaggio</strong> (es. Ospite dal link): usa Gestione compagni.
-       </p>`,
+         <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
+       </div>`,
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-search-go")?.addEventListener("click", () => {
@@ -361,15 +376,27 @@
             highlightSearch("");
             toast("Ricerca azzerata", "ok");
           });
-          body.querySelector("#pv-ux-search-input")?.addEventListener("keydown", (ev) => {
-            if (ev.key === "Enter") body.querySelector("#pv-ux-search-go")?.click();
-          });
+          body.querySelector("#pv-ux-search-input")?.focus();
+        },
+      }
+    );
+  }
+
+  function openMoreTools() {
+    openModal(
+      "Altri strumenti",
+      `<div class="pv-menu-grid">
+         <button type="button" data-ux="activity"><strong>Attività recente</strong><span>Cose fatte su questo dispositivo</span></button>
+         <button type="button" data-ux="templates"><strong>Template viaggio</strong><span>Parti da uno schema pronto</span></button>
+         <button type="button" data-ux="revisions"><strong>Versioni locali</strong><span>Ripristina una copia salvata qui</span></button>
+         <button type="button" data-ux="export"><strong>Export testo</strong><span>Scarica un riepilogo .txt</span></button>
+       </div>`,
+      {
+        onMount: (body) => {
           body.querySelectorAll("button[data-ux]").forEach((b) => {
             b.addEventListener("click", () => {
-              const act = b.getAttribute("data-ux");
               closeModal();
-              if (act === "companions") void openCompanionsManager();
-              else runUxAction(act);
+              runUxAction(b.getAttribute("data-ux"));
             });
           });
         },
@@ -465,15 +492,6 @@
     } catch (err) {
       toast(err.message || "Compagni non disponibili", "err");
     }
-  }
-
-  function inferLinkRole() {
-    const notes = [...document.querySelectorAll(".small-note, .share-note, [class*='share']")]
-      .map((el) => el.textContent || "")
-      .join(" ");
-    if (/solo consultazione/i.test(notes)) return "Link: solo lettura";
-    if (/modifiche condivise|puoi modificare/i.test(notes)) return "Link: puoi modificare";
-    return "Strumenti gratuiti per questo viaggio";
   }
 
   function highlightSearch(q) {
@@ -992,7 +1010,6 @@
     ensureItineraryLayoutPolish();
     cleanupLegacyChrome();
     document.body.classList.toggle("pv-trip-open", Boolean(tripAuth()));
-    injectToolsButton();
     injectEmptyStates();
     injectMemberRoles();
     injectOfflineChip();

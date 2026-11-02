@@ -12,19 +12,7 @@ body.pv-account-ready {
   padding-top: 48px;
 }
 
-/* Keep trip chrome readable under the fixed account chip */
 @media (max-width: 720px) {
-  body.pv-account-ready {
-    padding-top: 52px;
-  }
-  #pv-account-chip {
-    height: auto;
-    min-height: 44px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    row-gap: 6px;
-    padding: 6px 10px;
-  }
   .topbar {
     height: auto !important;
     min-height: 64px;
@@ -40,9 +28,6 @@ body.pv-account-ready {
   .section-heading .button {
     width: 100%;
     justify-content: center;
-  }
-  .day-strip {
-    scroll-padding-inline: 8px;
   }
 }
 
@@ -202,25 +187,37 @@ body.pv-account-ready {
   left: 0;
   right: 0;
   z-index: 99990;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  height: 44px;
+  display: block;
+  height: 48px;
   padding: 0 12px;
-  background: rgba(255, 255, 255, 0.94);
+  background: rgba(255, 255, 255, 0.96);
   border-bottom: 1px solid rgba(21, 59, 71, 0.08);
   color: var(--pv-account-ink);
   font: 650 0.85rem/1 "Segoe UI", "Helvetica Neue", sans-serif;
   backdrop-filter: blur(8px);
+  box-sizing: border-box;
 }
 
 #pv-account-chip[hidden] {
   display: none !important;
 }
 
-#pv-account-chip span {
+#pv-account-chip .pv-account-chip-main {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+#pv-account-chip .pv-account-chip-who {
   color: var(--pv-account-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 #pv-account-chip strong {
@@ -228,19 +225,15 @@ body.pv-account-ready {
   font-weight: 700;
 }
 
-#pv-account-chip button {
+#pv-account-chip #pv-account-menu {
+  flex: 0 0 auto;
   border: 0;
   border-radius: 999px;
-  padding: 7px 12px;
-  background: var(--pv-account-sand);
-  color: var(--pv-account-ink);
-  font: inherit;
+  padding: 9px 14px;
+  background: var(--pv-account-teal);
+  color: #fff;
+  font: 700 0.85rem/1 inherit;
   cursor: pointer;
-}
-
-#pv-account-chip #pv-account-delete {
-  background: #f3e4e2;
-  color: #7a2e28;
 }
 
 .share-inputs {

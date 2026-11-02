@@ -203,9 +203,10 @@ function ensureUi() {
   chip.id = "pv-account-chip";
   chip.hidden = true;
   chip.innerHTML = `
-    <span>Account <strong id="pv-account-chip-label"></strong></span>
-    <button type="button" id="pv-account-logout">Esci</button>
-    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina account</button>
+    <div class="pv-account-chip-main">
+      <span class="pv-account-chip-who">Ciao, <strong id="pv-account-chip-label"></strong></span>
+      <button type="button" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false">Menu</button>
+    </div>
   `;
   document.body.appendChild(chip);
 
@@ -214,8 +215,18 @@ function ensureUi() {
   });
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
-  chip.querySelector("#pv-account-logout").addEventListener("click", onLogout);
-  chip.querySelector("#pv-account-delete").addEventListener("click", onDeleteAccount);
+  chip.querySelector("#pv-account-menu").addEventListener("click", () => {
+    if (typeof window.__pvOpenAccountMenu === "function") {
+      window.__pvOpenAccountMenu();
+      return;
+    }
+    // Fallback if ux-suite is not loaded yet.
+    const choice = window.confirm("Esci dall’account?");
+    if (choice) onLogout();
+  });
+  // Kept for programmatic use / older hooks.
+  window.__pvAccountLogout = onLogout;
+  window.__pvAccountDelete = onDeleteAccount;
 }
 
 function setMode(mode) {
