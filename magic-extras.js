@@ -4059,6 +4059,182 @@ Regole pv-places:
     });
   }
 
+  function ensureMemberRemoveStyles() {
+    let style = document.getElementById("pv-member-remove-css");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pv-member-remove-css";
+      document.head.appendChild(style);
+    }
+    style.textContent = `
+      .members-list > div{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      .members-list > div .pv-member-remove{
+        appearance:none;border:0;margin-left:auto;border-radius:999px;padding:7px 11px;
+        background:#f3e4e2;color:#7a2e28;font:700 12px inherit;cursor:pointer
+      }
+      .members-list > div .pv-member-remove:disabled{opacity:.55;cursor:wait}
+      .pv-member-remove-note{margin:8px 0 0;color:#5b7380;font-size:.82rem;line-height:1.35}
+      .pv-member-remove-toast{
+        position:fixed;left:50%;bottom:88px;transform:translateX(-50%);z-index:120000;
+        max-width:min(420px,92vw);background:#153b47;color:#fff;padding:12px 14px;border-radius:12px;
+        font:600 13px/1.35 inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)
+      }
+      .pv-member-remove-toast.err{background:#7a1f1f}
+    `;
+  }
+
+  function showMemberRemoveToast(msg, isErr) {
+    let el = document.getElementById("pv-member-remove-toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "pv-member-remove-toast";
+      el.className = "pv-member-remove-toast";
+      document.body.appendChild(el);
+    }
+    el.className = "pv-member-remove-toast" + (isErr ? " err" : "");
+    el.textContent = msg;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.remove(), 4200);
+  }
+
+  function scrubTripMemberRefs(trip, memberId) {
+    const expenses = Array.isArray(trip.expenses) ? trip.expenses : [];
+    const transfers = Array.isArray(trip.transfers) ? trip.transfers : [];
+    const nextExpenses = [];
+    for (const exp of expenses) {
+      if (exp?.payer === memberId) continue;
+      const shares = (Array.isArray(exp.shares) ? exp.shares : []).filter((s) => s?.member !== memberId);
+      if (!shares.length) continue;
+      const sum = shares.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+      const amount = Number(exp.amount) || 0;
+      if (sum === amount) {
+        nextExpenses.push({ ...exp, shares });
+        continue;
+      }
+      // Redistribute remaining shares to match the expense total.
+      if (shares.length && amount > 0) {
+        const base = Math.floor(amount / shares.length);
+        let rem = amount - base * shares.length;
+        const fixed = shares.map((s, i) => ({
+          ...s,
+          amount: base + (i < rem ? 1 : 0),
+        }));
+        nextExpenses.push({ ...exp, shares: fixed });
+      }
+    }
+    const nextTransfers = transfers.filter((t) => t?.from !== memberId && t?.to !== memberId);
+    return { ...trip, expenses: nextExpenses, transfers: nextTransfers };
+  }
+
+  async function removeSharedMemberByName(name) {
+    const want = String(name || "").trim();
+    if (!want) return;
+    if (!window.confirm(`Rimuovere «${want}» dal viaggio?\nNon potrà rientrare automaticamente con lo stesso nome dal link.`)) {
+      return;
+    }
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const trip = { ...(data.trip || {}) };
+      const members = Array.isArray(trip.members) ? trip.members : [];
+      if (members.length <= 1) throw new Error("Serve almeno un viaggiatore.");
+      const target = members.find((m) => String(m?.name || "").trim().toLowerCase() === want.toLowerCase());
+      if (!target) throw new Error("Persona non trovata.");
+      const me = (() => {
+        try {
+          const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+          return String(a?.user?.displayName || a?.user?.username || "").trim();
+        } catch {
+          return "";
+        }
+      })();
+      if (me && namesMatchMember(me, target.name) && members.length > 1) {
+        // Allow removing yourself only if others remain; still confirm above.
+      }
+      const nextMembers = members.filter((m) => m.id !== target.id);
+      if (!nextMembers.length) throw new Error("Serve almeno un viaggiatore.");
+      let nextTrip = scrubTripMemberRefs({ ...trip, members: nextMembers }, target.id);
+      const meta = { ...(nextTrip.meta && typeof nextTrip.meta === "object" ? nextTrip.meta : {}) };
+      const blocked = Array.isArray(meta.blockedMembers) ? meta.blockedMembers.slice() : [];
+      const key = want.toLowerCase();
+      if (!blocked.some((b) => String(typeof b === "string" ? b : b?.name || "").toLowerCase() === key)) {
+        blocked.push({ name: want, blockedAt: new Date().toISOString() });
+      }
+      meta.blockedMembers = blocked.slice(-50);
+      nextTrip.meta = meta;
+      await saveTrip(auth, nextTrip, data.revision);
+      try {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+        const slot = db[auth.id] || { id: auth.id, key: auth.key };
+        slot.trip = nextTrip;
+        slot.revision = (Number(data.revision) || 1) + 1;
+        slot.key = auth.key;
+        slot.updated = new Date().toISOString();
+        db[auth.id] = slot;
+        localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+      } catch {
+        /* ignore */
+      }
+      showMemberRemoveToast(`«${want}» rimosso dal viaggio`);
+      // Refresh React UI by nudging hash (keeps trip/key).
+      const hash = location.hash.replace(/^#/, "");
+      history.replaceState(null, "", `#${hash}&_rm=${Date.now().toString(36)}`);
+      setTimeout(() => {
+        history.replaceState(null, "", `#${hash}`);
+        location.reload();
+      }, 120);
+    } catch (err) {
+      showMemberRemoveToast(err.message || "Rimozione non riuscita", true);
+    }
+  }
+
+  function namesMatchMember(a, b) {
+    return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+  }
+
+  function injectMemberRemoveControls() {
+    ensureMemberRemoveStyles();
+    const list = document.querySelector(".members-list");
+    if (!list) return;
+    const host = list.parentElement;
+    if (!host) return;
+    // Edit mode only: the add-member field is present when the link can modify.
+    const canEdit = Boolean(
+      host.querySelector('input[placeholder*="Nome"], input[placeholder*="compagno"], label.field input')
+    );
+    if (!canEdit) {
+      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
+      host.querySelector(".pv-member-remove-note")?.remove();
+      return;
+    }
+    if (!host.querySelector(".pv-member-remove-note")) {
+      const note = document.createElement("p");
+      note.className = "pv-member-remove-note";
+      note.textContent =
+        "Puoi eliminare chi è entrato dal link condiviso. Non rientrerà in automatico con lo stesso nome.";
+      list.after(note);
+    }
+    for (const row of list.querySelectorAll(":scope > div")) {
+      if (row.querySelector(".pv-member-remove")) continue;
+      const name = (row.querySelector("strong")?.textContent || "").trim();
+      if (!name) continue;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pv-member-remove";
+      btn.dataset.pvRemoveMember = name;
+      btn.setAttribute("aria-label", `Rimuovi ${name}`);
+      btn.textContent = "Elimina";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        btn.disabled = true;
+        void removeSharedMemberByName(name).finally(() => {
+          btn.disabled = false;
+        });
+      });
+      row.appendChild(btn);
+    }
+  }
+
   function tick() {
     renderFab();
     injectPackingTemplates();
@@ -4072,6 +4248,7 @@ Regole pv-places:
     markPrivateBudgetLabels();
     injectLocalOnlyBanner();
     injectPreventivoTripBanner();
+    injectMemberRemoveControls();
     fixItalianTappeGrammar();
     preferIcelandCover();
     ensureShareToast();

@@ -539,6 +539,16 @@ async function ensureCurrentUserOnTrip() {
       return;
     }
 
+    // Honor removals from the trip owner: blocked names must not auto-rejoin via the shared link.
+    const blocked = Array.isArray(data.trip?.meta?.blockedMembers) ? data.trip.meta.blockedMembers : [];
+    const isBlocked = blocked.some((entry) =>
+      namesMatch(typeof entry === "string" ? entry : entry?.name, name)
+    );
+    if (isBlocked) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
     const nextTrip = {
       ...data.trip,
       members: [
