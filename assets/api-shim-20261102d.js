@@ -1164,9 +1164,15 @@
           .toUpperCase()
           .replace(/[^A-Z0-9]/g, "");
         const inviteOk =
-          /^[A-Z0-9]{6}$/.test(inviteRaw) && (record.kind === "invite" || body.inviteCode);
-        if (!inviteOk || !record || typeof record !== "object") {
-          return remoteRes || jsonResponse(400, { error: "Invito non valido." });
+          /^[A-Z0-9]{6}$/.test(inviteRaw) &&
+          record &&
+          typeof record === "object" &&
+          (record.kind === "invite" || body.inviteCode);
+        if (!inviteOk) {
+          return (
+            remoteRes ||
+            jsonResponse(503, { error: "Servizio condivisione non disponibile." })
+          );
         }
         const id = `inv-${inviteRaw}`;
         const db = readInviteShares();
