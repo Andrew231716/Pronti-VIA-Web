@@ -205,7 +205,7 @@ function ensureUi() {
   chip.innerHTML = `
     <span>Account <strong id="pv-account-chip-label"></strong></span>
     <button type="button" id="pv-account-logout">Esci</button>
-    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina</button>
+    <button type="button" id="pv-account-delete" title="Elimina definitivamente questo account">Elimina account</button>
   `;
   document.body.appendChild(chip);
 

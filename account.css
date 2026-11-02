@@ -9,7 +9,41 @@
 }
 
 body.pv-account-ready {
-  padding-top: 44px;
+  padding-top: 48px;
+}
+
+/* Keep trip chrome readable under the fixed account chip */
+@media (max-width: 720px) {
+  body.pv-account-ready {
+    padding-top: 52px;
+  }
+  #pv-account-chip {
+    height: auto;
+    min-height: 44px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    row-gap: 6px;
+    padding: 6px 10px;
+  }
+  .topbar {
+    height: auto !important;
+    min-height: 64px;
+    padding: 10px 14px !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+  .section-heading {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .section-heading .button {
+    width: 100%;
+    justify-content: center;
+  }
+  .day-strip {
+    scroll-padding-inline: 8px;
+  }
 }
 
 #pv-account-gate {

@@ -4247,23 +4247,34 @@ Regole pv-places:
     if (!host) return;
     // Edit mode only: the add-member field is present when the link can modify.
     const canEdit = Boolean(
-      host.querySelector('input[placeholder*="Nome"], input[placeholder*="compagno"], label.field input')
+      host.querySelector(
+        'input[placeholder*="Nome"], input[placeholder*="compagno"], input[placeholder*="univoco"], label.field input'
+      )
     );
     const names = [...list.querySelectorAll(":scope > div strong")].map((el) => (el.textContent || "").trim());
     const creatorName = names[0] || "";
-    const canManage = canEdit && isTripCreator(names.map((n, i) => ({ id: String(i), name: n })));
-    if (!canManage) {
-      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
-      host.querySelector(".pv-member-remove-note")?.remove();
-      return;
-    }
-    if (!host.querySelector(".pv-member-remove-note")) {
-      const note = document.createElement("p");
+    const creatorOk = isTripCreator(names.map((n, i) => ({ id: String(i), name: n })));
+    const canManage = canEdit && creatorOk;
+
+    let note = host.querySelector(".pv-member-remove-note");
+    if (!note) {
+      note = document.createElement("p");
       note.className = "pv-member-remove-note";
-      note.textContent =
-        "Come creatore puoi eliminare chi è entrato dal link. Non rientrerà in automatico con lo stesso nome.";
       list.after(note);
     }
+    if (canManage) {
+      note.textContent =
+        "Come creatore puoi eliminare chi è entrato dal link (es. Ospite). Non rientrerà in automatico con lo stesso nome.";
+    } else if (!creatorOk) {
+      note.textContent = "Solo il creatore del viaggio può eliminare i partecipanti dal link.";
+      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
+      return;
+    } else {
+      note.textContent = "Apri il viaggio con il link di modifica per gestire i compagni.";
+      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
+      return;
+    }
+
     for (const row of list.querySelectorAll(":scope > div")) {
       if (row.querySelector(".pv-member-remove")) continue;
       const name = (row.querySelector("strong")?.textContent || "").trim();
@@ -4274,7 +4285,7 @@ Regole pv-places:
       btn.className = "pv-member-remove";
       btn.dataset.pvRemoveMember = name;
       btn.setAttribute("aria-label", `Rimuovi ${name}`);
-      btn.textContent = "Elimina";
+      btn.textContent = /^ospite/i.test(name) ? "Elimina ospite" : "Elimina";
       btn.addEventListener("click", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -4286,6 +4297,19 @@ Regole pv-places:
       row.appendChild(btn);
     }
   }
+
+  // Used by ux-suite "Gestione compagni" modal.
+  window.__pvRemoveSharedMemberByName = removeSharedMemberByName;
+  window.__pvOpenCompanionsSheet = function openCompanionsSheet() {
+    const btn = [...document.querySelectorAll("button")].find((el) =>
+      /\d+\s+viaggiator/i.test((el.textContent || "").replace(/\s+/g, " "))
+    );
+    if (btn) {
+      btn.click();
+      return true;
+    }
+    return false;
+  };
 
   function tick() {
     renderFab();

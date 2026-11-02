@@ -93,10 +93,12 @@
         box-shadow:0 6px 16px rgba(0,0,0,.12)
       }
       #pv-offline-chip.show{display:inline-flex}
-      #pv-account-chip #pv-ux-tools-btn{
+      #pv-account-chip #pv-ux-tools-btn,
+      #pv-account-chip #pv-ux-companions-btn{
         border:0;border-radius:999px;padding:7px 12px;background:#007d82;color:#fff;
         font:inherit;cursor:pointer;white-space:nowrap
       }
+      #pv-account-chip #pv-ux-companions-btn{background:#1f5b63}
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
       .pv-ux-modal .pv-ux-back{position:absolute;inset:0;background:rgba(12,32,40,.45)}
@@ -282,12 +284,12 @@
   function injectToolsButton() {
     const chip = document.getElementById("pv-account-chip");
     const auth = tripAuth();
-    const btn = document.getElementById("pv-ux-tools-btn");
     if (!chip || chip.hidden || !auth) {
-      btn?.remove();
+      document.getElementById("pv-ux-tools-btn")?.remove();
+      document.getElementById("pv-ux-companions-btn")?.remove();
       return;
     }
-    if (!btn) {
+    if (!document.getElementById("pv-ux-tools-btn")) {
       const next = document.createElement("button");
       next.type = "button";
       next.id = "pv-ux-tools-btn";
@@ -297,10 +299,28 @@
         ev.stopPropagation();
         openToolsMenu();
       });
-      // Prefer before logout/delete so it stays visible.
-      const logout = chip.querySelector("button");
+      const logout = chip.querySelector("#pv-account-logout") || chip.querySelector("button");
       if (logout) chip.insertBefore(next, logout);
       else chip.appendChild(next);
+    }
+    if (!document.getElementById("pv-ux-companions-btn")) {
+      const next = document.createElement("button");
+      next.type = "button";
+      next.id = "pv-ux-companions-btn";
+      next.textContent = "Compagni";
+      next.title = "Gestisci chi è nel viaggio (elimina Ospite dal link)";
+      next.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void openCompanionsManager();
+      });
+      const tools = document.getElementById("pv-ux-tools-btn");
+      if (tools) tools.after(next);
+      else {
+        const logout = chip.querySelector("#pv-account-logout");
+        if (logout) chip.insertBefore(next, logout);
+        else chip.appendChild(next);
+      }
     }
   }
 
@@ -316,6 +336,7 @@
          <button type="button" class="pv-ux-ghost" id="pv-ux-search-clear">Azzera</button>
        </div>
        <div class="pv-ux-actions">
+         <button type="button" class="pv-ux-primary" data-ux="companions">Gestione compagni</button>
          <button type="button" class="pv-ux-primary" data-ux="compare">Preventivo vs spese</button>
          <button type="button" class="pv-ux-primary" data-ux="checklist">Pre-partenza</button>
          <button type="button" class="pv-ux-primary" data-ux="invite">Codice invito</button>
@@ -323,7 +344,11 @@
          <button type="button" class="pv-ux-ghost" data-ux="templates">Template</button>
          <button type="button" class="pv-ux-ghost" data-ux="revisions">Versioni</button>
          <button type="button" class="pv-ux-ghost" data-ux="export">Export</button>
-       </div>`,
+       </div>
+       <p style="margin:14px 0 0;color:#5b7380;font-size:.82rem;line-height:1.4">
+         <strong>Account</strong> (tuo login): Esci / Elimina account in alto.<br>
+         <strong>Compagni del viaggio</strong> (es. Ospite dal link): usa Gestione compagni.
+       </p>`,
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-search-go")?.addEventListener("click", () => {
@@ -341,13 +366,105 @@
           });
           body.querySelectorAll("button[data-ux]").forEach((b) => {
             b.addEventListener("click", () => {
+              const act = b.getAttribute("data-ux");
               closeModal();
-              runUxAction(b.getAttribute("data-ux"));
+              if (act === "companions") void openCompanionsManager();
+              else runUxAction(act);
             });
           });
         },
       }
     );
+  }
+
+  async function openCompanionsManager() {
+    try {
+      const { data } = await loadTrip();
+      const trip = data.trip || {};
+      const members = Array.isArray(trip.members) ? trip.members : [];
+      const me = (() => {
+        try {
+          const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+          return {
+            displayName: String(a?.user?.displayName || "").trim(),
+            username: String(a?.user?.username || "").trim(),
+            guest: Boolean(a?.guest),
+          };
+        } catch {
+          return { displayName: "", username: "", guest: true };
+        }
+      })();
+      const creator = members[0];
+      const isCreator =
+        !me.guest &&
+        creator &&
+        [me.displayName, me.username].some(
+          (n) => n && String(creator.name || "").trim().toLowerCase() === n.toLowerCase()
+        );
+      const canEdit = data.canEdit !== false;
+      openModal(
+        "Gestione compagni",
+        `<p style="margin:0 0 10px;color:#3d5a62;font-size:.9rem">
+          Qui gestisci chi è <strong>nel viaggio</strong> (incluso Ospite dal link).<br>
+          Il tuo login personale si gestisce in alto con <strong>Esci</strong> / <strong>Elimina account</strong>.
+         </p>
+         <ul class="pv-ux-list">${
+           members
+             .map((m, i) => {
+               const name = escapeHtml(m.name || "—");
+               const role =
+                 i === 0 ? "Creatore" : /^ospite/i.test(m.name || "") ? "Dal link" : "Partecipante";
+               const canDelete = isCreator && canEdit && i > 0;
+               return `<li style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">
+                 <div><strong>${name}</strong> · ${role}</div>
+                 ${
+                   canDelete
+                     ? `<button type="button" class="pv-ux-danger" data-rm-name="${escapeHtml(m.name || "")}">Elimina</button>`
+                     : i === 0
+                       ? `<span style="color:#5b7380;font-size:.8rem">non eliminabile</span>`
+                       : ""
+                 }
+               </li>`;
+             })
+             .join("") || "<li>Nessun partecipante.</li>"
+         }</ul>
+         ${
+           !isCreator
+             ? `<p style="color:#7a4b00;font-size:.88rem">Solo il creatore del viaggio può eliminare gli ospiti.</p>`
+             : !canEdit
+               ? `<p style="color:#7a4b00;font-size:.88rem">Serve il link di modifica (non solo lettura).</p>`
+               : `<p style="color:#5b7380;font-size:.82rem">Puoi anche aprire «N viaggiatori» nella copertina del viaggio.</p>`
+         }
+         <div class="pv-ux-actions">
+           <button type="button" class="pv-ux-ghost" id="pv-ux-open-native-members">Apri elenco nel viaggio</button>
+           <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
+         </div>`,
+        {
+          onMount: (body) => {
+            body.querySelector("#pv-ux-open-native-members")?.addEventListener("click", () => {
+              closeModal();
+              const opened =
+                typeof window.__pvOpenCompanionsSheet === "function" && window.__pvOpenCompanionsSheet();
+              if (!opened) toast("Tocca il pulsante «N viaggiatori» sulla copertina", "warn");
+              else toast("Usa Elimina accanto all’ospite", "ok");
+            });
+            body.querySelectorAll("[data-rm-name]").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                const name = btn.getAttribute("data-rm-name") || "";
+                closeModal();
+                if (typeof window.__pvRemoveSharedMemberByName === "function") {
+                  void window.__pvRemoveSharedMemberByName(name);
+                } else {
+                  toast("Funzione rimozione non disponibile", "err");
+                }
+              });
+            });
+          },
+        }
+      );
+    } catch (err) {
+      toast(err.message || "Compagni non disponibili", "err");
+    }
   }
 
   function inferLinkRole() {
@@ -389,28 +506,27 @@
   }
 
   function injectEmptyStates() {
-    const auth = tripAuth();
-    if (!auth) {
-      document.querySelectorAll(".pv-empty-state").forEach((el) => el.remove());
-      return;
+    // Avoid injecting boxes into the itinerary heading flow — it broke the home layout.
+    document.querySelectorAll(".pv-empty-state").forEach((el) => el.remove());
+  }
+
+  function ensureItineraryLayoutPolish() {
+    let style = document.getElementById("pv-ux-itinerary-layout");
+    if (!style) {
+      style = document.createElement("style");
+      style.id = "pv-ux-itinerary-layout";
+      document.head.appendChild(style);
     }
-    const itineraryHeading = [...document.querySelectorAll("h2")].find((h) =>
-      /il nostro itinerario/i.test(h.textContent || "")
-    );
-    const zeroLabel = [...document.querySelectorAll("p,span,div")].find(
-      (el) => el.children.length === 0 && /^(0 tappe|Nessuna tappa)/i.test((el.textContent || "").trim())
-    );
-    if (itineraryHeading && zeroLabel) {
-      if (!document.getElementById("pv-empty-itinerary")) {
-        const box = document.createElement("div");
-        box.id = "pv-empty-itinerary";
-        box.className = "pv-empty-state";
-        box.innerHTML = `<h3>Nessuna tappa ancora</h3><p>Inizia dal primo giorno o chiedi idee a Pronty.</p>`;
-        itineraryHeading.parentElement?.after(box);
+    style.textContent = `
+      .section-heading{align-items:flex-start}
+      .section-heading h2{line-height:1.2}
+      .day-strip{max-width:100%}
+      /* Keep account chip from covering the trip topbar brand on small screens */
+      @media (max-width:720px){
+        .topbar .brand{font-size:22px!important}
+        .topbar .top-label{display:none}
       }
-    } else {
-      document.getElementById("pv-empty-itinerary")?.remove();
-    }
+    `;
   }
 
   function injectMemberRoles() {
@@ -873,6 +989,7 @@
 
   function tick() {
     ensureStyles();
+    ensureItineraryLayoutPolish();
     cleanupLegacyChrome();
     document.body.classList.toggle("pv-trip-open", Boolean(tripAuth()));
     injectToolsButton();
