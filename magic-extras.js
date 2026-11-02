@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102i") return;
+    if (style && style.dataset.pvReady === "20261102k") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -204,9 +204,41 @@
       .pv-chart-row .bar{height:10px;border-radius:999px;background:#e6efef;overflow:hidden}
       .pv-chart-row .fill{height:100%;background:#007d82;border-radius:inherit}
       .pv-dist-note,.route-hop{display:block;margin:4px 0 10px;padding:6px 10px;border-radius:999px;background:#eef6f6;color:#3c5c62;font-size:.78rem;font-weight:600;width:fit-content}
-      .pv-day-legend{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 0}
-      .pv-day-legend span{display:inline-flex;align-items:center;gap:6px;font-size:.75rem;color:#456}
-      .pv-day-legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
+      .pv-day-legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;margin:0;padding:12px 14px 14px;border-top:1px solid #e7eef1;background:#f7fbfb}
+      .pv-day-legend .pv-day-legend-title{grid-column:1/-1;margin:0 0 2px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
+      .pv-day-legend button{appearance:none;display:flex;align-items:flex-start;gap:8px;width:100%;margin:0;padding:8px 9px;border:1px solid #d7e4e8;border-radius:12px;background:#fff;color:#1d3338;text-align:left;cursor:pointer;font:inherit;line-height:1.25}
+      .pv-day-legend button:hover,.pv-day-legend button:focus-visible{border-color:#51a7a3;background:#eef8f7;outline:none}
+      .pv-day-legend button.selected{border-color:#51a7a3;background:#e5f3f0}
+      .pv-day-legend i{width:10px;height:10px;border-radius:50%;display:inline-block;margin-top:4px;flex:0 0 auto}
+      .pv-day-legend .pv-day-legend-copy{display:grid;gap:2px;min-width:0}
+      .pv-day-legend strong{font-size:.8rem;font-weight:700;color:#16353b}
+      .pv-day-legend em{font-style:normal;font-size:.72rem;color:#5b7076}
+      .day-strip button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:104px}
+      .day-strip button > span:first-child{font-size:11px;font-weight:700;letter-spacing:.02em}
+      .day-strip button strong{line-height:1.15}
+      .day-strip .day-count{white-space:nowrap}
+      .pv-day-picker{position:fixed;inset:0;z-index:10050;background:rgba(10,30,36,.45);display:flex;align-items:flex-end;justify-content:center;padding:12px}
+      .pv-day-picker-sheet{width:min(440px,100%);max-height:min(82dvh,640px);overflow:auto;background:#fff;border-radius:18px 18px 14px 14px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+      .pv-day-picker-sheet h3{margin:0 0 8px;font-size:1.05rem;color:#0f2c31}
+      .pv-day-picker-msg{margin:0 0 12px;color:#3d5960;font-size:.9rem;line-height:1.45}
+      .pv-day-pick-grid{display:grid;gap:8px;margin:0 0 14px}
+      .pv-day-pick-btn{appearance:none;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;width:100%;padding:10px 12px;border:1px solid #d5e3e6;border-radius:12px;background:#f8fbfb;text-align:left;cursor:pointer;font:inherit}
+      .pv-day-pick-btn strong{font-size:.92rem;color:#122f34}
+      .pv-day-pick-btn span{grid-column:1;font-size:.8rem;color:#5b7076}
+      .pv-day-pick-btn em{grid-row:1/span 2;grid-column:2;font-style:normal;font-size:.75rem;font-weight:700;color:#007d82}
+      .pv-day-pick-btn.selected{border-color:#007d82;background:#e7f4f4;box-shadow:inset 0 0 0 1px #007d82}
+      .pv-day-picker-actions{display:flex;gap:8px;justify-content:flex-end}
+      .pv-day-picker-actions button{appearance:none;border:0;border-radius:12px;padding:11px 14px;font:600 13px inherit;cursor:pointer;min-height:42px}
+      .pv-day-picker-actions .primary{background:#007d82;color:#fff}
+      .pv-day-picker-actions .ghost{background:#eef5f5;color:#1d3338}
+      .stop-card{position:relative}
+      .stop-card .pv-stop-media{flex:0 0 72px;width:72px;height:72px;border-radius:12px;overflow:hidden;background:#e8f0f0;align-self:flex-start}
+      .stop-card .pv-stop-media img{width:100%;height:100%;object-fit:cover;display:block}
+      .stop-card .pv-stop-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+      .stop-card .pv-stop-extras label{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:.78rem;font-weight:700;color:#3d5960}
+      .stop-card .pv-stop-extras select{border:1px solid #c9dbdb;border-radius:10px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%)}
+      .stop-card .pv-stop-links{display:flex;flex-wrap:wrap;gap:6px}
+      .stop-card .pv-stop-links a{appearance:none;display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border:1px solid #b9d0d0;border-radius:999px;background:#fff;color:#124048;font:600 11px inherit;text-decoration:none}
       .pv-day-weather,.pv-links-box,.pv-fx-calc{margin:12px 0 14px;padding:14px 16px;border:1px solid #d9e7e7;border-radius:16px;background:#fff}
       .pv-day-weather .pv-block-title,.pv-links-box .pv-block-title,.pv-fx-calc .pv-block-title{margin:0 0 10px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
       .pv-day-weather .pv-block-meta,.pv-fx-calc .pv-block-meta{margin:0 0 10px;font-size:.86rem;color:#5b7076}
@@ -235,7 +267,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102i";
+    style.dataset.pvReady = "20261102k";
   }
 
   function fabNodes() {
@@ -604,6 +636,132 @@
       days.push(new Date(t).toISOString().slice(0, 10));
     }
     return days;
+  }
+
+  const STOP_CATEGORIES = ["Visita", "Spiaggia", "Cibo", "Trasporto", "Alloggio", "Altro"];
+
+  function normalizeStopCategory(cat) {
+    const c = String(cat || "").trim();
+    if (STOP_CATEGORIES.includes(c)) return c;
+    const q = c.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+    if (/cibo|food|ristor|cafe|bar|pub|serata|nightlife|mangiar/.test(q)) return "Cibo";
+    if (/spiaggia|beach|mare|surf/.test(q)) return "Spiaggia";
+    if (/hotel|alloggio|sleep|lodging|bnb|ostello/.test(q)) return "Alloggio";
+    if (/trasporto|transport|bus|taxi|flight|aereo|traghetto|treno/.test(q)) return "Trasporto";
+    if (/shop|shopping|mercato|souvenir/.test(q)) return "Altro";
+    if (/natur|park|viewpoint|famigli|visita|muse|attrac|luogo/.test(q)) return "Visita";
+    return "Altro";
+  }
+
+  function formatDayShort(iso) {
+    try {
+      return new Intl.DateTimeFormat("it-IT", {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }).format(new Date(iso + "T12:00:00Z"));
+    } catch {
+      return iso;
+    }
+  }
+
+  function formatDayLong(iso) {
+    try {
+      return new Intl.DateTimeFormat("it-IT", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+      }).format(new Date(iso + "T12:00:00Z"));
+    } catch {
+      return iso;
+    }
+  }
+
+  function tidyExtract(text) {
+    return String(text || "")
+      .replace(/https?:\/\/\S+/gi, "")
+      .replace(/(?:TripAdvisor|Maps|Wiki)\s*:\s*/gi, "")
+      .replace(/\n{2,}/g, "\n")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  function placeImageUrl(place) {
+    if (place?.image && /^https?:\/\//i.test(place.image)) return place.image;
+    const seed = encodeURIComponent(String(place?.title || "place").slice(0, 40));
+    return `https://picsum.photos/seed/${seed}/320/240`;
+  }
+
+  function findStopByTitle(trip, title) {
+    const key = String(title || "")
+      .trim()
+      .toLowerCase();
+    if (!key) return null;
+    return (trip.stops || []).find((s) => String(s.title || "").toLowerCase() === key) || null;
+  }
+
+  function chooseDayDialog({ title, days, trip, currentDay = "", message = "", confirmLabel = "Conferma" }) {
+    return new Promise((resolve) => {
+      const existing = document.getElementById("pv-day-picker");
+      if (existing) existing.remove();
+      const overlay = document.createElement("div");
+      overlay.id = "pv-day-picker";
+      overlay.className = "pv-day-picker";
+      const stops = trip?.stops || [];
+      const dayButtons = (days || [])
+        .map((d, i) => {
+          const count = stops.filter((s) => s.day === d).length;
+          const selected = d === currentDay ? " selected" : "";
+          const tappe = count === 1 ? "1 tappa" : `${count} tappe`;
+          return `<button type="button" class="pv-day-pick-btn${selected}" data-day="${escapeHtml(d)}">
+            <strong>Giorno ${i + 1}</strong>
+            <span>${escapeHtml(formatDayLong(d))}</span>
+            <em>${tappe}</em>
+          </button>`;
+        })
+        .join("");
+      overlay.innerHTML = `
+        <div class="pv-day-picker-sheet" role="dialog" aria-modal="true" aria-label="Scegli il giorno">
+          <h3>${escapeHtml(title || "Scegli il giorno")}</h3>
+          ${message ? `<p class="pv-day-picker-msg">${escapeHtml(message)}</p>` : ""}
+          <div class="pv-day-pick-grid">
+            ${dayButtons}
+            <button type="button" class="pv-day-pick-btn${currentDay === "" ? " selected" : ""}" data-day="">
+              <strong>Da decidere</strong>
+              <span>Senza giorno fisso</span>
+              <em>poi lo sposti</em>
+            </button>
+          </div>
+          <div class="pv-day-picker-actions">
+            <button type="button" class="ghost" data-act="cancel">Annulla</button>
+            <button type="button" class="primary" data-act="ok">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      let chosen = currentDay || "";
+      const syncSel = () => {
+        overlay.querySelectorAll(".pv-day-pick-btn").forEach((btn) => {
+          btn.classList.toggle("selected", (btn.dataset.day || "") === chosen);
+        });
+      };
+      overlay.querySelectorAll(".pv-day-pick-btn").forEach((btn) => {
+        btn.onclick = () => {
+          chosen = btn.dataset.day || "";
+          syncSel();
+        };
+      });
+      const close = (value) => {
+        overlay.remove();
+        resolve(value);
+      };
+      overlay.querySelector('[data-act="cancel"]').onclick = () => close(null);
+      overlay.querySelector('[data-act="ok"]').onclick = () => close(chosen);
+      overlay.addEventListener("click", (ev) => {
+        if (ev.target === overlay) close(null);
+      });
+    });
   }
 
   async function geocodeDestination(q) {
@@ -976,10 +1134,20 @@
         osmTags: ["tourism:museum", "tourism:gallery"],
       };
     }
-    if (/natur|parco|escurs|trekking|cascata|spiaggia|viewpoint|panorama/.test(q)) {
+    if (/spiaggia|beach|mare/.test(q)) {
       return {
         kind: "nature",
-        category: "Natura",
+        category: "Spiaggia",
+        labelSingular: "spiaggia",
+        labelPlural: "spiagge e mare",
+        query: "beach",
+        osmTags: ["natural:beach", "leisure:beach_resort"],
+      };
+    }
+    if (/natur|parco|escurs|trekking|cascata|viewpoint|panorama/.test(q)) {
+      return {
+        kind: "nature",
+        category: "Visita",
         labelSingular: "luogo natura",
         labelPlural: "luoghi natura e panorami",
         query: "viewpoint",
@@ -989,7 +1157,7 @@
     if (/shopping|negozi|mercato|souvenir/.test(q)) {
       return {
         kind: "shop",
-        category: "Shopping",
+        category: "Altro",
         labelSingular: "posto shopping",
         labelPlural: "posti shopping",
         query: "market",
@@ -999,7 +1167,7 @@
     if (/notte|locali|musica|divert/.test(q)) {
       return {
         kind: "cafe",
-        category: "Serata",
+        category: "Cibo",
         labelSingular: "locale serale",
         labelPlural: "locali serali",
         query: "nightlife",
@@ -1009,7 +1177,7 @@
     if (/bambin|famigli|kids/.test(q)) {
       return {
         kind: "attraction",
-        category: "Famiglia",
+        category: "Visita",
         labelSingular: "idea per famiglie",
         labelPlural: "idee per famiglie",
         query: "attraction",
@@ -1198,7 +1366,7 @@
               seen.add(key);
               places.push({
                 title: name.slice(0, 120),
-                category: intent.category,
+                category: normalizeStopCategory(intent.category),
                 kind: intent.kind === "restaurant" || intent.kind === "cafe" ? intent.kind : "wikivoyage",
                 lat: null,
                 lng: null,
@@ -1247,7 +1415,7 @@
     return [
       {
         title: `${topicIt} su TripAdvisor`,
-        category: intent.category,
+        category: normalizeStopCategory(intent.category),
         kind: "web",
         extract: `Risultati e recensioni su TripAdvisor per ${qCity}.`,
         address: "TripAdvisor",
@@ -1259,7 +1427,7 @@
       },
       {
         title: `${topicIt} su Google Maps`,
-        category: intent.category,
+        category: normalizeStopCategory(intent.category),
         kind: "web",
         extract: `Mappa e indicazioni per ${topicIt} a ${qCity}.`,
         address: "Google Maps",
@@ -1271,7 +1439,7 @@
       },
       {
         title: `Guida Wikivoyage — ${qCity}`,
-        category: intent.category,
+        category: normalizeStopCategory(intent.category),
         kind: "web",
         extract: "Guida di viaggio libera (Wikimedia): sezioni Eat / See / Do aggiornate dalla community.",
         address: "Wikivoyage",
@@ -1283,7 +1451,7 @@
       },
       {
         title: `Lonely Planet — ${qCity}`,
-        category: intent.category,
+        category: normalizeStopCategory(intent.category),
         kind: "web",
         extract: `Articoli e consigli Lonely Planet su ${qCity}.`,
         address: "Lonely Planet",
@@ -1319,7 +1487,7 @@
       seen.add(key);
       places.push({
         title: String(name).slice(0, 120),
-        category: intent.category,
+        category: normalizeStopCategory(intent.category),
         kind: props.osm_value || props.type || intent.kind,
         lat: Number.isFinite(plat) ? plat : null,
         lng: Number.isFinite(plng) ? plng : null,
@@ -1410,7 +1578,7 @@
           seen.add(String(name).toLowerCase());
           places.push({
             title: String(name).slice(0, 120),
-            category: intent.category,
+            category: normalizeStopCategory(intent.category),
             kind: el.tags?.amenity || el.tags?.tourism || intent.kind,
             lat: el.lat ?? el.center?.lat ?? null,
             lng: el.lon ?? el.center?.lon ?? null,
@@ -1600,19 +1768,16 @@
       card.className = "pv-place-card";
       const isWeb = Boolean(poi.webOnly);
       const meta = placeKindMeta(isWeb ? "web" : poi.kind || poi.category);
-      const extract = poi.extract || poi.notes || poi.address || "";
+      const extract = tidyExtract(poi.extract || poi.notes || poi.address || "");
       const dayLabel = poi.dayHint ? `Giorno ${poi.dayHint}` : poi.dayLabel || "";
+      const thumb = placeImageUrl(poi);
       card.innerHTML = `
-        ${
-          poi.image
-            ? `<img src="${escapeHtml(poi.image)}" alt="" loading="lazy" />`
-            : `<div class="pv-ph" aria-hidden="true">${escapeHtml(meta.label)}</div>`
-        }
+        <img src="${escapeHtml(thumb)}" alt="" loading="lazy" />
         <div>
           <span class="pv-kind-tag">${escapeHtml(meta.label)}</span>
           ${dayLabel ? `<span class="pv-kind-tag" style="background:#fff3cd;color:#7a5b00">${escapeHtml(dayLabel)}</span>` : ""}
           <strong>${escapeHtml(poi.title)}</strong>
-          <p class="pv-extract">${escapeHtml(extract || "Apri i link per dettagli e recensioni.")}</p>
+          <p class="pv-extract">${escapeHtml(extract || "Scegli il giorno e aggiungilo all’itinerario.")}</p>
           <div class="pv-card-actions">
             ${
               isWeb
@@ -1683,6 +1848,24 @@
     return out;
   }
 
+  function buildStopFromPoi(poi, day) {
+    const notes = [tidyExtract(poi.notes || poi.extract || poi.why || ""), poi.image ? `Foto: ${poi.image}` : ""]
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, 3000);
+    return {
+      id: uid(),
+      title: String(poi.title || "Luogo").slice(0, 120),
+      day: day || "",
+      time: "",
+      category: normalizeStopCategory(poi.category || "Visita"),
+      address: String(poi.address || "").slice(0, 300),
+      notes,
+      lat: poi.lat ?? null,
+      lng: poi.lng ?? null,
+    };
+  }
+
   async function addManyPlaces(pois, spreadDays) {
     const list = (pois || []).filter((p) => p && !p.webOnly);
     if (!list.length) return;
@@ -1692,35 +1875,46 @@
       if (!Array.isArray(trip.stops)) trip.stops = [];
       const days = tripDays(trip);
       let added = 0;
+      let skipped = 0;
+      let targetDay = null;
+      if (!spreadDays && days.length) {
+        targetDay = await chooseDayDialog({
+          title: `Aggiungi ${list.length} posti`,
+          message: "Scegli in quale giorno metterli (oppure distribuiscili uno per uno con «Distribuisci sui giorni»).",
+          days,
+          trip,
+          currentDay: days[0] || "",
+          confirmLabel: "Aggiungi qui",
+        });
+        if (targetDay === null) return;
+      }
       list.forEach((poi, i) => {
-        const exists = trip.stops.some((s) => String(s.title || "").toLowerCase() === poi.title.toLowerCase());
-        if (exists) return;
+        const exists = findStopByTitle(trip, poi.title);
+        if (exists) {
+          skipped += 1;
+          return;
+        }
         let day = "";
         if (poi.dayHint && days[poi.dayHint - 1]) day = days[poi.dayHint - 1];
         else if (spreadDays && days.length) day = days[i % days.length];
+        else if (targetDay != null) day = targetDay;
         else if (days.length) day = days[Math.min(trip.stops.length, days.length - 1)];
-        trip.stops.push({
-          id: uid(),
-          title: poi.title.slice(0, 120),
-          day: day || "",
-          time: "",
-          category: poi.category || "Visita",
-          address: (poi.address || "").slice(0, 300),
-          notes: (poi.notes || poi.extract || poi.why || "").slice(0, 3000),
-          lat: poi.lat ?? null,
-          lng: poi.lng ?? null,
-        });
+        trip.stops.push(buildStopFromPoi(poi, day));
         added += 1;
       });
       if (!added) {
-        alert("Questi posti sono già nell’itinerario.");
+        alert(
+          skipped
+            ? `Questi posti sono già nell’itinerario (${skipped}). Usa «Aggiungi all’itinerario» su uno solo per spostarlo di giorno.`
+            : "Nessun posto da aggiungere."
+        );
         return;
       }
       await saveTrip(auth, trip, data.revision);
       alert(
         spreadDays
-          ? `Aggiunti ${added} posti distribuiti sui giorni.`
-          : `Aggiunti ${added} posti all’itinerario.`
+          ? `Aggiunti ${added} posti distribuiti sui giorni.${skipped ? ` ${skipped} già presenti saltati.` : ""}`
+          : `Aggiunti ${added} posti all’itinerario.${skipped ? ` ${skipped} già presenti saltati.` : ""}`
       );
     } catch (err) {
       alert(err instanceof Error ? err.message : "Non riuscito");
@@ -1741,23 +1935,53 @@
       const { auth, data } = await loadTrip();
       const trip = structuredClone(data.trip);
       if (!Array.isArray(trip.stops)) trip.stops = [];
-      const exists = trip.stops.some((s) => String(s.title || "").toLowerCase() === poi.title.toLowerCase());
-      if (exists) {
-        btn.textContent = "Già dentro";
+      const days = tripDays(trip);
+      const existing = findStopByTitle(trip, poi.title);
+      if (existing) {
+        const dayIdx = existing.day ? days.indexOf(existing.day) : -1;
+        const where =
+          dayIdx >= 0 ? `Giorno ${dayIdx + 1} (${formatDayLong(existing.day)})` : "senza giorno fissato";
+        const nextDay = await chooseDayDialog({
+          title: "Luogo già in itinerario",
+          message: `«${poi.title}» c’è già (${where}). Scegli in quale giorno lasciarlo, oppure Annulla per non modificarlo.`,
+          days,
+          trip,
+          currentDay: existing.day || "",
+          confirmLabel: "Sposta qui",
+        });
+        if (nextDay === null) {
+          btn.disabled = false;
+          btn.textContent = "Già dentro";
+          return;
+        }
+        if (nextDay === (existing.day || "")) {
+          btn.textContent = "Già lì ✓";
+          return;
+        }
+        existing.day = nextDay;
+        existing.category = normalizeStopCategory(existing.category);
+        await saveTrip(auth, trip, data.revision);
+        btn.textContent = nextDay ? "Spostato ✓" : "Senza giorno ✓";
         return;
       }
-      const days = tripDays(trip);
-      trip.stops.push({
-        id: uid(),
-        title: poi.title.slice(0, 120),
-        day: days[trip.stops.length % Math.max(days.length, 1)] || "",
-        time: "",
-        category: poi.category || "Visita",
-        address: (poi.address || "").slice(0, 300),
-        notes: (poi.notes || "").slice(0, 3000),
-        lat: poi.lat ?? null,
-        lng: poi.lng ?? null,
+      const preferred =
+        poi.dayHint && days[poi.dayHint - 1]
+          ? days[poi.dayHint - 1]
+          : days[Math.min(trip.stops.length, Math.max(days.length - 1, 0))] || "";
+      const chosen = await chooseDayDialog({
+        title: `Aggiungi «${poi.title}»`,
+        message: "Scegli il giorno in cui vuoi visitarlo. Potrai spostarlo dopo dall’itinerario.",
+        days,
+        trip,
+        currentDay: preferred,
+        confirmLabel: "Aggiungi",
       });
+      if (chosen === null) {
+        btn.disabled = false;
+        btn.textContent = prev;
+        return;
+      }
+      trip.stops.push(buildStopFromPoi(poi, chosen));
       await saveTrip(auth, trip, data.revision);
       btn.textContent = "Aggiunto ✓";
     } catch (err) {
@@ -2217,14 +2441,15 @@ Regole pv-places:
       seen.add(key);
       let hit = {
         title: ap.title,
-        category:
+        category: normalizeStopCategory(
           ap.kind === "restaurant" || ap.kind === "cafe"
             ? "Cibo"
             : ap.kind === "nature"
-              ? "Natura"
+              ? "Visita"
               : ap.kind === "shop"
-                ? "Shopping"
-                : "Visita",
+                ? "Altro"
+                : "Visita"
+        ),
         kind: ap.kind || "attraction",
         lat: null,
         lng: null,
@@ -2470,20 +2695,28 @@ Regole pv-places:
       if (!Array.isArray(trip.stops)) trip.stops = [];
       const before = trip.stops.length;
       const existing = new Set(trip.stops.map((s) => String(s.title || "").toLowerCase()));
+      const days = tripDays(trip);
+      let chosenDay = null;
+      if (days.length) {
+        chosenDay = await chooseDayDialog({
+          title: "Aggiungi i luoghi selezionati",
+          message: "Scegli il giorno per i nuovi posti (i duplicati verranno saltati).",
+          days,
+          trip,
+          currentDay: days[0] || "",
+          confirmLabel: "Aggiungi",
+        });
+        if (chosenDay === null) {
+          status.textContent = "Aggiunta annullata.";
+          return;
+        }
+      }
       for (const idx of checked) {
         const poi = pendingPois[idx];
         if (!poi || existing.has(poi.title.toLowerCase())) continue;
-        trip.stops.push({
-          id: uid(),
-          title: poi.title.slice(0, 120),
-          day: poi.day || "",
-          time: "",
-          category: poi.category || "Visita",
-          address: (poi.address || "").slice(0, 300),
-          notes: (poi.notes || "").slice(0, 3000),
-          lat: poi.lat ?? null,
-          lng: poi.lng ?? null,
-        });
+        const day =
+          poi.day && days.includes(poi.day) ? poi.day : chosenDay != null ? chosenDay : poi.day || "";
+        trip.stops.push(buildStopFromPoi({ ...poi, day }, day));
         existing.add(poi.title.toLowerCase());
       }
       const added = trip.stops.length - before;
@@ -2948,17 +3181,7 @@ Regole pv-places:
 
   function injectDistancesAndLegend() {
     ensureMapIframe();
-    const iframe = document.querySelector('iframe[src*="map.html"]');
-    if (iframe && !iframe.parentElement.querySelector(".pv-day-legend")) {
-      const legend = document.createElement("div");
-      legend.className = "pv-day-legend";
-      tripDaysFromDom().forEach((label, i) => {
-        const span = document.createElement("span");
-        span.innerHTML = `<i style="background:${DAY_COLORS[i % DAY_COLORS.length]}"></i>${escapeHtml(label)}`;
-        legend.appendChild(span);
-      });
-      if (legend.childElementCount) iframe.parentElement.appendChild(legend);
-    }
+    void renderMapDayLegend();
 
     // Fallback distance notes when React route-hop is missing (e.g. unordered lists).
     // Mark attempted so trips with 0 geo-stops don't refetch forever (save races).
@@ -2966,6 +3189,82 @@ Regole pv-places:
     if (document.documentElement.dataset.pvDistAttempted === "1") return;
     document.documentElement.dataset.pvDistAttempted = "1";
     void annotateStopDistances();
+  }
+
+  async function renderMapDayLegend() {
+    const iframe = document.querySelector(".map-card iframe[src*='map.html'], iframe.travel-map, iframe[src*='map.html']");
+    if (!iframe || !tripAuth()) return;
+    const host = iframe.closest(".map-card") || iframe.parentElement;
+    if (!host) return;
+    try {
+      const { data } = await loadTrip();
+      const trip = data.trip;
+      const days = tripDays(trip);
+      if (!days.length) {
+        host.querySelectorAll(".pv-day-legend").forEach((el) => el.remove());
+        return;
+      }
+      const selectedBtn = document.querySelector(".day-strip button.selected");
+      const selectedIdx = selectedBtn
+        ? [...document.querySelectorAll(".day-strip button")].indexOf(selectedBtn)
+        : -1;
+      const signature = days
+        .map((day, i) => {
+          const count = (trip.stops || []).filter((s) => s.day === day).length;
+          return `${day}:${count}:${i === selectedIdx ? 1 : 0}`;
+        })
+        .join("|");
+      let legend = host.querySelector(":scope > .pv-day-legend");
+      if (legend?.dataset.pvSig === signature) {
+        // Keep selection highlight in sync without rebuilding.
+        legend.querySelectorAll("button").forEach((btn, i) => {
+          btn.classList.toggle("selected", i === selectedIdx);
+        });
+        return;
+      }
+      // Drop any stale/legacy legends (including wall-of-text ones).
+      host.querySelectorAll(".pv-day-legend").forEach((el) => el.remove());
+      legend = document.createElement("div");
+      legend.className = "pv-day-legend";
+      legend.dataset.pvSig = signature;
+      legend.innerHTML = `<div class="pv-day-legend-title">Giorni sulla mappa</div>`;
+      days.forEach((day, i) => {
+        const count = (trip.stops || []).filter((s) => s.day === day).length;
+        const tappe = count === 1 ? "1 tappa" : `${count} tappe`;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        if (i === selectedIdx) btn.classList.add("selected");
+        btn.innerHTML = `
+          <i style="background:${DAY_COLORS[i % DAY_COLORS.length]}"></i>
+          <span class="pv-day-legend-copy">
+            <strong>Giorno ${i + 1}</strong>
+            <em>${escapeHtml(formatDayShort(day))} · ${tappe}</em>
+          </span>
+        `;
+        btn.onclick = () => void focusTripDay(i);
+        legend.appendChild(btn);
+      });
+      const caption = host.querySelector(".map-caption");
+      if (caption) caption.insertAdjacentElement("afterend", legend);
+      else host.appendChild(legend);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function focusTripDay(dayIndex) {
+    const itineraryTab = [...document.querySelectorAll("button, [role='tab'], a")].find((el) =>
+      /^itinerario$/i.test((el.textContent || "").trim())
+    );
+    itineraryTab?.click();
+    await new Promise((r) => setTimeout(r, 120));
+    const buttons = [...document.querySelectorAll(".day-strip button")];
+    const btn = buttons[dayIndex];
+    if (btn) {
+      btn.click();
+      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+    void syncDayWeather(true);
   }
 
   async function annotateStopDistances() {
@@ -3497,11 +3796,175 @@ Regole pv-places:
   }
 
   function tripDaysFromDom() {
-    const labels = [...document.querySelectorAll("button,div,span")]
+    // Prefer real day-strip labels ("Giorno N") — never the concatenated button textContent.
+    const labels = [...document.querySelectorAll(".day-strip button > span:first-child")]
       .map((el) => (el.textContent || "").trim())
-      .filter((t) => /^Giorno\s+\d+/i.test(t))
-      .slice(0, 12);
-    return [...new Set(labels)];
+      .filter((t) => /^Giorno\s+\d+$/i.test(t));
+    return [...new Set(labels)].slice(0, 31);
+  }
+
+  async function repairInvalidStopCategories() {
+    if (!tripAuth()) return;
+    if (document.documentElement.dataset.pvCatRepair === "1") return;
+    try {
+      const { auth, data } = await loadTrip();
+      const trip = structuredClone(data.trip);
+      if (!Array.isArray(trip.stops) || !trip.stops.length) {
+        document.documentElement.dataset.pvCatRepair = "1";
+        return;
+      }
+      let changed = 0;
+      for (const stop of trip.stops) {
+        const next = normalizeStopCategory(stop.category);
+        if (next !== stop.category) {
+          stop.category = next;
+          changed += 1;
+        }
+      }
+      document.documentElement.dataset.pvCatRepair = "1";
+      if (!changed) return;
+      await saveTrip(auth, trip, data.revision);
+    } catch {
+      document.documentElement.dataset.pvCatRepair = "1";
+    }
+  }
+
+  function extractStopImage(stop) {
+    const notes = String(stop?.notes || "");
+    const m = notes.match(/Foto:\s*(https?:\/\/\S+)/i) || notes.match(/(https?:\/\/\S+\.(?:jpe?g|png|webp)(?:\?\S*)?)/i);
+    if (m) return m[1];
+    return placeImageUrl(stop);
+  }
+
+  function extractStopLinks(stop) {
+    const notes = String(stop?.notes || "");
+    const links = [];
+    const ta = notes.match(/https?:\/\/(?:www\.)?tripadvisor\.[^\s]+/i);
+    if (ta) links.push({ label: "TripAdvisor", href: ta[0] });
+    if (stop?.address) {
+      links.push({
+        label: "Mappe",
+        href: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stop.address || stop.title)}`,
+      });
+    } else if (stop?.lat != null && stop?.lng != null) {
+      links.push({
+        label: "Mappe",
+        href: `https://www.openstreetmap.org/?mlat=${stop.lat}&mlon=${stop.lng}#map=15/${stop.lat}/${stop.lng}`,
+      });
+    }
+    return links;
+  }
+
+  async function enhanceItineraryStops() {
+    if (!tripAuth()) return;
+    const list = document.querySelector(".stops-list");
+    if (!list) return;
+    const cards = [...list.querySelectorAll("article.stop-card")];
+    if (!cards.length) return;
+    let auth;
+    let data;
+    try {
+      ({ auth, data } = await loadTrip());
+    } catch {
+      return;
+    }
+    const trip = structuredClone(data.trip);
+    const days = tripDays(trip);
+    let dirty = false;
+
+    for (const card of cards) {
+      const title = card.querySelector("h3")?.textContent?.trim() || "";
+      const stop = findStopByTitle(trip, title);
+      if (!stop) continue;
+
+      if (!card.querySelector(".pv-stop-media")) {
+        const media = document.createElement("div");
+        media.className = "pv-stop-media";
+        media.innerHTML = `<img src="${escapeHtml(extractStopImage(stop))}" alt="" loading="lazy" />`;
+        const symbol = card.querySelector(".stop-symbol");
+        if (symbol) symbol.insertAdjacentElement("afterend", media);
+        else card.insertBefore(media, card.firstChild);
+      }
+
+      // Hide raw Foto:/TripAdvisor URL lines from notes — links live in the chip row.
+      const notesEl = [...card.querySelectorAll(".stop-body > p")].find((p) =>
+        /https?:\/\/|Foto:|TripAdvisor:/i.test(p.textContent || "")
+      );
+      if (notesEl && !notesEl.dataset.pvCleaned) {
+        const cleaned = tidyExtract(notesEl.textContent || "");
+        notesEl.dataset.pvCleaned = "1";
+        if (cleaned) notesEl.textContent = cleaned;
+        else notesEl.remove();
+      }
+
+      let extras = card.querySelector(".pv-stop-extras");
+      if (!extras) {
+        extras = document.createElement("div");
+        extras.className = "pv-stop-extras";
+        const body = card.querySelector(".stop-body") || card;
+        body.appendChild(extras);
+      }
+
+      if (!extras.querySelector("select[data-pv-day]")) {
+        const label = document.createElement("label");
+        label.innerHTML = `<span>Giorno</span>`;
+        const select = document.createElement("select");
+        select.dataset.pvDay = stop.id;
+        select.innerHTML =
+          `<option value="">Da decidere</option>` +
+          days
+            .map((d, i) => {
+              const sel = d === (stop.day || "") ? " selected" : "";
+              return `<option value="${escapeHtml(d)}"${sel}>Giorno ${i + 1} · ${escapeHtml(formatDayShort(d))}</option>`;
+            })
+            .join("");
+        select.onchange = async () => {
+          try {
+            const latest = await loadTrip({ force: true });
+            const nextTrip = structuredClone(latest.data.trip);
+            const target = (nextTrip.stops || []).find((s) => s.id === stop.id) || findStopByTitle(nextTrip, title);
+            if (!target) return;
+            target.day = select.value || "";
+            target.category = normalizeStopCategory(target.category);
+            await saveTrip(latest.auth, nextTrip, latest.data.revision);
+            select.blur();
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Spostamento non riuscito");
+          }
+        };
+        label.appendChild(select);
+        extras.appendChild(label);
+      }
+
+      if (!extras.querySelector(".pv-stop-links")) {
+        const links = extractStopLinks(stop);
+        if (links.length) {
+          const wrap = document.createElement("div");
+          wrap.className = "pv-stop-links";
+          wrap.innerHTML = links
+            .map(
+              (l) =>
+                `<a href="${escapeHtml(l.href)}" target="_blank" rel="noopener noreferrer">${escapeHtml(l.label)}</a>`
+            )
+            .join("");
+          extras.appendChild(wrap);
+        }
+      }
+
+      const normalized = normalizeStopCategory(stop.category);
+      if (normalized !== stop.category) {
+        stop.category = normalized;
+        dirty = true;
+      }
+    }
+
+    if (dirty) {
+      try {
+        await saveTrip(auth, trip, data.revision);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   // Enrich map postMessage with day colors by patching postMessage calls.
@@ -4539,6 +5002,8 @@ Regole pv-places:
     preferIcelandCover();
     ensureShareToast();
     injectCloudStatusBanner();
+    void repairInvalidStopCategories();
+    void enhanceItineraryStops();
   }
 
   function markPrivateBudgetLabels() {
@@ -4593,6 +5058,7 @@ Regole pv-places:
     chatAskBusy = false;
     pendingPois = [];
     delete document.documentElement.dataset.pvDistAttempted;
+    delete document.documentElement.dataset.pvCatRepair;
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);
