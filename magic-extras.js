@@ -761,6 +761,17 @@
 
   function renderFab() {
     if (!document.body.classList.contains("pv-account-ready")) return;
+    // Hide Pronty on login/home — only while a trip is open (avoids covering the gate).
+    try {
+      const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+      if (!(p.get("trip") && p.get("key"))) {
+        document.getElementById(ROOT_ID)?.remove();
+        return;
+      }
+    } catch {
+      document.getElementById(ROOT_ID)?.remove();
+      return;
+    }
     if (document.querySelector("main.loading")) return;
 
     const root = ensureRoot();

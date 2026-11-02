@@ -1,6 +1,6 @@
 /**
- * Pronti? VIA! — free UX suite (layout + features).
- * No paid services: localStorage, Netlify share/trips already in use.
+ * Pronti? VIA! — free UX suite (layout-safe).
+ * Tools live in a modal from the account chip — no sticky strips over the trip.
  */
 (() => {
   if (window.__pvUxSuiteBound) return;
@@ -12,23 +12,10 @@
   const ONBOARD_KEY = "viavia-onboard-v1";
   const INVITE_LOCAL_KEY = "viavia-invite-codes-v1";
 
-  const TAB_SHORT = {
-    "Spese di gruppo": "Spese",
-    Prenotazioni: "Prenota",
-    Documenti: "Docs",
-    Preventivo: "Preventivo",
-    Itinerario: "Piano",
-    Esplora: "Esplora",
-    Luoghi: "Luoghi",
-    Valigia: "Valigia",
-    Note: "Note",
-  };
-
   const TEMPLATES = [
     {
       id: "congresso",
       title: "Congresso / evento",
-      destination: "",
       days: 5,
       notes: "Hotel vicino al venue, trasferimenti, networking.",
       checklist: ["Badge / biglietto evento", "Biglietti viaggio", "Hotel confermato", "eSIM / roaming"],
@@ -36,7 +23,6 @@
     {
       id: "weekend",
       title: "Weekend fuori porta",
-      destination: "",
       days: 3,
       notes: "Ritmi leggeri, 1–2 tappe al giorno.",
       checklist: ["Alloggio", "Trasporto", "Lista posti da vedere"],
@@ -44,7 +30,6 @@
     {
       id: "road",
       title: "Road trip",
-      destination: "",
       days: 8,
       notes: "Tappe guida, pause, rifornimenti.",
       checklist: ["Auto / noleggio", "Assicurazione", "Mappe offline", "Perni di ricarica"],
@@ -61,29 +46,20 @@
     style.textContent = `
       :root{
         --pv-ink:#12343a; --pv-muted:#3d5a62; --pv-line:#cfe0e3; --pv-teal:#007d82;
-        --pv-sand:#eef6f6; --pv-warn:#7a4b00; --pv-danger:#7a2e28;
       }
-      body{color:var(--pv-ink)}
-      .small-note,.pv-tp-muted,#pv-local-only-banner,.demo-notice{color:var(--pv-muted)!important}
-      /* Tab fade + compact mobile labels */
-      .main-tabs{position:relative;scroll-padding-inline:12px}
-      .main-tabs{mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent)}
+      /* Compact mobile tab labels via CSS only — never rewrite React tab DOM */
       @media (max-width:720px){
-        .main-tabs button{font-size:12px!important;padding:12px 8px!important;gap:4px!important}
-        .main-tabs button .pv-tab-full{display:none}
-        .main-tabs button .pv-tab-short{display:inline}
+        [role="tablist"] [role="tab"]{font-size:12px!important;padding-inline:10px!important}
       }
-      .main-tabs button .pv-tab-short{display:none}
-      /* Cover hierarchy */
-      .trip-hero h1, .hero h1, [class*="cover"] h1{letter-spacing:-.03em;font-weight:800}
-      .trip-hero .meta, .hero .meta, .travelers{opacity:.92;font-size:.92em}
-      /* FAB safe area */
-      #pv-magic-root .pv-magic-btn, .pv-prev-launch{
+      /* Keep existing FABs clear of the home indicator */
+      #pv-magic-root .pv-magic-btn{
         bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
       }
-      .pv-prev-launch{bottom:calc(86px + env(safe-area-inset-bottom,0px))!important}
-      /* Toast */
+      .pv-prev-launch{
+        bottom:calc(86px + env(safe-area-inset-bottom,0px))!important;
+        right:calc(14px + env(safe-area-inset-right,0px))!important;
+      }
       #pv-ux-toast{
         position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));
         transform:translateX(-50%);z-index:130000;max-width:min(440px,92vw);
@@ -95,10 +71,9 @@
       #pv-ux-toast.ok{background:#0f5a40}
       #pv-ux-toast.warn{background:#7a4b00}
       #pv-ux-toast.err{background:#7a1f1f}
-      /* Empty states */
       .pv-empty-state{
         margin:12px 0 18px;padding:18px 16px;border:1px dashed var(--pv-line);
-        border-radius:16px;background:linear-gradient(180deg,#f7fbfb,#fff);text-align:center
+        border-radius:16px;background:#f7fbfb;text-align:center
       }
       .pv-empty-state h3{margin:0 0 6px;font-size:1.05rem}
       .pv-empty-state p{margin:0 0 12px;color:var(--pv-muted);font-size:.9rem}
@@ -106,47 +81,22 @@
         appearance:none;border:0;border-radius:999px;padding:10px 14px;font:700 13px inherit;
         background:var(--pv-teal);color:#fff;cursor:pointer
       }
-      /* Role badges */
       .members-list .pv-role-badge{
         display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;
         font-size:.68rem;font-weight:700;background:#e8f4f4;color:#0f5a5e
       }
       .members-list .pv-role-badge.guest{background:#fff3cd;color:#7a5b00}
-      /* Offline / role chips */
-      #pv-offline-chip,#pv-link-role-chip{
-        position:fixed;left:12px;z-index:99980;padding:6px 10px;border-radius:999px;
-        font:700 11px/1.2 inherit;box-shadow:0 6px 16px rgba(0,0,0,.12)
+      #pv-offline-chip{
+        position:fixed;left:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));
+        z-index:99980;padding:6px 10px;border-radius:999px;display:none;
+        font:700 11px/1.2 inherit;background:#7a1f1f;color:#fff;
+        box-shadow:0 6px 16px rgba(0,0,0,.12)
       }
-      #pv-offline-chip{bottom:calc(18px + env(safe-area-inset-bottom,0px));background:#7a1f1f;color:#fff;display:none}
       #pv-offline-chip.show{display:inline-flex}
-      #pv-link-role-chip{top:52px;background:#e8f4f4;color:#0f5a5e}
-      /* Toolbar suite — fixed under account chip so it is always visible */
-      #pv-ux-toolbar{
-        position:fixed;top:44px;left:0;right:0;z-index:99970;
-        display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start;
-        margin:0;padding:8px 12px;background:rgba(238,246,246,.96);
-        border-bottom:1px solid var(--pv-line);backdrop-filter:blur(8px);
-        max-height:42vh;overflow:auto;-webkit-overflow-scrolling:touch
+      #pv-account-chip #pv-ux-tools-btn{
+        border:0;border-radius:999px;padding:7px 12px;background:#007d82;color:#fff;
+        font:inherit;cursor:pointer;white-space:nowrap
       }
-      body.pv-account-ready.pv-ux-toolbar-on{padding-top:96px}
-      #pv-ux-toolbar .pv-ux-toolbar-label{
-        font:800 11px/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:var(--pv-teal);
-        margin-right:4px
-      }
-      #pv-ux-toolbar button,#pv-ux-search{
-        appearance:none;border:1px solid var(--pv-line);background:#fff;color:var(--pv-ink);
-        border-radius:999px;padding:8px 12px;font:650 12px inherit;cursor:pointer
-      }
-      #pv-ux-search{min-width:min(180px,55vw);flex:1 1 160px}
-      #pv-ux-search:focus{outline:2px solid rgba(0,125,130,.35);border-color:var(--pv-teal)}
-      #pv-ux-tools-fab{
-        position:fixed;left:calc(12px + env(safe-area-inset-left,0px));
-        bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:99975;
-        appearance:none;border:0;border-radius:999px;padding:12px 14px;
-        background:#007d82;color:#fff;font:800 13px inherit;cursor:pointer;
-        box-shadow:0 10px 28px rgba(0,80,90,.35)
-      }
-      /* Modal shell */
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
       .pv-ux-modal .pv-ux-back{position:absolute;inset:0;background:rgba(12,32,40,.45)}
@@ -156,18 +106,16 @@
         box-shadow:0 -18px 50px rgba(21,59,71,.18);color:var(--pv-ink)
       }
       .pv-ux-modal .pv-ux-sheet h2{margin:0 0 8px;font-size:1.25rem}
-      .pv-ux-modal .pv-ux-sheet h3{margin:14px 0 8px;font-size:1rem}
       .pv-ux-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
       .pv-ux-list li,.pv-ux-card{
         background:#fff;border:1px solid var(--pv-line);border-radius:14px;padding:12px
       }
       .pv-ux-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-      .pv-ux-actions button{
+      .pv-ux-actions button,#pv-ux-search-go{
         appearance:none;border:0;border-radius:999px;padding:11px 14px;font:700 13px inherit;cursor:pointer
       }
-      .pv-ux-primary{background:var(--pv-teal);color:#fff}
+      .pv-ux-primary,#pv-ux-search-go{background:var(--pv-teal);color:#fff}
       .pv-ux-ghost{background:#eef5f5;color:var(--pv-ink)}
-      .pv-ux-danger{background:#f3e4e2;color:var(--pv-danger)}
       .pv-ux-close{position:absolute;top:10px;right:10px;border:0;width:36px;height:36px;border-radius:999px;background:#eef5f5;font-size:1.2rem;cursor:pointer}
       .pv-compare-bar{height:10px;border-radius:999px;background:#e8f0f0;overflow:hidden;margin:8px 0}
       .pv-compare-bar > span{display:block;height:100%;background:linear-gradient(90deg,#007d82,#2aa3a8)}
@@ -175,13 +123,20 @@
       .pv-onboard-steps{display:grid;gap:10px;margin:12px 0}
       .pv-onboard-steps div{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--pv-line)}
       .pv-onboard-steps strong{display:block;margin-bottom:4px}
+      #pv-ux-search-input{
+        width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;
+        border:1px solid var(--pv-line);font:inherit;margin:8px 0
+      }
+      .pv-ux-hit{outline:2px solid rgba(0,125,130,.45);outline-offset:2px;border-radius:8px}
       @media (min-width:720px){
         .pv-ux-modal{place-items:center;padding:24px 16px}
         .pv-ux-modal .pv-ux-sheet{border-radius:22px}
       }
-      /* Focus visible a11y */
-      .pv-ux-modal button:focus-visible,#pv-ux-toolbar button:focus-visible,#pv-ux-search:focus-visible{
+      .pv-ux-modal button:focus-visible,#pv-account-chip #pv-ux-tools-btn:focus-visible{
         outline:3px solid rgba(0,125,130,.45);outline-offset:2px
+      }
+      @media print{
+        #pv-account-chip,#pv-magic-root,#pv-ux-toast,#pv-offline-chip,.pv-prev-launch{display:none!important}
       }
     `;
   }
@@ -306,8 +261,7 @@
     modal.hidden = false;
     document.documentElement.style.overflow = "hidden";
     const sheet = modal.querySelector(".pv-ux-sheet");
-    const focusable = sheet.querySelector("button, [href], input, select, textarea");
-    focusable?.focus?.();
+    sheet.querySelector("button, [href], input, select, textarea")?.focus?.();
     onMount?.(modal.querySelector("#pv-ux-body"), modal);
     return modal;
   }
@@ -318,149 +272,110 @@
     document.documentElement.style.overflow = "";
   }
 
-  function shortenTabs() {
-    const tabs = document.querySelectorAll(
-      ".main-tabs button, .main-tabs [role='tab'], [role='tablist'] [role='tab'], [role='tablist'] button"
-    );
-    for (const btn of tabs) {
-      if (btn.dataset.pvShort) continue;
-      const raw = (btn.textContent || "").replace(/\s+/g, " ").trim();
-      if (!raw) continue;
-      const short = TAB_SHORT[raw] || raw;
-      const icon = btn.querySelector("svg");
-      btn.dataset.pvShort = "1";
-      btn.innerHTML = "";
-      if (icon) btn.appendChild(icon);
-      const full = document.createElement("span");
-      full.className = "pv-tab-full";
-      full.textContent = raw;
-      const sh = document.createElement("span");
-      sh.className = "pv-tab-short";
-      sh.textContent = short;
-      btn.appendChild(full);
-      btn.appendChild(sh);
-      // Help CSS target Radix tab strips too.
-      btn.closest("[role='tablist']")?.classList.add("main-tabs");
-    }
+  function cleanupLegacyChrome() {
+    document.getElementById("pv-ux-toolbar")?.remove();
+    document.getElementById("pv-ux-tools-fab")?.remove();
+    document.getElementById("pv-link-role-chip")?.remove();
+    document.body.classList.remove("pv-ux-toolbar-on");
   }
 
-  function injectEmptyStates() {
+  function injectToolsButton() {
+    const chip = document.getElementById("pv-account-chip");
     const auth = tripAuth();
-    if (!auth) {
-      document.querySelectorAll(".pv-empty-state").forEach((el) => el.remove());
+    const btn = document.getElementById("pv-ux-tools-btn");
+    if (!chip || chip.hidden || !auth) {
+      btn?.remove();
       return;
     }
-    const tappeZero = [...document.querySelectorAll("body *")].some(
-      (el) => /^(0 tappe|Nessuna tappa)/i.test((el.textContent || "").trim()) && el.children.length === 0
-    );
-    const itineraryHeading = [...document.querySelectorAll("h2")].find((h) =>
-      /il nostro itinerario/i.test(h.textContent || "")
-    );
-    if (itineraryHeading && tappeZero) {
-      let box = document.getElementById("pv-empty-itinerary");
-      if (!box) {
-        box = document.createElement("div");
-        box.id = "pv-empty-itinerary";
-        box.className = "pv-empty-state";
-        box.innerHTML = `<h3>Nessuna tappa ancora</h3><p>Inizia dal primo giorno o chiedi idee a Pronty.</p>
-          <button type="button" data-ux-add-stop>Aggiungi tappa</button>`;
-        itineraryHeading.parentElement?.after(box);
-        box.querySelector("[data-ux-add-stop]")?.addEventListener("click", () => {
-          [...document.querySelectorAll("button")]
-            .find((b) => /Aggiungi tappa/i.test(b.textContent || ""))
-            ?.click();
-        });
+    if (!btn) {
+      const next = document.createElement("button");
+      next.type = "button";
+      next.id = "pv-ux-tools-btn";
+      next.textContent = "Strumenti";
+      next.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openToolsMenu();
+      });
+      // Prefer before logout/delete so it stays visible.
+      const logout = chip.querySelector("button");
+      if (logout) chip.insertBefore(next, logout);
+      else chip.appendChild(next);
+    }
+  }
+
+  function openToolsMenu() {
+    const role = inferLinkRole();
+    openModal(
+      "Strumenti viaggio",
+      `<p class="pv-tp-muted" style="margin:0 0 10px;color:#3d5a62;font-size:.9rem">${escapeHtml(role)}</p>
+       <label for="pv-ux-search-input" style="font:700 12px inherit">Cerca nel viaggio</label>
+       <input id="pv-ux-search-input" type="search" placeholder="Es. hotel, volo, museo…" />
+       <div class="pv-ux-actions" style="margin-top:0">
+         <button type="button" id="pv-ux-search-go">Cerca</button>
+         <button type="button" class="pv-ux-ghost" id="pv-ux-search-clear">Azzera</button>
+       </div>
+       <div class="pv-ux-actions">
+         <button type="button" class="pv-ux-primary" data-ux="compare">Preventivo vs spese</button>
+         <button type="button" class="pv-ux-primary" data-ux="checklist">Pre-partenza</button>
+         <button type="button" class="pv-ux-primary" data-ux="invite">Codice invito</button>
+         <button type="button" class="pv-ux-ghost" data-ux="activity">Attività</button>
+         <button type="button" class="pv-ux-ghost" data-ux="templates">Template</button>
+         <button type="button" class="pv-ux-ghost" data-ux="revisions">Versioni</button>
+         <button type="button" class="pv-ux-ghost" data-ux="export">Export</button>
+       </div>`,
+      {
+        onMount: (body) => {
+          body.querySelector("#pv-ux-search-go")?.addEventListener("click", () => {
+            const q = body.querySelector("#pv-ux-search-input")?.value || "";
+            const n = highlightSearch(q);
+            closeModal();
+            toast(n ? `${n} risultati evidenziati` : "Nessun risultato", n ? "ok" : "warn");
+          });
+          body.querySelector("#pv-ux-search-clear")?.addEventListener("click", () => {
+            highlightSearch("");
+            toast("Ricerca azzerata", "ok");
+          });
+          body.querySelector("#pv-ux-search-input")?.addEventListener("keydown", (ev) => {
+            if (ev.key === "Enter") body.querySelector("#pv-ux-search-go")?.click();
+          });
+          body.querySelectorAll("button[data-ux]").forEach((b) => {
+            b.addEventListener("click", () => {
+              closeModal();
+              runUxAction(b.getAttribute("data-ux"));
+            });
+          });
+        },
       }
-    } else {
-      document.getElementById("pv-empty-itinerary")?.remove();
-    }
-
-    // Expenses empty
-    const expHead = [...document.querySelectorAll("h2,h3")].find((h) =>
-      /spese di gruppo|bilancio/i.test(h.textContent || "")
     );
-    const noExp = /nessuna spesa|0 spese|ancora nessuna spesa/i.test(document.body.innerText || "");
-    if (expHead && noExp && document.querySelector('[data-state="active"]')?.textContent?.match(/Spese/i)) {
-      let box = document.getElementById("pv-empty-expenses");
-      if (!box) {
-        box = document.createElement("div");
-        box.id = "pv-empty-expenses";
-        box.className = "pv-empty-state";
-        box.innerHTML = `<h3>Nessuna spesa ancora</h3><p>Registra la prima spesa o confrontala col preventivo.</p>
-          <button type="button" data-ux-compare-cta>Confronta col preventivo</button>`;
-        expHead.parentElement?.appendChild(box);
-        box.querySelector("[data-ux-compare-cta]")?.addEventListener("click", () => void showCompare());
+  }
+
+  function inferLinkRole() {
+    const notes = [...document.querySelectorAll(".small-note, .share-note, [class*='share']")]
+      .map((el) => el.textContent || "")
+      .join(" ");
+    if (/solo consultazione/i.test(notes)) return "Link: solo lettura";
+    if (/modifiche condivise|puoi modificare/i.test(notes)) return "Link: puoi modificare";
+    return "Strumenti gratuiti per questo viaggio";
+  }
+
+  function highlightSearch(q) {
+    document.querySelectorAll(".pv-ux-hit").forEach((el) => el.classList.remove("pv-ux-hit"));
+    const query = String(q || "").trim().toLowerCase();
+    if (!query) return 0;
+    const root = document.getElementById("root") || document.body;
+    const candidates = root.querySelectorAll(
+      "[class*='stop'], [class*='expense'], [class*='booking'], [class*='checklist'], [class*='day'], .members-list > div"
+    );
+    let hits = 0;
+    for (const el of candidates) {
+      if ((el.textContent || "").toLowerCase().includes(query)) {
+        el.classList.add("pv-ux-hit");
+        hits += 1;
+        if (hits === 1) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }
-    } else {
-      document.getElementById("pv-empty-expenses")?.remove();
     }
-
-    // Preventivo tab empty
-    const prevMount = document.getElementById("pv-preventivo-tab-mount");
-    if (prevMount && !prevMount.querySelector(".pv-empty-state") && !prevMount.querySelector(".pv-tp-root, .pv-prev-root, [data-pv-preventivo]")) {
-      const box = document.createElement("div");
-      box.className = "pv-empty-state";
-      box.id = "pv-empty-preventivo";
-      box.innerHTML = `<h3>Preventivo da compilare</h3><p>Stima costi, eSIM e confronta con le spese reali.</p>
-        <button type="button" data-ux-open-prev>Apri editor</button>`;
-      prevMount.prepend(box);
-      box.querySelector("[data-ux-open-prev]")?.addEventListener("click", () => {
-        document.querySelector(".pv-prev-launch, #pv-magic-root .pv-magic-btn")?.click();
-      });
-    }
-  }
-
-  function injectMemberRoles() {
-    const list = document.querySelector(".members-list");
-    if (!list) return;
-    const rows = [...list.querySelectorAll(":scope > div")];
-    rows.forEach((row, idx) => {
-      if (row.querySelector(".pv-role-badge")) return;
-      const name = (row.querySelector("strong")?.textContent || "").trim();
-      const badge = document.createElement("span");
-      badge.className = "pv-role-badge" + (/^ospite/i.test(name) ? " guest" : "");
-      badge.textContent = idx === 0 ? "Creatore" : /^ospite/i.test(name) ? "Dal link" : "Partecipante";
-      row.querySelector("strong")?.after(badge);
-    });
-  }
-
-  function injectLinkRoleChip() {
-    let chip = document.getElementById("pv-link-role-chip");
-    const auth = tripAuth();
-    if (!auth) {
-      chip?.remove();
-      return;
-    }
-    if (!chip) {
-      chip = document.createElement("div");
-      chip.id = "pv-link-role-chip";
-      chip.setAttribute("role", "status");
-      document.body.appendChild(chip);
-    }
-    // Infer from UI text already present
-    const text = document.body.innerText || "";
-    if (/solo consultazione/i.test(text)) chip.textContent = "Link: solo lettura";
-    else if (/modifiche condivise|puoi modificare/i.test(text)) chip.textContent = "Link: puoi modificare";
-    else chip.textContent = "Link viaggio aperto";
-  }
-
-  function injectOfflineChip() {
-    let chip = document.getElementById("pv-offline-chip");
-    if (!chip) {
-      chip = document.createElement("div");
-      chip.id = "pv-offline-chip";
-      chip.textContent = "Offline — modifiche in locale";
-      document.body.appendChild(chip);
-      window.addEventListener("offline", () => {
-        chip.classList.add("show");
-        toast("Sei offline: i salvataggi restano su questo dispositivo", "warn");
-      });
-      window.addEventListener("online", () => {
-        chip.classList.remove("show");
-        toast("Di nuovo online", "ok");
-      });
-    }
-    chip.classList.toggle("show", !navigator.onLine);
+    return hits;
   }
 
   function runUxAction(act) {
@@ -473,92 +388,63 @@
     if (act === "export") void exportTripText();
   }
 
-  function injectToolbar() {
-    if (!tripAuth()) {
-      document.getElementById("pv-ux-toolbar")?.remove();
-      document.getElementById("pv-ux-tools-fab")?.remove();
-      document.body.classList.remove("pv-ux-toolbar-on");
+  function injectEmptyStates() {
+    const auth = tripAuth();
+    if (!auth) {
+      document.querySelectorAll(".pv-empty-state").forEach((el) => el.remove());
       return;
     }
-    document.body.classList.add("pv-ux-toolbar-on");
-    let bar = document.getElementById("pv-ux-toolbar");
-    if (!bar) {
-      bar = document.createElement("div");
-      bar.id = "pv-ux-toolbar";
-      bar.setAttribute("role", "region");
-      bar.setAttribute("aria-label", "Strumenti viaggio");
-      bar.innerHTML = `
-        <span class="pv-ux-toolbar-label">Strumenti</span>
-        <input id="pv-ux-search" type="search" placeholder="Cerca tappe, spese, note…" aria-label="Cerca nel viaggio" />
-        <button type="button" data-ux="activity">Attività</button>
-        <button type="button" data-ux="checklist">Pre-partenza</button>
-        <button type="button" data-ux="compare">Preventivo vs spese</button>
-        <button type="button" data-ux="templates">Template</button>
-        <button type="button" data-ux="invite">Codice invito</button>
-        <button type="button" data-ux="revisions">Versioni</button>
-        <button type="button" data-ux="export">Export</button>`;
-      document.body.appendChild(bar);
-      bar.addEventListener("input", (ev) => {
-        if (ev.target?.id === "pv-ux-search") filterTripContent(ev.target.value);
-      });
-      bar.addEventListener("click", (ev) => {
-        const btn = ev.target?.closest?.("button[data-ux]");
-        if (!btn) return;
-        runUxAction(btn.getAttribute("data-ux"));
-      });
-    }
-    let fab = document.getElementById("pv-ux-tools-fab");
-    if (!fab) {
-      fab = document.createElement("button");
-      fab.type = "button";
-      fab.id = "pv-ux-tools-fab";
-      fab.textContent = "Strumenti";
-      fab.setAttribute("aria-controls", "pv-ux-toolbar");
-      document.body.appendChild(fab);
-      fab.addEventListener("click", () => {
-        const el = document.getElementById("pv-ux-toolbar");
-        if (!el) return;
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-        openModal(
-          "Strumenti viaggio",
-          `<p>Scegli uno strumento (tutto gratuito):</p>
-           <div class="pv-ux-actions">
-             <button type="button" class="pv-ux-primary" data-ux="compare">Preventivo vs spese</button>
-             <button type="button" class="pv-ux-primary" data-ux="checklist">Pre-partenza</button>
-             <button type="button" class="pv-ux-primary" data-ux="invite">Codice invito</button>
-             <button type="button" class="pv-ux-ghost" data-ux="activity">Attività</button>
-             <button type="button" class="pv-ux-ghost" data-ux="templates">Template</button>
-             <button type="button" class="pv-ux-ghost" data-ux="revisions">Versioni</button>
-             <button type="button" class="pv-ux-ghost" data-ux="export">Export</button>
-           </div>`,
-          {
-            onMount: (body) => {
-              body.querySelectorAll("button[data-ux]").forEach((b) => {
-                b.addEventListener("click", () => {
-                  closeModal();
-                  runUxAction(b.getAttribute("data-ux"));
-                });
-              });
-            },
-          }
-        );
-      });
+    const itineraryHeading = [...document.querySelectorAll("h2")].find((h) =>
+      /il nostro itinerario/i.test(h.textContent || "")
+    );
+    const zeroLabel = [...document.querySelectorAll("p,span,div")].find(
+      (el) => el.children.length === 0 && /^(0 tappe|Nessuna tappa)/i.test((el.textContent || "").trim())
+    );
+    if (itineraryHeading && zeroLabel) {
+      if (!document.getElementById("pv-empty-itinerary")) {
+        const box = document.createElement("div");
+        box.id = "pv-empty-itinerary";
+        box.className = "pv-empty-state";
+        box.innerHTML = `<h3>Nessuna tappa ancora</h3><p>Inizia dal primo giorno o chiedi idee a Pronty.</p>`;
+        itineraryHeading.parentElement?.after(box);
+      }
+    } else {
+      document.getElementById("pv-empty-itinerary")?.remove();
     }
   }
 
-  function filterTripContent(q) {
-    const query = String(q || "").trim().toLowerCase();
-    const candidates = document.querySelectorAll(
-      ".stop-card, .expense-card, .saved-card, .booking-card, .checklist-item, .day-card, .members-list > div, li, article"
-    );
-    for (const el of candidates) {
-      if (!query) {
-        el.style.display = "";
-        continue;
-      }
-      const t = (el.textContent || "").toLowerCase();
-      el.style.display = t.includes(query) ? "" : "none";
+  function injectMemberRoles() {
+    const list = document.querySelector(".members-list");
+    if (!list) return;
+    [...list.querySelectorAll(":scope > div")].forEach((row, idx) => {
+      if (row.querySelector(".pv-role-badge")) return;
+      const name = (row.querySelector("strong")?.textContent || "").trim();
+      const badge = document.createElement("span");
+      badge.className = "pv-role-badge" + (/^ospite/i.test(name) ? " guest" : "");
+      badge.textContent = idx === 0 ? "Creatore" : /^ospite/i.test(name) ? "Dal link" : "Partecipante";
+      row.querySelector("strong")?.after(badge);
+    });
+  }
+
+  function injectOfflineChip() {
+    let chip = document.getElementById("pv-offline-chip");
+    const inTrip = Boolean(tripAuth());
+    if (!chip) {
+      chip = document.createElement("div");
+      chip.id = "pv-offline-chip";
+      chip.textContent = "Offline";
+      document.body.appendChild(chip);
+      window.addEventListener("offline", () => {
+        if (!tripAuth()) return;
+        chip.classList.add("show");
+        toast("Sei offline: i salvataggi restano su questo dispositivo", "warn");
+      });
+      window.addEventListener("online", () => {
+        chip.classList.remove("show");
+        if (tripAuth()) toast("Di nuovo online", "ok");
+      });
     }
+    chip.classList.toggle("show", inTrip && !navigator.onLine);
   }
 
   async function showActivity() {
@@ -573,7 +459,7 @@
                 `<li><strong>${escapeHtml(formatWhen(a.at))}</strong><div>${escapeHtml(a.text)}</div></li>`
             )
             .join("")}</ul>`
-        : `<p class="pv-tp-muted">Nessuna attività registrata su questo dispositivo.</p>`
+        : `<p>Nessuna attività registrata su questo dispositivo.</p>`
     );
   }
 
@@ -602,11 +488,19 @@
       const missing = suggested.filter((s) => !existing.has(s.title.toLowerCase()));
       openModal(
         "Checklist pre-partenza",
-        `<p>${days == null ? "Date da definire." : days >= 0 ? `Partenza tra <strong>${days}</strong> giorni.` : `Partiti da ${Math.abs(days)} giorni.`}</p>
-         <ul class="pv-ux-list">${packing
-           .slice(0, 12)
-           .map((c) => `<li>${c.done ? "✅" : "⬜️"} ${escapeHtml(c.title || "")}</li>`)
-           .join("") || "<li>Nessuna voce in valigia/checklist.</li>"}</ul>
+        `<p>${
+          days == null
+            ? "Date da definire."
+            : days >= 0
+              ? `Partenza tra <strong>${days}</strong> giorni.`
+              : `Partiti da ${Math.abs(days)} giorni.`
+        }</p>
+         <ul class="pv-ux-list">${
+           packing
+             .slice(0, 12)
+             .map((c) => `<li>${c.done ? "✓" : "○"} ${escapeHtml(c.title || "")}</li>`)
+             .join("") || "<li>Nessuna voce in checklist.</li>"
+         }</ul>
          <div class="pv-ux-actions">
            <button type="button" class="pv-ux-primary" id="pv-ux-add-checklist">Aggiungi suggerimenti</button>
            <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
@@ -641,7 +535,6 @@
       logActivity(auth.id, `Aggiunte ${items.length} voci pre-partenza`);
       closeModal();
       toast("Checklist aggiornata", "ok");
-      setTimeout(() => location.reload(), 400);
     } catch (err) {
       toast(err.message || "Salvataggio non riuscito", "err");
     }
@@ -657,7 +550,7 @@
         (s, e) => s + (Number(e.amount) || 0),
         0
       );
-      const pct = estimate > 0 ? Math.min(100, Math.round((spent / estimate) * 100)) : 0;
+      const pct = estimate > 0 ? Math.round((spent / estimate) * 100) : 0;
       const delta = spent - estimate;
       const fmt = (c) =>
         new Intl.NumberFormat("it-IT", { style: "currency", currency: "EUR" }).format((c || 0) / 100);
@@ -666,7 +559,7 @@
         `<div class="pv-ux-card">
           <p><strong>Preventivo:</strong> ${fmt(estimate)}</p>
           <p><strong>Spese registrate:</strong> ${fmt(spent)}</p>
-          <div class="pv-compare-bar ${pct > 100 ? "warn" : ""}"><span style="width:${Math.min(pct, 100)}%"></span></div>
+          <div class="pv-compare-bar ${pct > 100 ? "warn" : ""}"><span style="width:${Math.min(Math.max(pct, 0), 100)}%"></span></div>
           <p>${estimate ? `Usato circa <strong>${pct}%</strong> del preventivo.` : "Nessun preventivo salvato."}</p>
           <p>${delta === 0 ? "In pari." : delta > 0 ? `Oltre preventivo di ${fmt(delta)}.` : `Sotto preventivo di ${fmt(-delta)}.`}</p>
         </div>
@@ -700,26 +593,12 @@
     const tpl = TEMPLATES.find((t) => t.id === id);
     if (!tpl) return;
     try {
-      const auth = tripAuth();
-      if (!auth) {
-        // Prefill create form if visible
-        const title = document.querySelector('input[name="title"], input[placeholder*="nome" i]');
-        if (title) {
-          title.value = tpl.title;
-          title.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-        toast("Apri «Nuovo viaggio» e userai il template nei campi", "ok");
-        closeModal();
-        return;
-      }
-      const { data } = await loadTrip();
+      const { auth, data } = await loadTrip();
       const trip = { ...data.trip };
       const start = trip.start || new Date().toISOString().slice(0, 10);
       const endDate = new Date(Date.parse(start) + (tpl.days - 1) * 86400000);
-      const end = endDate.toISOString().slice(0, 10);
-      trip.title = trip.title || tpl.title;
       trip.notes = [trip.notes, tpl.notes].filter(Boolean).join("\n");
-      trip.end = trip.end || end;
+      trip.end = trip.end || endDate.toISOString().slice(0, 10);
       const checklist = Array.isArray(trip.checklist) ? trip.checklist.slice() : [];
       for (const title of tpl.checklist) {
         if (!checklist.some((c) => String(c.title).toLowerCase() === title.toLowerCase())) {
@@ -731,7 +610,6 @@
       logActivity(auth.id, `Template applicato: ${tpl.title}`);
       closeModal();
       toast("Template applicato", "ok");
-      setTimeout(() => location.reload(), 400);
     } catch (err) {
       toast(err.message || "Template non applicato", "err");
     }
@@ -758,7 +636,6 @@
         trip.meta = meta;
         await saveTrip(auth, trip, data.revision);
       }
-      // Publish free share record keyed by invite code (Netlify Blobs / local shim).
       try {
         await fetch("/api/share", {
           method: "POST",
@@ -775,18 +652,22 @@
           }),
         });
       } catch {
-        /* local map still works on this device */
+        /* local map still works */
       }
       const local = readJson(INVITE_LOCAL_KEY, {});
-      local[code] = { id: auth.id, key: auth.key, title: trip.title || "Viaggio", at: new Date().toISOString() };
+      local[code] = {
+        id: auth.id,
+        key: auth.key,
+        title: trip.title || "Viaggio",
+        at: new Date().toISOString(),
+      };
       writeJson(INVITE_LOCAL_KEY, local);
       const link = `${location.origin}${location.pathname}?v=invite#invite=${code}`;
       openModal(
         "Codice invito",
         `<div class="pv-ux-card">
-          <p>Codice a 6 caratteri (gratuito):</p>
+          <p>Codice a 6 caratteri:</p>
           <p style="font-size:1.6rem;letter-spacing:.12em;font-weight:800;margin:8px 0">${escapeHtml(code)}</p>
-          <p class="pv-tp-muted">Chi lo apre entra nel viaggio con il link di modifica salvato nel codice.</p>
           <input readonly value="${escapeHtml(link)}" style="width:100%;box-sizing:border-box;padding:10px;border-radius:10px;border:1px solid #d7e4e6" />
          </div>
          <div class="pv-ux-actions">
@@ -826,7 +707,7 @@
         }
       }
       if (!hit?.id || !hit?.key) {
-        toast("Codice invito non trovato su questo dispositivo/cloud", "err");
+        toast("Codice invito non trovato", "err");
         return;
       }
       location.hash = `trip=${encodeURIComponent(hit.id)}&key=${encodeURIComponent(hit.key)}`;
@@ -842,7 +723,7 @@
     openModal(
       "Versioni locali",
       list.length
-        ? `<p class="pv-tp-muted">Ultime copie salvate su questo dispositivo (gratis).</p>
+        ? `<p>Ultime copie salvate su questo dispositivo.</p>
            <ul class="pv-ux-list">${list
              .map(
                (r, i) => `<li>
@@ -868,7 +749,11 @@
       const list = readJson(REVISIONS_KEY, {})[auth.id] || [];
       const snap = list[index];
       if (!snap?.trip) throw new Error("Versione non trovata");
-      if (!window.confirm("Ripristinare questa versione locale? Le modifiche più recenti in cloud verranno sovrascritte.")) {
+      if (
+        !window.confirm(
+          "Ripristinare questa versione locale? Le modifiche più recenti in cloud verranno sovrascritte."
+        )
+      ) {
         return;
       }
       await saveTrip(auth, snap.trip, data.revision);
@@ -892,7 +777,8 @@
         "",
         "ITINERARIO",
         ...(trip.stops || []).map(
-          (s, i) => `${i + 1}. ${s.day || "da decidere"} — ${s.title || ""}${s.notes ? ` (${s.notes})` : ""}`
+          (s, i) =>
+            `${i + 1}. ${s.day || "da decidere"} — ${s.title || ""}${s.notes ? ` (${s.notes})` : ""}`
         ),
         "",
         "SPESE",
@@ -914,26 +800,13 @@
     }
   }
 
-  function ensureSkipLink() {
-    if (document.getElementById("pv-skip-main")) return;
-    const a = document.createElement("a");
-    a.id = "pv-skip-main";
-    a.href = "#root";
-    a.textContent = "Vai al contenuto";
-    a.style.cssText =
-      "position:absolute;left:-9999px;top:8px;z-index:140000;background:#007d82;color:#fff;padding:8px 12px;border-radius:8px;font:700 13px inherit";
-    a.addEventListener("focus", () => {
-      a.style.left = "8px";
-    });
-    a.addEventListener("blur", () => {
-      a.style.left = "-9999px";
-    });
-    document.body.prepend(a);
-  }
-
   function maybeOnboarding() {
     if (readJson(ONBOARD_KEY, null)?.done) return;
     if (!document.body.classList.contains("pv-account-ready")) return;
+    if (document.getElementById("pv-account-gate") && !document.getElementById("pv-account-gate").hidden) {
+      return;
+    }
+    if (!tripAuth()) return;
     openModal(
       "In 30 secondi",
       `<div class="pv-onboard-steps">
@@ -1000,16 +873,14 @@
 
   function tick() {
     ensureStyles();
-    ensureSkipLink();
-    shortenTabs();
-    injectToolbar();
+    cleanupLegacyChrome();
+    document.body.classList.toggle("pv-trip-open", Boolean(tripAuth()));
+    injectToolsButton();
     injectEmptyStates();
     injectMemberRoles();
-    injectLinkRoleChip();
     injectOfflineChip();
   }
 
-  // Toast when share snapshot is blocked (from api-shim).
   window.addEventListener("pv-share-blocked", (ev) => {
     toast(ev?.detail?.message || "Link non pronto", "warn");
   });
@@ -1017,7 +888,7 @@
   hookSaveToastsAndRevisions();
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 350);
+    tick._t = setTimeout(tick, 400);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
@@ -1026,10 +897,9 @@
       tick();
     }, 200);
   });
-  setTimeout(tick, 700);
+  setTimeout(tick, 500);
   setTimeout(() => {
     void redeemInviteFromHash();
     maybeOnboarding();
-  }, 1600);
-  setTimeout(maybeOnboarding, 4000);
+  }, 2200);
 })();

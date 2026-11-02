@@ -1667,7 +1667,8 @@
         box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
       }
       .pv-prev-launch:hover .pv-prev-fab-label,.pv-prev-launch:focus-visible .pv-prev-fab-label{opacity:1;transform:none}
-      body.pv-account-ready .pv-prev-launch{display:inline-flex}
+      /* Only on an open trip — avoids covering login/home layout */
+      body.pv-account-ready.pv-trip-open .pv-prev-launch{display:inline-flex}
       @media (max-width:640px){
         .pv-prev-launch{
           right:16px;width:58px;height:58px;
@@ -1692,8 +1693,18 @@
     </svg>`;
   }
 
+  function syncTripOpenClass() {
+    try {
+      const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+      document.body.classList.toggle("pv-trip-open", Boolean(p.get("trip") && p.get("key")));
+    } catch {
+      document.body.classList.remove("pv-trip-open");
+    }
+  }
+
   function launchBtn() {
     if (!document.body) return;
+    syncTripOpenClass();
     let btn = document.querySelector(".pv-prev-launch");
     if (!btn) {
       btn = document.createElement("button");
@@ -1709,6 +1720,7 @@
       } else {
         btn.addEventListener("click", open);
       }
+      addEventListener("hashchange", syncTripOpenClass);
     }
   }
 
