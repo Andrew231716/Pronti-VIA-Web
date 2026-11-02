@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102b") return;
+    if (style && style.dataset.pvReady === "20261102c") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -231,7 +231,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102b";
+    style.dataset.pvReady = "20261102c";
   }
 
   function fabNodes() {
@@ -3495,8 +3495,9 @@ Regole pv-places:
       banner = document.createElement("div");
       banner.id = "pv-local-only-banner";
       banner.setAttribute("role", "status");
+      // Relative: sits in document flow under the fixed account chip (body padding-top).
       banner.style.cssText =
-        "position:sticky;top:44px;z-index:70;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+        "position:relative;top:auto;z-index:1;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
       document.body.prepend(banner);
     }
     banner.textContent =
@@ -3568,10 +3569,8 @@ Regole pv-places:
   function injectCloudStatusBanner() {
     if (window.__pvCloudBannerBound) return;
     window.__pvCloudBannerBound = true;
-    const ENDPOINTS = [
-      "https://pronti-via-k7es.netlify.app/api/trips",
-      "https://like-success-universities-old.trycloudflare.com/api/trips",
-    ];
+    // Free Netlify endpoint only (no dead paid/tunnel fallbacks).
+    const ENDPOINTS = ["https://pronti-via-k7es.netlify.app/api/trips"];
     const run = async () => {
       let ok = false;
       for (const url of ENDPOINTS) {
@@ -3599,7 +3598,7 @@ Regole pv-places:
         el.id = "pv-cloud-status-banner";
         el.setAttribute("role", "status");
         el.style.cssText =
-          "position:sticky;top:0;z-index:71;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
+          "position:relative;top:auto;z-index:1;margin:0;padding:8px 14px;background:#fde8e8;color:#7a1f1f;border-bottom:1px solid #f0c0c0;font:600 12px/1.35 inherit;text-align:center";
         document.body.prepend(el);
       }
       el.textContent =
@@ -4148,6 +4147,30 @@ Regole pv-places:
     return { ...trip, expenses: nextExpenses, transfers: nextTransfers };
   }
 
+  function currentAccountNames() {
+    try {
+      const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return {
+        displayName: String(a?.user?.displayName || "").trim(),
+        username: String(a?.user?.username || "").trim(),
+        guest: Boolean(a?.guest),
+      };
+    } catch {
+      return { displayName: "", username: "", guest: true };
+    }
+  }
+
+  function isTripCreator(members) {
+    const list = Array.isArray(members) ? members : [];
+    const creator = list[0];
+    if (!creator) return false;
+    const me = currentAccountNames();
+    if (me.guest) return false;
+    return (
+      namesMatchMember(me.displayName, creator.name) || namesMatchMember(me.username, creator.name)
+    );
+  }
+
   async function removeSharedMemberByName(name) {
     const want = String(name || "").trim();
     if (!want) return;
@@ -4159,19 +4182,11 @@ Regole pv-places:
       const trip = { ...(data.trip || {}) };
       const members = Array.isArray(trip.members) ? trip.members : [];
       if (members.length <= 1) throw new Error("Serve almeno un viaggiatore.");
+      if (!isTripCreator(members)) throw new Error("Solo chi ha creato il viaggio può eliminare i partecipanti.");
+      const creator = members[0];
+      if (namesMatchMember(want, creator?.name)) throw new Error("Non puoi eliminare il creatore del viaggio.");
       const target = members.find((m) => String(m?.name || "").trim().toLowerCase() === want.toLowerCase());
       if (!target) throw new Error("Persona non trovata.");
-      const me = (() => {
-        try {
-          const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
-          return String(a?.user?.displayName || a?.user?.username || "").trim();
-        } catch {
-          return "";
-        }
-      })();
-      if (me && namesMatchMember(me, target.name) && members.length > 1) {
-        // Allow removing yourself only if others remain; still confirm above.
-      }
       const nextMembers = members.filter((m) => m.id !== target.id);
       if (!nextMembers.length) throw new Error("Serve almeno un viaggiatore.");
       let nextTrip = scrubTripMemberRefs({ ...trip, members: nextMembers }, target.id);
@@ -4223,7 +4238,10 @@ Regole pv-places:
     const canEdit = Boolean(
       host.querySelector('input[placeholder*="Nome"], input[placeholder*="compagno"], label.field input')
     );
-    if (!canEdit) {
+    const names = [...list.querySelectorAll(":scope > div strong")].map((el) => (el.textContent || "").trim());
+    const creatorName = names[0] || "";
+    const canManage = canEdit && isTripCreator(names.map((n, i) => ({ id: String(i), name: n })));
+    if (!canManage) {
       list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
       host.querySelector(".pv-member-remove-note")?.remove();
       return;
@@ -4232,13 +4250,14 @@ Regole pv-places:
       const note = document.createElement("p");
       note.className = "pv-member-remove-note";
       note.textContent =
-        "Puoi eliminare chi è entrato dal link condiviso. Non rientrerà in automatico con lo stesso nome.";
+        "Come creatore puoi eliminare chi è entrato dal link. Non rientrerà in automatico con lo stesso nome.";
       list.after(note);
     }
     for (const row of list.querySelectorAll(":scope > div")) {
       if (row.querySelector(".pv-member-remove")) continue;
       const name = (row.querySelector("strong")?.textContent || "").trim();
       if (!name) continue;
+      if (namesMatchMember(name, creatorName)) continue; // never delete the creator row
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pv-member-remove";

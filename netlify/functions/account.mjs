@@ -57,8 +57,11 @@ function validateUsername(username) {
 }
 
 function validatePassword(password) {
-  if (typeof password !== "string" || password.length < 4 || password.length > 72) {
-    return "La password deve avere almeno 4 caratteri.";
+  if (typeof password !== "string" || password.length < 8 || password.length > 72) {
+    return "La password deve avere almeno 8 caratteri.";
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return "Usa almeno una lettera e un numero nella password.";
   }
   return null;
 }

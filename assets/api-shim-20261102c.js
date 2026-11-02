@@ -1,20 +1,30 @@
 /**
  * Client fallback when /api/* is not reverse-proxied (e.g. GitHub Pages).
  * Places → Photon; trips → CORS-enabled Netlify proxy, then durable localStorage.
- * v=20261019d — share snapshots: Netlify/CF API first, then bytebin; refuse copy without s=.
+ * v=20261029a — account sync via Netlify; live search; share via Blobs + bytebin.
  */
 (() => {
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-  // Live Cloudflare tunnel while Netlify production is 502 / awaiting auth.
-  // Prefer the working tunnel; keep Netlify as secondary for when credits return.
-  const NETLIFY_API = "https://like-success-universities-old.trycloudflare.com";
-  const TRIPS_PROXIES = ["https://pronti-via-k7es.netlify.app"];
+  // Free production path: Netlify Functions + Blobs (no paid tunnel).
+  const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
+  const TRIPS_PROXIES = []; // dead trycloudflare tunnels removed
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
   const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
   const SHARE_BLOBS_KEY = "viavia-share-blobs-v1";
   const BYTEBIN = "https://bytebin.lucko.me";
   const PER_TRY_MS = 8000;
+  // Serialize trip writes so join / preventivo / React saves do not clobber each other.
+  let tripWriteChain = Promise.resolve();
+  function enqueueTripWrite(task) {
+    const run = tripWriteChain.then(task, task);
+    tripWriteChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  }
+  window.__pvEnqueueTripWrite = enqueueTripWrite;
 
   const originalFetch = window.fetch.bind(window);
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
@@ -782,9 +792,21 @@
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
       const nextTrip = takeBudgetPrivate(id, body.trip || body);
-      const revision = Number(body.revision || record.revision || 1) + 1;
+      const serverRev = Number(record.revision) || 1;
+      const clientRev = Number(body.revision);
+      if (Number.isFinite(clientRev) && clientRev !== serverRev) {
+        return jsonResponse(409, {
+          error: "Versione non aggiornata. Ricarica e riprova.",
+          trip: applyPrivateBudgetView(id, record.trip),
+          revision: serverRev,
+          updated: record.updated,
+          canEdit: true,
+          viewToken: record.viewToken || "",
+          local: true,
+        });
+      }
       record.trip = nextTrip;
-      record.revision = revision;
+      record.revision = serverRev + 1;
       record.updated = new Date().toISOString();
       db[id] = record;
       writeLocalTrips(db);
@@ -873,7 +895,7 @@
     return { places: (filtered.length ? filtered : places).slice(0, 8) };
   }
 
-  async function fetchTripsCandidate(target, init) {
+  async function fetchTripsCandidate(target, init, timeoutMs = PER_TRY_MS) {
     const ctrl = new AbortController();
     const externalAbort = () => ctrl.abort();
     if (init.signal) {
@@ -883,14 +905,14 @@
     try {
       const res = await Promise.race([
         originalFetch(target, { ...init, signal: ctrl.signal }),
-        wallTimeout(PER_TRY_MS, "proxy-timeout"),
+        wallTimeout(timeoutMs, "proxy-timeout"),
       ]);
       if (res.type === "opaque" || res.status === 0) throw new Error("opaque");
       // Accept 2xx/4xx JSON from the CORS proxy; only hard-fail transport/5xx/HTML.
       if (res.status >= 500) throw new Error(`upstream-${res.status}`);
       const ct = String(res.headers.get("content-type") || "").toLowerCase();
       if (ct.includes("text/html")) throw new Error("html-error");
-      if (!ct.includes("json")) {
+      if (!ct.includes("json") && res.status !== 204) {
         const peek = await res.clone().text();
         const trimmed = peek.trim();
         if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) throw new Error("not-json");
@@ -904,15 +926,19 @@
   async function remoteTrips(suffix, init) {
     // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
-    const candidates = onGitHubPages
-      ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
-      : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
+    const isSearch = String(suffix || "").startsWith("/search");
+    const candidates = isSearch
+      ? [`${NETLIFY_API}/api${suffix}`]
+      : onGitHubPages
+        ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
+        : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
+    const timeoutMs = isSearch ? 55000 : PER_TRY_MS;
 
     // Try sequentially so a CORS-blocked candidate does not race-win as rejection noise.
     let lastErr;
     for (const target of candidates) {
       try {
-        return await fetchTripsCandidate(target, init);
+        return await fetchTripsCandidate(target, init, timeoutMs);
       } catch (err) {
         lastErr = err;
       }
@@ -957,13 +983,21 @@
     }
 
     if (parsed.origin === location.origin && parsed.pathname.startsWith("/api/account")) {
-      return jsonResponse(503, { error: "Sync cloud non disponibile su questo host." });
+      const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
+      try {
+        return await remoteTrips(suffix, init);
+      } catch {
+        return jsonResponse(503, { error: "Sync account non disponibile. Controlla la rete e riprova." });
+      }
     }
 
     if (
       parsed.origin === location.origin &&
       parsed.pathname.startsWith("/api/trips")
     ) {
+      const methodEarly = (init.method || "GET").toUpperCase();
+      const runTripRequest = async () => {
+
       const suffix = `${parsed.pathname.replace(/^\/api/, "")}${parsed.search}`;
       const method = (init.method || "GET").toUpperCase();
       const tripIdHint = decodeURIComponent(
@@ -1086,6 +1120,12 @@
         // All remote proxies failed — durable local fallback.
         return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
       }
+    
+      };
+      if (methodEarly === "PUT" || methodEarly === "PATCH" || methodEarly === "POST") {
+        return enqueueTripWrite(runTripRequest);
+      }
+      return runTripRequest();
     }
 
     if (
