@@ -90,9 +90,13 @@
     }
     style.textContent = `
       #${ROOT_ID}{position:fixed;inset:0;z-index:80;pointer-events:none;font-family:inherit}
+      #${ROOT_ID}.pv-open{z-index:100050;pointer-events:auto}
       #${ROOT_ID} > *{pointer-events:auto}
-      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,36,.28);backdrop-filter:blur(1px);-webkit-backdrop-filter:blur(1px);z-index:0}
+      #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,40,.48);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
+      /* While Pronty is open, hide competing FABs so they don't crowd the sheet */
+      #${ROOT_ID}.pv-open .pv-magic-btn,
+      body.pv-magic-open .pv-prev-launch{opacity:0!important;pointer-events:none!important;visibility:hidden!important}
       #${ROOT_ID} .pv-magic-btn{
         appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PRONTY_FAB_BOTTOM};z-index:2;
         width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;
@@ -180,7 +184,7 @@
         }
         #${ROOT_ID} .pv-magic-panel{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
-          width:100%;max-width:none;max-height:min(72dvh,72vh);
+          width:100%;max-width:none;max-height:min(88dvh,88vh);height:min(88dvh,88vh);
           border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
         }
         #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
@@ -354,17 +358,21 @@
     const root = document.getElementById(ROOT_ID);
     const panel = root?.querySelector("#pv-magic-panel");
     const fab = root?.querySelector("#pv-magic-open");
+    const chip = document.getElementById("pv-account-chip");
     if (root) root.classList.toggle("pv-open", open);
+    document.body.classList.toggle("pv-magic-open", open);
     if (panel) panel.hidden = !open;
     if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
-    // Don't lock the whole page — Pronty is a floating companion.
+    // Cover the fixed account Menu while Pronty is open (avoids double chrome).
+    if (chip) chip.style.visibility = open ? "hidden" : "";
     if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
       document.documentElement.style.overflow = open ? "hidden" : "";
     } else {
       document.documentElement.style.overflow = "";
     }
     if (open) {
-      requestAnimationFrame(() => requestAnimationFrame(parkFabsAboveSheet));
+      // FABs are CSS-hidden while open; no need to park them into the header.
+      restoreFabsFromPark();
     } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
       restoreFabsFromPark();
     }
@@ -1931,11 +1939,11 @@ Regole pv-places:
   function localTravelReply(trip, text) {
     const q = String(text || "").trim();
     if (!q) return "";
+    const where = formatDestGreeting(trip.destination, trip.title);
     if (/spesa|budget|cost|quanto\b|euro|€|prezzi|econom/i.test(q)) {
       return localBudgetAdvice(trip, q);
     }
     if (/consigli pratic|clima|soldi|valut|trasport|sim|presa|adattator|assicura/i.test(q)) {
-      const where = formatDestGreeting(trip.destination, trip.title);
       const band = destinationCostBand(trip.destination, trip.title);
       return `Consigli pratici ${where}:\n\n• Controlla clima e strati: meglio vestiti a cipolla.\n• Pagamenti: carte ok nelle città; tieni un po’ di contanti per imprevisti.\n• Trasporti: valuta bus/navette vs noleggio in base alle distanze.\n• Budget quotidiano tipico (cibo+spostamenti+attività): circa ${band.foodDay[0] + band.localTransportDay[0] + band.activitiesDay[0]}–${band.foodDay[1] + band.localTransportDay[1] + band.activitiesDay[1]} € a persona.\n\nSe vuoi, dimmi quanti giorni siete e cosa avete già pagato: ti faccio una stima più stretta.`;
     }
@@ -1943,8 +1951,16 @@ Regole pv-places:
       return `Per la lingua sul posto ti consiglio l’inglese turistico nelle città, più 5–6 frasi locali (ciao, grazie, scusa, il conto). Apri il tab Lingua qui nella bacchetta per frasario e traduzione simultanea.`;
     }
     if (/itinerar|giornata|cosa fare|programma|2 giorni|3 giorni/i.test(q)) {
-      const where = formatDestGreeting(trip.destination, trip.title);
       return `Idea di giornata ${where}: mattina un’attrazione principale, pranzo tipico in centro, pomeriggio natura o museo, sera passeggiata e cena. Dimmi quanti giorni avete e se preferite cibo, natura o cultura: ti preparo una scaletta più precisa (e posti da aggiungere).`;
+    }
+    if (/mangiar|ristor|cibo|cena|pranzo|caff|bar|dove mangiare/i.test(q)) {
+      return `Cerco posti dove mangiare ${where}. Sotto trovi proposte da mappe e guide: puoi aggiungerle all’itinerario o aprirle su Maps/TripAdvisor.`;
+    }
+    if (/natur|parco|escursion|trek|spiaggia|lago|montagna/i.test(q)) {
+      return `Cerco natura e outdoor ${where}. Sotto le proposte utili da aggiungere o aprire sulle guide.`;
+    }
+    if (/vedere|visit|muse|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato/i.test(q)) {
+      return `Cerco cose da vedere ${where}. Sotto i posti trovati: aggiungili all’itinerario o aprili sulle guide.`;
     }
     return "";
   }
@@ -1957,12 +1973,13 @@ Regole pv-places:
         content: String(m.content || "").slice(0, 4000),
       })),
     ];
-    const models = ["openai", "openai-fast"];
+    // Free public Pollinations endpoints — rotate models when one is rate-limited.
+    const models = ["openai", "openai-fast", "mistral", "deepseek", "gemini"];
     const endpoints = [];
     for (const model of models) {
       endpoints.push({
         url: "https://text.pollinations.ai/openai",
-        body: { model, messages, temperature: 0.65 },
+        body: { model, messages, temperature: 0.65, seed: Math.floor(Math.random() * 1e9) },
         parse: async (res) => {
           const data = await res.json().catch(() => ({}));
           const err =
@@ -1991,15 +2008,38 @@ Regole pv-places:
         return await res.text();
       },
     });
+    // GET prompt fallback (sometimes works when OpenAI-compat POST is throttled).
+    try {
+      const lastUser = [...history].reverse().find((m) => m.role === "user");
+      const shortPrompt = `${buildTravelSystemPrompt(trip).slice(0, 900)}\n\nUtente: ${String(lastUser?.content || "").slice(0, 500)}\n\nRispondi in italiano, concreto.`;
+      endpoints.push({
+        url: `https://text.pollinations.ai/${encodeURIComponent(shortPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1e9)}`,
+        body: null,
+        method: "GET",
+        parse: async (res) => {
+          const ct = res.headers.get("content-type") || "";
+          if (ct.includes("json")) {
+            const data = await res.json().catch(() => ({}));
+            return data?.choices?.[0]?.message?.content || data?.content || "";
+          }
+          return await res.text();
+        },
+      });
+    } catch {
+      /* ignore */
+    }
 
     let lastErr = null;
     for (const ep of endpoints) {
       try {
         const res = await fetch(ep.url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "application/json" },
-          body: JSON.stringify(ep.body),
-          signal: AbortSignal.timeout(12000),
+          method: ep.method || "POST",
+          headers:
+            ep.method === "GET"
+              ? { Accept: "text/plain, application/json" }
+              : { "Content-Type": "application/json", Accept: "application/json" },
+          body: ep.body == null ? undefined : JSON.stringify(ep.body),
+          signal: AbortSignal.timeout(14000),
         });
         if (!res.ok) throw new Error(`AI ${res.status}`);
         const content = String((await ep.parse(res)) || "").trim();
@@ -2165,14 +2205,15 @@ Regole pv-places:
         }
       }
 
-      // Geocode only when we need place cards / map enrichment
+      // Geocode when we need place cards / map enrichment (also with local intro text).
       let place = { lat: null, lng: null };
       const intent = parseChatIntent(text);
       const placeAsk =
-        /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere/i.test(
+        /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato/i.test(
           text
         );
-      if ((aiPlaces.length || (!aiText && placeAsk)) && !usedLocal) {
+      const needPlaces = aiPlaces.length > 0 || ((!aiText || usedLocal) && placeAsk);
+      if (needPlaces) {
         try {
           place = await geocodeDestination(
             /^(island|ísland|iceland)$/i.test(String(trip.destination || "").trim())
@@ -2189,7 +2230,7 @@ Regole pv-places:
         status.textContent = "Verifico i posti sulle mappe…";
         cards = await resolveAiPlaces(aiPlaces, trip.destination, trip.title, place.lat, place.lng);
         cards = await enrichWithWikipedia(cards);
-      } else if (!aiText && placeAsk) {
+      } else if (needPlaces) {
         status.textContent = "Integro con mappe e guide…";
         const found = await searchPlacesForIntent(
           trip.destination,
@@ -2203,16 +2244,17 @@ Regole pv-places:
         places = distributeAcrossDays(places, tripDays(trip));
         places = await enrichWithWikipedia(places.filter((p) => !p.webOnly));
         cards = [...places, ...webFallback];
-        if (!reply) {
-          reply = places.length
+        if (!reply || usedLocal) {
+          const intro = places.length
             ? `Ecco ${places.length} ${intentResultLabel(intent, places.length)} che ho trovato per te. Puoi aggiungerli all’itinerario o aprirli sulle guide.`
-            : `Al momento l’assistente online è al limite: ti lascio i link alle guide affidabili qui sotto.`;
+            : `Non ho trovato posti chiari adesso. Prova un chip (Dove mangiare / Cosa vedere) o apri le guide qui sotto.`;
+          reply = usedLocal && reply ? `${reply}\n\n${intro}` : reply || intro;
         }
       }
 
       if (!reply) {
         reply =
-          "Dimmi pure cosa ti serve: ristoranti, musei, natura, budget/giornata o consigli pratici. Se l’AI cloud è satura, ti rispondo comunque con stime e guide locali.";
+          "Dimmi pure cosa ti serve: ristoranti, musei, natura, budget/giornata o consigli pratici. Posso rispondere con stime e posti dalle guide anche senza cloud.";
       }
 
       thinking.textContent = formatChatDisplay(reply);
@@ -2228,9 +2270,11 @@ Regole pv-places:
         ? aiPlaces.length
           ? "Risposta AI · posti pronti da aggiungere"
           : "Risposta AI"
-        : usedLocal
-          ? "Stima locale · AI cloud temporaneamente al limite"
-          : "Modalità guide (AI cloud temporaneamente al limite)";
+        : combined.length
+          ? "Posti da mappe e guide"
+          : usedLocal
+            ? "Risposta locale"
+            : "Prova un chip o riformula la domanda";
     } catch (err) {
       thinking.textContent = err instanceof Error ? err.message : "Qualcosa è andato storto.";
       status.textContent = "";
