@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ad";
+  const VER = "20261102ae";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -129,14 +129,45 @@
   }
 
   function reopenDock(id) {
-    const target = id || currentDockPanelId || desiredPanelId();
-    if (!target) return;
+    // Clear dismiss first so enhance* can mount the current section panel.
     const d = readDismissed();
-    delete d[target];
     delete d["*"];
+    if (id) delete d[id];
+    else {
+      Object.keys(d).forEach((k) => {
+        delete d[k];
+      });
+    }
+    writeJson(DOCK_DISMISS_KEY, d);
+
+    // Mount section tools for the active tab (may have been skipped while dismissed).
+    if (tripAuth()) {
+      safe(enhanceItineraryStops);
+      safe(enhancePlaces);
+      safe(enhancePreventivo);
+      safe(enhanceBookings);
+      safe(enhanceDocuments);
+      safe(enhancePacking);
+      safe(enhanceNotes);
+      safe(enhanceShare);
+    }
+
+    let target = id || currentDockPanelId || desiredPanelId() || "pv-as-panel-itinerary";
+    if (!document.getElementById(target)) {
+      mountSectionPanel(
+        target,
+        `<div class="pv-as-card">
+          <strong>Strumenti della sezione</strong>
+          <p class="pv-as-hint">Apri una tab del viaggio (Itinerario, Prenotazioni, Documenti…) per vedere le azioni dedicate. Chiudi con × quando hai finito.</p>
+        </div>`
+      );
+    }
+    delete d[target];
     writeJson(DOCK_DISMISS_KEY, d);
     showOnlyPanel(target, { force: true });
     refreshReopenChip(null);
+    placePortal();
+    return Boolean(document.body.classList.contains("pv-as-dock-open"));
   }
 
   function refreshReopenChip(_forPanelId) {

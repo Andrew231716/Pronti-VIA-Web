@@ -128,6 +128,14 @@ try {
     const root = document.getElementById("root");
     return Boolean(p && root && !root.contains(p));
   }));
+  ok("tools dock closed by default", await page.evaluate(() => {
+    const portal = document.getElementById("pv-as-portal");
+    const reopen = document.getElementById("pv-as-reopen");
+    const labeled = [...document.querySelectorAll("button")].some((el) =>
+      /^Strumenti( extra)?$/i.test((el.textContent || "").trim())
+    );
+    return Boolean(portal?.hidden) && !document.body.classList.contains("pv-as-dock-open") && !reopen && !labeled;
+  }));
 
   const checks = [
     [/itinerario/i, "#pv-as-panel-itinerary", "Itinerario panel"],
@@ -185,8 +193,9 @@ try {
   // Interactive smoke: booking status + doc meta in portal dock
   await clickTab(page, /prenotazioni/i);
   await wait(600);
-  await page.evaluate(() => window.__pvAppSuite?.reopenDock?.());
+  const reopened = await page.evaluate(() => window.__pvAppSuite?.reopenDock?.());
   await wait(1000);
+  ok("Menu-style reopen opens dock", Boolean(reopened) && (await page.evaluate(() => document.body.classList.contains("pv-as-dock-open"))));
   const bookingOk = await page.evaluate(() => {
     const title = document.querySelector("#pv-as-book-title");
     const status = document.querySelector("#pv-as-book-status");

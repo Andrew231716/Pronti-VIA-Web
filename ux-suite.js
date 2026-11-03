@@ -689,8 +689,9 @@
               if (act === "companions") void openCompanionsManager();
               else if (act === "section-tools") {
                 if (typeof window.__pvAppSuite?.reopenDock === "function") {
-                  window.__pvAppSuite.reopenDock();
-                  toast("Strumenti aperti in basso — chiudi con × quando hai finito", "ok");
+                  const opened = window.__pvAppSuite.reopenDock();
+                  if (opened) toast("Strumenti aperti in basso — chiudi con × quando hai finito", "ok");
+                  else toast("Strumenti non disponibili in questa vista", "warn");
                 } else {
                   toast("Strumenti non disponibili in questa vista", "warn");
                 }
