@@ -209,6 +209,11 @@ try {
     return /Hotel Test/i.test(document.querySelector("#pv-as-book-list")?.textContent || "");
   });
   ok("booking status save", bookingOk);
+  const closedGeneric = await page.evaluate(() => {
+    document.querySelector("#pv-as-portal [data-as-close]")?.click();
+    return !document.body.classList.contains("pv-as-dock-open") && Boolean(document.getElementById("pv-as-portal")?.hidden);
+  });
+  ok("generic dock closes with ×", closedGeneric);
 
   await clickTab(page, /documenti/i);
   await wait(600);
@@ -224,6 +229,61 @@ try {
     return /Passaporto/i.test(document.querySelector("#pv-as-doc-list")?.textContent || "");
   });
   ok("doc meta save", docOk);
+
+  // Spese tools: closed by default, Menu reopen, close with ×
+  await clickTab(page, /spese/i);
+  await wait(900);
+  await page.evaluate(() => {
+    const tabs = document.querySelector("[role=tablist]");
+    tabs?.scrollTo?.({ left: tabs.scrollWidth, behavior: "instant" });
+    const t = [...document.querySelectorAll("[role=tab]")].find((el) => /spese/i.test(el.textContent || ""));
+    t?.click();
+  });
+  await wait(1200);
+  ok(
+    "spese dock closed by default",
+    await page.evaluate(() => {
+      const portal = document.getElementById("pv-es-portal");
+      return Boolean(portal?.hidden) && !document.body.classList.contains("pv-es-dock-open");
+    })
+  );
+  await page.evaluate(() => {
+    const tabs = [...document.querySelectorAll("[role=tab]")];
+    for (const t of tabs) {
+      const on = /spese/i.test(t.textContent || "");
+      if (on) {
+        t.setAttribute("aria-selected", "true");
+        t.setAttribute("data-state", "active");
+        t.click();
+      } else {
+        t.setAttribute("aria-selected", "false");
+        t.removeAttribute("data-state");
+      }
+    }
+  });
+  await wait(800);
+  const speseOpen = await page.evaluate(() => {
+    if (typeof window.__pvExpenseSuite?.reopenDock === "function") {
+      return window.__pvExpenseSuite.reopenDock();
+    }
+    return window.__pvAppSuite?.reopenDock?.();
+  });
+  await wait(800);
+  ok(
+    "spese reopen from Menu path",
+    Boolean(speseOpen) &&
+      (await page.evaluate(
+        () =>
+          document.body.classList.contains("pv-es-dock-open") &&
+          Boolean(document.querySelector("#pv-es-portal .pv-es-bar")) &&
+          Boolean(document.querySelector("#pv-es-portal [data-es-close]"))
+      ))
+  );
+  const speseClosed = await page.evaluate(() => {
+    document.querySelector("#pv-es-portal [data-es-close]")?.click();
+    return Boolean(document.getElementById("pv-es-portal")?.hidden) && !document.body.classList.contains("pv-es-dock-open");
+  });
+  ok("spese dock closes with ×", speseClosed);
 
   console.log("\n--- summary ---");
   const failed = results.filter((r) => !r.pass);

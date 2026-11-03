@@ -7,8 +7,9 @@
   const META_KEY = "viavia-expense-fx-meta-v1";
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
+  const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102ae";
+  const ASSET_VER = "20261102af";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -127,7 +128,17 @@
         bottom:calc(var(--pv-es-dock-h, 36vh) + 86px)!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
       }
-      .pv-es-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;align-items:center}
+      #pv-es-portal{overscroll-behavior:contain;max-height:min(36vh,360px)}
+      #pv-es-portal[hidden]{display:none !important}
+      #pv-es-portal .pv-es-dock-title{
+        display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding:0 0 8px;font:700 .78rem inherit;color:#007d82;letter-spacing:.02em;text-transform:uppercase
+      }
+      #pv-es-portal .pv-es-dock-title button{
+        appearance:none;border:0;width:36px;height:36px;border-radius:999px;background:#eef5f5;
+        color:#16353b;font:700 1.2rem/1 inherit;cursor:pointer
+      }
+      .pv-es-bar{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 12px;align-items:center}
       .pv-es-bar button,.pv-es-chip{
         appearance:none;border:1px solid #c9dbdb;background:#fff;color:#16353b;
         border-radius:999px;padding:8px 12px;font:600 .82rem inherit;cursor:pointer
@@ -342,36 +353,115 @@
   }
 
   /* ---------- Portal outside React #root ---------- */
+  function isDockDismissed() {
+    const d = readJson(DOCK_DISMISS_KEY, {});
+    return Boolean(d.dismissed || d["*"]);
+  }
+
+  function ensureDockStartsClosed() {
+    if (!tripAuth()) return;
+    try {
+      if (sessionStorage.getItem("pv-es-dock-autohide-v1") === "1") return;
+      sessionStorage.setItem("pv-es-dock-autohide-v1", "1");
+    } catch {
+      /* private mode */
+    }
+    const d = readJson(DOCK_DISMISS_KEY, {});
+    if (d.dismissed || d["*"]) return;
+    d.dismissed = Date.now();
+    d["*"] = Date.now();
+    writeJson(DOCK_DISMISS_KEY, d);
+  }
+
   function expensePortal() {
     let host = document.getElementById("pv-es-portal");
     if (!host) {
       host = document.createElement("div");
       host.id = "pv-es-portal";
+      host.hidden = true;
       host.style.cssText =
         "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121000;max-height:min(36vh,360px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22);padding:12px 14px";
       document.body.appendChild(host);
     }
+    ensureDockChrome(host);
     return host;
+  }
+
+  function ensureDockChrome(host) {
+    if (host.querySelector(".pv-es-dock-title")) return;
+    const title = document.createElement("div");
+    title.className = "pv-es-dock-title";
+    title.innerHTML = `<span>Novità · strumenti spese</span><button type="button" aria-label="Chiudi strumenti" data-es-close>×</button>`;
+    title.querySelector("[data-es-close]")?.addEventListener("click", () => dismissDock());
+    host.insertBefore(title, host.firstChild);
+  }
+
+  function placeExpensePortal() {
+    const host = document.getElementById("pv-es-portal");
+    if (!host || host.hidden) {
+      if (!document.body.classList.contains("pv-as-dock-open")) {
+        document.documentElement.style.removeProperty("--pv-es-dock-h");
+      }
+      return;
+    }
+    const tabs = document.querySelector("[role=tablist]");
+    const tabBox = tabs?.getBoundingClientRect();
+    const vh = window.innerHeight || 800;
+    let bottomPad = 10;
+    if (tabBox && tabBox.bottom > vh * 0.55 && tabBox.top < vh && tabBox.height > 20) {
+      bottomPad = Math.min(Math.floor(vh * 0.28), Math.max(10, Math.ceil(vh - tabBox.top + 8)));
+    }
+    host.style.bottom = `calc(${bottomPad}px + env(safe-area-inset-bottom,0px))`;
+    const h = Math.ceil(host.getBoundingClientRect().height) || Math.floor(vh * 0.32);
+    document.documentElement.style.setProperty("--pv-es-dock-h", `${h + bottomPad}px`);
   }
 
   function syncExpenseDockClass(open) {
     document.body.classList.toggle("pv-es-dock-open", Boolean(open));
     const host = document.getElementById("pv-es-portal");
     if (open && host && !host.hidden) {
-      const h = Math.ceil(host.getBoundingClientRect().height) || Math.floor((window.innerHeight || 800) * 0.32);
-      document.documentElement.style.setProperty("--pv-es-dock-h", `${h}px`);
-    } else if (!document.body.classList.contains("pv-as-dock-open")) {
-      document.documentElement.style.removeProperty("--pv-es-dock-h");
+      placeExpensePortal();
+    } else {
+      if (host) host.style.bottom = "calc(10px + env(safe-area-inset-bottom,0px))";
+      if (!document.body.classList.contains("pv-as-dock-open")) {
+        document.documentElement.style.removeProperty("--pv-es-dock-h");
+      }
+      // Drop leftover shell padding immediately when tools close.
+      document.body.classList.remove("pv-es-dock-open");
     }
   }
 
+  function dismissDock() {
+    writeJson(DOCK_DISMISS_KEY, { dismissed: Date.now(), "*": Date.now() });
+    const host = document.getElementById("pv-es-portal");
+    if (host) host.hidden = true;
+    syncExpenseDockClass(false);
+    document.documentElement.style.removeProperty("--pv-es-dock-h");
+  }
+
+  function reopenDock() {
+    if (!expensesSectionVisible()) return false;
+    writeJson(DOCK_DISMISS_KEY, {});
+    // Close the other tools dock so only one sheet is visible.
+    try {
+      window.__pvAppSuite?.dismissDock?.();
+    } catch {
+      /* ignore */
+    }
+    const host = expensePortal();
+    ensureToolbarMounted(host);
+    host.hidden = false;
+    syncExpenseDockClass(true);
+    placeExpensePortal();
+    return Boolean(document.body.classList.contains("pv-es-dock-open") && !host.hidden);
+  }
+
   function expensesSectionVisible() {
+    // Only the active tab — React keeps other tab panels in the DOM, so heading
+    // lookups would keep the Spese dock stuck open over Itinerario/cover.
     const tab = document.querySelector('[role=tab][data-state=active], [role=tab][aria-selected="true"]');
     const label = (tab?.textContent || "").trim().toLowerCase();
-    if (/spese/.test(label)) return true;
-    return Boolean(
-      [...document.querySelectorAll("h2")].find((h) => /spese di gruppo/i.test(h.textContent || ""))
-    );
+    return /spese/.test(label);
   }
 
   /* ---------- Toolbar: export / notify / member currencies ---------- */
@@ -381,16 +471,7 @@
     return expensePortal();
   }
 
-  function injectToolbar() {
-    const host = expensesHost();
-    if (!host) {
-      const portal = document.getElementById("pv-es-portal");
-      if (portal) portal.hidden = true;
-      syncExpenseDockClass(false);
-      return;
-    }
-    host.hidden = false;
-    syncExpenseDockClass(true);
+  function ensureToolbarMounted(host) {
     if (host.querySelector(".pv-es-bar")) {
       refreshOnlineHint();
       return;
@@ -404,7 +485,9 @@
       <button type="button" data-es="notify">${notifyEnabled() ? "Notifiche on" : "Attiva notifiche"}</button>
       <span class="pv-es-hint" id="pv-es-online-hint"></span>
     `;
-    host.insertAdjacentElement("afterbegin", bar);
+    const title = host.querySelector(".pv-es-dock-title");
+    if (title) title.insertAdjacentElement("afterend", bar);
+    else host.insertAdjacentElement("afterbegin", bar);
     bar.addEventListener("click", (ev) => {
       const btn = ev.target?.closest?.("button[data-es]");
       if (!btn) return;
@@ -415,6 +498,26 @@
       if (act === "notify") void toggleNotify(btn);
     });
     refreshOnlineHint();
+  }
+
+  function injectToolbar() {
+    if (!expensesSectionVisible()) {
+      const portal = document.getElementById("pv-es-portal");
+      if (portal) portal.hidden = true;
+      syncExpenseDockClass(false);
+      return;
+    }
+    const host = expensePortal();
+    ensureToolbarMounted(host);
+    // Closed by default — open only from Menu → Strumenti (or reopenDock).
+    if (isDockDismissed()) {
+      host.hidden = true;
+      syncExpenseDockClass(false);
+      return;
+    }
+    host.hidden = false;
+    syncExpenseDockClass(true);
+    placeExpensePortal();
   }
 
   function refreshOnlineHint() {
@@ -1178,11 +1281,13 @@
   /* ---------- Tick ---------- */
   function tick() {
     ensureStyles();
-    if (!/spese di gruppo|aggiungi una spesa|rimbors/i.test(document.body?.innerText || "")) {
-      // Still allow form extras if modal open
-      if (!document.querySelector(".pv-expense-fx") && !document.querySelector("form")) return;
-    }
+    ensureDockStartsClosed();
+    // Always sync portal visibility from the active tab (never from page text).
     injectToolbar();
+    if (!expensesSectionVisible()) {
+      // Form extras may still run if an expense modal is open on top.
+      if (!document.querySelector(".pv-expense-fx")) return;
+    }
     enhanceExpenseFormExtras();
     enhanceTransferCurrencyField();
     enrichExpenseList();
@@ -1257,13 +1362,16 @@
     window.addEventListener("offline", refreshOnlineHint);
   }
 
-  // Expose for magic-extras
+  // Expose for magic-extras + Menu → Strumenti
   window.__pvExpenseSuite = {
     fetchRate,
     warmFxCache,
     capturePendingExpenseMeta,
     fairSplitCents,
     ASSET_VER,
+    reopenDock,
+    dismissDock,
+    isActive: expensesSectionVisible,
   };
 
   const obs = new MutationObserver(() => {
@@ -1271,6 +1379,11 @@
     tick._t = setTimeout(tick, 350);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
+  addEventListener("scroll", () => placeExpensePortal(), { passive: true });
+  addEventListener("resize", () => placeExpensePortal());
+  addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && document.body.classList.contains("pv-es-dock-open")) dismissDock();
+  });
   setTimeout(tick, 900);
   setTimeout(tick, 2200);
   setInterval(() => void watchExpenseChanges(), 8000);

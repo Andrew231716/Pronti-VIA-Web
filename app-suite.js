@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ae";
+  const VER = "20261102af";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -117,18 +117,40 @@
 
   function dismissDock(id) {
     const target = id || currentDockPanelId;
-    if (!target) return;
     const d = readDismissed();
     // Session-wide dismiss: closing tools on one tab shouldn't pop them again on the next tab.
     d["*"] = Date.now();
-    d[target] = Date.now();
+    if (target) d[target] = Date.now();
     writeJson(DOCK_DISMISS_KEY, d);
-    currentDockPanelId = target;
+    if (target) currentDockPanelId = target;
     showOnlyPanel(null, { force: true });
+    document.documentElement.style.removeProperty("--pv-as-dock-h");
+    document.body.classList.remove("pv-as-dock-open");
     refreshReopenChip(target);
   }
 
+  function onSpeseTools() {
+    if (tabIs("spese")) return true;
+    if (sectionHeading(/spese di gruppo/i)) return true;
+    if (typeof window.__pvExpenseSuite?.isActive === "function") {
+      try {
+        return Boolean(window.__pvExpenseSuite.isActive());
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+
   function reopenDock(id) {
+    // Spese has its own tools dock — open that instead of the generic sheet.
+    if (!id && onSpeseTools()) {
+      if (typeof window.__pvExpenseSuite?.reopenDock === "function") {
+        showOnlyPanel(null, { force: true });
+        return Boolean(window.__pvExpenseSuite.reopenDock());
+      }
+    }
+
     // Clear dismiss first so enhance* can mount the current section panel.
     const d = readDismissed();
     delete d["*"];
@@ -139,6 +161,13 @@
       });
     }
     writeJson(DOCK_DISMISS_KEY, d);
+
+    // Only one tools sheet at a time.
+    try {
+      window.__pvExpenseSuite?.dismissDock?.();
+    } catch {
+      /* ignore */
+    }
 
     // Mount section tools for the active tab (may have been skipped while dismissed).
     if (tripAuth()) {
@@ -1692,6 +1721,9 @@
   addEventListener("hashchange", () => setTimeout(tick, 500));
   addEventListener("scroll", () => placePortal(), { passive: true });
   addEventListener("resize", () => placePortal());
+  addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && document.body.classList.contains("pv-as-dock-open")) dismissDock();
+  });
   setTimeout(tick, 700);
   setTimeout(tick, 2000);
   setTimeout(tick, 4500);
