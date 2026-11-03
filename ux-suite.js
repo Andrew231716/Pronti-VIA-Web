@@ -105,6 +105,25 @@
       .pv-menu-grid button strong{display:block;font-weight:800;margin-bottom:2px}
       .pv-menu-grid button span{display:block;color:#5b7380;font-size:.82rem;font-weight:500}
       .pv-menu-grid button.danger{border-color:#efcdc8;background:#fdf4f2;color:#7a2e28}
+      .pv-trip-manage-list{display:grid;gap:10px;margin:4px 0 12px}
+      .pv-trip-manage-row{
+        display:flex;align-items:center;gap:10px;padding:12px;
+        border:1px solid var(--pv-line);border-radius:14px;background:#f7fbfb
+      }
+      .pv-trip-manage-row .grow{flex:1;min-width:0}
+      .pv-trip-manage-row strong{display:block;font-size:.95rem;color:var(--pv-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .pv-trip-manage-row span{display:block;font-size:.78rem;color:var(--pv-muted);margin-top:2px}
+      .pv-trip-manage-row .pv-ux-ghost{flex:0 0 auto}
+      .pv-trip-manage-row button.danger{
+        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
+        border-radius:10px;padding:8px 12px;font:700 12px inherit;cursor:pointer;flex:0 0 auto
+      }
+      .recent-trips a.booking-card{position:relative;padding-right:52px}
+      .recent-trips .pv-delete-trip{
+        appearance:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);
+        border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;border-radius:10px;
+        padding:7px 10px;font:700 11px inherit;cursor:pointer;z-index:2
+      }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
       .pv-ux-modal .pv-ux-back{position:absolute;inset:0;background:rgba(12,32,40,.45)}
@@ -242,6 +261,201 @@
     return data;
   }
 
+  function readRecentLinks() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-recent-links-v1") || "[]");
+      return Array.isArray(raw)
+        ? raw.filter((e) => e && typeof e.id === "string" && typeof e.key === "string")
+        : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeRecentLinks(list) {
+    try {
+      localStorage.setItem("viavia-recent-links-v1", JSON.stringify((list || []).slice(0, 20)));
+    } catch {
+      /* quota */
+    }
+  }
+
+  async function deleteTripById(id, key, { title = "questo viaggio", leavePage = false } = {}) {
+    const tripId = String(id || "").trim();
+    const tripKey = String(key || "").trim();
+    if (!tripId || !tripKey) throw new Error("Viaggio non valido");
+    const ok = confirm(
+      `Eliminare definitivamente «${title}»?\n\nVerrà rimosso da questo dispositivo e, se possibile, anche dal cloud. L’azione non si può annullare.`
+    );
+    if (!ok) return false;
+
+    const res = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${tripKey}` },
+      cache: "no-store",
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Eliminazione non riuscita");
+
+    if (typeof window.__pvPurgeLocalTrip === "function") {
+      window.__pvPurgeLocalTrip(tripId);
+    } else {
+      writeRecentLinks(readRecentLinks().filter((e) => e.id !== tripId));
+      try {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+        if (db && db[tripId]) {
+          delete db[tripId];
+          localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // Drop local revision/activity leftovers for this trip.
+    try {
+      const revs = readJson(REVISIONS_KEY, {});
+      if (revs[tripId]) {
+        delete revs[tripId];
+        writeJson(REVISIONS_KEY, revs);
+      }
+      const acts = readJson(ACTIVITY_KEY, {});
+      if (acts[tripId]) {
+        delete acts[tripId];
+        writeJson(ACTIVITY_KEY, acts);
+      }
+    } catch {
+      /* ignore */
+    }
+
+    toast("Viaggio eliminato", "ok");
+    if (leavePage) {
+      location.hash = "";
+      setTimeout(() => location.reload(), 250);
+    }
+    return true;
+  }
+
+  window.__pvDeleteTrip = deleteTripById;
+
+  async function deleteCurrentTrip() {
+    const auth = tripAuth();
+    if (!auth) {
+      toast("Apri un viaggio per eliminarlo", "warn");
+      return;
+    }
+    let title = "questo viaggio";
+    try {
+      const { data } = await loadTrip();
+      title = data?.trip?.title || title;
+    } catch {
+      /* use default title */
+    }
+    try {
+      await deleteTripById(auth.id, auth.key, { title, leavePage: true });
+    } catch (err) {
+      toast(err.message || "Eliminazione non riuscita", "err");
+    }
+  }
+
+  function openManageTrips() {
+    const links = readRecentLinks();
+    const body =
+      links.length === 0
+        ? `<p class="small-note" style="margin:0 0 12px;color:#5b7380">Nessun viaggio recente su questo dispositivo.</p>
+           <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`
+        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Elimina un viaggio per rimuoverlo da qui e, se hai la chiave di modifica, anche dal cloud.</p>
+           <div class="pv-trip-manage-list">
+             ${links
+               .map(
+                 (t, i) => `<div class="pv-trip-manage-row" data-idx="${i}">
+                   <div class="grow">
+                     <strong>${escapeHtml(t.title || "Viaggio")}</strong>
+                     <span>${escapeHtml(String(t.id).slice(0, 8))}…</span>
+                   </div>
+                   <a class="pv-ux-ghost" href="#${new URLSearchParams({ trip: t.id, key: t.key })}">Apri</a>
+                   <button type="button" class="danger" data-del="${i}">Elimina</button>
+                 </div>`
+               )
+               .join("")}
+           </div>
+           <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`;
+
+    openModal("I tuoi viaggi", body, {
+      onMount: (root) => {
+        root.querySelectorAll("button[data-del]").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            const idx = Number(btn.getAttribute("data-del"));
+            const trip = readRecentLinks()[idx];
+            if (!trip) return;
+            btn.disabled = true;
+            try {
+              const current = tripAuth();
+              const leave = Boolean(current && current.id === trip.id);
+              const done = await deleteTripById(trip.id, trip.key, {
+                title: trip.title || "viaggio",
+                leavePage: leave,
+              });
+              if (done && !leave) openManageTrips();
+            } catch (err) {
+              btn.disabled = false;
+              toast(err.message || "Eliminazione non riuscita", "err");
+            }
+          });
+        });
+      },
+    });
+  }
+
+  function enhanceRecentTripsDelete() {
+    const host = document.querySelector(".recent-trips");
+    if (!host) return;
+    const cards = [...host.querySelectorAll("a.booking-card")];
+    for (const card of cards) {
+      if (card.querySelector(".pv-delete-trip")) continue;
+      let id = "";
+      let key = "";
+      try {
+        const href = card.getAttribute("href") || "";
+        const q = new URLSearchParams(String(href).replace(/^#/, ""));
+        id = q.get("trip") || "";
+        key = q.get("key") || "";
+      } catch {
+        continue;
+      }
+      if (!id || !key) continue;
+      const title = (card.querySelector("strong")?.textContent || "viaggio").trim();
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "pv-delete-trip";
+      btn.textContent = "Elimina";
+      btn.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        btn.disabled = true;
+        try {
+          const current = tripAuth();
+          await deleteTripById(id, key, {
+            title,
+            leavePage: Boolean(current && current.id === id),
+          });
+          // React list refreshes on next open; remove the card immediately.
+          card.remove();
+          if (!host.querySelector("a.booking-card") && !host.querySelector(".pv-empty-recent")) {
+            const p = document.createElement("p");
+            p.className = "small-note pv-empty-recent";
+            p.textContent = "Non hai ancora aperto un viaggio salvato.";
+            host.appendChild(p);
+          }
+        } catch (err) {
+          btn.disabled = false;
+          toast(err.message || "Eliminazione non riuscita", "err");
+        }
+      });
+      card.appendChild(btn);
+    }
+  }
+
   function openModal(title, bodyHtml, { onMount } = {}) {
     let modal = document.getElementById("pv-ux-modal");
     if (!modal) {
@@ -314,12 +528,14 @@
                 <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
                 <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
                 <button type="button" data-ux="more"><strong>Altro</strong><span>Attività, template, versioni, export</span></button>
+                <button type="button" class="danger" data-ux="delete-trip"><strong>Elimina questo viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>
               </div>
             </div>`
           : `<div class="pv-menu-section">
               <h3>Viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Gli strumenti del viaggio compaiono qui dentro</span></button>
+                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri o elimina i viaggi salvati su questo dispositivo</span></button>
+                <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Usa «I tuoi viaggi» in alto oppure creane uno nuovo</span></button>
               </div>
             </div>`
       }
@@ -340,6 +556,8 @@
               if (act === "companions") void openCompanionsManager();
               else if (act === "search") openSearchSheet();
               else if (act === "more") openMoreTools();
+              else if (act === "manage-trips") openManageTrips();
+              else if (act === "delete-trip") void deleteCurrentTrip();
               else if (act === "home-hint") toast("Apri un viaggio dalla lista o creane uno nuovo", "ok");
               else if (act === "logout") {
                 if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
@@ -1013,6 +1231,7 @@
     injectEmptyStates();
     injectMemberRoles();
     injectOfflineChip();
+    enhanceRecentTripsDelete();
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {

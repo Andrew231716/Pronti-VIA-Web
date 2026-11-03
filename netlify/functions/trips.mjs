@@ -215,6 +215,12 @@ async function storeHandler(event, path) {
     });
   }
 
+  if (method === "DELETE") {
+    if (!canEdit) return json(403, { error: "Solo chi ha la chiave di modifica può eliminare il viaggio." });
+    await tripsKv.del(`trip:${id}`);
+    return json(200, { ok: true, id, deleted: true });
+  }
+
   return json(405, { error: "Metodo non supportato." });
 }
 

@@ -3,7 +3,7 @@
  * (local/tunnel/dev), else in-memory.
  */
 import { getStore } from "@netlify/blobs";
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -89,6 +89,29 @@ export function createKv(storeName) {
       if (filesOk) {
         try {
           writeFileSync(filePath(storeName, key), JSON.stringify(value));
+          return { backend: "file" };
+        } catch {
+          /* fall through */
+        }
+      }
+      return { backend: "memory" };
+    },
+
+    async del(key) {
+      const mk = `${storeName}:${key}`;
+      mem.delete(mk);
+      if (blobs) {
+        try {
+          await blobs.delete(key);
+          return { backend: "blobs" };
+        } catch {
+          /* fall through */
+        }
+      }
+      if (filesOk) {
+        try {
+          const p = filePath(storeName, key);
+          if (existsSync(p)) unlinkSync(p);
           return { backend: "file" };
         } catch {
           /* fall through */

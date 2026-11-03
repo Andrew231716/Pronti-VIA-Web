@@ -102,6 +102,47 @@
     }
   }
 
+  function clearPrivateBudget(tripId) {
+    if (!tripId) return;
+    try {
+      const db = readPrivateBudgets();
+      const slot = privateBudgetSlot(tripId);
+      if (slot in db) {
+        delete db[slot];
+        writePrivateBudgets(db);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function removeRecentLink(tripId) {
+    if (!tripId) return;
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-recent-links-v1") || "[]");
+      if (!Array.isArray(raw)) return;
+      localStorage.setItem(
+        "viavia-recent-links-v1",
+        JSON.stringify(raw.filter((e) => e && e.id !== tripId).slice(0, 20))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function purgeLocalTrip(tripId) {
+    if (!tripId) return;
+    const db = readLocalTrips();
+    if (db[tripId]) {
+      delete db[tripId];
+      writeLocalTrips(db);
+    }
+    clearPrivateBudget(tripId);
+    removeRecentLink(tripId);
+  }
+
+  window.__pvPurgeLocalTrip = purgeLocalTrip;
+
   function getPrivateBudget(tripId) {
     if (!tripId) return null;
     const v = readPrivateBudgets()[privateBudgetSlot(tripId)];
@@ -822,6 +863,12 @@
       });
     }
 
+    if (method === "DELETE") {
+      if (!canEdit) return jsonResponse(403, { error: "Solo chi ha la chiave di modifica può eliminare il viaggio." });
+      purgeLocalTrip(id);
+      return jsonResponse(200, { ok: true, id, deleted: true, local: true });
+    }
+
     return jsonResponse(405, { error: "Metodo non supportato" });
   }
 
@@ -1050,6 +1097,9 @@
                   local: false,
                 });
               }
+              if (method === "DELETE" && (data?.deleted || data?.ok)) {
+                purgeLocalTrip(id || tripIdHint);
+              }
             } catch {
               /* ignore cache errors */
             }
@@ -1104,6 +1154,9 @@
                 });
               }
             }
+            if (method === "DELETE" && (data?.deleted || data?.ok || res.status === 200)) {
+              purgeLocalTrip(tripIdHint || data.id);
+            }
           } catch {
             /* ignore */
           }
@@ -1112,6 +1165,16 @@
         if (!res.ok && method === "GET") {
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
           if (local.status === 200) return local;
+        }
+        // DELETE: if cloud says missing/unsupported, still purge local copy when we hold the key.
+        if (!res.ok && method === "DELETE") {
+          const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+          if (local.status === 200) return local;
+          // 404 on cloud still means "gone" — clear local leftovers.
+          if (res.status === 404 || res.status === 405) {
+            purgeLocalTrip(tripIdHint);
+            return jsonResponse(200, { ok: true, id: tripIdHint, deleted: true, local: true });
+          }
         }
         // POST must not silently become local-only when cloud returns 4xx —
         // that creates unshareable trips. Only fall back on transport failure.
@@ -1122,7 +1185,12 @@
       }
     
       };
-      if (methodEarly === "PUT" || methodEarly === "PATCH" || methodEarly === "POST") {
+      if (
+        methodEarly === "PUT" ||
+        methodEarly === "PATCH" ||
+        methodEarly === "POST" ||
+        methodEarly === "DELETE"
+      ) {
         return enqueueTripWrite(runTripRequest);
       }
       return runTripRequest();
