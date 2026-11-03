@@ -118,11 +118,28 @@
         appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
         border-radius:10px;padding:8px 12px;font:700 12px inherit;cursor:pointer;flex:0 0 auto
       }
-      .recent-trips a.booking-card{position:relative;padding-right:52px}
+      .recent-trips .pv-recent-row{
+        display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;margin:0 0 10px
+      }
+      .recent-trips .pv-recent-row > a.booking-card{margin:0}
       .recent-trips .pv-delete-trip{
-        appearance:none;position:absolute;right:10px;top:50%;transform:translateY(-50%);
-        border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;border-radius:10px;
-        padding:7px 10px;font:700 11px inherit;cursor:pointer;z-index:2
+        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;border-radius:12px;
+        padding:10px 12px;font:700 13px inherit;cursor:pointer;min-width:88px;align-self:stretch
+      }
+      .toolbar-actions .pv-delete-trip-btn,
+      .pv-delete-trip-btn{
+        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
+        border-radius:12px;padding:10px 12px;font:700 13px inherit;cursor:pointer;
+        display:inline-flex;align-items:center;gap:6px;min-height:40px
+      }
+      .toolbar-actions .pv-delete-trip-btn:hover{background:#f8e7e3}
+      .pv-home-delete-bar{
+        margin:10px 0 16px;padding:12px;border:1px dashed #efcdc8;border-radius:14px;background:#fdf7f5
+      }
+      .pv-home-delete-bar p{margin:0 0 8px;color:#7a2e28;font:600 13px/1.35 inherit}
+      .pv-home-delete-bar button{
+        appearance:none;border:1px solid #efcdc8;background:#fff;color:#7a2e28;
+        border-radius:10px;padding:9px 12px;font:700 13px inherit;cursor:pointer
       }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
@@ -410,9 +427,19 @@
   function enhanceRecentTripsDelete() {
     const host = document.querySelector(".recent-trips");
     if (!host) return;
+    // Help text once
+    if (!host.querySelector(".pv-recent-delete-hint")) {
+      const hint = document.createElement("p");
+      hint.className = "small-note pv-recent-delete-hint";
+      hint.style.cssText = "color:#7a2e28;margin:0 0 10px;font-weight:600";
+      hint.textContent = "Tocca Elimina accanto a un viaggio per cancellarlo.";
+      const firstCard = host.querySelector("a.booking-card");
+      if (firstCard) host.insertBefore(hint, firstCard);
+      else host.appendChild(hint);
+    }
     const cards = [...host.querySelectorAll("a.booking-card")];
     for (const card of cards) {
-      if (card.querySelector(".pv-delete-trip")) continue;
+      if (card.closest(".pv-recent-row")?.querySelector(".pv-delete-trip")) continue;
       let id = "";
       let key = "";
       try {
@@ -425,10 +452,15 @@
       }
       if (!id || !key) continue;
       const title = (card.querySelector("strong")?.textContent || "viaggio").trim();
+      const row = document.createElement("div");
+      row.className = "pv-recent-row";
+      card.replaceWith(row);
+      row.appendChild(card);
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pv-delete-trip";
       btn.textContent = "Elimina";
+      btn.setAttribute("aria-label", `Elimina ${title}`);
       btn.addEventListener("click", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -439,8 +471,7 @@
             title,
             leavePage: Boolean(current && current.id === id),
           });
-          // React list refreshes on next open; remove the card immediately.
-          card.remove();
+          row.remove();
           if (!host.querySelector("a.booking-card") && !host.querySelector(".pv-empty-recent")) {
             const p = document.createElement("p");
             p.className = "small-note pv-empty-recent";
@@ -452,8 +483,54 @@
           toast(err.message || "Eliminazione non riuscita", "err");
         }
       });
-      card.appendChild(btn);
+      row.appendChild(btn);
     }
+  }
+
+  function injectTripDeleteButton() {
+    if (!tripAuth()) {
+      document.getElementById("pv-delete-trip-toolbar")?.remove();
+      return;
+    }
+    const actions = document.querySelector(".toolbar-actions");
+    if (!actions) return;
+    if (document.getElementById("pv-delete-trip-toolbar")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "pv-delete-trip-toolbar";
+    btn.className = "pv-delete-trip-btn";
+    btn.textContent = "Elimina viaggio";
+    btn.title = "Elimina definitivamente questo viaggio";
+    btn.addEventListener("click", () => void deleteCurrentTrip());
+    // Place before Condividi so it's hard to miss.
+    const share = [...actions.querySelectorAll("button")].find((b) =>
+      /condividi/i.test(b.textContent || "")
+    );
+    if (share) actions.insertBefore(btn, share);
+    else actions.appendChild(btn);
+  }
+
+  function injectHomeDeleteEntry() {
+    if (tripAuth()) {
+      document.getElementById("pv-home-delete-bar")?.remove();
+      return;
+    }
+    const topbar = document.querySelector(".topbar, .toolbar-actions, main");
+    const anchor =
+      [...document.querySelectorAll("button")].find((b) => /i tuoi viaggi/i.test((b.textContent || "").trim())) ||
+      null;
+    if (!anchor || document.getElementById("pv-home-delete-bar")) return;
+    const bar = document.createElement("div");
+    bar.id = "pv-home-delete-bar";
+    bar.className = "pv-home-delete-bar";
+    bar.innerHTML = `<p>Vuoi togliere un viaggio salvato?</p>`;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Gestisci / elimina viaggi";
+    btn.addEventListener("click", () => openManageTrips());
+    bar.appendChild(btn);
+    const host = anchor.closest(".topbar, .section-heading, header") || anchor.parentElement;
+    host?.insertAdjacentElement("afterend", bar);
   }
 
   function openModal(title, bodyHtml, { onMount } = {}) {
@@ -522,19 +599,20 @@
           ? `<div class="pv-menu-section">
               <h3>Questo viaggio</h3>
               <div class="pv-menu-grid">
+                <button type="button" class="danger" data-ux="delete-trip"><strong>Elimina questo viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>
                 <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
                 <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
                 <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
                 <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
                 <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
                 <button type="button" data-ux="more"><strong>Altro</strong><span>Attività, template, versioni, export</span></button>
-                <button type="button" class="danger" data-ux="delete-trip"><strong>Elimina questo viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>
               </div>
             </div>`
           : `<div class="pv-menu-section">
               <h3>Viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri o elimina i viaggi salvati su questo dispositivo</span></button>
+                <button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli dalla lista dei viaggi salvati su questo dispositivo</span></button>
+                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri o elimina i viaggi recenti</span></button>
                 <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Usa «I tuoi viaggi» in alto oppure creane uno nuovo</span></button>
               </div>
             </div>`
@@ -1232,6 +1310,8 @@
     injectMemberRoles();
     injectOfflineChip();
     enhanceRecentTripsDelete();
+    injectTripDeleteButton();
+    injectHomeDeleteEntry();
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {
