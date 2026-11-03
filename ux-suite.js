@@ -118,14 +118,30 @@
         appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
         border-radius:10px;padding:8px 12px;font:700 12px inherit;cursor:pointer;flex:0 0 auto
       }
-      .recent-trips .pv-recent-row{
-        display:grid;grid-template-columns:1fr auto;gap:8px;align-items:stretch;margin:0 0 10px
+      .recent-trips .booking-card.pv-recent-trip-row,
+      .recent-trips .pv-recent-trip-row{
+        display:flex;align-items:center;gap:8px;padding:10px 12px
       }
-      .recent-trips .pv-recent-row > a.booking-card{margin:0}
+      .recent-trips .pv-recent-trip-open{
+        display:flex;align-items:center;gap:12px;flex:1;min-width:0;
+        color:inherit;text-decoration:none
+      }
+      .recent-trips .pv-recent-trip-open .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+      .recent-trips .pv-recent-trash,
       .recent-trips .pv-delete-trip{
-        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;border-radius:12px;
-        padding:10px 12px;font:700 13px inherit;cursor:pointer;min-width:88px;align-self:stretch
+        appearance:none;flex:0 0 auto;width:42px;height:42px;border-radius:12px;
+        border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
+        display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0
       }
+      .recent-trips .pv-recent-trash:hover,
+      .recent-trips .pv-delete-trip:hover{background:#f8e7e3}
+      .recent-trips a.booking-card{display:flex;align-items:center;gap:12px}
+      .recent-trips a.booking-card .pv-delete-trip{margin-left:auto;order:5}
+      .recent-trips .pv-recent-row{
+        display:flex;align-items:center;gap:8px;margin:0 0 10px
+      }
+      .recent-trips .pv-recent-row > a.booking-card{margin:0;flex:1;min-width:0}
+      .recent-trips .pv-recent-row > .pv-delete-trip{flex:0 0 auto}
       .toolbar-actions .pv-delete-trip-btn,
       .pv-delete-trip-btn{
         appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
@@ -355,6 +371,51 @@
 
   window.__pvDeleteTrip = deleteTripById;
 
+  window.__pvDeleteTripFromRecent = async function deleteTripFromRecent(entry) {
+    const id = entry?.id;
+    const key = entry?.key;
+    const title = entry?.title || "viaggio";
+    if (!id || !key) {
+      toast("Viaggio non valido", "err");
+      return;
+    }
+    try {
+      const current = tripAuth();
+      const done = await deleteTripById(id, key, {
+        title,
+        leavePage: Boolean(current && current.id === id),
+      });
+      if (done && !(current && current.id === id)) {
+        // Remove the row immediately from the open sheet.
+        const host = document.querySelector(".recent-trips");
+        host?.querySelectorAll(".pv-recent-trip-row, .pv-recent-row, a.booking-card").forEach((el) => {
+          const href = el.getAttribute?.("href") || el.querySelector?.("a")?.getAttribute("href") || "";
+          if (href.includes(`trip=${encodeURIComponent(id)}`) || href.includes(`trip=${id}`)) {
+            const wrap = el.classList?.contains("pv-recent-row") ? el : el.closest?.(".pv-recent-row");
+            (wrap || el).remove();
+          }
+        });
+        if (host && !host.querySelector(".pv-recent-trip-row, .pv-recent-row, a.booking-card") && !host.querySelector(".pv-empty-recent")) {
+          const p = document.createElement("p");
+          p.className = "small-note pv-empty-recent";
+          p.textContent = "Non hai ancora aperto un viaggio salvato.";
+          host.appendChild(p);
+        }
+      }
+    } catch (err) {
+      toast(err.message || "Eliminazione non riuscita", "err");
+    }
+  };
+
+  function trashIconSvg() {
+    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M4 7h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 7l1 14h10l1-14" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </svg>`;
+  }
+
   async function deleteCurrentTrip() {
     const auth = tripAuth();
     if (!auth) {
@@ -391,7 +452,7 @@
                      <span>${escapeHtml(String(t.id).slice(0, 8))}…</span>
                    </div>
                    <a class="pv-ux-ghost" href="#${new URLSearchParams({ trip: t.id, key: t.key })}">Apri</a>
-                   <button type="button" class="danger" data-del="${i}">Elimina</button>
+                   <button type="button" class="danger" data-del="${i}" aria-label="Elimina ${escapeHtml(t.title || "viaggio")}" title="Elimina viaggio">${trashIconSvg()}</button>
                  </div>`
                )
                .join("")}
@@ -427,19 +488,19 @@
   function enhanceRecentTripsDelete() {
     const host = document.querySelector(".recent-trips");
     if (!host) return;
-    // Help text once
-    if (!host.querySelector(".pv-recent-delete-hint")) {
-      const hint = document.createElement("p");
-      hint.className = "small-note pv-recent-delete-hint";
-      hint.style.cssText = "color:#7a2e28;margin:0 0 10px;font-weight:600";
-      hint.textContent = "Tocca Elimina accanto a un viaggio per cancellarlo.";
-      const firstCard = host.querySelector("a.booking-card");
-      if (firstCard) host.insertBefore(hint, firstCard);
-      else host.appendChild(hint);
-    }
-    const cards = [...host.querySelectorAll("a.booking-card")];
+
+    // Native React rows already include .pv-recent-trash — nothing else needed.
+    if (host.querySelector(".pv-recent-trash")) return;
+
+    // Inject a trash icon beside each trip card (sibling, not inside the <a>).
+    const cards = [...host.querySelectorAll("a.booking-card")].filter(
+      (a) => !a.classList.contains("pv-recent-trip-open")
+    );
     for (const card of cards) {
       if (card.closest(".pv-recent-row")?.querySelector(".pv-delete-trip")) continue;
+      if (card.querySelector(".pv-delete-trip")) {
+        card.querySelector(".pv-delete-trip")?.remove();
+      }
       let id = "";
       let key = "";
       try {
@@ -452,32 +513,27 @@
       }
       if (!id || !key) continue;
       const title = (card.querySelector("strong")?.textContent || "viaggio").trim();
-      const row = document.createElement("div");
-      row.className = "pv-recent-row";
-      card.replaceWith(row);
-      row.appendChild(card);
+
+      let row = card.closest(".pv-recent-row");
+      if (!row) {
+        row = document.createElement("div");
+        row.className = "pv-recent-row";
+        card.parentNode?.insertBefore(row, card);
+        row.appendChild(card);
+      }
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pv-delete-trip";
-      btn.textContent = "Elimina";
+      btn.innerHTML = trashIconSvg();
       btn.setAttribute("aria-label", `Elimina ${title}`);
+      btn.title = "Elimina viaggio";
       btn.addEventListener("click", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
         btn.disabled = true;
         try {
-          const current = tripAuth();
-          await deleteTripById(id, key, {
-            title,
-            leavePage: Boolean(current && current.id === id),
-          });
-          row.remove();
-          if (!host.querySelector("a.booking-card") && !host.querySelector(".pv-empty-recent")) {
-            const p = document.createElement("p");
-            p.className = "small-note pv-empty-recent";
-            p.textContent = "Non hai ancora aperto un viaggio salvato.";
-            host.appendChild(p);
-          }
+          await window.__pvDeleteTripFromRecent({ id, key, title });
         } catch (err) {
           btn.disabled = false;
           toast(err.message || "Eliminazione non riuscita", "err");
