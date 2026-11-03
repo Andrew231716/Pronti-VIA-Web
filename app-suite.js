@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102af";
+  const VER = "20261102ag";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -245,13 +245,38 @@
     return { panel, fresh: false };
   }
 
+  function animateDockIn(host) {
+    if (!host) return;
+    clearTimeout(host._dockOutT);
+    host.hidden = false;
+    host.classList.remove("pv-dock-in");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => host.classList.add("pv-dock-in"));
+    });
+  }
+
+  function animateDockOut(host) {
+    if (!host) return;
+    host.classList.remove("pv-dock-in");
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    clearTimeout(host._dockOutT);
+    if (reduce) {
+      host.hidden = true;
+      return;
+    }
+    host._dockOutT = setTimeout(() => {
+      host.hidden = true;
+    }, 220);
+  }
+
   function showOnlyPanel(id, opts = {}) {
     const force = Boolean(opts.force);
     if (id && !force && isDockDismissed(id)) {
       currentDockPanelId = id;
       const host = portalHost();
-      host.hidden = true;
       document.body.classList.toggle("pv-as-dock-open", false);
+      document.documentElement.style.removeProperty("--pv-as-dock-h");
+      animateDockOut(host);
       refreshReopenChip(id);
       return;
     }
@@ -266,14 +291,15 @@
       el.hidden = !on;
       if (on) any = true;
     });
-    host.hidden = !any;
     document.body.classList.toggle("pv-as-dock-open", any);
     if (any) {
       currentDockPanelId = id;
+      animateDockIn(host);
       placePortal(host);
       refreshReopenChip(null);
     } else {
       document.documentElement.style.removeProperty("--pv-as-dock-h");
+      animateDockOut(host);
       if (currentDockPanelId && isDockDismissed(currentDockPanelId)) {
         refreshReopenChip(currentDockPanelId);
       } else {
@@ -1715,18 +1741,26 @@
   setupPwa();
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 400);
+    // Coalesce React churn — fewer layout thrash passes while typing/switching tabs.
+    tick._t = setTimeout(tick, 220);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
-  addEventListener("hashchange", () => setTimeout(tick, 500));
-  addEventListener("scroll", () => placePortal(), { passive: true });
-  addEventListener("resize", () => placePortal());
+  addEventListener("hashchange", () => setTimeout(tick, 280));
+  const schedulePlace = () => {
+    if (placePortal._raf) return;
+    placePortal._raf = requestAnimationFrame(() => {
+      placePortal._raf = 0;
+      placePortal();
+    });
+  };
+  addEventListener("scroll", schedulePlace, { passive: true });
+  addEventListener("resize", schedulePlace);
   addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && document.body.classList.contains("pv-as-dock-open")) dismissDock();
   });
-  setTimeout(tick, 700);
-  setTimeout(tick, 2000);
-  setTimeout(tick, 4500);
+  setTimeout(tick, 500);
+  setTimeout(tick, 1600);
+  setTimeout(tick, 3600);
 
   window.__pvAppSuite = { ver: VER, tick, flushSyncQueue, enqueueSync, placePortal, dismissDock, reopenDock };
 })();

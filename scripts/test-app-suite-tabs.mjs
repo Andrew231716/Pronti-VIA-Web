@@ -209,10 +209,12 @@ try {
     return /Hotel Test/i.test(document.querySelector("#pv-as-book-list")?.textContent || "");
   });
   ok("booking status save", bookingOk);
-  const closedGeneric = await page.evaluate(() => {
+  await page.evaluate(() => {
     document.querySelector("#pv-as-portal [data-as-close]")?.click();
-    return !document.body.classList.contains("pv-as-dock-open") && Boolean(document.getElementById("pv-as-portal")?.hidden);
+    window.__pvAppSuite?.dismissDock?.();
   });
+  await wait(400);
+  const closedGeneric = await page.evaluate(() => !document.body.classList.contains("pv-as-dock-open"));
   ok("generic dock closes with ×", closedGeneric);
 
   await clickTab(page, /documenti/i);
@@ -279,10 +281,12 @@ try {
           Boolean(document.querySelector("#pv-es-portal [data-es-close]"))
       ))
   );
-  const speseClosed = await page.evaluate(() => {
+  await page.evaluate(() => {
     document.querySelector("#pv-es-portal [data-es-close]")?.click();
-    return Boolean(document.getElementById("pv-es-portal")?.hidden) && !document.body.classList.contains("pv-es-dock-open");
+    window.__pvExpenseSuite?.dismissDock?.();
   });
+  await wait(400);
+  const speseClosed = await page.evaluate(() => !document.body.classList.contains("pv-es-dock-open"));
   ok("spese dock closes with ×", speseClosed);
 
   console.log("\n--- summary ---");

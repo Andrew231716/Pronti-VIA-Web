@@ -6,10 +6,41 @@
   --pv-account-sand: #f4f8f8;
   --pv-account-line: #d7e4e6;
   --pv-account-danger: #b42318;
+  --pv-ease: cubic-bezier(0.22, 0.8, 0.22, 1);
 }
 
 body.pv-account-ready {
   padding-top: 48px;
+}
+
+#pv-account-chip,
+#pv-account-chip button {
+  transition: transform 0.16s var(--pv-ease), background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+#pv-account-chip button:active {
+  transform: scale(0.97);
+}
+
+#pv-account-gate .pv-account-card {
+  animation: pv-account-rise 0.42s var(--pv-ease) both;
+}
+
+@keyframes pv-account-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pv-account-gate .pv-account-card {
+    animation: none;
+  }
 }
 
 @media (max-width: 720px) {
