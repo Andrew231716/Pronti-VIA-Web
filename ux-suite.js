@@ -51,13 +51,13 @@
       @media (max-width:720px){
         [role="tablist"] [role="tab"]{font-size:12px!important;padding-inline:10px!important}
       }
-      /* Keep existing FABs clear of the home indicator */
+      /* Keep FABs stacked and clear of the home indicator (Preventivo above Pronty) */
       #pv-magic-root .pv-magic-btn{
         bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
       }
       .pv-prev-launch{
-        bottom:calc(86px + env(safe-area-inset-bottom,0px))!important;
+        bottom:calc(90px + env(safe-area-inset-bottom,0px))!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
       }
       #pv-ux-toast{

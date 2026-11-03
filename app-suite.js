@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102x";
+  const VER = "20261102aa";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -63,14 +63,31 @@
       host.id = "pv-as-portal";
       // Outside #root (React-safe). Bottom sheet with clear “Novità” chrome.
       host.style.cssText =
-        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121500;max-height:min(46vh,480px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22)";
+        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121500;max-height:min(38vh,400px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22)";
       document.body.appendChild(host);
     }
     return host;
   }
 
-  function placePortal() {
-    /* bottom sheet — no dynamic top needed */
+  function placePortal(hostEl) {
+    const host = hostEl || document.getElementById("pv-as-portal");
+    if (!host || host.hidden) {
+      document.documentElement.style.removeProperty("--pv-as-dock-h");
+      return;
+    }
+    // Keep sheet above the in-flow tab strip when it sits in the lower viewport.
+    const tabs = document.querySelector("[role=tablist]");
+    const tabBox = tabs?.getBoundingClientRect();
+    const vh = window.innerHeight || 800;
+    let bottomPad = 10;
+    if (tabBox && tabBox.bottom > vh * 0.55 && tabBox.top < vh && tabBox.height > 20) {
+      bottomPad = Math.max(10, Math.ceil(vh - tabBox.top + 8));
+      // Cap so the sheet still has room to breathe.
+      bottomPad = Math.min(bottomPad, Math.floor(vh * 0.28));
+    }
+    host.style.bottom = `calc(${bottomPad}px + env(safe-area-inset-bottom,0px))`;
+    const h = Math.ceil(host.getBoundingClientRect().height) || Math.floor(vh * 0.4);
+    document.documentElement.style.setProperty("--pv-as-dock-h", `${h + bottomPad}px`);
   }
 
   function activeTabLabel() {
@@ -102,6 +119,8 @@
     const target = id || currentDockPanelId;
     if (!target) return;
     const d = readDismissed();
+    // Session-wide dismiss: closing tools on one tab shouldn't pop them again on the next tab.
+    d["*"] = Date.now();
     d[target] = Date.now();
     writeJson(DOCK_DISMISS_KEY, d);
     currentDockPanelId = target;
@@ -110,7 +129,7 @@
   }
 
   function reopenDock(id) {
-    const target = id || currentDockPanelId;
+    const target = id || currentDockPanelId || desiredPanelId();
     if (!target) return;
     const d = readDismissed();
     delete d[target];
@@ -194,10 +213,13 @@
       currentDockPanelId = id;
       placePortal(host);
       refreshReopenChip(null);
-    } else if (currentDockPanelId && isDockDismissed(currentDockPanelId)) {
-      refreshReopenChip(currentDockPanelId);
     } else {
-      refreshReopenChip(null);
+      document.documentElement.style.removeProperty("--pv-as-dock-h");
+      if (currentDockPanelId && isDockDismissed(currentDockPanelId)) {
+        refreshReopenChip(currentDockPanelId);
+      } else {
+        refreshReopenChip(null);
+      }
     }
     const install = document.getElementById("pv-as-install");
     if (install && any) install.classList.remove("show");
@@ -289,7 +311,7 @@
       .pv-as-row select, .pv-as-row input[type=text], .pv-as-row input[type=date], .pv-as-row input[type=url]{
         border:1px solid #c9dbdb;border-radius:10px;padding:8px 10px;font:inherit;background:#fff;color:#16353b
       }
-      #pv-as-portal{overscroll-behavior:contain}
+      #pv-as-portal{overscroll-behavior:contain;max-height:min(38vh,400px)}
       #pv-as-portal .pv-as-portal-panel{padding:4px 0 10px}
       #pv-as-portal .pv-as-dock-title{
         display:flex;align-items:center;justify-content:space-between;gap:8px;
@@ -299,17 +321,27 @@
         appearance:none;border:0;background:#eef5f5;border-radius:999px;width:32px;height:32px;cursor:pointer;font:700 1rem inherit
       }
       #pv-as-portal[hidden]{display:none !important}
-      body.pv-as-dock-open{scroll-padding-top:40vh}
-      .pv-as-reopen{
-        position:fixed;left:12px;right:auto;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:121600;
-        appearance:none;border:1px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
-        padding:10px 14px;font:700 .78rem inherit;cursor:pointer;box-shadow:0 8px 20px rgba(15,45,50,.18);
-        max-width:min(52vw,200px)
+      body.pv-as-dock-open{
+        scroll-padding-bottom:calc(var(--pv-as-dock-h, 42vh) + 16px);
       }
-      /* Keep Pronty / preventivo FABs clear of the tools dock */
-      body.pv-as-dock-open #pv-magic-root .pv-magic-btn,
+      body.pv-as-dock-open .app-shell{
+        padding-bottom:calc(var(--pv-as-dock-h, 42vh) + 24px) !important;
+      }
+      /* Reopen chip: mid-left, clear of account bar and FABs */
+      .pv-as-reopen{
+        position:fixed;left:12px;right:auto;top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:120100;
+        appearance:none;border:1px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
+        padding:8px 12px;font:700 .74rem inherit;cursor:pointer;box-shadow:0 6px 16px rgba(15,45,50,.16);
+        max-width:min(48vw,180px)
+      }
+      /* Stack FABs above dock: Preventivo lower, Pronty one slot higher */
       body.pv-as-dock-open .pv-prev-launch{
-        bottom:calc(min(46vh,480px) + 24px + env(safe-area-inset-bottom,0px))!important
+        bottom:calc(var(--pv-as-dock-h, 42vh) + 18px)!important;
+        right:calc(14px + env(safe-area-inset-right,0px))!important;
+      }
+      body.pv-as-dock-open #pv-magic-root .pv-magic-btn{
+        bottom:calc(var(--pv-as-dock-h, 42vh) + 86px)!important;
+        right:calc(14px + env(safe-area-inset-right,0px))!important;
       }
       #pv-as-cache-status{
         position:fixed;left:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:120050;
@@ -318,11 +350,22 @@
         box-shadow:0 4px 14px rgba(15,45,50,.08)
       }
       #pv-as-cache-status[hidden]{display:none!important}
-      /* Prefer reopen chip over cache badge when both would sit left */
       body.pv-as-reopen-visible #pv-as-cache-status{display:none!important}
+      /* Keep stop action icons clear of right-side FABs */
       @media (max-width:720px){
-        .pv-as-reopen{padding:9px 12px;font-size:.74rem}
-        #pv-as-portal{left:8px;right:8px;max-height:min(42vh,420px)}
+        article.stop-card .stop-footer{padding-right:72px}
+      }
+      /* Sticky trip tabs on mobile so the dock can't trap navigation */
+      @media (max-width:720px){
+        .pv-as-reopen{padding:8px 11px;font-size:.72rem}
+        #pv-as-portal{left:8px;right:8px;max-height:min(36vh,380px)}
+        /* Sit below the fixed account chip so taps hit tabs, not the chip */
+        .workspace-tabs{
+          position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:50;
+          background:rgba(255,255,255,.97);
+          padding:6px 0 4px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+          box-shadow:0 1px 0 #e4efef;
+        }
       }
       @media (prefers-reduced-motion: reduce){
         .pv-as-install{transition:none}
@@ -816,21 +859,34 @@
   }
 
   async function repairInvalidStopDays() {
+    // magic-extras owns the combined stop repair (days + categories) when present.
+    if (document.documentElement.dataset.pvStopRepair === "1") return;
+    if (document.documentElement.dataset.pvStopRepair === "pending") return;
     const packed = await loadTripSafe();
     if (!packed?.trip) return;
     const { auth, trip, revision } = packed;
     let changed = 0;
     trip.stops = Array.isArray(trip.stops) ? trip.stops : [];
     for (const stop of trip.stops) {
-      if (isValidStopDay(stop.day, trip)) continue;
+      if (isValidStopDay(stop.day, trip)) {
+        if (String(stop.day || "") === "unscheduled") {
+          stop.day = "";
+          changed += 1;
+        }
+        continue;
+      }
       // Legacy bug: "Giorno 1" text instead of ISO date → map to trip day or unscheduled.
       const m = String(stop.day || "").match(/giorno\s*(\d+)/i);
       stop.day = m ? isoDayFromTrip(trip, Number(m[1]) - 1) : "";
       changed += 1;
     }
-    if (!changed) return;
+    if (!changed) {
+      document.documentElement.dataset.pvStopRepair = "1";
+      return;
+    }
     try {
       await saveTripSafe(auth, trip, revision);
+      document.documentElement.dataset.pvStopRepair = "1";
       toast(`Corrette ${changed} tappe con data non valida`, "ok");
       setTimeout(() => location.reload(), 350);
     } catch {
