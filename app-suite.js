@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ac";
+  const VER = "20261102ad";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -293,11 +293,13 @@
       .pv-as-checkin.stop-done::after{content:" · fatto";font-size:.75rem;color:#0f5a40;font-weight:700}
       .pv-as-fav{margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:1rem;line-height:1;color:#c45}
       .pv-as-install{
-        position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        position:fixed;left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom,0px));
         z-index:120500;display:none;gap:10px;align-items:center;padding:12px 14px;
         border-radius:16px;background:#16353b;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.2)
       }
       .pv-as-install.show{display:flex}
+      /* Never cover itinerary / day strip while a trip is open */
+      body.pv-trip-open .pv-as-install{display:none!important}
       .pv-as-install button{appearance:none;border:0;border-radius:999px;padding:8px 12px;font:700 .8rem inherit;cursor:pointer}
       .pv-as-install .go{background:#007d82;color:#fff}
       .pv-as-install .no{background:transparent;color:#cfe;border:1px solid #4a6}
@@ -1522,7 +1524,17 @@
   }
 
   function showInstallBanner() {
-    if (sessionStorage.getItem("pv-as-install-dismissed")) return;
+    try {
+      if (localStorage.getItem("pv-as-install-dismissed") === "1") return;
+      if (sessionStorage.getItem("pv-as-install-dismissed") === "1") return;
+    } catch {
+      /* ignore */
+    }
+    // Don't cover trip itinerary / day picker — offer install from home only.
+    if (tripAuth() || document.body.classList.contains("pv-trip-open")) {
+      document.getElementById("pv-as-install")?.classList.remove("show");
+      return;
+    }
     let bar = document.getElementById("pv-as-install");
     if (!bar) {
       bar = document.createElement("div");
@@ -1548,7 +1560,12 @@
         bar.classList.remove("show");
       });
       bar.querySelector(".no")?.addEventListener("click", () => {
-        sessionStorage.setItem("pv-as-install-dismissed", "1");
+        try {
+          localStorage.setItem("pv-as-install-dismissed", "1");
+          sessionStorage.setItem("pv-as-install-dismissed", "1");
+        } catch {
+          /* ignore */
+        }
         bar.classList.remove("show");
       });
     }

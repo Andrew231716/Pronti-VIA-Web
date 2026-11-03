@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102ab";
+  const ASSET_VER = "20261102ad";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
