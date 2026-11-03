@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102s";
+  const ASSET_VER = "20261102t";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -327,22 +327,47 @@
     };
   }
 
+  /* ---------- Portal outside React #root ---------- */
+  function expensePortal() {
+    let host = document.getElementById("pv-es-portal");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "pv-es-portal";
+      host.style.cssText =
+        "position:fixed;left:0;right:0;bottom:0;z-index:121000;max-height:min(40vh,380px);overflow:auto;background:rgba(247,251,251,.97);border-top:1px solid #d9e7e7;box-shadow:0 -10px 30px rgba(15,45,50,.12);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)";
+      document.body.appendChild(host);
+    }
+    return host;
+  }
+
+  function expensesSectionVisible() {
+    const tab = document.querySelector('[role=tab][data-state=active], [role=tab][aria-selected="true"]');
+    const label = (tab?.textContent || "").trim().toLowerCase();
+    if (/spese/.test(label)) return true;
+    return Boolean(
+      [...document.querySelectorAll("h2")].find((h) => /spese di gruppo/i.test(h.textContent || ""))
+    );
+  }
+
   /* ---------- Toolbar: export / notify / member currencies ---------- */
   function expensesHost() {
-    return (
-      document.querySelector(".money-stats")?.parentElement ||
-      document.querySelector(".expense-columns")?.parentElement ||
-      [...document.querySelectorAll("h2")].find((h) => /spese di gruppo/i.test(h.textContent || ""))
-        ?.parentElement ||
-      null
-    );
+    // Prefer portal host — never inject into React-managed parents.
+    if (!expensesSectionVisible()) return null;
+    return expensePortal();
   }
 
   function injectToolbar() {
     const host = expensesHost();
-    if (!host || host.querySelector(".pv-es-bar")) return;
-    const h2 = [...host.querySelectorAll("h2")].find((h) => /spese di gruppo/i.test(h.textContent || ""));
-    if (!h2) return;
+    if (!host) {
+      const portal = document.getElementById("pv-es-portal");
+      if (portal) portal.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    if (host.querySelector(".pv-es-bar")) {
+      refreshOnlineHint();
+      return;
+    }
     const bar = document.createElement("div");
     bar.className = "pv-es-bar";
     bar.innerHTML = `
@@ -352,7 +377,7 @@
       <button type="button" data-es="notify">${notifyEnabled() ? "Notifiche on" : "Attiva notifiche"}</button>
       <span class="pv-es-hint" id="pv-es-online-hint"></span>
     `;
-    h2.insertAdjacentElement("afterend", bar);
+    host.insertAdjacentElement("afterbegin", bar);
     bar.addEventListener("click", (ev) => {
       const btn = ev.target?.closest?.("button[data-es]");
       if (!btn) return;

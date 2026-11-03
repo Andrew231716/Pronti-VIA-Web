@@ -10,8 +10,11 @@
   const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
   const TRIPS_PROXIES = []; // dead trycloudflare tunnels removed
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
+  const LOCAL_FILES_KEY = "viavia-local-trip-files-v1";
   const PRIVATE_BUDGET_KEY = "viavia-private-budget-v1";
   const SHARE_BLOBS_KEY = "viavia-share-blobs-v1";
+  const MAX_TRIP_FILES = 50;
+  const MAX_FILE_BYTES = 10 * 1024 * 1024;
   const BYTEBIN = "https://bytebin.lucko.me";
   const PER_TRY_MS = 8000;
   // Serialize trip writes so join / preventivo / React saves do not clobber each other.
@@ -737,10 +740,149 @@
     };
   }
 
+  function readLocalFilesDb() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LOCAL_FILES_KEY) || "{}");
+      return raw && typeof raw === "object" ? raw : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeLocalFilesDb(db) {
+    try {
+      localStorage.setItem(LOCAL_FILES_KEY, JSON.stringify(db));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function fileMetaList(tripId) {
+    const rows = readLocalFilesDb()[tripId] || [];
+    return rows.map(({ id, name, size, type, at }) => ({
+      id,
+      name,
+      size: Number(size) || 0,
+      type: type || "application/octet-stream",
+      at: at || null,
+    }));
+  }
+
+  async function blobToDataUrl(blob) {
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(reader.error || new Error("read"));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function dataUrlToResponse(dataUrl, name, type) {
+    const m = String(dataUrl || "").match(/^data:([^;,]+)?(;base64)?,(.*)$/s);
+    if (!m) return jsonResponse(404, { error: "File non trovato" });
+    const mime = m[1] || type || "application/octet-stream";
+    const isB64 = Boolean(m[2]);
+    const payload = m[3] || "";
+    let bytes;
+    if (isB64) {
+      const bin = atob(payload);
+      const arr = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      bytes = arr;
+    } else {
+      bytes = new TextEncoder().encode(decodeURIComponent(payload));
+    }
+    return new Response(bytes, {
+      status: 200,
+      headers: {
+        "Content-Type": mime,
+        "Content-Disposition": `attachment; filename="${String(name || "file").replace(/"/g, "")}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  async function handleLocalTripFiles(tripId, fileId, method, init, record, canEdit, canView) {
+    if (!canView) return jsonResponse(403, { error: "Link non valido" });
+    const db = readLocalFilesDb();
+    const rows = Array.isArray(db[tripId]) ? db[tripId] : [];
+
+    if (method === "GET" && !fileId) {
+      return jsonResponse(200, { files: fileMetaList(tripId) });
+    }
+
+    if (method === "GET" && fileId) {
+      const row = rows.find((f) => f.id === fileId);
+      if (!row?.dataUrl) return jsonResponse(404, { error: "File non trovato" });
+      return dataUrlToResponse(row.dataUrl, row.name, row.type);
+    }
+
+    if (method === "POST" && !fileId) {
+      if (!canEdit) return jsonResponse(403, { error: "Link non valido" });
+      if (rows.length >= MAX_TRIP_FILES) {
+        return jsonResponse(400, { error: `Massimo ${MAX_TRIP_FILES} file per viaggio.` });
+      }
+      try {
+        const form = init.body;
+        let file = null;
+        if (form && typeof FormData !== "undefined" && form instanceof FormData) {
+          file = form.get("file");
+        } else if (form && typeof form.arrayBuffer === "function") {
+          // Already a Blob/File
+          file = form;
+        }
+        if (!file || typeof file.arrayBuffer !== "function") {
+          return jsonResponse(400, { error: "Nessun file ricevuto." });
+        }
+        if (file.size > MAX_FILE_BYTES) {
+          return jsonResponse(400, { error: "Il file supera 10 MB" });
+        }
+        const dataUrl = await blobToDataUrl(file);
+        const entry = {
+          id: crypto.randomUUID(),
+          name: String(file.name || "allegato").slice(0, 180),
+          size: Number(file.size) || 0,
+          type: String(file.type || "application/octet-stream"),
+          at: new Date().toISOString(),
+          dataUrl,
+        };
+        const next = rows.concat(entry);
+        db[tripId] = next;
+        if (!writeLocalFilesDb(db)) {
+          return jsonResponse(507, {
+            error: "Spazio insufficiente su questo dispositivo. Elimina allegati o usa un file più piccolo.",
+          });
+        }
+        return jsonResponse(200, {
+          ok: true,
+          file: { id: entry.id, name: entry.name, size: entry.size, type: entry.type, at: entry.at },
+          files: fileMetaList(tripId),
+          local: true,
+        });
+      } catch (err) {
+        return jsonResponse(400, {
+          error: err instanceof Error ? err.message : "Caricamento non riuscito",
+        });
+      }
+    }
+
+    if (method === "DELETE" && fileId) {
+      if (!canEdit) return jsonResponse(403, { error: "Link non valido" });
+      db[tripId] = rows.filter((f) => f.id !== fileId);
+      writeLocalFilesDb(db);
+      return jsonResponse(200, { ok: true, id: fileId, deleted: true, local: true });
+    }
+
+    return jsonResponse(405, { error: "Metodo non supportato" });
+  }
+
   async function handleLocalTrips(pathname, search, init = {}) {
     const method = (init.method || "GET").toUpperCase();
     const parts = pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean);
     const id = parts[0] ? decodeURIComponent(parts[0]) : "";
+    const sub = parts[1] ? decodeURIComponent(parts[1]) : "";
+    const fileId = parts[2] ? decodeURIComponent(parts[2]) : "";
     const key = bearerKey(init);
     const db = readLocalTrips();
 
@@ -811,6 +953,11 @@
       key === record.key ||
       // Allow open from recent-links / share payload when viewToken matches or local seed present
       Boolean(record.local && key && (key === record.viewToken || !record.viewToken));
+
+    // /api/trips/:id/files[/:fileId] — never fall through to trip JSON (React Documenti crashes).
+    if (sub === "files") {
+      return handleLocalTripFiles(id, fileId, method, init, record, canEdit, canView);
+    }
 
     if (method === "GET") {
       if (!canView) return jsonResponse(403, { error: "Link non valido" });
@@ -1275,11 +1422,17 @@
 
       try {
         const res = await remoteTrips(suffix, writeInit);
+        const filesPath = /\/files(?:\/|$)/.test(parsed.pathname);
         if (res.ok) {
           try {
             const data = await res.clone().json();
+            // Documenti UI requires `files` array; never pass trip JSON through.
+            const filesParts = parsed.pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean);
+            if (filesPath && method === "GET" && !filesParts[2] && !Array.isArray(data?.files)) {
+              return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+            }
             if (method === "POST" && data?.id) cacheTripRecord(data.id, { ...data, local: false });
-            if (method === "GET") {
+            if (method === "GET" && !filesPath) {
               const id = data.id || tripIdHint;
               if (id && data?.trip) {
                 cacheTripRecord(id, {

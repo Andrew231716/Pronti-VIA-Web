@@ -1,26 +1,29 @@
 /* Pronti? VIA! — offline shell service worker */
-const CACHE = "pv-shell-20261102s";
+const CACHE = "pv-shell-20261102t";
 const PRECACHE = [
   "./",
   "./index.html",
   "./404.html",
   "./favicon.svg",
   "./logo.png",
-  "./manifest.webmanifest?v=20261102s",
-  "./account.css?v=20261102s",
-  "./account.js?v=20261102s",
+  "./manifest.webmanifest?v=20261102t",
+  "./account.css?v=20261102t",
+  "./account.js?v=20261102t",
   "./ios-form-fix.js?v=20261029a",
-  "./places-suggest.js?v=20261102s",
+  "./places-suggest.js?v=20261102t",
   "./assets/index-JJ3bX5VS.css",
   "./assets/index-loadForm-20261029a.js",
-  "./assets/api-shim-20261102s.js",
-  "./assets/magic-extras-20261102s.js",
-  "./assets/expense-suite-20261102s.js",
-  "./assets/preventivo-islanda-20261102s.js",
-  "./assets/ux-suite-20261102s.js",
+  "./assets/api-shim-20261102t.js",
+  "./assets/magic-extras-20261102t.js",
+  "./assets/expense-suite-20261102t.js",
+  "./assets/app-suite-20261102t.js",
+  "./assets/preventivo-islanda-20261102t.js",
+  "./assets/ux-suite-20261102t.js",
   "./map.html",
   "./coast.jpg",
   "./iceland.svg",
+  "./vendor/leaflet/leaflet.css",
+  "./vendor/leaflet/leaflet.js",
 ];
 
 self.addEventListener("install", (event) => {
@@ -47,7 +50,6 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // Never cache API — online path uses network; offline falls through to app localStorage.
   if (url.pathname.includes("/api/")) return;
 
   event.respondWith(
