@@ -872,57 +872,188 @@
     return jsonResponse(405, { error: "Metodo non supportato" });
   }
 
+  function cleanPlaceName(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function placeNamesEqual(a, b) {
+    return cleanPlaceName(a).toLocaleLowerCase("it") === cleanPlaceName(b).toLocaleLowerCase("it");
+  }
+
+  function bilingualPlaceTitle(local, translation) {
+    const loc = cleanPlaceName(local);
+    const tr = cleanPlaceName(translation);
+    if (loc && tr && !placeNamesEqual(loc, tr)) return `${tr} (${loc})`;
+    return tr || loc;
+  }
+
+  function nominatimNameBundle(item) {
+    const nd = item.namedetails || {};
+    const local = cleanPlaceName(nd.name || item.name || item.display_name?.split(",")[0] || "");
+    const italian = cleanPlaceName(nd["name:it"] || nd["official_name:it"] || nd["alt_name:it"] || "");
+    const english = cleanPlaceName(nd["name:en"] || nd["official_name:en"] || "");
+    const preferred = cleanPlaceName(item.name || "");
+    let translation = italian;
+    let translationLang = italian ? "it" : "";
+    if (
+      !translation &&
+      preferred &&
+      !placeNamesEqual(preferred, local) &&
+      !/[^\u0000-\u024F\u1E00-\u1EFF\s.,'’\-()/]/.test(preferred)
+    ) {
+      translation = preferred;
+      translationLang = "it";
+    }
+    if (!translation && english && !placeNamesEqual(english, local)) {
+      translation = english;
+      translationLang = "en";
+    }
+    return { local, italian, english, translation, translationLang };
+  }
+
+  function placeFromNominatim(item, scope) {
+    const lat = Number(item.lat);
+    const lng = Number(item.lon);
+    const names = nominatimNameBundle(item);
+    const primary = bilingualPlaceTitle(names.local, names.translation || names.local);
+    const address = item.address || {};
+    const country = cleanPlaceName(address.country);
+    const region = cleanPlaceName(address.state || address.region);
+    let title = primary;
+    if (scope === "destination" && country && primary && !placeNamesEqual(country, primary)) {
+      title =
+        region && !placeNamesEqual(region, primary) && !placeNamesEqual(region, country)
+          ? `${primary}, ${region}, ${country}`
+          : `${primary}, ${country}`;
+    } else if (scope !== "destination") {
+      title =
+        [primary, cleanPlaceName(address.city || address.town || address.village), country]
+          .filter(Boolean)
+          .filter((part, idx, arr) => arr.findIndex((x) => placeNamesEqual(x, part)) === idx)
+          .join(", ") || item.display_name;
+    }
+    const subtitleBits = [];
+    if (names.translation && names.local && !placeNamesEqual(names.translation, names.local)) {
+      subtitleBits.push(
+        names.translationLang === "en"
+          ? `in inglese: ${names.translation}`
+          : `in italiano: ${names.translation}`
+      );
+    }
+    if (item.display_name) subtitleBits.push(item.display_name);
+    return {
+      id: `osm-${item.place_id}`,
+      title,
+      name: names.translation || names.local || title,
+      nameLocal: names.local || "",
+      nameIt: names.italian || "",
+      nameEn: names.english || "",
+      translation: names.translation || "",
+      translationLang: names.translationLang || "",
+      subtitle: subtitleBits.join(" · "),
+      address: item.display_name,
+      lat: Number.isFinite(lat) ? lat : null,
+      lng: Number.isFinite(lng) ? lng : null,
+      type: item.type || item.class || "place",
+      mapsUrl:
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+          : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title)}`,
+      osmUrl:
+        Number.isFinite(lat) && Number.isFinite(lng)
+          ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
+          : `https://www.openstreetmap.org/search?query=${encodeURIComponent(title)}`,
+    };
+  }
+
+  async function searchNominatimPlaces(q, scope) {
+    const params = new URLSearchParams({
+      q,
+      format: "json",
+      addressdetails: "1",
+      namedetails: "1",
+      limit: scope === "destination" ? "10" : "8",
+      "accept-language": "it",
+    });
+    const rows = await originalFetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+      headers: {
+        Accept: "application/json",
+        "Accept-Language": "it",
+      },
+      signal: AbortSignal.timeout(12000),
+    }).then((r) => {
+      if (!r.ok) throw new Error(`nominatim-${r.status}`);
+      return r.json();
+    });
+    return (Array.isArray(rows) ? rows : []).map((item) => placeFromNominatim(item, scope));
+  }
+
   async function searchPlaces(query, scope) {
     const q = String(query || "").trim();
     if (q.length < 2) return { places: [] };
 
-    const photonParams = new URLSearchParams({ q, limit: "10", lang: "default" });
-    let features = [];
+    // Prefer Nominatim (namedetails → Italian + local). Photon lang=it is often empty.
+    let places = [];
     try {
-      const data = await originalFetch(`https://photon.komoot.io/api/?${photonParams}`).then((r) =>
-        r.json()
-      );
-      features = Array.isArray(data.features) ? data.features : [];
+      places = await searchNominatimPlaces(q, scope);
     } catch {
-      features = [];
+      places = [];
     }
 
-    const places = features.map((feature) => {
-      const props = feature.properties || {};
-      const coords = feature.geometry?.coordinates || [];
-      const lng = Number(coords[0]);
-      const lat = Number(coords[1]);
-      const name = props.name || props.city || props.country || "Luogo";
-      const type = props.type || props.osm_value || "place";
-      let title = name;
-      if (props.country && name !== props.country) {
-        title =
-          props.state && props.state !== name
-            ? `${name}, ${props.state}, ${props.country}`
-            : `${name}, ${props.country}`;
+    if (!places.length) {
+      const photonParams = new URLSearchParams({ q, limit: "10", lang: "default" });
+      let features = [];
+      try {
+        const data = await originalFetch(`https://photon.komoot.io/api/?${photonParams}`).then((r) =>
+          r.json()
+        );
+        features = Array.isArray(data.features) ? data.features : [];
+      } catch {
+        features = [];
       }
-      const address = [props.name, props.city, props.state, props.country]
-        .filter(Boolean)
-        .join(", ");
-      return {
-        id: `photon-${props.osm_id || `${lat},${lng}`}`,
-        title,
-        name,
-        subtitle: address,
-        address,
-        lat: Number.isFinite(lat) ? lat : null,
-        lng: Number.isFinite(lng) ? lng : null,
-        type,
-        mapsUrl:
-          Number.isFinite(lat) && Number.isFinite(lng)
-            ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
-            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title)}`,
-        osmUrl:
-          Number.isFinite(lat) && Number.isFinite(lng)
-            ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
-            : `https://www.openstreetmap.org/search?query=${encodeURIComponent(title)}`,
-      };
-    });
+
+      places = features.map((feature) => {
+        const props = feature.properties || {};
+        const coords = feature.geometry?.coordinates || [];
+        const lng = Number(coords[0]);
+        const lat = Number(coords[1]);
+        const name = props.name || props.city || props.country || "Luogo";
+        const type = props.type || props.osm_value || "place";
+        let title = name;
+        if (props.country && name !== props.country) {
+          title =
+            props.state && props.state !== name
+              ? `${name}, ${props.state}, ${props.country}`
+              : `${name}, ${props.country}`;
+        }
+        const address = [props.name, props.city, props.state, props.country]
+          .filter(Boolean)
+          .join(", ");
+        return {
+          id: `photon-${props.osm_id || `${lat},${lng}`}`,
+          title,
+          name,
+          nameLocal: name,
+          nameIt: "",
+          nameEn: "",
+          translation: "",
+          translationLang: "",
+          subtitle: address,
+          address,
+          lat: Number.isFinite(lat) ? lat : null,
+          lng: Number.isFinite(lng) ? lng : null,
+          type,
+          mapsUrl:
+            Number.isFinite(lat) && Number.isFinite(lng)
+              ? `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(title)}`,
+          osmUrl:
+            Number.isFinite(lat) && Number.isFinite(lng)
+              ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`
+              : `https://www.openstreetmap.org/search?query=${encodeURIComponent(title)}`,
+        };
+      });
+    }
 
     const destinationTypes = new Set([
       "country",
@@ -933,6 +1064,9 @@
       "locality",
       "region",
       "county",
+      "administrative",
+      "island",
+      "municipality",
     ]);
     const filtered =
       scope === "destination"
@@ -1003,6 +1137,25 @@
     }
 
     if (parsed.origin === location.origin && parsed.pathname === "/api/places") {
+      // Prefer the Netlify places function (Nominatim namedetails + Italian labels).
+      if (sameOriginApiProxy) {
+        try {
+          const res = await Promise.race([
+            originalFetch(input, init),
+            wallTimeout(15000, "places-timeout"),
+          ]);
+          if (res && res.ok) return res;
+        } catch {
+          /* fall through to client fallback */
+        }
+      } else {
+        try {
+          const res = await remoteTrips(`/places${parsed.search}`, { ...init, method: "GET" });
+          if (res && res.ok) return res;
+        } catch {
+          /* fall through to client fallback */
+        }
+      }
       try {
         const data = await searchPlaces(
           parsed.searchParams.get("q"),
