@@ -4211,50 +4211,200 @@ Regole pv-places:
     }
   }
 
-  function preferIcelandCover() {
-    const root = document.getElementById("root");
-    if (!root) return;
-    const dest =
-      root.querySelector("h1, h2, .hero, [class*='destination']")?.textContent ||
-      root.innerText ||
-      "";
-    if (!/islanda|iceland|reykjav/i.test(dest)) return;
-    const icelandSrc = new URL("iceland.svg", location.href).href;
-    const heroImgs = [...root.querySelectorAll("img")].filter((img) => {
-      const alt = `${img.alt || ""} ${img.src || ""} ${img.className || ""}`;
-      return (
-        /balos|creta|crete|greece|santorini|mykonos|coast|cover|hero|banner|copertina/i.test(alt) ||
-        /balos|crete|greece|coast\.jpg/i.test(img.src || "") ||
-        (img.width > 400 || img.clientWidth > 400)
-      );
+  const coverCache = new Map();
+  let coverInflight = null;
+
+  function isDefaultBalosCover(img) {
+    if (!img) return false;
+    const hay = `${img.src || ""} ${img.alt || ""}`;
+    return /coast\.jpg|balos|creta|crete|greece|santorini|mykonos/i.test(hay);
+  }
+
+  function coverSearchQueries(destination) {
+    const cleaned = String(destination || "")
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!cleaned) return [];
+    const parts = cleaned
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const out = [];
+    out.push(cleaned);
+    if (parts[0]) out.push(parts[0]);
+    if (parts[0]) out.push(`${parts[0]} city`);
+    if (parts[0]) out.push(`${parts[0]} landscape`);
+    if (parts.length > 1) out.push(`${parts[0]} ${parts[parts.length - 1]}`);
+    return [...new Set(out.map((q) => q.trim()).filter((q) => q.length >= 2))];
+  }
+
+  function stripHtml(value) {
+    return String(value || "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function isUsableCoverFile(page, info) {
+    const title = String(page?.title || "");
+    const mime = String(info?.mime || "");
+    if (!/\.(jpe?g|png|webp)$/i.test(title) && !/^image\/(jpeg|png|webp)$/i.test(mime)) return false;
+    if (/\.svg$/i.test(title) || /image\/svg/i.test(mime)) return false;
+    if (/flag|coat of arms|logo|map|diagram|icon|emblem|banner of|seal of/i.test(title)) return false;
+    const url = info?.thumburl || info?.url || "";
+    if (!url || !/^https?:\/\//i.test(url)) return false;
+    const w = Number(info?.thumbwidth || info?.width || 0);
+    if (w && w < 640) return false;
+    return true;
+  }
+
+  async function fetchCommonsCover(query) {
+    const params = new URLSearchParams({
+      action: "query",
+      generator: "search",
+      gsrsearch: query,
+      gsrlimit: "8",
+      gsrnamespace: "6",
+      prop: "imageinfo",
+      iiprop: "url|mime|size|extmetadata",
+      iiurlwidth: "1600",
+      format: "json",
+      origin: "*",
     });
-    for (const img of heroImgs.slice(0, 2)) {
-      if (img.dataset.pvIcelandSwap === "1" && /iceland\.svg/i.test(img.src || "")) continue;
-      img.dataset.pvIcelandSwap = "1";
-      img.dataset.pvPrevSrc = img.src;
-      img.src = icelandSrc;
-      img.alt = "Copertina Islanda";
-      // Hide stale "Copertina: Balos" credits near the image.
-      const wrap = img.closest("div,section,article,figure") || img.parentElement;
-      if (wrap) {
-        for (const el of wrap.querySelectorAll("small, span, p, figcaption")) {
-          const t = (el.textContent || "").trim();
-          if (/copertina\s*:\s*balos|balos|creta|crete/i.test(t) && t.length < 80) {
-            el.textContent = "Copertina: Islanda";
+    const data = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`, {
+      signal: AbortSignal.timeout(10000),
+    }).then((r) => r.json());
+    const pages = Object.values(data?.query?.pages || {});
+    pages.sort((a, b) => (a.index || 0) - (b.index || 0));
+    for (const page of pages) {
+      const info = (page.imageinfo || [])[0];
+      if (!isUsableCoverFile(page, info)) continue;
+      const meta = info.extmetadata || {};
+      const artist = stripHtml(meta.Artist?.value || meta.Credit?.value || "Wikimedia Commons");
+      const license = stripHtml(meta.LicenseShortName?.value || meta.License?.value || "");
+      const fileTitle = String(page.title || "").replace(/^File:/i, "");
+      const creditName = fileTitle.replace(/_/g, " ").replace(/\.[^.]+$/, "").slice(0, 48);
+      return {
+        url: info.thumburl || info.url,
+        alt: `Copertina: ${creditName}`,
+        credit: [`Copertina: ${creditName}`, artist.split("\n")[0].slice(0, 40), license]
+          .filter(Boolean)
+          .join(" · "),
+        creditUrl: `https://commons.wikimedia.org/wiki/${encodeURIComponent(page.title || "")}`,
+      };
+    }
+    return null;
+  }
+
+  async function resolveCoverForDestination(destination) {
+    const key = String(destination || "").trim().toLowerCase();
+    if (!key) return null;
+    if (coverCache.has(key)) return coverCache.get(key);
+
+    if (/islanda|iceland|reykjav/i.test(destination)) {
+      const iceland = {
+        url: new URL("iceland.svg", location.href).href,
+        alt: "Copertina Islanda",
+        credit: "Copertina: Islanda",
+        creditUrl: "",
+      };
+      // Still try a real photo first; fall back to local SVG.
+      for (const q of coverSearchQueries(destination)) {
+        try {
+          const hit = await fetchCommonsCover(q);
+          if (hit) {
+            coverCache.set(key, hit);
+            return hit;
           }
-        }
-        if (!img.dataset.pvIcelandNote) {
-          img.dataset.pvIcelandNote = "1";
-          if (wrap && getComputedStyle(wrap).position === "static") wrap.style.position = "relative";
-          const note = document.createElement("div");
-          note.className = "pv-cover-note";
-          note.textContent = "Copertina Islanda — puoi sostituirla con una tua foto";
-          note.style.cssText =
-            "position:absolute;left:12px;bottom:12px;z-index:2;background:rgba(0,0,0,.55);color:#fff;padding:6px 10px;border-radius:8px;font:600 11px/1.3 inherit";
-          wrap.appendChild(note);
+        } catch {
+          /* try next */
         }
       }
+      coverCache.set(key, iceland);
+      return iceland;
     }
+
+    for (const q of coverSearchQueries(destination)) {
+      try {
+        const hit = await fetchCommonsCover(q);
+        if (hit) {
+          coverCache.set(key, hit);
+          return hit;
+        }
+      } catch {
+        /* try next query */
+      }
+    }
+    coverCache.set(key, null);
+    return null;
+  }
+
+  function applyTripCover(cover, result, destination) {
+    const img = cover.querySelector("img");
+    if (!img || !result?.url) return;
+    img.dataset.pvCoverSwap = "1";
+    img.dataset.pvCoverFor = destination;
+    img.src = result.url;
+    img.alt = result.alt || `Copertina ${destination}`;
+    const credit = cover.querySelector("a.photo-credit, .photo-credit");
+    if (credit) {
+      credit.textContent = result.credit || `Copertina: ${destination}`;
+      if (result.creditUrl) {
+        credit.setAttribute("href", result.creditUrl);
+        credit.setAttribute("target", "_blank");
+        credit.setAttribute("rel", "noreferrer");
+      } else {
+        credit.removeAttribute("href");
+      }
+    }
+    cover.dataset.pvCoverDest = destination;
+    cover.dataset.pvCoverUrl = result.url;
+    cover.dataset.pvCoverReady = "1";
+  }
+
+  function syncTripCoverToDestination() {
+    const cover = document.querySelector(".trip-cover");
+    if (!cover) return;
+    const destination = (
+      cover.querySelector(".destination")?.textContent ||
+      cover.querySelector("h1")?.textContent ||
+      ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!destination) return;
+
+    const img = cover.querySelector("img");
+    const alreadyGood =
+      cover.dataset.pvCoverDest === destination &&
+      cover.dataset.pvCoverUrl &&
+      img &&
+      img.src === cover.dataset.pvCoverUrl &&
+      !isDefaultBalosCover(img);
+    if (alreadyGood) return;
+
+    // React often re-renders the hardcoded Balos coast.jpg — re-apply cached cover immediately.
+    const cached = coverCache.get(destination.toLowerCase());
+    if (cached?.url && isDefaultBalosCover(img)) {
+      applyTripCover(cover, cached, destination);
+      return;
+    }
+
+    if (coverInflight === destination) return;
+    coverInflight = destination;
+    void resolveCoverForDestination(destination)
+      .then((result) => {
+        if (coverInflight !== destination) return;
+        const live = document.querySelector(".trip-cover");
+        if (!live) return;
+        const liveDest = (live.querySelector(".destination")?.textContent || "").replace(/\s+/g, " ").trim();
+        if (liveDest !== destination) return;
+        if (result) applyTripCover(live, result, destination);
+      })
+      .finally(() => {
+        if (coverInflight === destination) coverInflight = null;
+      });
   }
 
   function injectCloudStatusBanner() {
@@ -5006,7 +5156,7 @@ Regole pv-places:
     injectPreventivoTripBanner();
     injectMemberRemoveControls();
     fixItalianTappeGrammar();
-    preferIcelandCover();
+    syncTripCoverToDestination();
     ensureShareToast();
     injectCloudStatusBanner();
     void repairInvalidStopCategories();
