@@ -4771,17 +4771,29 @@ Regole pv-places:
       if (banner) banner.remove();
       return;
     }
+    const dismissKey = `pv-local-banner-dismissed:${openTrip}`;
+    if (sessionStorage.getItem(dismissKey) === "1") {
+      banner?.remove();
+      return;
+    }
     if (!banner) {
       banner = document.createElement("div");
       banner.id = "pv-local-only-banner";
       banner.setAttribute("role", "status");
       // Relative: sits in document flow under the fixed account chip (body padding-top).
       banner.style.cssText =
-        "position:relative;top:auto;z-index:1;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;text-align:center";
+        "position:relative;top:auto;z-index:1;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;display:flex;gap:10px;align-items:flex-start;justify-content:center;text-align:left";
       document.body.prepend(banner);
     }
-    banner.textContent =
-      "Questo viaggio è salvato su questo dispositivo. Usa «Condividi viaggio» e attendi il link con snapshot (s=…) prima di inviarlo agli amici.";
+    banner.innerHTML = `<span style="flex:1">Solo su questo telefono/PC per ora. Per inviarlo agli amici: <strong>Condividi viaggio</strong> e copia il link quando è pronto.</span><button type="button" data-pv-local-dismiss aria-label="Chiudi avviso" style="appearance:none;border:0;background:#f3e2c2;color:#7a4b00;border-radius:999px;width:32px;height:32px;font:700 16px/1 inherit;cursor:pointer;flex:0 0 auto">×</button>`;
+    banner.querySelector("[data-pv-local-dismiss]")?.addEventListener(
+      "click",
+      () => {
+        sessionStorage.setItem(dismissKey, "1");
+        banner.remove();
+      },
+      { once: true }
+    );
   }
 
   function fixItalianTappeGrammar() {

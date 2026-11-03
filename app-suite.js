@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102w";
+  const VER = "20261102x";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -784,19 +784,71 @@
     });
   }
 
+  function isoDayFromTrip(trip, dayIndex) {
+    const start = String(trip?.start || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return "";
+    const d = new Date(`${start}T12:00:00Z`);
+    if (Number.isNaN(d.getTime())) return "";
+    d.setUTCDate(d.getUTCDate() + Math.max(0, dayIndex | 0));
+    return d.toISOString().slice(0, 10);
+  }
+
+  function selectedStopDay(trip) {
+    const buttons = [...document.querySelectorAll(".day-strip button")];
+    const selected = document.querySelector(".day-strip button.selected") || buttons[0] || null;
+    const fromData = selected?.getAttribute("data-day") || selected?.dataset?.day || "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(fromData)) return fromData;
+    const idx = selected ? Math.max(0, buttons.indexOf(selected)) : 0;
+    return isoDayFromTrip(trip, idx);
+  }
+
+  function isValidStopDay(day, trip) {
+    const v = String(day || "");
+    if (!v || v === "unscheduled") return true;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
+    const t = Date.parse(`${v}T12:00:00Z`);
+    if (Number.isNaN(t)) return false;
+    const start = String(trip?.start || "").slice(0, 10);
+    const end = String(trip?.end || "").slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(start) && v < start) return false;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(end) && v > end) return false;
+    return true;
+  }
+
+  async function repairInvalidStopDays() {
+    const packed = await loadTripSafe();
+    if (!packed?.trip) return;
+    const { auth, trip, revision } = packed;
+    let changed = 0;
+    trip.stops = Array.isArray(trip.stops) ? trip.stops : [];
+    for (const stop of trip.stops) {
+      if (isValidStopDay(stop.day, trip)) continue;
+      // Legacy bug: "Giorno 1" text instead of ISO date → map to trip day or unscheduled.
+      const m = String(stop.day || "").match(/giorno\s*(\d+)/i);
+      stop.day = m ? isoDayFromTrip(trip, Number(m[1]) - 1) : "";
+      changed += 1;
+    }
+    if (!changed) return;
+    try {
+      await saveTripSafe(auth, trip, revision);
+      toast(`Corrette ${changed} tappe con data non valida`, "ok");
+      setTimeout(() => location.reload(), 350);
+    } catch {
+      /* keep trying next tick */
+    }
+  }
+
   async function addLunchStop() {
     const packed = await loadTripSafe();
     if (!packed) return toast("Apri un viaggio modificabile", "warn");
     const { auth, trip, revision } = packed;
-    const dayBtn = document.querySelector(".day-strip button.selected") || document.querySelector(".day-strip button");
-    const dayLabel =
-      dayBtn?.querySelector(":scope > span:first-child")?.textContent?.trim() ||
-      "Giorno 1";
+    const day = selectedStopDay(trip);
     trip.stops = Array.isArray(trip.stops) ? trip.stops : [];
     trip.stops.push({
       id: crypto.randomUUID(),
       title: "Pausa pranzo",
-      day: dayLabel,
+      day,
+      time: "",
       notes: "Inserita come giornata tipo — sposta pure orario e posto.",
       category: "Cibo",
       address: "",
@@ -1518,6 +1570,9 @@
     safe(enhanceAccountChip);
     if (tripAuth()) {
       safe(enhanceItineraryStops);
+      safe(() => {
+        void repairInvalidStopDays();
+      });
       safe(enhancePlaces);
       safe(enhanceMapFrame);
       safe(enhancePreventivo);
