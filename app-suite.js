@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102u";
+  const VER = "20261102v";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -16,6 +16,8 @@
   const SYNC_QUEUE_KEY = "viavia-sync-queue-v1";
   const HOME_FILTER_KEY = "viavia-home-filter-v1";
   const EXPENSE_META_KEY = "viavia-expense-fx-meta-v1";
+  const DOCK_DISMISS_KEY = "pv-as-dock-dismissed-v1";
+  let currentDockPanelId = null;
 
   function tripAuth() {
     try {
@@ -86,13 +88,64 @@
     return [...document.querySelectorAll("h1,h2,h3")].find((h) => re.test((h.textContent || "").trim()));
   }
 
+  function readDismissed() {
+    return readJson(DOCK_DISMISS_KEY, {});
+  }
+
+  function isDockDismissed(id) {
+    if (!id) return false;
+    const d = readDismissed();
+    return Boolean(d[id] || d["*"]);
+  }
+
+  function dismissDock(id) {
+    const target = id || currentDockPanelId;
+    if (!target) return;
+    const d = readDismissed();
+    d[target] = Date.now();
+    writeJson(DOCK_DISMISS_KEY, d);
+    currentDockPanelId = target;
+    showOnlyPanel(null, { force: true });
+    refreshReopenChip(target);
+  }
+
+  function reopenDock(id) {
+    const target = id || currentDockPanelId;
+    if (!target) return;
+    const d = readDismissed();
+    delete d[target];
+    delete d["*"];
+    writeJson(DOCK_DISMISS_KEY, d);
+    showOnlyPanel(target, { force: true });
+    refreshReopenChip(null);
+  }
+
+  function refreshReopenChip(forPanelId) {
+    let chip = document.getElementById("pv-as-reopen");
+    if (!forPanelId || !isDockDismissed(forPanelId)) {
+      chip?.remove();
+      return;
+    }
+    if (!chip) {
+      chip = document.createElement("button");
+      chip.type = "button";
+      chip.id = "pv-as-reopen";
+      chip.className = "pv-as-reopen";
+      chip.textContent = "Strumenti extra";
+      chip.addEventListener("click", () => reopenDock(chip.dataset.panel));
+      document.body.appendChild(chip);
+    }
+    chip.dataset.panel = forPanelId;
+    chip.hidden = false;
+  }
+
   function mountSectionPanel(id, html) {
     const host = portalHost();
     if (!host.querySelector(".pv-as-dock-title")) {
       const title = document.createElement("div");
       title.className = "pv-as-dock-title";
       title.innerHTML = `<span>Novità · strumenti extra</span><button type="button" aria-label="Chiudi strumenti" data-as-close>×</button>`;
-      title.querySelector("[data-as-close]")?.addEventListener("click", () => showOnlyPanel(null));
+      title.querySelector("[data-as-close]")?.addEventListener("click", () => dismissDock(currentDockPanelId));
       host.insertBefore(title, host.firstChild);
     }
     let panel = host.querySelector("#" + CSS.escape(id));
@@ -111,7 +164,16 @@
     return { panel, fresh: false };
   }
 
-  function showOnlyPanel(id) {
+  function showOnlyPanel(id, opts = {}) {
+    const force = Boolean(opts.force);
+    if (id && !force && isDockDismissed(id)) {
+      currentDockPanelId = id;
+      const host = portalHost();
+      host.hidden = true;
+      document.body.classList.toggle("pv-as-dock-open", false);
+      refreshReopenChip(id);
+      return;
+    }
     const host = portalHost();
     let any = false;
     [...host.children].forEach((el) => {
@@ -125,37 +187,44 @@
     });
     host.hidden = !any;
     document.body.classList.toggle("pv-as-dock-open", any);
-    if (any) placePortal(host);
+    if (any) {
+      currentDockPanelId = id;
+      placePortal(host);
+      refreshReopenChip(null);
+    } else if (currentDockPanelId && isDockDismissed(currentDockPanelId)) {
+      refreshReopenChip(currentDockPanelId);
+    } else {
+      refreshReopenChip(null);
+    }
     const install = document.getElementById("pv-as-install");
     if (install && any) install.classList.remove("show");
   }
 
-  function syncPortalVisibility() {
+  function desiredPanelId() {
     if (!tripAuth()) {
-      // Keep home/new-trip panels if present.
-      if (document.getElementById("pv-as-panel-newtrip") && !document.getElementById("pv-as-panel-newtrip").hidden) {
-        return showOnlyPanel("pv-as-panel-newtrip");
-      }
-      if (document.getElementById("pv-as-panel-home")) return showOnlyPanel("pv-as-panel-home");
-      return showOnlyPanel(null);
+      if (document.getElementById("pv-as-panel-newtrip")) return "pv-as-panel-newtrip";
+      if (document.getElementById("pv-as-panel-home")) return "pv-as-panel-home";
+      return null;
     }
     if (tabIs("itinerario") || sectionHeading(/itinerario/i) || document.querySelector(".day-strip"))
-      return showOnlyPanel("pv-as-panel-itinerary");
+      return "pv-as-panel-itinerary";
     if (tabIs("esplora", "luoghi", "posti") || sectionHeading(/esplora|luoghi|posti/i))
-      return showOnlyPanel("pv-as-panel-places");
-    if (tabIs("preventivo") || sectionHeading(/preventivo/i)) return showOnlyPanel("pv-as-panel-preventivo");
-    if (tabIs("prenotazioni") || sectionHeading(/prenotazioni/i)) return showOnlyPanel("pv-as-panel-bookings");
-    if (tabIs("documenti") || sectionHeading(/documenti/i)) return showOnlyPanel("pv-as-panel-docs");
+      return "pv-as-panel-places";
+    if (tabIs("preventivo") || sectionHeading(/preventivo/i)) return "pv-as-panel-preventivo";
+    if (tabIs("prenotazioni") || sectionHeading(/prenotazioni/i)) return "pv-as-panel-bookings";
+    if (tabIs("documenti") || sectionHeading(/documenti/i)) return "pv-as-panel-docs";
     if (tabIs("valigia", "checklist") || sectionHeading(/valigia|da mettere|checklist|cosa mettere/i))
-      return showOnlyPanel("pv-as-panel-pack");
-    if (tabIs("note") || sectionHeading(/^note$/i)) return showOnlyPanel("pv-as-panel-notes");
-    if (tabIs("condivid") || sectionHeading(/condivid/i)) return showOnlyPanel("pv-as-panel-share");
-    if (tabIs("spese") || sectionHeading(/spese di gruppo/i)) return showOnlyPanel(null); // expense-suite owns Spese UI
-    // Fallback: keep whatever enhancer just mounted rather than blanking the dock.
-    const host = document.getElementById("pv-as-portal");
-    const open = host && [...host.children].find((c) => !c.hidden);
-    if (open) return showOnlyPanel(open.id);
-    showOnlyPanel(null);
+      return "pv-as-panel-pack";
+    if (tabIs("note") || sectionHeading(/^note$/i)) return "pv-as-panel-notes";
+    if (tabIs("condivid") || sectionHeading(/condivid/i)) return "pv-as-panel-share";
+    if (tabIs("spese") || sectionHeading(/spese di gruppo/i)) return null;
+    return currentDockPanelId;
+  }
+
+  function syncPortalVisibility() {
+    const id = desiredPanelId();
+    if (id) currentDockPanelId = id;
+    showOnlyPanel(id);
   }
 
   function toast(msg, kind = "ok") {
@@ -228,6 +297,11 @@
       }
       #pv-as-portal[hidden]{display:none !important}
       body.pv-as-dock-open{scroll-padding-top:40vh}
+      .pv-as-reopen{
+        position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:121600;
+        appearance:none;border:2px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
+        padding:10px 14px;font:700 .8rem inherit;cursor:pointer;box-shadow:0 10px 24px rgba(15,45,50,.2)
+      }
       @media (prefers-reduced-motion: reduce){
         .pv-as-install{transition:none}
       }
@@ -1451,5 +1525,5 @@
   setTimeout(tick, 2000);
   setTimeout(tick, 4500);
 
-  window.__pvAppSuite = { ver: VER, tick, flushSyncQueue, enqueueSync, placePortal };
+  window.__pvAppSuite = { ver: VER, tick, flushSyncQueue, enqueueSync, placePortal, dismissDock, reopenDock };
 })();
