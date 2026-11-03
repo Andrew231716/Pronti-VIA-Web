@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102u";
+  const ASSET_VER = "20261102aa";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -113,6 +113,21 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
+      body.pv-es-dock-open{
+        scroll-padding-bottom:calc(var(--pv-es-dock-h, 36vh) + 16px);
+      }
+      body.pv-es-dock-open .app-shell,
+      body.pv-es-dock-open #root > *{
+        padding-bottom:calc(var(--pv-es-dock-h, 36vh) + 24px) !important;
+      }
+      body.pv-es-dock-open .pv-prev-launch{
+        bottom:calc(var(--pv-es-dock-h, 36vh) + 18px)!important;
+        right:calc(14px + env(safe-area-inset-right,0px))!important;
+      }
+      body.pv-es-dock-open #pv-magic-root .pv-magic-btn{
+        bottom:calc(var(--pv-es-dock-h, 36vh) + 86px)!important;
+        right:calc(14px + env(safe-area-inset-right,0px))!important;
+      }
       .pv-es-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;align-items:center}
       .pv-es-bar button,.pv-es-chip{
         appearance:none;border:1px solid #c9dbdb;background:#fff;color:#16353b;
@@ -334,10 +349,21 @@
       host = document.createElement("div");
       host.id = "pv-es-portal";
       host.style.cssText =
-        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121000;max-height:min(40vh,400px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22);padding:12px 14px";
+        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121000;max-height:min(36vh,360px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22);padding:12px 14px";
       document.body.appendChild(host);
     }
     return host;
+  }
+
+  function syncExpenseDockClass(open) {
+    document.body.classList.toggle("pv-es-dock-open", Boolean(open));
+    const host = document.getElementById("pv-es-portal");
+    if (open && host && !host.hidden) {
+      const h = Math.ceil(host.getBoundingClientRect().height) || Math.floor((window.innerHeight || 800) * 0.32);
+      document.documentElement.style.setProperty("--pv-es-dock-h", `${h}px`);
+    } else if (!document.body.classList.contains("pv-as-dock-open")) {
+      document.documentElement.style.removeProperty("--pv-es-dock-h");
+    }
   }
 
   function expensesSectionVisible() {
@@ -361,9 +387,11 @@
     if (!host) {
       const portal = document.getElementById("pv-es-portal");
       if (portal) portal.hidden = true;
+      syncExpenseDockClass(false);
       return;
     }
     host.hidden = false;
+    syncExpenseDockClass(true);
     if (host.querySelector(".pv-es-bar")) {
       refreshOnlineHint();
       return;

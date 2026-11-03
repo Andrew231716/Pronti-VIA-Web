@@ -4946,6 +4946,12 @@ Regole pv-places:
         .replace(/\b0 tappe\b/g, "0 tappe");
       if (next !== t) node.nodeValue = next;
     }
+    // Day cards often split "1" and "tappe" across nodes — fix by element text.
+    for (const el of root.querySelectorAll("span, small, em, strong, p, div, button")) {
+      if (el.children.length) continue;
+      const t = (el.textContent || "").trim();
+      if (/^1\s+tappe$/i.test(t)) el.textContent = "1 tappa";
+    }
   }
 
   const coverCache = new Map();
