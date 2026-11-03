@@ -115,8 +115,9 @@
       .pv-trip-manage-row span{display:block;font-size:.78rem;color:var(--pv-muted);margin-top:2px}
       .pv-trip-manage-row .pv-ux-ghost{flex:0 0 auto}
       .pv-trip-manage-row button.danger{
-        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
-        border-radius:10px;padding:8px 12px;font:700 12px inherit;cursor:pointer;flex:0 0 auto
+        appearance:none;flex:0 0 auto;width:36px;height:36px;padding:0;border-radius:10px;
+        border:1px solid #f0c4c0;background:#fff5f4;color:#c62828;
+        display:inline-flex;align-items:center;justify-content:center;cursor:pointer
       }
       .recent-trips .booking-card.pv-recent-trip-row,
       .recent-trips .pv-recent-trip-row{
@@ -128,13 +129,15 @@
       }
       .recent-trips .pv-recent-trip-open .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
       .recent-trips .pv-recent-trash,
-      .recent-trips .pv-delete-trip{
-        appearance:none;flex:0 0 auto;width:42px;height:42px;border-radius:12px;
-        border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
+      .recent-trips .pv-delete-trip,
+      .pv-trash-icon-btn{
+        appearance:none;flex:0 0 auto;width:36px;height:36px;border-radius:10px;
+        border:1px solid #f0c4c0;background:#fff5f4;color:#c62828;
         display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0
       }
       .recent-trips .pv-recent-trash:hover,
-      .recent-trips .pv-delete-trip:hover{background:#f8e7e3}
+      .recent-trips .pv-delete-trip:hover,
+      .pv-trash-icon-btn:hover{background:#ffe8e6;color:#b71c1c}
       .recent-trips a.booking-card{display:flex;align-items:center;gap:12px}
       .recent-trips a.booking-card .pv-delete-trip{margin-left:auto;order:5}
       .recent-trips .pv-recent-row{
@@ -144,18 +147,13 @@
       .recent-trips .pv-recent-row > .pv-delete-trip{flex:0 0 auto}
       .toolbar-actions .pv-delete-trip-btn,
       .pv-delete-trip-btn{
-        appearance:none;border:1px solid #efcdc8;background:#fdf4f2;color:#7a2e28;
-        border-radius:12px;padding:10px 12px;font:700 13px inherit;cursor:pointer;
-        display:inline-flex;align-items:center;gap:6px;min-height:40px
+        appearance:none;border:1px solid #f0c4c0;background:#fff5f4;color:#c62828;
+        border-radius:10px;width:36px;height:36px;padding:0;
+        display:inline-flex;align-items:center;justify-content:center;cursor:pointer;min-height:36px
       }
-      .toolbar-actions .pv-delete-trip-btn:hover{background:#f8e7e3}
-      .pv-home-delete-bar{
-        margin:10px 0 16px;padding:12px;border:1px dashed #efcdc8;border-radius:14px;background:#fdf7f5
-      }
-      .pv-home-delete-bar p{margin:0 0 8px;color:#7a2e28;font:600 13px/1.35 inherit}
-      .pv-home-delete-bar button{
-        appearance:none;border:1px solid #efcdc8;background:#fff;color:#7a2e28;
-        border-radius:10px;padding:9px 12px;font:700 13px inherit;cursor:pointer
+      .toolbar-actions .pv-delete-trip-btn:hover{background:#ffe8e6;color:#b71c1c}
+      .pv-home-trash-wrap{
+        display:inline-flex;align-items:center;gap:8px;margin-left:8px;vertical-align:middle
       }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
@@ -407,8 +405,8 @@
     }
   };
 
-  function trashIconSvg() {
-    return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+  function trashIconSvg(size = 16) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path d="M4 7h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       <path d="M6 7l1 14h10l1-14" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -442,7 +440,7 @@
       links.length === 0
         ? `<p class="small-note" style="margin:0 0 12px;color:#5b7380">Nessun viaggio recente su questo dispositivo.</p>
            <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`
-        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Elimina un viaggio per rimuoverlo da qui e, se hai la chiave di modifica, anche dal cloud.</p>
+        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Tocca il cestino per rimuovere un viaggio da questo dispositivo e, se possibile, anche dal cloud.</p>
            <div class="pv-trip-manage-list">
              ${links
                .map(
@@ -452,7 +450,7 @@
                      <span>${escapeHtml(String(t.id).slice(0, 8))}…</span>
                    </div>
                    <a class="pv-ux-ghost" href="#${new URLSearchParams({ trip: t.id, key: t.key })}">Apri</a>
-                   <button type="button" class="danger" data-del="${i}" aria-label="Elimina ${escapeHtml(t.title || "viaggio")}" title="Elimina viaggio">${trashIconSvg()}</button>
+                   <button type="button" class="danger pv-trash-icon-btn" data-del="${i}" aria-label="Rimuovi ${escapeHtml(t.title || "viaggio")}" title="Rimuovi viaggio">${trashIconSvg(15)}</button>
                  </div>`
                )
                .join("")}
@@ -525,9 +523,9 @@
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "pv-delete-trip";
-      btn.innerHTML = trashIconSvg();
-      btn.setAttribute("aria-label", `Elimina ${title}`);
-      btn.title = "Elimina viaggio";
+      btn.innerHTML = trashIconSvg(15);
+      btn.setAttribute("aria-label", `Rimuovi ${title}`);
+      btn.title = "Rimuovi viaggio";
       btn.addEventListener("click", async (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
@@ -544,49 +542,41 @@
   }
 
   function injectTripDeleteButton() {
-    if (!tripAuth()) {
-      document.getElementById("pv-delete-trip-toolbar")?.remove();
-      return;
-    }
-    const actions = document.querySelector(".toolbar-actions");
-    if (!actions) return;
-    if (document.getElementById("pv-delete-trip-toolbar")) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "pv-delete-trip-toolbar";
-    btn.className = "pv-delete-trip-btn";
-    btn.textContent = "Elimina viaggio";
-    btn.title = "Elimina definitivamente questo viaggio";
-    btn.addEventListener("click", () => void deleteCurrentTrip());
-    // Place before Condividi so it's hard to miss.
-    const share = [...actions.querySelectorAll("button")].find((b) =>
-      /condividi/i.test(b.textContent || "")
-    );
-    if (share) actions.insertBefore(btn, share);
-    else actions.appendChild(btn);
+    // Toolbar no longer shows a text "Elimina" control — use Menu (bottom) or the trash icon.
+    document.getElementById("pv-delete-trip-toolbar")?.remove();
   }
 
   function injectHomeDeleteEntry() {
-    if (tripAuth()) {
-      document.getElementById("pv-home-delete-bar")?.remove();
+    document.getElementById("pv-home-delete-bar")?.remove();
+    // Home CTA "I tuoi viaggi" (exact label) — show a small red trash beside it, no "Elimina" text.
+    const anchor =
+      [...document.querySelectorAll("button")].find((b) =>
+        /^i tuoi viaggi$/i.test((b.textContent || "").trim())
+      ) || null;
+    if (!anchor) {
+      document.getElementById("pv-home-trash-btn")?.closest?.(".pv-home-trash-wrap")?.remove();
+      document.getElementById("pv-home-trash-btn")?.remove();
       return;
     }
-    const topbar = document.querySelector(".topbar, .toolbar-actions, main");
-    const anchor =
-      [...document.querySelectorAll("button")].find((b) => /i tuoi viaggi/i.test((b.textContent || "").trim())) ||
-      null;
-    if (!anchor || document.getElementById("pv-home-delete-bar")) return;
-    const bar = document.createElement("div");
-    bar.id = "pv-home-delete-bar";
-    bar.className = "pv-home-delete-bar";
-    bar.innerHTML = `<p>Vuoi togliere un viaggio salvato?</p>`;
+    if (document.getElementById("pv-home-trash-btn")) return;
+
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = "Gestisci / elimina viaggi";
-    btn.addEventListener("click", () => openManageTrips());
-    bar.appendChild(btn);
-    const host = anchor.closest(".topbar, .section-heading, header") || anchor.parentElement;
-    host?.insertAdjacentElement("afterend", bar);
+    btn.id = "pv-home-trash-btn";
+    btn.className = "pv-trash-icon-btn";
+    btn.innerHTML = trashIconSvg(15);
+    btn.setAttribute("aria-label", "Rimuovi un viaggio salvato");
+    btn.title = "Rimuovi un viaggio";
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openManageTrips();
+    });
+
+    const wrap = document.createElement("span");
+    wrap.className = "pv-home-trash-wrap";
+    wrap.appendChild(btn);
+    anchor.insertAdjacentElement("afterend", wrap);
   }
 
   function openModal(title, bodyHtml, { onMount } = {}) {
@@ -655,7 +645,6 @@
           ? `<div class="pv-menu-section">
               <h3>Questo viaggio</h3>
               <div class="pv-menu-grid">
-                <button type="button" class="danger" data-ux="delete-trip"><strong>Elimina questo viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>
                 <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
                 <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
                 <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
@@ -667,8 +656,7 @@
           : `<div class="pv-menu-section">
               <h3>Viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli dalla lista dei viaggi salvati su questo dispositivo</span></button>
-                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri o elimina i viaggi recenti</span></button>
+                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri i viaggi recenti o gestiscili dal cestino</span></button>
                 <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Usa «I tuoi viaggi» in alto oppure creane uno nuovo</span></button>
               </div>
             </div>`
@@ -678,6 +666,16 @@
          <div class="pv-menu-grid">
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
            <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella definitivamente il login su questo dispositivo/cloud</span></button>
+         </div>
+       </div>
+       <div class="pv-menu-section">
+         <h3>Zona pericolosa</h3>
+         <div class="pv-menu-grid">
+           ${
+             inTrip
+               ? `<button type="button" class="danger" data-ux="delete-trip"><strong>Elimina viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>`
+               : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`
+           }
          </div>
        </div>`,
       {
