@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ab";
+  const VER = "20261102ac";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -139,26 +139,25 @@
     refreshReopenChip(null);
   }
 
-  function refreshReopenChip(forPanelId) {
-    let chip = document.getElementById("pv-as-reopen");
-    if (!forPanelId || !isDockDismissed(forPanelId)) {
-      chip?.remove();
-      document.body.classList.remove("pv-as-reopen-visible");
-      return;
+  function refreshReopenChip(_forPanelId) {
+    // Floating "Strumenti" chip overlapped trip content — tools live in Menu instead.
+    document.getElementById("pv-as-reopen")?.remove();
+    document.body.classList.remove("pv-as-reopen-visible");
+  }
+
+  /** Keep the tools dock closed until the user opens it from Menu. */
+  function ensureDockStartsClosed() {
+    if (!tripAuth()) return;
+    try {
+      if (sessionStorage.getItem("pv-as-dock-autohide-v1") === "1") return;
+      sessionStorage.setItem("pv-as-dock-autohide-v1", "1");
+    } catch {
+      /* private mode */
     }
-    if (!chip) {
-      chip = document.createElement("button");
-      chip.type = "button";
-      chip.id = "pv-as-reopen";
-      chip.className = "pv-as-reopen";
-      chip.textContent = "Strumenti";
-      chip.title = "Riapri strumenti extra";
-      chip.addEventListener("click", () => reopenDock(chip.dataset.panel));
-      document.body.appendChild(chip);
-    }
-    chip.dataset.panel = forPanelId;
-    chip.hidden = false;
-    document.body.classList.add("pv-as-reopen-visible");
+    const d = readDismissed();
+    if (d["*"]) return;
+    d["*"] = Date.now();
+    writeJson(DOCK_DISMISS_KEY, d);
   }
 
   function mountSectionPanel(id, html) {
@@ -327,13 +326,7 @@
       body.pv-as-dock-open .app-shell{
         padding-bottom:calc(var(--pv-as-dock-h, 42vh) + 24px) !important;
       }
-      /* Reopen chip: mid-left, clear of account bar and FABs */
-      .pv-as-reopen{
-        position:fixed;left:12px;right:auto;top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:120100;
-        appearance:none;border:1px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
-        padding:8px 12px;font:700 .74rem inherit;cursor:pointer;box-shadow:0 6px 16px rgba(15,45,50,.16);
-        max-width:min(48vw,180px)
-      }
+      #pv-as-reopen{display:none!important}
       /* Stack FABs above dock: Preventivo lower, Pronty one slot higher */
       body.pv-as-dock-open .pv-prev-launch{
         bottom:calc(var(--pv-as-dock-h, 42vh) + 18px)!important;
@@ -350,14 +343,9 @@
         box-shadow:0 4px 14px rgba(15,45,50,.08)
       }
       #pv-as-cache-status[hidden]{display:none!important}
-      body.pv-as-reopen-visible #pv-as-cache-status{display:none!important}
       /* Keep stop action icons clear of right-side FABs */
       @media (max-width:720px){
         article.stop-card .stop-footer{padding-right:72px}
-      }
-      /* Sticky trip tabs on mobile so the dock can't trap navigation */
-      @media (max-width:720px){
-        .pv-as-reopen{padding:8px 11px;font-size:.72rem}
         #pv-as-portal{left:8px;right:8px;max-height:min(36vh,380px)}
         /* Sit below the fixed account chip so taps hit tabs, not the chip */
         .workspace-tabs{
@@ -1625,6 +1613,7 @@
     safe(enhanceNewTripForm);
     safe(enhanceAccountChip);
     if (tripAuth()) {
+      safe(ensureDockStartsClosed);
       safe(enhanceItineraryStops);
       safe(() => {
         void repairInvalidStopDays();

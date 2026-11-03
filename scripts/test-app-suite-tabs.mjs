@@ -116,10 +116,9 @@ try {
     waitUntil: "domcontentloaded",
   });
   await wait(3500);
-  // Dismiss onboarding + tools dock so tab hits aren't covered by the sheet.
+  // Dismiss onboarding; tools dock starts closed (Menu → Strumenti).
   await page.evaluate(() => {
     [...document.querySelectorAll("button")].find((b) => /Ho capito/i.test(b.textContent || ""))?.click();
-    document.querySelector("#pv-as-portal .pv-as-dock-title button")?.click();
   });
   await wait(600);
 
@@ -158,8 +157,8 @@ try {
         const st = getComputedStyle(el);
         if (st.display !== "none" && st.visibility !== "hidden") return true;
       }
-      // Tools dock may be session-dismissed — reopen chip still proves suite is alive.
-      return Boolean(document.getElementById("pv-as-reopen"));
+      // Dock starts closed on purpose — suite + tab switch is enough.
+      return Boolean(window.__pvAppSuite?.reopenDock);
     }, sel);
     const newErrs = pageErrors.slice(beforeErr);
     ok(
@@ -185,6 +184,8 @@ try {
 
   // Interactive smoke: booking status + doc meta in portal dock
   await clickTab(page, /prenotazioni/i);
+  await wait(600);
+  await page.evaluate(() => window.__pvAppSuite?.reopenDock?.());
   await wait(1000);
   const bookingOk = await page.evaluate(() => {
     const title = document.querySelector("#pv-as-book-title");
@@ -201,6 +202,8 @@ try {
   ok("booking status save", bookingOk);
 
   await clickTab(page, /documenti/i);
+  await wait(600);
+  await page.evaluate(() => window.__pvAppSuite?.reopenDock?.());
   await wait(1000);
   const docOk = await page.evaluate(() => {
     const title = document.querySelector("#pv-as-doc-title");

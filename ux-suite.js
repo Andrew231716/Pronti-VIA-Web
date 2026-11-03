@@ -646,6 +646,7 @@
               <h3>Questo viaggio</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
+                <button type="button" data-ux="section-tools"><strong>Strumenti della sezione</strong><span>Pausa pranzo, check-in, filtri e azioni extra del tab attuale</span></button>
                 <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
                 <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
                 <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
@@ -686,7 +687,14 @@
               closeModal();
               menuBtn?.setAttribute("aria-expanded", "false");
               if (act === "companions") void openCompanionsManager();
-              else if (act === "search") openSearchSheet();
+              else if (act === "section-tools") {
+                if (typeof window.__pvAppSuite?.reopenDock === "function") {
+                  window.__pvAppSuite.reopenDock();
+                  toast("Strumenti aperti in basso — chiudi con × quando hai finito", "ok");
+                } else {
+                  toast("Strumenti non disponibili in questa vista", "warn");
+                }
+              } else if (act === "search") openSearchSheet();
               else if (act === "more") openMoreTools();
               else if (act === "manage-trips") openManageTrips();
               else if (act === "delete-trip") void deleteCurrentTrip();
