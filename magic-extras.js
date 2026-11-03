@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102r") return;
+    if (style && style.dataset.pvReady === "20261102s") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -277,7 +277,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102r";
+    style.dataset.pvReady = "20261102s";
   }
 
   function fabNodes() {
@@ -3524,6 +3524,32 @@ Regole pv-places:
   }
 
   const fxRateCache = new Map();
+  const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
+
+  function readFxDisk() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(FX_DISK_KEY) || "{}");
+      return raw && typeof raw === "object" ? raw : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writeFxDiskRate(from, to, hit) {
+    try {
+      const db = readFxDisk();
+      const key = `${from}:${to}:latest`;
+      db[key] = { ...hit, savedAt: Date.now() };
+      localStorage.setItem(FX_DISK_KEY, JSON.stringify(db));
+    } catch {
+      /* quota */
+    }
+  }
+
+  function readFxDiskRate(from, to) {
+    const hit = readFxDisk()[`${from}:${to}:latest`];
+    return hit?.rate > 0 ? hit : null;
+  }
 
   async function fetchExchangeRate(base, quote) {
     const from = String(base || "EUR").toUpperCase();
@@ -3531,6 +3557,14 @@ Regole pv-places:
     if (from === to) return { rate: 1, provider: "identity" };
     const key = `${from}:${to}`;
     if (fxRateCache.has(key)) return fxRateCache.get(key);
+
+    if (!navigator.onLine) {
+      const cached = readFxDiskRate(from, to);
+      if (cached) {
+        fxRateCache.set(key, cached);
+        return { ...cached, offline: true };
+      }
+    }
 
     const providers = [
       async () => {
@@ -3567,13 +3601,25 @@ Regole pv-places:
       try {
         const hit = await run();
         fxRateCache.set(key, hit);
+        writeFxDiskRate(from, to, hit);
         return hit;
       } catch (err) {
         lastErr = err;
       }
     }
+    const cached = readFxDiskRate(from, to);
+    if (cached) {
+      fxRateCache.set(key, cached);
+      return { ...cached, offline: true };
+    }
     throw lastErr || new Error("fx-unavailable");
   }
+
+  // Helpers for expense-suite.js
+  window.__pvFetchExchangeRate = fetchExchangeRate;
+  window.__pvResolveTripLocalCurrency = resolveTripLocalCurrency;
+  window.__pvHomeCurrency = homeCurrency;
+  window.__pvSetHomeCurrency = setHomeCurrency;
 
   let weatherCache = null; // { key, mode, daily, destination }
   let weatherShownForDay = null;
@@ -4321,8 +4367,20 @@ Regole pv-places:
     rateLocalPerHome: 1,
     /** local units per 1 EUR */
     rateLocalPerEur: 1,
+    rateDate: null,
     lastLocal: null,
     lastHome: null,
+  };
+  Object.defineProperty(window, "__pvExpenseFxState", {
+    get: () => expenseFxState,
+    configurable: true,
+  });
+  window.__pvSetExpenseFxRate = function setExpenseFxRate(rate, day) {
+    if (!Number.isFinite(rate) || rate <= 0) return;
+    expenseFxState.rateLocalPerEur = rate;
+    expenseFxState.rateDate = day || expenseFxState.rateDate;
+    // Keep home rate roughly aligned when home is EUR.
+    if (expenseFxState.homeCode === "EUR") expenseFxState.rateLocalPerHome = rate;
   };
 
   function setNativeInputValue(input, value) {
@@ -4657,10 +4715,19 @@ Regole pv-places:
     const titleInput = titleLabel?.querySelector("input");
     if (titleInput && titleInput.value) {
       const code = expenseFxState.localCode;
-      const tag = `(${formatFxAmount(localAmt, code)} ${code})`;
-      if (!new RegExp(`\\b${code}\\b`).test(titleInput.value)) {
-        setNativeInputValue(titleInput, `${titleInput.value.trim()} ${tag}`);
-      }
+      const rate = expenseFxState.rateLocalPerEur;
+      const ratePart =
+        rate && rate > 0 && code !== "EUR"
+          ? ` @ ${Number(rate).toFixed(rate >= 100 ? 1 : 4)}`
+          : "";
+      const tag = `(${formatFxAmount(localAmt, code)} ${code}${ratePart})`;
+      const cleaned = titleInput.value
+        .replace(/\s*\([0-9]+(?:[.,][0-9]+)?\s*[A-Z]{3}[^)]*\)\s*$/, "")
+        .trim();
+      setNativeInputValue(titleInput, `${cleaned} ${tag}`);
+    }
+    if (typeof window.__pvExpenseSuite?.capturePendingExpenseMeta === "function") {
+      setTimeout(() => window.__pvExpenseSuite.capturePendingExpenseMeta(), 0);
     }
   }
 

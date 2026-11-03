@@ -19,7 +19,7 @@ jobs:
         run: |
           mkdir -p site
           for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
-                   magic-extras.js preventivo-islanda.js ux-suite.js \
+                   magic-extras.js expense-suite.js preventivo-islanda.js ux-suite.js sw.js \
                    favicon.svg logo.png coast.jpg iceland.svg manifest.webmanifest map.html \
                    vercel.json _redirects README.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
@@ -42,8 +42,10 @@ jobs:
               "/places-suggest.js",
               "/api-shim.js",
               "/magic-extras.js",
+              "/expense-suite.js",
               "/preventivo-islanda.js",
               "/ux-suite.js",
+              "/sw.js",
               "/ios-form-fix.js",
               "/account.css",
               "/account.js",
@@ -81,7 +83,7 @@ jobs:
               import json
               data = json.loads(manifest.read_text(encoding="utf-8"))
               data["id"] = f"{base}/"
-              data["start_url"] = f"{base}/?v=20261102r"
+              data["start_url"] = f"{base}/?v=20261102s"
               data["scope"] = f"{base}/"
               for icon in data.get("icons", []):
                   src = icon.get("src", "")
