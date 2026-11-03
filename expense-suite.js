@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102t";
+  const ASSET_VER = "20261102u";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -334,7 +334,7 @@
       host = document.createElement("div");
       host.id = "pv-es-portal";
       host.style.cssText =
-        "position:fixed;left:0;right:0;bottom:0;z-index:121000;max-height:min(40vh,380px);overflow:auto;background:rgba(247,251,251,.97);border-top:1px solid #d9e7e7;box-shadow:0 -10px 30px rgba(15,45,50,.12);padding:10px 16px calc(12px + env(safe-area-inset-bottom,0px));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)";
+        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121000;max-height:min(40vh,400px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22);padding:12px 14px";
       document.body.appendChild(host);
     }
     return host;

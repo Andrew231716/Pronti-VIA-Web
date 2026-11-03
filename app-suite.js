@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102t";
+  const VER = "20261102u";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -59,12 +59,16 @@
     if (!host) {
       host = document.createElement("div");
       host.id = "pv-as-portal";
-      // Fixed bottom dock outside #root — visible without mutating React DOM.
+      // Outside #root (React-safe). Bottom sheet with clear “Novità” chrome.
       host.style.cssText =
-        "position:fixed;left:0;right:0;bottom:0;z-index:121500;max-height:min(46vh,460px);overflow:auto;background:rgba(247,251,251,.97);border-top:1px solid #d9e7e7;box-shadow:0 -10px 30px rgba(15,45,50,.12);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)";
+        "position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:121500;max-height:min(46vh,480px);overflow:auto;background:#fff;border:2px solid #007d82;border-radius:18px;box-shadow:0 16px 40px rgba(15,45,50,.22)";
       document.body.appendChild(host);
     }
     return host;
+  }
+
+  function placePortal() {
+    /* bottom sheet — no dynamic top needed */
   }
 
   function activeTabLabel() {
@@ -84,12 +88,19 @@
 
   function mountSectionPanel(id, html) {
     const host = portalHost();
+    if (!host.querySelector(".pv-as-dock-title")) {
+      const title = document.createElement("div");
+      title.className = "pv-as-dock-title";
+      title.innerHTML = `<span>Novità · strumenti extra</span><button type="button" aria-label="Chiudi strumenti" data-as-close>×</button>`;
+      title.querySelector("[data-as-close]")?.addEventListener("click", () => showOnlyPanel(null));
+      host.insertBefore(title, host.firstChild);
+    }
     let panel = host.querySelector("#" + CSS.escape(id));
     if (!panel) {
       panel = document.createElement("div");
       panel.id = id;
       panel.className = "pv-as-portal-panel";
-      panel.style.cssText = "max-width:1100px;margin:12px auto;padding:0 16px 20px";
+      panel.style.cssText = "max-width:1100px;margin:0 auto;padding:0 14px 14px";
       host.appendChild(panel);
     }
     if (!panel.dataset.ready) {
@@ -104,32 +115,46 @@
     const host = portalHost();
     let any = false;
     [...host.children].forEach((el) => {
+      if (el.classList?.contains("pv-as-dock-title")) {
+        el.hidden = !id;
+        return;
+      }
       const on = Boolean(id) && el.id === id;
       el.hidden = !on;
       if (on) any = true;
     });
     host.hidden = !any;
     document.body.classList.toggle("pv-as-dock-open", any);
+    if (any) placePortal(host);
     const install = document.getElementById("pv-as-install");
     if (install && any) install.classList.remove("show");
   }
 
   function syncPortalVisibility() {
     if (!tripAuth()) {
-      showOnlyPanel(null);
-      return;
+      // Keep home/new-trip panels if present.
+      if (document.getElementById("pv-as-panel-newtrip") && !document.getElementById("pv-as-panel-newtrip").hidden) {
+        return showOnlyPanel("pv-as-panel-newtrip");
+      }
+      if (document.getElementById("pv-as-panel-home")) return showOnlyPanel("pv-as-panel-home");
+      return showOnlyPanel(null);
     }
-    if (tabIs("itinerario") || sectionHeading(/^itinerario$/i)) return showOnlyPanel("pv-as-panel-itinerary");
+    if (tabIs("itinerario") || sectionHeading(/itinerario/i) || document.querySelector(".day-strip"))
+      return showOnlyPanel("pv-as-panel-itinerary");
     if (tabIs("esplora", "luoghi", "posti") || sectionHeading(/esplora|luoghi|posti/i))
       return showOnlyPanel("pv-as-panel-places");
     if (tabIs("preventivo") || sectionHeading(/preventivo/i)) return showOnlyPanel("pv-as-panel-preventivo");
     if (tabIs("prenotazioni") || sectionHeading(/prenotazioni/i)) return showOnlyPanel("pv-as-panel-bookings");
-    if (tabIs("documenti") || sectionHeading(/^documenti$/i)) return showOnlyPanel("pv-as-panel-docs");
-    if (tabIs("valigia", "checklist") || sectionHeading(/valigia|da mettere|checklist/i))
+    if (tabIs("documenti") || sectionHeading(/documenti/i)) return showOnlyPanel("pv-as-panel-docs");
+    if (tabIs("valigia", "checklist") || sectionHeading(/valigia|da mettere|checklist|cosa mettere/i))
       return showOnlyPanel("pv-as-panel-pack");
-    if (tabIs(/^note$/i) || sectionHeading(/^note$/i)) return showOnlyPanel("pv-as-panel-notes");
+    if (tabIs("note") || sectionHeading(/^note$/i)) return showOnlyPanel("pv-as-panel-notes");
     if (tabIs("condivid") || sectionHeading(/condivid/i)) return showOnlyPanel("pv-as-panel-share");
     if (tabIs("spese") || sectionHeading(/spese di gruppo/i)) return showOnlyPanel(null); // expense-suite owns Spese UI
+    // Fallback: keep whatever enhancer just mounted rather than blanking the dock.
+    const host = document.getElementById("pv-as-portal");
+    const open = host && [...host.children].find((c) => !c.hidden);
+    if (open) return showOnlyPanel(open.id);
     showOnlyPanel(null);
   }
 
@@ -192,9 +217,17 @@
       .pv-as-row select, .pv-as-row input[type=text], .pv-as-row input[type=date], .pv-as-row input[type=url]{
         border:1px solid #c9dbdb;border-radius:10px;padding:8px 10px;font:inherit;background:#fff;color:#16353b
       }
-      #pv-as-portal .pv-as-portal-panel{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+      #pv-as-portal{overscroll-behavior:contain}
+      #pv-as-portal .pv-as-portal-panel{padding:4px 0 10px}
+      #pv-as-portal .pv-as-dock-title{
+        display:flex;align-items:center;justify-content:space-between;gap:8px;
+        padding:10px 14px 0;font:700 .78rem inherit;color:#007d82;letter-spacing:.02em;text-transform:uppercase
+      }
+      #pv-as-portal .pv-as-dock-title button{
+        appearance:none;border:0;background:#eef5f5;border-radius:999px;width:32px;height:32px;cursor:pointer;font:700 1rem inherit
+      }
       #pv-as-portal[hidden]{display:none !important}
-      body.pv-as-dock-open{padding-bottom:min(46vh,460px)}
+      body.pv-as-dock-open{scroll-padding-top:40vh}
       @media (prefers-reduced-motion: reduce){
         .pv-as-install{transition:none}
       }
@@ -1412,9 +1445,11 @@
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => setTimeout(tick, 500));
+  addEventListener("scroll", () => placePortal(), { passive: true });
+  addEventListener("resize", () => placePortal());
   setTimeout(tick, 700);
   setTimeout(tick, 2000);
   setTimeout(tick, 4500);
 
-  window.__pvAppSuite = { ver: VER, tick, flushSyncQueue, enqueueSync };
+  window.__pvAppSuite = { ver: VER, tick, flushSyncQueue, enqueueSync, placePortal };
 })();
