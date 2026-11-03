@@ -46,10 +46,37 @@
     style.textContent = `
       :root{
         --pv-ink:#12343a; --pv-muted:#3d5a62; --pv-line:#cfe0e3; --pv-teal:#007d82;
+        --pv-ease:cubic-bezier(.22,.8,.22,1);
+        --pv-motion:.28s;
       }
-      /* Compact mobile tab labels via CSS only — never rewrite React tab DOM */
+      html{scroll-behavior:smooth}
+      @media (prefers-reduced-motion:reduce){
+        html{scroll-behavior:auto}
+        *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+      }
+      /* Fluid shell: soft padding shifts, smoother taps */
+      .app-shell{
+        transition:padding-bottom var(--pv-motion) var(--pv-ease);
+      }
+      button,.button,[role="tab"],.pv-as-chip,.pv-es-bar button,.pv-menu-grid button{
+        transition:transform .16s var(--pv-ease),background-color .16s ease,border-color .16s ease,box-shadow .16s ease,opacity .16s ease;
+      }
+      button:active:not(:disabled),.button:active:not(:disabled),[role="tab"]:active{
+        transform:scale(.97);
+      }
+      /* Compact + fluid mobile tabs */
       @media (max-width:720px){
-        [role="tablist"] [role="tab"]{font-size:12px!important;padding-inline:10px!important}
+        [role="tablist"]{
+          scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
+          overscroll-behavior-x:contain;
+        }
+        [role="tablist"] [role="tab"]{
+          font-size:12px!important;padding-inline:10px!important;scroll-snap-align:start;
+        }
+      }
+      /* Day cards / horizontal strips */
+      .day-strip,[class*="day-strip"],[class*="DayStrip"]{
+        scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
       }
       /* Keep FABs stacked and clear of the home indicator (Preventivo above Pronty) */
       #pv-magic-root .pv-magic-btn{
@@ -97,6 +124,16 @@
       .pv-menu-section h3{
         margin:0 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7380
       }
+      .pv-menu-context{
+        display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;padding:10px 12px;
+        border-radius:14px;background:#eef6f6;border:1px solid #d5e8e8;color:#16353b
+      }
+      .pv-menu-context strong{font-size:.82rem}
+      .pv-menu-context em{
+        font-style:normal;font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+        color:#007d82;background:#fff;border:1px solid #cfe3e3;border-radius:999px;padding:4px 10px
+      }
+      .pv-menu-context p{margin:0;flex:1 1 100%;font-size:.78rem;color:#5b7380;line-height:1.35}
       .pv-menu-grid{display:grid;gap:8px}
       .pv-menu-grid button{
         appearance:none;border:1px solid var(--pv-line);border-radius:14px;padding:12px 14px;
@@ -104,6 +141,10 @@
       }
       .pv-menu-grid button strong{display:block;font-weight:800;margin-bottom:2px}
       .pv-menu-grid button span{display:block;color:#5b7380;font-size:.82rem;font-weight:500}
+      .pv-menu-grid button.pv-menu-tools{
+        border-color:#007d82;background:linear-gradient(180deg,#f3fbfb,#e7f4f4);box-shadow:0 1px 0 rgba(0,125,130,.08)
+      }
+      .pv-menu-grid button.pv-menu-tools strong{color:#00656a}
       .pv-menu-grid button.danger{border-color:#efcdc8;background:#fdf4f2;color:#7a2e28}
       .pv-trip-manage-list{display:grid;gap:10px;margin:4px 0 12px}
       .pv-trip-manage-row{
@@ -157,11 +198,31 @@
       }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
-      .pv-ux-modal .pv-ux-back{position:absolute;inset:0;background:rgba(12,32,40,.45)}
+      .pv-ux-modal .pv-ux-back{
+        position:absolute;inset:0;background:rgba(12,32,40,.45);
+        opacity:0;transition:opacity var(--pv-motion) ease;
+      }
+      .pv-ux-modal.pv-open .pv-ux-back{opacity:1}
       .pv-ux-modal .pv-ux-sheet{
         position:relative;z-index:1;width:min(560px,100%);max-height:min(88vh,840px);overflow:auto;
         background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;
-        box-shadow:0 -18px 50px rgba(21,59,71,.18);color:var(--pv-ink)
+        box-shadow:0 -18px 50px rgba(21,59,71,.18);color:var(--pv-ink);
+        transform:translateY(18px);opacity:0;
+        transition:transform var(--pv-motion) var(--pv-ease),opacity .22s ease;
+        overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+      }
+      .pv-ux-modal.pv-open .pv-ux-sheet{transform:translateY(0);opacity:1}
+      /* Shared dock enter/leave (app + expense portals) */
+      #pv-as-portal,#pv-es-portal{
+        transform:translateY(16px);opacity:0;pointer-events:none;
+        transition:transform var(--pv-motion) var(--pv-ease),opacity .2s ease,bottom .24s var(--pv-ease);
+        will-change:transform,opacity;
+      }
+      #pv-as-portal.pv-dock-in,#pv-es-portal.pv-dock-in{
+        transform:translateY(0);opacity:1;pointer-events:auto;
+      }
+      #pv-magic-root .pv-magic-btn,.pv-prev-launch{
+        transition:bottom .28s var(--pv-ease),transform .16s var(--pv-ease),box-shadow .2s ease!important;
       }
       .pv-ux-modal .pv-ux-sheet h2{margin:0 0 8px;font-size:1.25rem}
       .pv-ux-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
@@ -601,10 +662,15 @@
         if (ev.key === "Escape" && !modal.hidden) closeModal();
       });
     }
+    clearTimeout(modal._closeT);
     modal.querySelector("#pv-ux-title").textContent = title;
     modal.querySelector("#pv-ux-body").innerHTML = bodyHtml;
     modal.hidden = false;
+    modal.classList.remove("pv-open");
     document.documentElement.style.overflow = "hidden";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => modal.classList.add("pv-open"));
+    });
     const sheet = modal.querySelector(".pv-ux-sheet");
     sheet.querySelector("button, [href], input, select, textarea")?.focus?.();
     onMount?.(modal.querySelector("#pv-ux-body"), modal);
@@ -613,9 +679,22 @@
 
   function closeModal() {
     const modal = document.getElementById("pv-ux-modal");
-    if (modal) modal.hidden = true;
+    if (!modal || modal.hidden) {
+      document.documentElement.style.overflow = "";
+      document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
+      return;
+    }
+    modal.classList.remove("pv-open");
     document.documentElement.style.overflow = "";
     document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
+    clearTimeout(modal._closeT);
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    modal._closeT = setTimeout(
+      () => {
+        modal.hidden = true;
+      },
+      reduce ? 0 : 220
+    );
   }
 
   function cleanupLegacyChrome() {
@@ -634,19 +713,100 @@
     document.getElementById("pv-account-delete")?.remove();
   }
 
+  function activeSectionMeta() {
+    const raw = (
+      document.querySelector('[role=tab][data-state=active], [role=tab][aria-selected="true"]')?.textContent || ""
+    ).trim();
+    const label = raw || "questa sezione";
+    const key = label.toLowerCase();
+    const catalog = [
+      {
+        match: /itinerario/,
+        title: "Strumenti di Itinerario",
+        hint: "Pausa pranzo, check-in tappe, stima tempi — cambiano se passi a un’altra tab",
+        toast: "Strumenti di Itinerario aperti in basso",
+      },
+      {
+        match: /esplora|luoghi|posti/,
+        title: "Strumenti di Esplora / Luoghi",
+        hint: "Preferiti e scorciatoie per i posti — diversi da Itinerario o Spese",
+        toast: "Strumenti luoghi aperti in basso",
+      },
+      {
+        match: /prenotaz/,
+        title: "Strumenti di Prenotazioni",
+        hint: "Stato hotel/voli e note prenotazione per questa tab",
+        toast: "Strumenti prenotazioni aperti in basso",
+      },
+      {
+        match: /document/,
+        title: "Strumenti di Documenti",
+        hint: "Elenco documenti e meta rapide di questa sezione",
+        toast: "Strumenti documenti aperti in basso",
+      },
+      {
+        match: /valigia|checklist/,
+        title: "Strumenti di Valigia",
+        hint: "Assegnazioni e scorciatoie packing di questa tab",
+        toast: "Strumenti valigia aperti in basso",
+      },
+      {
+        match: /^note$/,
+        title: "Strumenti di Note",
+        hint: "Scorciatoie e cronologia note per la tab Note",
+        toast: "Strumenti note aperti in basso",
+      },
+      {
+        match: /spese/,
+        title: "Strumenti di Spese",
+        hint: "Export CSV, valute compagni, notifiche — solo in Spese di gruppo",
+        toast: "Strumenti spese aperti in basso",
+      },
+      {
+        match: /preventivo/,
+        title: "Strumenti di Preventivo",
+        hint: "Azioni extra del preventivo in questa tab",
+        toast: "Strumenti preventivo aperti in basso",
+      },
+    ];
+    const hit = catalog.find((c) => c.match.test(key));
+    return {
+      label,
+      title: hit?.title || `Strumenti di ${label}`,
+      hint:
+        hit?.hint ||
+        `Azioni extra per la tab «${label}». Cambia tab e riapri qui per strumenti diversi.`,
+      toast: hit?.toast || `Strumenti di ${label} aperti in basso`,
+    };
+  }
+
   function openAccountMenu() {
     const inTrip = Boolean(tripAuth());
     const menuBtn = document.getElementById("pv-account-menu");
     menuBtn?.setAttribute("aria-expanded", "true");
+    const section = inTrip ? activeSectionMeta() : null;
     openModal(
-      "Menu",
+      inTrip && section ? `Menu · ${section.label}` : "Menu",
       `${
         inTrip
           ? `<div class="pv-menu-section">
+              <div class="pv-menu-context">
+                <strong>Sei nella tab</strong>
+                <em>${escapeHtml(section.label)}</em>
+                <p>Gli strumenti qui sotto valgono solo per questa tab. Se cambi sezione (es. da Itinerario a Spese), cambia anche il contenuto.</p>
+              </div>
+              <h3>Strumenti di questa tab</h3>
+              <div class="pv-menu-grid">
+                <button type="button" class="pv-menu-tools" data-ux="section-tools">
+                  <strong>${escapeHtml(section.title)}</strong>
+                  <span>${escapeHtml(section.hint)}</span>
+                </button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
               <h3>Questo viaggio</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
-                <button type="button" data-ux="section-tools"><strong>Strumenti della sezione</strong><span>Pausa pranzo, check-in, filtri e azioni extra del tab attuale</span></button>
                 <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
                 <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
                 <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
@@ -684,6 +844,7 @@
           body.querySelectorAll("button[data-ux]").forEach((b) => {
             b.addEventListener("click", () => {
               const act = b.getAttribute("data-ux");
+              const sectionNow = activeSectionMeta();
               closeModal();
               menuBtn?.setAttribute("aria-expanded", "false");
               if (act === "companions") void openCompanionsManager();
@@ -694,8 +855,8 @@
                 } else if (typeof window.__pvExpenseSuite?.reopenDock === "function") {
                   opened = Boolean(window.__pvExpenseSuite.reopenDock());
                 }
-                if (opened) toast("Strumenti aperti in basso — chiudi con × (o Esc)", "ok");
-                else toast("Strumenti non disponibili in questa vista", "warn");
+                if (opened) toast(`${sectionNow.toast} — chiudi con ×`, "ok");
+                else toast(`Nessuno strumento per «${sectionNow.label}» in questa vista`, "warn");
               } else if (act === "search") openSearchSheet();
               else if (act === "more") openMoreTools();
               else if (act === "manage-trips") openManageTrips();
@@ -1385,7 +1546,7 @@
   hookSaveToastsAndRevisions();
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 400);
+    tick._t = setTimeout(tick, 220);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {

@@ -9,7 +9,7 @@
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102af";
+  const ASSET_VER = "20261102ah";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -354,6 +354,11 @@
 
   /* ---------- Portal outside React #root ---------- */
   function isDockDismissed() {
+    try {
+      if (sessionStorage.getItem("pv-es-dock-closed-v1") === "1") return true;
+    } catch {
+      /* private mode */
+    }
     const d = readJson(DOCK_DISMISS_KEY, {});
     return Boolean(d.dismissed || d["*"]);
   }
@@ -416,31 +421,64 @@
     document.documentElement.style.setProperty("--pv-es-dock-h", `${h + bottomPad}px`);
   }
 
+  function animateDockIn(host) {
+    if (!host) return;
+    clearTimeout(host._dockOutT);
+    host.hidden = false;
+    host.classList.remove("pv-dock-in");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => host.classList.add("pv-dock-in"));
+    });
+  }
+
+  function animateDockOut(host) {
+    if (!host) return;
+    host.classList.remove("pv-dock-in");
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    clearTimeout(host._dockOutT);
+    if (reduce) {
+      host.hidden = true;
+      return;
+    }
+    host._dockOutT = setTimeout(() => {
+      host.hidden = true;
+    }, 220);
+  }
+
   function syncExpenseDockClass(open) {
     document.body.classList.toggle("pv-es-dock-open", Boolean(open));
     const host = document.getElementById("pv-es-portal");
-    if (open && host && !host.hidden) {
+    if (open && host) {
+      animateDockIn(host);
       placeExpensePortal();
     } else {
       if (host) host.style.bottom = "calc(10px + env(safe-area-inset-bottom,0px))";
       if (!document.body.classList.contains("pv-as-dock-open")) {
         document.documentElement.style.removeProperty("--pv-es-dock-h");
       }
-      // Drop leftover shell padding immediately when tools close.
       document.body.classList.remove("pv-es-dock-open");
+      animateDockOut(host);
     }
   }
 
   function dismissDock() {
+    try {
+      sessionStorage.setItem("pv-es-dock-closed-v1", "1");
+    } catch {
+      /* private mode */
+    }
     writeJson(DOCK_DISMISS_KEY, { dismissed: Date.now(), "*": Date.now() });
-    const host = document.getElementById("pv-es-portal");
-    if (host) host.hidden = true;
     syncExpenseDockClass(false);
     document.documentElement.style.removeProperty("--pv-es-dock-h");
   }
 
   function reopenDock() {
     if (!expensesSectionVisible()) return false;
+    try {
+      sessionStorage.removeItem("pv-es-dock-closed-v1");
+    } catch {
+      /* private mode */
+    }
     writeJson(DOCK_DISMISS_KEY, {});
     // Close the other tools dock so only one sheet is visible.
     try {
@@ -450,10 +488,9 @@
     }
     const host = expensePortal();
     ensureToolbarMounted(host);
-    host.hidden = false;
     syncExpenseDockClass(true);
     placeExpensePortal();
-    return Boolean(document.body.classList.contains("pv-es-dock-open") && !host.hidden);
+    return Boolean(document.body.classList.contains("pv-es-dock-open"));
   }
 
   function expensesSectionVisible() {
@@ -502,22 +539,19 @@
 
   function injectToolbar() {
     if (!expensesSectionVisible()) {
-      const portal = document.getElementById("pv-es-portal");
-      if (portal) portal.hidden = true;
-      syncExpenseDockClass(false);
+      if (document.body.classList.contains("pv-es-dock-open")) syncExpenseDockClass(false);
       return;
     }
     const host = expensePortal();
     ensureToolbarMounted(host);
     // Closed by default — open only from Menu → Strumenti (or reopenDock).
     if (isDockDismissed()) {
-      host.hidden = true;
-      syncExpenseDockClass(false);
+      if (document.body.classList.contains("pv-es-dock-open")) syncExpenseDockClass(false);
       return;
     }
-    host.hidden = false;
-    syncExpenseDockClass(true);
-    placeExpensePortal();
+    // Already open: don't re-trigger enter animation every MutationObserver tick.
+    if (!document.body.classList.contains("pv-es-dock-open")) syncExpenseDockClass(true);
+    else placeExpensePortal();
   }
 
   function refreshOnlineHint() {
@@ -1376,16 +1410,23 @@
 
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 350);
+    tick._t = setTimeout(tick, 220);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
-  addEventListener("scroll", () => placeExpensePortal(), { passive: true });
-  addEventListener("resize", () => placeExpensePortal());
+  const schedulePlace = () => {
+    if (placeExpensePortal._raf) return;
+    placeExpensePortal._raf = requestAnimationFrame(() => {
+      placeExpensePortal._raf = 0;
+      placeExpensePortal();
+    });
+  };
+  addEventListener("scroll", schedulePlace, { passive: true });
+  addEventListener("resize", schedulePlace);
   addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && document.body.classList.contains("pv-es-dock-open")) dismissDock();
   });
-  setTimeout(tick, 900);
-  setTimeout(tick, 2200);
+  setTimeout(tick, 500);
+  setTimeout(tick, 1600);
   setInterval(() => void watchExpenseChanges(), 8000);
 
   // Register service worker for offline shell
