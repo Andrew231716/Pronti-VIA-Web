@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102aa";
+  const ASSET_VER = "20261102ab";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -116,8 +116,7 @@
       body.pv-es-dock-open{
         scroll-padding-bottom:calc(var(--pv-es-dock-h, 36vh) + 16px);
       }
-      body.pv-es-dock-open .app-shell,
-      body.pv-es-dock-open #root > *{
+      body.pv-es-dock-open .app-shell{
         padding-bottom:calc(var(--pv-es-dock-h, 36vh) + 24px) !important;
       }
       body.pv-es-dock-open .pv-prev-launch{

@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102aa";
+  const VER = "20261102ab";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
