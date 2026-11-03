@@ -9,6 +9,8 @@
     html,body,#map{margin:0;width:100%;height:100%;font:14px Arial,sans-serif}
     #map{background:#e3eeed}
     .pin{border:2px solid white;border-radius:50%;color:white;font:bold 12px Arial;display:grid;place-items:center;box-shadow:0 2px 5px #153b4750}
+    .pin-label{position:absolute;left:50%;top:100%;transform:translate(-50%,2px);background:#fff;color:#16353b;border:1px solid #c9dbdb;border-radius:6px;padding:1px 5px;font:700 10px Arial;white-space:nowrap;box-shadow:0 1px 3px #153b4730}
+    .cluster{border:2px solid white;border-radius:50%;background:#007d82;color:#fff;font:bold 12px Arial;display:grid;place-items:center;box-shadow:0 2px 5px #153b4750}
     .leaflet-popup-content{font:14px/1.5 Arial}
     .fallback{padding:28px 20px;text-align:center;color:#355055;line-height:1.45}
     .fallback a{color:#007d82;font-weight:700}
@@ -72,6 +74,7 @@
       let layers = L.layerGroup().addTo(map);
       let pick = false;
       let route = null;
+      let mapOpts = { timeLabels: true, cluster: true };
       const fallbackColors = ["#007d82", "#4770b1", "#bb7735", "#8965a7", "#c05f67", "#528545"];
 
       function applyDestinationCenter(dest) {
@@ -88,7 +91,12 @@
       }
 
       addEventListener("message", (e) => {
-        if (e.source !== parent || e.origin !== location.origin || e.data?.type !== "viavia-map") return;
+        if (e.source !== parent || e.origin !== location.origin) return;
+        if (e.data?.type === "viavia-map-options") {
+          mapOpts = { ...mapOpts, ...e.data };
+          return;
+        }
+        if (e.data?.type !== "viavia-map") return;
         layers.clearLayers();
         if (route) {
           map.removeLayer(route);
@@ -96,22 +104,64 @@
         }
         pick = !!e.data.pick;
         const pts = (e.data.points || []).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-        pts.forEach((p, i) => {
+
+        // Simple grid clustering when many points are close and zoomed out.
+        const useCluster = mapOpts.cluster && pts.length > 8 && map.getZoom() < 11;
+        if (useCluster) {
+          const cells = new Map();
+          pts.forEach((p, i) => {
+            const key = `${p.lat.toFixed(1)}:${p.lng.toFixed(1)}`;
+            if (!cells.has(key)) cells.set(key, []);
+            cells.get(key).push({ p, i });
+          });
+          for (const group of cells.values()) {
+            if (group.length === 1) {
+              const { p, i } = group[0];
+              addPin(p, i, e.data.selected);
+            } else {
+              const lat = group.reduce((a, g) => a + g.p.lat, 0) / group.length;
+              const lng = group.reduce((a, g) => a + g.p.lng, 0) / group.length;
+              L.marker([lat, lng], {
+                icon: L.divIcon({
+                  className: "",
+                  html: `<div class="cluster" style="width:34px;height:34px">${group.length}</div>`,
+                  iconSize: [34, 34],
+                }),
+              })
+                .addTo(layers)
+                .bindPopup(group.map((g) => g.p.title || "Tappa").join("<br>"));
+            }
+          }
+        } else {
+          pts.forEach((p, i) => addPin(p, i, e.data.selected));
+        }
+
+        function addPin(p, i, selected) {
           const color = p.color || fallbackColors[i % fallbackColors.length];
+          const label =
+            mapOpts.timeLabels && (p.time || p.day)
+              ? `<div class="pin-label">${p.time || p.day}</div>`
+              : "";
           const content = document.createElement("div");
-          content.innerHTML = `<strong>${p.title || ""}</strong>${p.day ? `<br><small>${p.day}</small>` : ""}`;
+          content.innerHTML = `<strong>${p.title || ""}</strong>${p.day ? `<br><small>${p.day}</small>` : ""}${
+            p.time ? `<br><small>${p.time}</small>` : ""
+          }`;
           const marker = L.marker([p.lat, p.lng], {
             icon: L.divIcon({
               className: "",
-              html: `<div class="pin" style="background:${color};width:28px;height:28px">${i + 1}</div>`,
+              html: `<div style="position:relative"><div class="pin" style="background:${color};width:28px;height:28px">${
+                i + 1
+              }</div>${label}</div>`,
               iconSize: [28, 28],
+              iconAnchor: [14, 14],
             }),
           })
             .addTo(layers)
             .bindPopup(content);
           marker.on("click", () => parent.postMessage({ type: "viavia-pin", id: p.id }, location.origin));
-          if (p.id === e.data.selected) marker.openPopup();
-        });
+          if (p.id === selected) marker.openPopup();
+        }
+
         if (pts.length > 1) {
           route = L.polyline(
             pts.map((p) => [p.lat, p.lng]),
