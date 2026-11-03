@@ -4151,30 +4151,145 @@ Regole pv-places:
     return [...new Set(labels)].slice(0, 31);
   }
 
+  function normalizeStopDay(day, trip) {
+    const v = String(day ?? "").trim();
+    if (!v || v === "unscheduled") return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+      if (Number.isNaN(Date.parse(`${v}T12:00:00Z`))) return "";
+      const start = String(trip?.start || "").slice(0, 10);
+      const end = String(trip?.end || "").slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(start) && v < start) return start;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(end) && v > end) return end;
+      return v;
+    }
+    // Legacy labels like "Giorno 1" → real ISO day on the trip.
+    const m = v.match(/giorno\s*(\d+)/i);
+    if (m) {
+      const days = tripDays(trip);
+      const idx = Math.max(0, Number(m[1]) - 1);
+      return days[idx] || days[0] || "";
+    }
+    return "";
+  }
+
+  function normalizeStopsInTrip(trip) {
+    let changed = 0;
+    trip.stops = Array.isArray(trip.stops) ? trip.stops : [];
+    for (const stop of trip.stops) {
+      const day = normalizeStopDay(stop.day, trip);
+      if (day !== String(stop.day ?? "")) {
+        stop.day = day;
+        changed += 1;
+      } else {
+        stop.day = day;
+      }
+      const cat = normalizeStopCategory(stop.category);
+      if (cat !== stop.category) {
+        stop.category = cat;
+        changed += 1;
+      }
+      if (stop.time == null) {
+        stop.time = "";
+        changed += 1;
+      }
+      if (stop.address == null) {
+        stop.address = "";
+        changed += 1;
+      }
+      if (stop.notes == null) {
+        stop.notes = "";
+        changed += 1;
+      }
+      if (stop.lat === undefined) {
+        stop.lat = null;
+        changed += 1;
+      }
+      if (stop.lng === undefined) {
+        stop.lng = null;
+        changed += 1;
+      }
+      if ((stop.lat == null) !== (stop.lng == null)) {
+        stop.lat = null;
+        stop.lng = null;
+        changed += 1;
+      }
+    }
+    return changed;
+  }
+
   async function repairInvalidStopCategories() {
     if (!tripAuth()) return;
-    if (document.documentElement.dataset.pvCatRepair === "1") return;
+    if (document.documentElement.dataset.pvStopRepair === "1") return;
+    document.documentElement.dataset.pvStopRepair = "pending";
     try {
       const { auth, data } = await loadTrip();
       const trip = structuredClone(data.trip);
       if (!Array.isArray(trip.stops) || !trip.stops.length) {
+        document.documentElement.dataset.pvStopRepair = "1";
         document.documentElement.dataset.pvCatRepair = "1";
         return;
       }
-      let changed = 0;
-      for (const stop of trip.stops) {
-        const next = normalizeStopCategory(stop.category);
-        if (next !== stop.category) {
-          stop.category = next;
-          changed += 1;
-        }
-      }
+      const changed = normalizeStopsInTrip(trip);
+      document.documentElement.dataset.pvStopRepair = "1";
       document.documentElement.dataset.pvCatRepair = "1";
       if (!changed) return;
       await saveTrip(auth, trip, data.revision);
+      setTimeout(() => location.reload(), 280);
     } catch {
+      document.documentElement.dataset.pvStopRepair = "1";
       document.documentElement.dataset.pvCatRepair = "1";
     }
+  }
+
+  function relabelInvalidDateBadges() {
+    for (const badge of document.querySelectorAll(".stop-footer .badge, article.stop-card .badge")) {
+      if (!/invalid\s*date/i.test(badge.textContent || "")) continue;
+      badge.textContent = "Giorno da impostare";
+      badge.title = "La data della tappa non era valida: scegli un giorno o Da decidere.";
+    }
+  }
+
+  function bindForceDeleteStop() {
+    if (document.documentElement.dataset.pvForceDel === "1") return;
+    document.documentElement.dataset.pvForceDel = "1";
+    document.addEventListener(
+      "click",
+      (ev) => {
+        const btn = ev.target?.closest?.("button");
+        if (!btn) return;
+        if ((btn.textContent || "").replace(/\s+/g, " ").trim() !== "Elimina") return;
+        let root = btn.parentElement;
+        for (let i = 0; i < 8 && root; i += 1, root = root.parentElement) {
+          const text = root.textContent || "";
+          if (/La voce verrà rimossa/i.test(text) && /Eliminare/i.test(text)) break;
+        }
+        if (!root || !/La voce verrà rimossa/i.test(root.textContent || "")) return;
+        const titleMatch = (root.textContent || "").match(/Eliminare\s+(.+?)\s*\?/);
+        const stopTitle = (titleMatch?.[1] || "").trim();
+        if (!stopTitle || !tripAuth()) return;
+        // Bypass React Zod save (fails on legacy "Giorno N" / missing fields with "Required").
+        ev.preventDefault();
+        ev.stopPropagation();
+        ev.stopImmediatePropagation();
+        void (async () => {
+          try {
+            const { auth, data } = await loadTrip({ force: true });
+            const trip = structuredClone(data.trip);
+            const before = (trip.stops || []).length;
+            trip.stops = (trip.stops || []).filter((s) => String(s.title || "").trim() !== stopTitle);
+            if (trip.stops.length === before) {
+              throw new Error("Tappa non trovata");
+            }
+            normalizeStopsInTrip(trip);
+            await saveTrip(auth, trip, data.revision);
+            location.reload();
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Eliminazione non riuscita");
+          }
+        })();
+      },
+      true
+    );
   }
 
   function extractStopImage(stop) {
@@ -4772,7 +4887,22 @@ Regole pv-places:
       return;
     }
     const dismissKey = `pv-local-banner-dismissed:${openTrip}`;
-    if (sessionStorage.getItem(dismissKey) === "1") {
+    // Persist across tabs/sessions — otherwise it feels like the banner "never goes away".
+    try {
+      if (sessionStorage.getItem(dismissKey) === "1") {
+        localStorage.setItem(dismissKey, "1");
+        sessionStorage.removeItem(dismissKey);
+      }
+    } catch {
+      /* ignore */
+    }
+    let dismissed = false;
+    try {
+      dismissed = localStorage.getItem(dismissKey) === "1";
+    } catch {
+      dismissed = false;
+    }
+    if (dismissed) {
       banner?.remove();
       return;
     }
@@ -4785,11 +4915,17 @@ Regole pv-places:
         "position:relative;top:auto;z-index:1;margin:0;padding:10px 14px;background:#fff4e5;color:#7a4b00;border-bottom:1px solid #f0d3a0;font:600 13px/1.35 inherit;display:flex;gap:10px;align-items:flex-start;justify-content:center;text-align:left";
       document.body.prepend(banner);
     }
-    banner.innerHTML = `<span style="flex:1">Solo su questo telefono/PC per ora. Per inviarlo agli amici: <strong>Condividi viaggio</strong> e copia il link quando è pronto.</span><button type="button" data-pv-local-dismiss aria-label="Chiudi avviso" style="appearance:none;border:0;background:#f3e2c2;color:#7a4b00;border-radius:999px;width:32px;height:32px;font:700 16px/1 inherit;cursor:pointer;flex:0 0 auto">×</button>`;
+    if (banner.dataset.pvBound === "1") return;
+    banner.dataset.pvBound = "1";
+    banner.innerHTML = `<span style="flex:1">Questo viaggio è solo su questo dispositivo. Per gli amici: <strong>Condividi viaggio</strong> e aspetta il link pronto.</span><button type="button" data-pv-local-dismiss aria-label="Chiudi avviso" style="appearance:none;border:0;background:#f3e2c2;color:#7a4b00;border-radius:999px;width:32px;height:32px;font:700 16px/1 inherit;cursor:pointer;flex:0 0 auto">×</button>`;
     banner.querySelector("[data-pv-local-dismiss]")?.addEventListener(
       "click",
       () => {
-        sessionStorage.setItem(dismissKey, "1");
+        try {
+          localStorage.setItem(dismissKey, "1");
+        } catch {
+          /* ignore */
+        }
         banner.remove();
       },
       { once: true }
@@ -5760,6 +5896,8 @@ Regole pv-places:
     syncTripCoverToDestination();
     ensureShareToast();
     injectCloudStatusBanner();
+    bindForceDeleteStop();
+    relabelInvalidDateBadges();
     void repairInvalidStopCategories();
     void enhanceItineraryStops();
   }

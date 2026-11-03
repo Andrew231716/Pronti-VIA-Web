@@ -816,21 +816,34 @@
   }
 
   async function repairInvalidStopDays() {
+    // magic-extras owns the combined stop repair (days + categories) when present.
+    if (document.documentElement.dataset.pvStopRepair === "1") return;
+    if (document.documentElement.dataset.pvStopRepair === "pending") return;
     const packed = await loadTripSafe();
     if (!packed?.trip) return;
     const { auth, trip, revision } = packed;
     let changed = 0;
     trip.stops = Array.isArray(trip.stops) ? trip.stops : [];
     for (const stop of trip.stops) {
-      if (isValidStopDay(stop.day, trip)) continue;
+      if (isValidStopDay(stop.day, trip)) {
+        if (String(stop.day || "") === "unscheduled") {
+          stop.day = "";
+          changed += 1;
+        }
+        continue;
+      }
       // Legacy bug: "Giorno 1" text instead of ISO date → map to trip day or unscheduled.
       const m = String(stop.day || "").match(/giorno\s*(\d+)/i);
       stop.day = m ? isoDayFromTrip(trip, Number(m[1]) - 1) : "";
       changed += 1;
     }
-    if (!changed) return;
+    if (!changed) {
+      document.documentElement.dataset.pvStopRepair = "1";
+      return;
+    }
     try {
       await saveTripSafe(auth, trip, revision);
+      document.documentElement.dataset.pvStopRepair = "1";
       toast(`Corrette ${changed} tappe con data non valida`, "ok");
       setTimeout(() => location.reload(), 350);
     } catch {
