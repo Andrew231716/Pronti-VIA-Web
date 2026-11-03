@@ -794,15 +794,22 @@
     }
 
     const nom = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
+      `https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&namedetails=1&accept-language=it&q=${encodeURIComponent(q)}`,
       {
-        headers: { Accept: "application/json" },
+        headers: { Accept: "application/json", "Accept-Language": "it" },
         signal: AbortSignal.timeout(12000),
       }
     ).then((r) => r.json());
     const hit = Array.isArray(nom) ? nom[0] : null;
     if (!hit || hit.lat == null) throw new Error("Non trovo coordinate per la destinazione.");
-    return { lat: Number(hit.lat), lng: Number(hit.lon), title: hit.display_name || q };
+    const nd = hit.namedetails || {};
+    const local = String(nd.name || hit.name || "").trim();
+    const italian = String(nd["name:it"] || hit.name || "").trim();
+    const title =
+      local && italian && local.toLocaleLowerCase("it") !== italian.toLocaleLowerCase("it")
+        ? `${italian} (${local})`
+        : hit.display_name || italian || local || q;
+    return { lat: Number(hit.lat), lng: Number(hit.lon), title };
   }
 
   async function fetchPois(lat, lng) {

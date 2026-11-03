@@ -45,6 +45,11 @@
       #pv-places-suggest .pv-place-option strong {
         font-weight: 700;
       }
+      #pv-places-suggest .pv-place-option .pv-place-it {
+        color: #0f6b72;
+        font-size: 12.5px;
+        font-weight: 650;
+      }
       #pv-places-suggest .pv-place-option span {
         color: #5b7380;
         font-size: 12px;
@@ -116,10 +121,28 @@
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
+  function namesEqual(a, b) {
+    return String(a || "").trim().toLocaleLowerCase("it") === String(b || "").trim().toLocaleLowerCase("it");
+  }
+
+  function placeDisplay(place) {
+    const local = String(place?.nameLocal || "").trim();
+    const italian = String(place?.nameIt || (place?.translationLang === "it" ? place?.translation : "") || "").trim();
+    const english = String(place?.nameEn || (place?.translationLang === "en" ? place?.translation : "") || "").trim();
+    const translation = italian || english;
+    const translationLabel = italian ? "in italiano" : english ? "in inglese" : "";
+    const bilingual = Boolean(local && translation && !namesEqual(local, translation));
+    const title = String(place?.title || "").trim();
+    // Prefer Italian first when saving into the field, with local name in parentheses.
+    const value = bilingual ? `${translation} (${local})` : title || translation || local;
+    return { local, italian, english, translation, translationLabel, bilingual, title, value };
+  }
+
   function choosePlace(place) {
     if (!activeInput || !place) return;
     const input = activeInput;
-    setReactInputValue(input, place.title);
+    const { value } = placeDisplay(place);
+    setReactInputValue(input, value || place.title);
     hide();
     input.focus();
   }
@@ -138,15 +161,32 @@
       return;
     }
     box.innerHTML = places
-      .map(
-        (place, index) => `
+      .map((place, index) => {
+        const view = placeDisplay(place);
+        const strongText = view.bilingual ? view.local : view.title || view.local || view.translation;
+        const itLine = view.bilingual
+          ? `<div class="pv-place-it">${escapeHtml(view.translationLabel)}: ${escapeHtml(view.translation)}</div>`
+          : "";
+        let meta = String(place.subtitle || place.address || "").trim();
+        if (view.bilingual) {
+          meta = meta
+            .replace(new RegExp(`in italiano:\\s*${view.translation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "ig"), "")
+            .replace(new RegExp(`in inglese:\\s*${view.translation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "ig"), "")
+            .replace(new RegExp(view.local.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig"), "")
+            .replace(/^[\s·,]+|[\s·,]+$/g, "")
+            .replace(/\s*·\s*·\s*/g, " · ")
+            .trim();
+        }
+        const metaLine = meta ? `<span>${escapeHtml(meta)}</span>` : "";
+        return `
         <button type="button" class="pv-place-option" role="option" data-idx="${index}" aria-selected="${
           index === highlight ? "true" : "false"
         }">
-          <strong>${escapeHtml(place.title)}</strong>
-          <span>${escapeHtml(place.subtitle || place.address || place.type || "")}</span>
-        </button>`
-      )
+          <strong>${escapeHtml(strongText)}</strong>
+          ${itLine}
+          ${metaLine}
+        </button>`;
+      })
       .join("");
     box.querySelectorAll(".pv-place-option").forEach((button) => {
       button.addEventListener("mousedown", (event) => {
