@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102v";
+  const VER = "20261102w";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -124,6 +124,7 @@
     let chip = document.getElementById("pv-as-reopen");
     if (!forPanelId || !isDockDismissed(forPanelId)) {
       chip?.remove();
+      document.body.classList.remove("pv-as-reopen-visible");
       return;
     }
     if (!chip) {
@@ -131,12 +132,14 @@
       chip.type = "button";
       chip.id = "pv-as-reopen";
       chip.className = "pv-as-reopen";
-      chip.textContent = "Strumenti extra";
+      chip.textContent = "Strumenti";
+      chip.title = "Riapri strumenti extra";
       chip.addEventListener("click", () => reopenDock(chip.dataset.panel));
       document.body.appendChild(chip);
     }
     chip.dataset.panel = forPanelId;
     chip.hidden = false;
+    document.body.classList.add("pv-as-reopen-visible");
   }
 
   function mountSectionPanel(id, html) {
@@ -298,9 +301,28 @@
       #pv-as-portal[hidden]{display:none !important}
       body.pv-as-dock-open{scroll-padding-top:40vh}
       .pv-as-reopen{
-        position:fixed;right:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:121600;
-        appearance:none;border:2px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
-        padding:10px 14px;font:700 .8rem inherit;cursor:pointer;box-shadow:0 10px 24px rgba(15,45,50,.2)
+        position:fixed;left:12px;right:auto;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:121600;
+        appearance:none;border:1px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
+        padding:10px 14px;font:700 .78rem inherit;cursor:pointer;box-shadow:0 8px 20px rgba(15,45,50,.18);
+        max-width:min(52vw,200px)
+      }
+      /* Keep Pronty / preventivo FABs clear of the tools dock */
+      body.pv-as-dock-open #pv-magic-root .pv-magic-btn,
+      body.pv-as-dock-open .pv-prev-launch{
+        bottom:calc(min(46vh,480px) + 24px + env(safe-area-inset-bottom,0px))!important
+      }
+      #pv-as-cache-status{
+        position:fixed;left:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:120050;
+        background:#fff;border:1px solid #d9e7e7;border-radius:999px;padding:6px 10px;
+        font:600 .72rem inherit;color:#5b7076;max-width:min(58vw,220px);
+        box-shadow:0 4px 14px rgba(15,45,50,.08)
+      }
+      #pv-as-cache-status[hidden]{display:none!important}
+      /* Prefer reopen chip over cache badge when both would sit left */
+      body.pv-as-reopen-visible #pv-as-cache-status{display:none!important}
+      @media (max-width:720px){
+        .pv-as-reopen{padding:9px 12px;font-size:.74rem}
+        #pv-as-portal{left:8px;right:8px;max-height:min(42vh,420px)}
       }
       @media (prefers-reduced-motion: reduce){
         .pv-as-install{transition:none}
@@ -1439,23 +1461,24 @@
 
   async function injectCacheStatus() {
     if (!("caches" in window)) return;
-    const keys = await caches.keys();
     let el = document.getElementById("pv-as-cache-status");
-    if (!tripAuth()) {
+    // Don't crowd the trip UI when online — only nudge when offline.
+    if (!tripAuth() || navigator.onLine) {
       el?.remove();
       return;
     }
+    const keys = await caches.keys();
     if (!el) {
       el = document.createElement("div");
       el.id = "pv-as-cache-status";
       el.className = "pv-as-cache";
-      el.style.cssText =
-        "position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:120100;background:#fff;border:1px solid #d9e7e7;border-radius:10px;padding:6px 10px";
+      el.setAttribute("role", "status");
       document.body.appendChild(el);
     }
+    el.hidden = false;
     el.textContent = keys.length
-      ? `Offline pronto · cache ${keys[0].replace(/^pv-shell-/, "")}`
-      : "Offline: apri l’app online una volta per preparare la cache";
+      ? `Offline · cache ${keys[0].replace(/^pv-shell-/, "")}`
+      : "Offline · apri online una volta per la cache";
   }
 
   function openSimpleModal(title, html) {
