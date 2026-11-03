@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102k") return;
+    if (style && style.dataset.pvReady === "20261102r") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -257,6 +257,16 @@
       .pv-expense-fx{margin:0;display:grid;gap:8px}
       .pv-expense-fx select{width:100%;border:1px solid #c9dbdb;border-radius:10px;padding:10px 12px;font:inherit;background:#fff;color:#16353b}
       .pv-expense-fx-hint{margin:0;font-size:.82rem;color:#5b7076;min-height:1.2em}
+      .pv-expense-fx-rows{display:grid;gap:10px}
+      .pv-expense-fx-row{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:8px;align-items:center}
+      .pv-expense-fx-row input{width:100%;border:1px solid #c9dbdb;border-radius:10px;padding:10px 12px;font:600 1rem inherit;color:#16353b;background:#f7fbfb}
+      .pv-expense-fx-row input:focus{outline:2px solid #007d82;outline-offset:1px;background:#fff}
+      .pv-expense-fx-row .code{font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
+      .pv-expense-fx-meta{margin:0;font-size:.78rem;color:#5b7076}
+      .pv-fx-home-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 10px}
+      .pv-fx-home-pick label{font-size:.78rem;color:#5b7076;font-weight:600}
+      .pv-fx-home-pick select{border:1px solid #c9dbdb;border-radius:10px;padding:6px 10px;font:inherit;background:#fff;color:#16353b}
+      label.field.pv-expense-amount-native-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
       .pv-links-box .pv-action-list{display:grid;gap:0}
       .pv-links-box .pv-action-list a,.pv-links-box .pv-action-list button{appearance:none;display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 0;border:0;border-bottom:1px solid #eef3f3;background:transparent;color:#184047;font:600 0.92rem inherit;cursor:pointer;text-decoration:none;text-align:left}
       .pv-links-box .pv-action-list a:last-child,.pv-links-box .pv-action-list button:last-child{border-bottom:0;padding-bottom:0}
@@ -267,7 +277,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102k";
+    style.dataset.pvReady = "20261102r";
   }
 
   function fabNodes() {
@@ -3318,10 +3328,88 @@ Regole pv-places:
     }
   }
 
+  const HOME_CURRENCY_KEY = "viavia-home-currency-v1";
+  const CURRENCY_BY_CC = {
+    AD: { code: "EUR", name: "Euro" },
+    AE: { code: "AED", name: "Dirham UAE" },
+    AR: { code: "ARS", name: "Peso argentino" },
+    AT: { code: "EUR", name: "Euro" },
+    AU: { code: "AUD", name: "Dollaro australiano" },
+    BE: { code: "EUR", name: "Euro" },
+    BG: { code: "BGN", name: "Lev bulgaro" },
+    BR: { code: "BRL", name: "Real" },
+    CA: { code: "CAD", name: "Dollaro canadese" },
+    CH: { code: "CHF", name: "Franco svizzero" },
+    CL: { code: "CLP", name: "Peso cileno" },
+    CN: { code: "CNY", name: "Yuan" },
+    CO: { code: "COP", name: "Peso colombiano" },
+    CY: { code: "EUR", name: "Euro" },
+    CZ: { code: "CZK", name: "Corona ceca" },
+    DE: { code: "EUR", name: "Euro" },
+    DK: { code: "DKK", name: "Corona danese" },
+    EE: { code: "EUR", name: "Euro" },
+    EG: { code: "EGP", name: "Sterlina egiziana" },
+    ES: { code: "EUR", name: "Euro" },
+    ET: { code: "ETB", name: "Birr etiope" },
+    FI: { code: "EUR", name: "Euro" },
+    FR: { code: "EUR", name: "Euro" },
+    GB: { code: "GBP", name: "Sterlina" },
+    GR: { code: "EUR", name: "Euro" },
+    HK: { code: "HKD", name: "Dollaro di Hong Kong" },
+    HR: { code: "EUR", name: "Euro" },
+    HU: { code: "HUF", name: "Fiorino" },
+    ID: { code: "IDR", name: "Rupia indonesiana" },
+    IE: { code: "EUR", name: "Euro" },
+    IL: { code: "ILS", name: "Shekel" },
+    IN: { code: "INR", name: "Rupia indiana" },
+    IS: { code: "ISK", name: "Corona islandese" },
+    IT: { code: "EUR", name: "Euro" },
+    JP: { code: "JPY", name: "Yen" },
+    KE: { code: "KES", name: "Scellino keniota" },
+    KR: { code: "KRW", name: "Won sudcoreano" },
+    LT: { code: "EUR", name: "Euro" },
+    LU: { code: "EUR", name: "Euro" },
+    LV: { code: "EUR", name: "Euro" },
+    MA: { code: "MAD", name: "Dirham marocchino" },
+    MT: { code: "EUR", name: "Euro" },
+    MX: { code: "MXN", name: "Peso messicano" },
+    MY: { code: "MYR", name: "Ringgit" },
+    NL: { code: "EUR", name: "Euro" },
+    NO: { code: "NOK", name: "Corona norvegese" },
+    NZ: { code: "NZD", name: "Dollaro NZ" },
+    PE: { code: "PEN", name: "Sol peruviano" },
+    PH: { code: "PHP", name: "Peso filippino" },
+    PL: { code: "PLN", name: "Złoty" },
+    PT: { code: "EUR", name: "Euro" },
+    RO: { code: "RON", name: "Leu" },
+    RS: { code: "RSD", name: "Dinaro serbo" },
+    RU: { code: "RUB", name: "Rublo" },
+    SE: { code: "SEK", name: "Corona svedese" },
+    SG: { code: "SGD", name: "Dollaro di Singapore" },
+    SI: { code: "EUR", name: "Euro" },
+    SK: { code: "EUR", name: "Euro" },
+    TH: { code: "THB", name: "Baht" },
+    TR: { code: "TRY", name: "Lira turca" },
+    TZ: { code: "TZS", name: "Scellino tanzaniano" },
+    UA: { code: "UAH", name: "Grivnia" },
+    US: { code: "USD", name: "Dollaro USA" },
+    VN: { code: "VND", name: "Dong" },
+    ZA: { code: "ZAR", name: "Rand" },
+  };
+
   function currencyForDestination(destination) {
     const q = String(destination || "").toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
     const rules = [
-      // "Island" is a common EN short form / autocomplete leftover for Iceland
+      { re: /etiop|ethiopia|addis\s*abeba|addis\s*ababa/, code: "ETB", name: "Birr etiope" },
+      { re: /kenya|nairobi|mombasa/, code: "KES", name: "Scellino keniota" },
+      { re: /tanzania|zanzibar|kilimanjaro/, code: "TZS", name: "Scellino tanzaniano" },
+      { re: /egitto|egypt|cairo|sharm/, code: "EGP", name: "Sterlina egiziana" },
+      { re: /marocco|morocco|marrakech|casablanca/, code: "MAD", name: "Dirham marocchino" },
+      { re: /emirati|dubai|abu dhabi/, code: "AED", name: "Dirham UAE" },
+      { re: /indonesia|bali|jakarta/, code: "IDR", name: "Rupia indonesiana" },
+      { re: /vietnam|hanoi|saigon|ho chi minh/, code: "VND", name: "Dong" },
+      { re: /corea|seoul|busan/, code: "KRW", name: "Won sudcoreano" },
+      { re: /argentina|buenos aires/, code: "ARS", name: "Peso argentino" },
       { re: /islanda|\bisland\b|iceland|reykjav|akureyr/, code: "ISK", name: "Corona islandese" },
       { re: /norvegia|norway|oslo|bergen/, code: "NOK", name: "Corona norvegese" },
       { re: /svezia|sweden|stoccolma|stockholm/, code: "SEK", name: "Corona svedese" },
@@ -3347,13 +3435,82 @@ Regole pv-places:
       { re: /messico|mexico|cancun|tulum/, code: "MXN", name: "Peso messicano" },
       { re: /sudafrica|south africa|cape town|johannesburg/, code: "ZAR", name: "Rand" },
       { re: /nuova zelanda|new zealand|auckland|queenstown/, code: "NZD", name: "Dollaro NZ" },
-      // Eurozone leftovers — no local conversion needed
-      { re: /\b(italia|france|francia|spain|spagna|germania|germany|portugal|portogallo|greece|grecia|austria|belgio|belgium|olanda|netherlands|irlanda|ireland|finlandia|croatia|croazia)\b/, code: "EUR", name: "Euro" },
+      {
+        re: /\b(italia|france|francia|spain|spagna|germania|germany|portugal|portogallo|greece|grecia|austria|belgio|belgium|olanda|netherlands|irlanda|ireland|finlandia|croatia|croazia)\b/,
+        code: "EUR",
+        name: "Euro",
+      },
     ];
     for (const rule of rules) {
-      if (rule.re.test(q)) return { code: rule.code, name: rule.name };
+      if (rule.re.test(q)) return { code: rule.code, name: rule.name, source: "rules" };
     }
     return null;
+  }
+
+  function homeCurrency() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(HOME_CURRENCY_KEY) || "null");
+      if (raw?.code) return { code: String(raw.code).toUpperCase(), name: raw.name || raw.code };
+    } catch {
+      /* ignore */
+    }
+    return { code: "EUR", name: "Euro" };
+  }
+
+  function setHomeCurrency(code, name) {
+    try {
+      localStorage.setItem(
+        HOME_CURRENCY_KEY,
+        JSON.stringify({ code: String(code || "EUR").toUpperCase(), name: name || code || "Euro" })
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const currencyDetectCache = new Map();
+
+  async function detectCurrencyFromMaps(destination) {
+    const key = String(destination || "").trim().toLowerCase();
+    if (!key) return null;
+    if (currencyDetectCache.has(key)) return currencyDetectCache.get(key);
+    try {
+      const params = new URLSearchParams({
+        q: destination,
+        format: "json",
+        addressdetails: "1",
+        limit: "1",
+        "accept-language": "it",
+      });
+      const rows = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+        headers: { Accept: "application/json", "Accept-Language": "it" },
+        signal: AbortSignal.timeout(10000),
+      }).then((r) => {
+        if (!r.ok) throw new Error(`nominatim-${r.status}`);
+        return r.json();
+      });
+      const cc = String(rows?.[0]?.address?.country_code || "").toUpperCase();
+      const hit = CURRENCY_BY_CC[cc] || null;
+      const result = hit ? { ...hit, source: "maps", countryCode: cc } : null;
+      currencyDetectCache.set(key, result);
+      return result;
+    } catch {
+      currencyDetectCache.set(key, null);
+      return null;
+    }
+  }
+
+  /** Prefer destination rules, then maps country→currency, then trip title. */
+  async function resolveTripLocalCurrency(trip) {
+    if (!trip) return null;
+    const fast =
+      currencyForDestination(trip.destination) || currencyForDestination(trip.title) || null;
+    if (fast) return fast;
+    return (
+      (await detectCurrencyFromMaps(trip.destination)) ||
+      (await detectCurrencyFromMaps(trip.title)) ||
+      null
+    );
   }
 
   /** Prefer destination; fall back to trip title (e.g. "Vacanza in Islanda" with dest "Island"). */
@@ -3364,6 +3521,58 @@ Regole pv-places:
       currencyForDestination(trip.title) ||
       null
     );
+  }
+
+  const fxRateCache = new Map();
+
+  async function fetchExchangeRate(base, quote) {
+    const from = String(base || "EUR").toUpperCase();
+    const to = String(quote || "EUR").toUpperCase();
+    if (from === to) return { rate: 1, provider: "identity" };
+    const key = `${from}:${to}`;
+    if (fxRateCache.has(key)) return fxRateCache.get(key);
+
+    const providers = [
+      async () => {
+        const data = await fetch(`https://open.er-api.com/v6/latest/${encodeURIComponent(from)}`, {
+          signal: AbortSignal.timeout(10000),
+        }).then((r) => r.json());
+        const rate = Number(data?.rates?.[to]);
+        if (!Number.isFinite(rate) || rate <= 0) throw new Error("er-api");
+        return { rate, provider: "open.er-api", date: data?.time_last_update_utc || "" };
+      },
+      async () => {
+        const data = await fetch(
+          `https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/${from.toLowerCase()}.json`,
+          { signal: AbortSignal.timeout(10000) }
+        ).then((r) => r.json());
+        const rate = Number(data?.[from.toLowerCase()]?.[to.toLowerCase()]);
+        if (!Number.isFinite(rate) || rate <= 0) throw new Error("currency-api");
+        return { rate, provider: "fawazahmed0", date: data?.date || "" };
+      },
+      async () => {
+        // ECB subset (no ETB) — last resort for common pairs.
+        const data = await fetch(
+          `https://api.frankfurter.dev/v1/latest?base=${encodeURIComponent(from)}&symbols=${encodeURIComponent(to)}`,
+          { signal: AbortSignal.timeout(10000) }
+        ).then((r) => r.json());
+        const rate = Number(data?.rates?.[to]);
+        if (!Number.isFinite(rate) || rate <= 0) throw new Error("frankfurter");
+        return { rate, provider: "frankfurter", date: data?.date || "" };
+      },
+    ];
+
+    let lastErr;
+    for (const run of providers) {
+      try {
+        const hit = await run();
+        fxRateCache.set(key, hit);
+        return hit;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("fx-unavailable");
   }
 
   let weatherCache = null; // { key, mode, daily, destination }
@@ -3472,48 +3681,134 @@ Regole pv-places:
     void fillFxCalculator(box, auth.id);
   }
 
+  function homeCurrencyOptionsHtml(selected) {
+    const opts = [
+      { code: "EUR", name: "Euro" },
+      { code: "USD", name: "Dollaro USA" },
+      { code: "GBP", name: "Sterlina" },
+      { code: "CHF", name: "Franco svizzero" },
+      { code: "CAD", name: "Dollaro canadese" },
+      { code: "AUD", name: "Dollaro australiano" },
+      { code: "JPY", name: "Yen" },
+      { code: "SEK", name: "Corona svedese" },
+      { code: "NOK", name: "Corona norvegese" },
+      { code: "DKK", name: "Corona danese" },
+      { code: "PLN", name: "Złoty" },
+      { code: "CZK", name: "Corona ceca" },
+      { code: "HUF", name: "Fiorino" },
+      { code: "RON", name: "Leu" },
+      { code: "TRY", name: "Lira turca" },
+      { code: "BRL", name: "Real" },
+      { code: "MXN", name: "Peso messicano" },
+      { code: "INR", name: "Rupia indiana" },
+      { code: "CNY", name: "Yuan" },
+      { code: "KRW", name: "Won sudcoreano" },
+      { code: "THB", name: "Baht" },
+      { code: "SGD", name: "Dollaro di Singapore" },
+      { code: "HKD", name: "Dollaro di Hong Kong" },
+      { code: "NZD", name: "Dollaro NZ" },
+      { code: "ZAR", name: "Rand" },
+      { code: "ILS", name: "Shekel" },
+      { code: "AED", name: "Dirham UAE" },
+    ];
+    const sel = String(selected || "EUR").toUpperCase();
+    if (!opts.some((o) => o.code === sel)) opts.unshift({ code: sel, name: sel });
+    return opts
+      .map(
+        (o) =>
+          `<option value="${escapeHtml(o.code)}"${o.code === sel ? " selected" : ""}>${escapeHtml(
+            o.name
+          )} (${escapeHtml(o.code)})</option>`
+      )
+      .join("");
+  }
+
   async function fillFxCalculator(box, tripKey) {
     const meta = box.querySelector("#pv-fx-meta");
     const body = box.querySelector("#pv-fx-body");
     try {
       const { data } = await loadTrip();
       const trip = data.trip;
-      const localFx = currencyForTrip(trip);
+      let home = homeCurrency();
+      const localFx = await resolveTripLocalCurrency(trip);
 
-      if (!localFx || localFx.code === "EUR") {
+      const renderHomePicker = () => {
+        const pick = document.createElement("div");
+        pick.className = "pv-fx-home-pick";
+        pick.innerHTML = `
+          <label for="pv-fx-home-currency">La tua valuta</label>
+          <select id="pv-fx-home-currency" aria-label="Valuta di casa">${homeCurrencyOptionsHtml(
+            home.code
+          )}</select>
+        `;
+        const select = pick.querySelector("select");
+        select.addEventListener("change", () => {
+          const opt = select.selectedOptions[0];
+          const code = select.value;
+          const name = (opt?.textContent || code).replace(/\s*\([A-Z]{3}\)\s*$/, "").trim();
+          setHomeCurrency(code, name);
+          fxDoneKey = "";
+          box.remove();
+          injectFxCalculator();
+          // Force expense form to rebuild with new home currency.
+          document.querySelectorAll(".pv-expense-fx").forEach((el) => el.remove());
+          const native = document.querySelector("label.field.pv-expense-amount-native-hidden");
+          if (native) native.classList.remove("pv-expense-amount-native-hidden");
+          void enhanceExpenseCurrencyField();
+        });
+        return pick;
+      };
+
+      body.innerHTML = "";
+      body.appendChild(renderHomePicker());
+
+      if (!localFx) {
         fxDoneKey = `${tripKey}:skip`;
-        meta.textContent = "Destinazione in euro: nessun cambio necessario.";
-        body.innerHTML = "";
+        meta.textContent =
+          "Valuta locale non riconosciuta: puoi comunque aggiungere spese nella tua valuta o in euro.";
         return;
       }
 
-      const fx = await fetch(
-        `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${encodeURIComponent(localFx.code)}`,
-        { signal: AbortSignal.timeout(10000) }
-      ).then((r) => r.json());
-      const rate = Number(fx.rates?.[localFx.code]);
+      if (localFx.code === home.code) {
+        fxDoneKey = `${tripKey}:skip`;
+        meta.textContent = `Destinazione in ${home.code}: nessun cambio necessario.`;
+        return;
+      }
+
+      const fx = await fetchExchangeRate(home.code, localFx.code);
+      const rate = Number(fx.rate);
       if (!Number.isFinite(rate) || rate <= 0) throw new Error("no-rate");
 
       const digits = rate >= 100 ? 0 : 2;
-      meta.textContent = `${localFx.name} (${localFx.code}) · ${trip.destination}`;
-      body.innerHTML = `
-        <p class="pv-fx-rate">1 € = ${rate.toLocaleString("it-IT", { maximumFractionDigits: digits })} ${escapeHtml(localFx.code)}</p>
+      meta.textContent = `${localFx.name} (${localFx.code}) rilevata per ${
+        trip.destination || "la destinazione"
+      }`;
+      const rows = document.createElement("div");
+      rows.innerHTML = `
+        <p class="pv-fx-rate">1 ${escapeHtml(home.code)} = ${rate.toLocaleString("it-IT", {
+          maximumFractionDigits: digits,
+        })} ${escapeHtml(localFx.code)}</p>
         <div class="pv-fx-rows">
           <label class="pv-fx-row">
-            <input type="text" inputmode="decimal" id="pv-fx-eur" value="1" aria-label="Importo in euro" />
-            <span class="code">EUR</span>
+            <input type="text" inputmode="decimal" id="pv-fx-home" value="1" aria-label="Importo in ${escapeHtml(
+              home.code
+            )}" />
+            <span class="code">${escapeHtml(home.code)}</span>
           </label>
           <label class="pv-fx-row">
-            <input type="text" inputmode="decimal" id="pv-fx-local" aria-label="Importo in ${escapeHtml(localFx.code)}" />
+            <input type="text" inputmode="decimal" id="pv-fx-local" aria-label="Importo in ${escapeHtml(
+              localFx.code
+            )}" />
             <span class="code">${escapeHtml(localFx.code)}</span>
           </label>
         </div>
       `;
-      const eurInput = body.querySelector("#pv-fx-eur");
+      body.appendChild(rows);
+      const homeInput = body.querySelector("#pv-fx-home");
       const localInput = body.querySelector("#pv-fx-local");
       let syncing = false;
 
-      const setFromEur = (raw) => {
+      const setFromHome = (raw) => {
         const n = parseFxAmount(raw);
         if (n == null) {
           localInput.value = "";
@@ -3524,17 +3819,17 @@ Regole pv-places:
       const setFromLocal = (raw) => {
         const n = parseFxAmount(raw);
         if (n == null) {
-          eurInput.value = "";
+          homeInput.value = "";
           return;
         }
-        eurInput.value = formatFxAmount(n / rate, "EUR");
+        homeInput.value = formatFxAmount(n / rate, home.code);
       };
 
-      setFromEur(eurInput.value);
-      eurInput.addEventListener("input", () => {
+      setFromHome(homeInput.value);
+      homeInput.addEventListener("input", () => {
         if (syncing) return;
         syncing = true;
-        setFromEur(eurInput.value);
+        setFromHome(homeInput.value);
         syncing = false;
       });
       localInput.addEventListener("input", () => {
@@ -4013,7 +4308,22 @@ Regole pv-places:
     }
   }
 
-  let expenseFxState = { code: "EUR", rate: 1, name: "Euro" };
+  /** Settlement currency for shared expenses (React schema is always EUR cents). */
+  const SETTLEMENT_CURRENCY = "EUR";
+
+  let expenseFxState = {
+    entryCode: "EUR",
+    localCode: "EUR",
+    homeCode: "EUR",
+    localName: "Euro",
+    homeName: "Euro",
+    /** local units per 1 home */
+    rateLocalPerHome: 1,
+    /** local units per 1 EUR */
+    rateLocalPerEur: 1,
+    lastLocal: null,
+    lastHome: null,
+  };
 
   function setNativeInputValue(input, value) {
     const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -4023,34 +4333,50 @@ Regole pv-places:
     input.dispatchEvent(new Event("change", { bubbles: true }));
   }
 
-  async function enhanceExpenseCurrencyField() {
-    const amountLabel = [...document.querySelectorAll("label.field")].find((label) => {
+  function findExpenseAmountLabel() {
+    return [...document.querySelectorAll("label.field")].find((label) => {
       const span = label.querySelector(":scope > span");
       return span && /^Totale in/i.test((span.textContent || "").trim());
     });
+  }
+
+  async function enhanceExpenseCurrencyField() {
+    const amountLabel = findExpenseAmountLabel();
     if (!amountLabel) return;
 
     const auth = tripAuth();
     if (!auth) return;
 
-    let host = amountLabel.closest(".form-grid") || amountLabel.parentElement;
+    const host = amountLabel.closest(".form-grid") || amountLabel.parentElement;
     if (!host) return;
     if (host.querySelector(".pv-expense-fx")) return;
 
     let localFx = null;
-    let rate = 1;
+    let home = homeCurrency();
+    let rateLocalPerHome = 1;
+    let rateLocalPerEur = 1;
+    let tripDest = "";
+
     try {
       const { data } = await loadTrip();
-      localFx = currencyForTrip(data.trip);
-      if (localFx && localFx.code !== "EUR") {
-        const fx = await fetch(
-          `https://api.frankfurter.dev/v1/latest?base=EUR&symbols=${encodeURIComponent(localFx.code)}`,
-          { signal: AbortSignal.timeout(10000) }
-        ).then((r) => r.json());
-        rate = Number(fx.rates?.[localFx.code]);
-        if (!Number.isFinite(rate) || rate <= 0) localFx = null;
-      } else {
-        localFx = null;
+      tripDest = data.trip?.destination || data.trip?.title || "";
+      localFx = await resolveTripLocalCurrency(data.trip);
+      home = homeCurrency();
+      if (localFx) {
+        if (localFx.code === home.code) {
+          rateLocalPerHome = 1;
+        } else {
+          const fxHome = await fetchExchangeRate(home.code, localFx.code);
+          rateLocalPerHome = Number(fxHome.rate);
+        }
+        if (localFx.code === SETTLEMENT_CURRENCY) {
+          rateLocalPerEur = 1;
+        } else {
+          const fxEur = await fetchExchangeRate(SETTLEMENT_CURRENCY, localFx.code);
+          rateLocalPerEur = Number(fxEur.rate);
+        }
+        if (!Number.isFinite(rateLocalPerHome) || rateLocalPerHome <= 0) localFx = null;
+        if (!Number.isFinite(rateLocalPerEur) || rateLocalPerEur <= 0) localFx = null;
       }
     } catch {
       localFx = null;
@@ -4060,85 +4386,281 @@ Regole pv-places:
     if (host.querySelector(".pv-expense-fx")) return;
     if (!document.contains(amountLabel)) return;
 
-    const box = document.createElement("label");
+    const nativeInput = amountLabel.querySelector("input");
+    if (!nativeInput) return;
+
+    // Euro destination + euro home: keep native field.
+    if (!localFx || (localFx.code === SETTLEMENT_CURRENCY && home.code === SETTLEMENT_CURRENCY)) {
+      const tip = document.createElement("div");
+      tip.className = "field pv-expense-fx";
+      tip.innerHTML = `<p class="pv-expense-fx-hint">Importi in euro · saldo condiviso in euro.</p>`;
+      amountLabel.insertAdjacentElement("afterend", tip);
+      expenseFxState = {
+        entryCode: SETTLEMENT_CURRENCY,
+        localCode: SETTLEMENT_CURRENCY,
+        homeCode: SETTLEMENT_CURRENCY,
+        localName: "Euro",
+        homeName: "Euro",
+        rateLocalPerHome: 1,
+        rateLocalPerEur: 1,
+        lastLocal: null,
+        lastHome: null,
+      };
+      return;
+    }
+
+    amountLabel.classList.add("pv-expense-amount-native-hidden");
+    amountLabel.setAttribute("aria-hidden", "true");
+
+    const sameLocalHome = localFx.code === home.code;
+    const box = document.createElement("div");
     box.className = "field pv-expense-fx";
-    const options = [`<option value="EUR">Euro (€)</option>`];
-    if (localFx) {
-      options.push(
-        `<option value="${escapeHtml(localFx.code)}">${escapeHtml(localFx.name)} (${escapeHtml(localFx.code)})</option>`
+    const spendOptions = [];
+    spendOptions.push(
+      `<option value="${escapeHtml(localFx.code)}" selected>${escapeHtml(localFx.name)} (${escapeHtml(
+        localFx.code
+      )}) · posto</option>`
+    );
+    if (!sameLocalHome) {
+      spendOptions.push(
+        `<option value="${escapeHtml(home.code)}">${escapeHtml(home.name)} (${escapeHtml(
+          home.code
+        )}) · tua</option>`
       );
     }
+    if (SETTLEMENT_CURRENCY !== localFx.code && SETTLEMENT_CURRENCY !== home.code) {
+      spendOptions.push(`<option value="EUR">Euro (EUR) · condiviso</option>`);
+    }
+
+    const homeRow = sameLocalHome
+      ? `
+        <label class="pv-expense-fx-row">
+          <input type="text" inputmode="decimal" id="pv-expense-home" autocomplete="off" aria-label="Importo in euro" readonly />
+          <span class="code">EUR</span>
+        </label>`
+      : `
+        <label class="pv-expense-fx-row">
+          <input type="text" inputmode="decimal" id="pv-expense-home" autocomplete="off" aria-label="Importo in ${escapeHtml(
+            home.code
+          )}" />
+          <span class="code">${escapeHtml(home.code)}</span>
+        </label>`;
+
     box.innerHTML = `
-      <span>Valuta della spesa</span>
-      <select id="pv-expense-currency" aria-label="Valuta della spesa">${options.join("")}</select>
+      <span>Importo della spesa</span>
+      <p class="pv-expense-fx-meta" id="pv-expense-fx-detect">
+        Valuta del posto: <strong>${escapeHtml(localFx.name)} (${escapeHtml(localFx.code)})</strong>${
+          tripDest ? ` · ${escapeHtml(tripDest)}` : ""
+        }
+      </p>
+      <label class="pv-expense-fx-meta" for="pv-expense-entry-currency" style="display:block;margin:0">
+        Inserisci in
+      </label>
+      <select id="pv-expense-entry-currency" aria-label="Valuta di inserimento">${spendOptions.join(
+        ""
+      )}</select>
+      <div class="pv-expense-fx-rows" id="pv-expense-fx-rows">
+        <label class="pv-expense-fx-row">
+          <input type="text" inputmode="decimal" id="pv-expense-local" autocomplete="off" aria-label="Importo in ${escapeHtml(
+            localFx.code
+          )}" />
+          <span class="code">${escapeHtml(localFx.code)}</span>
+        </label>
+        ${homeRow}
+      </div>
       <p class="pv-expense-fx-hint" id="pv-expense-fx-hint"></p>
     `;
     amountLabel.insertAdjacentElement("afterend", box);
 
-    const select = box.querySelector("#pv-expense-currency");
+    const entrySelect = box.querySelector("#pv-expense-entry-currency");
+    const localInput = box.querySelector("#pv-expense-local");
+    const homeInput = box.querySelector("#pv-expense-home");
     const hint = box.querySelector("#pv-expense-fx-hint");
-    const span = amountLabel.querySelector(":scope > span");
-    const input = amountLabel.querySelector("input");
+    // Second row shows home currency, or EUR mirror when home === local.
+    const mirrorCode = sameLocalHome ? SETTLEMENT_CURRENCY : home.code;
+    const rateDigits =
+      (sameLocalHome ? rateLocalPerEur : rateLocalPerHome) >= 100 ? 0 : 2;
+
     expenseFxState = {
-      code: "EUR",
-      rate: localFx ? rate : 1,
-      name: localFx?.name || "Euro",
-      localCode: localFx?.code || null,
+      entryCode: localFx.code,
+      localCode: localFx.code,
+      homeCode: home.code,
+      localName: localFx.name,
+      homeName: home.name,
+      rateLocalPerHome,
+      rateLocalPerEur,
+      lastLocal: null,
+      lastHome: null,
     };
 
-    const refreshHint = () => {
-      const code = select.value;
-      expenseFxState.code = code;
-      if (!span || !input) return;
-      if (code === "EUR") {
-        span.textContent = "Totale in €";
-        hint.textContent = localFx
-          ? `Puoi anche inserire l'importo in ${localFx.code}; verrà convertito in euro (condiviso).`
-          : "";
+    let syncing = false;
+
+    const eurFromLocal = (localAmt) =>
+      localFx.code === SETTLEMENT_CURRENCY ? localAmt : localAmt / rateLocalPerEur;
+    const homeFromLocal = (localAmt) => {
+      if (sameLocalHome) return eurFromLocal(localAmt);
+      return localFx.code === home.code ? localAmt : localAmt / rateLocalPerHome;
+    };
+    const localFromHome = (homeAmt) => {
+      if (sameLocalHome) {
+        return localFx.code === SETTLEMENT_CURRENCY ? homeAmt : homeAmt * rateLocalPerEur;
+      }
+      return localFx.code === home.code ? homeAmt : homeAmt * rateLocalPerHome;
+    };
+
+    const writeNativeEur = (localAmt) => {
+      if (localAmt == null || !Number.isFinite(localAmt)) {
+        setNativeInputValue(nativeInput, "");
         return;
       }
-      span.textContent = `Totale in ${code}`;
-      const n = parseFxAmount(input.value);
-      if (n == null) {
-        hint.textContent = `Al salvataggio convertiamo in euro (1 € = ${rate.toLocaleString("it-IT", {
-          maximumFractionDigits: rate >= 100 ? 0 : 2,
-        })} ${code}).`;
+      const eur = Math.round(eurFromLocal(localAmt) * 100) / 100;
+      setNativeInputValue(nativeInput, String(eur));
+    };
+
+    const refreshHint = (localAmt) => {
+      const quoteCode = sameLocalHome ? SETTLEMENT_CURRENCY : home.code;
+      const quoteRate = sameLocalHome ? rateLocalPerEur : rateLocalPerHome;
+      const rateTxt =
+        localFx.code === quoteCode
+          ? `Valuta ${localFx.code}`
+          : `1 ${quoteCode} = ${quoteRate.toLocaleString("it-IT", {
+              maximumFractionDigits: rateDigits,
+            })} ${localFx.code}`;
+      if (localAmt == null) {
+        hint.textContent = `${rateTxt} · al salvataggio convertiamo in euro per i saldi di gruppo.`;
         return;
       }
-      const eur = n / rate;
-      hint.textContent = `≈ ${eur.toLocaleString("it-IT", {
+      const eur = eurFromLocal(localAmt);
+      hint.textContent = `${rateTxt} · ≈ ${eur.toLocaleString("it-IT", {
         style: "currency",
         currency: "EUR",
-      })} · salvato in euro per la condivisione`;
+      })} salvati per la condivisione`;
     };
 
-    select.addEventListener("change", refreshHint);
-    input?.addEventListener("input", refreshHint);
-    refreshHint();
+    const applyLocal = (raw) => {
+      const n = parseFxAmount(raw);
+      expenseFxState.lastLocal = n;
+      if (n == null) {
+        homeInput.value = "";
+        expenseFxState.lastHome = null;
+        writeNativeEur(null);
+        refreshHint(null);
+        return;
+      }
+      const h = homeFromLocal(n);
+      expenseFxState.lastHome = h;
+      homeInput.value = formatFxAmount(h, mirrorCode);
+      writeNativeEur(n);
+      refreshHint(n);
+    };
+
+    const applyHome = (raw) => {
+      if (sameLocalHome) return; // EUR mirror is read-only
+      const n = parseFxAmount(raw);
+      expenseFxState.lastHome = n;
+      if (n == null) {
+        localInput.value = "";
+        expenseFxState.lastLocal = null;
+        writeNativeEur(null);
+        refreshHint(null);
+        return;
+      }
+      const loc = localFromHome(n);
+      expenseFxState.lastLocal = loc;
+      localInput.value = formatFxAmount(loc, localFx.code);
+      writeNativeEur(loc);
+      refreshHint(loc);
+    };
+
+    const focusPrimary = () => {
+      const code = entrySelect.value;
+      expenseFxState.entryCode = code;
+      if (code === localFx.code) localInput.focus();
+      else if (!sameLocalHome && code === home.code) homeInput.focus();
+      else localInput.focus();
+    };
+
+    entrySelect.addEventListener("change", () => {
+      focusPrimary();
+      refreshHint(expenseFxState.lastLocal);
+    });
+
+    localInput.addEventListener("input", () => {
+      if (syncing) return;
+      syncing = true;
+      expenseFxState.entryCode = localFx.code;
+      entrySelect.value = localFx.code;
+      applyLocal(localInput.value);
+      syncing = false;
+    });
+    if (!sameLocalHome) {
+      homeInput.addEventListener("input", () => {
+        if (syncing) return;
+        syncing = true;
+        expenseFxState.entryCode = home.code;
+        if ([...entrySelect.options].some((o) => o.value === home.code)) entrySelect.value = home.code;
+        applyHome(homeInput.value);
+        syncing = false;
+      });
+    }
+
+    // Seed from any value already typed in the native field.
+    const seed = parseFxAmount(nativeInput.value);
+    if (seed != null && seed > 0) {
+      // Native is always EUR settlement units.
+      const localAmt = localFx.code === SETTLEMENT_CURRENCY ? seed : seed * rateLocalPerEur;
+      syncing = true;
+      localInput.value = formatFxAmount(localAmt, localFx.code);
+      applyLocal(localInput.value);
+      syncing = false;
+    } else {
+      refreshHint(null);
+    }
   }
 
   function convertExpenseAmountBeforeSubmit() {
-    const select = document.querySelector("#pv-expense-currency");
-    if (!select || select.value === "EUR") return;
-    const amountLabel = [...document.querySelectorAll("label.field")].find((label) => {
-      const span = label.querySelector(":scope > span");
-      return span && /^Totale in/i.test((span.textContent || "").trim());
-    });
-    const input = amountLabel?.querySelector("input");
-    if (!input) return;
-    const local = parseFxAmount(input.value);
-    if (local == null) return;
-    const rate = expenseFxState.rate || 1;
-    const eur = Math.round((local / rate) * 100) / 100;
-    // Keep enough decimals for React kn() parser.
-    setNativeInputValue(input, String(eur));
+    const box = document.querySelector(".pv-expense-fx");
+    if (!box || !box.querySelector("#pv-expense-local")) return;
+
+    const amountLabel = findExpenseAmountLabel();
+    const nativeInput = amountLabel?.querySelector("input");
+    if (!nativeInput) return;
+
+    const localInput = box.querySelector("#pv-expense-local");
+    const homeInput = box.querySelector("#pv-expense-home");
+    const entrySelect = box.querySelector("#pv-expense-entry-currency");
+    const entry = entrySelect?.value || expenseFxState.localCode;
+
+    let localAmt = parseFxAmount(localInput?.value);
+    if (localAmt == null && entry === expenseFxState.homeCode) {
+      const homeAmt = parseFxAmount(homeInput?.value);
+      if (homeAmt != null) {
+        localAmt =
+          expenseFxState.localCode === expenseFxState.homeCode
+            ? homeAmt
+            : homeAmt * (expenseFxState.rateLocalPerHome || 1);
+      }
+    }
+    if (localAmt == null) return;
+
+    const rateEur = expenseFxState.rateLocalPerEur || 1;
+    const eur =
+      expenseFxState.localCode === SETTLEMENT_CURRENCY
+        ? localAmt
+        : Math.round((localAmt / rateEur) * 100) / 100;
+    setNativeInputValue(nativeInput, String(eur));
+
     const titleLabel = [...document.querySelectorAll("label.field")].find((label) => {
       const span = label.querySelector(":scope > span");
       return span && /Per cosa avete speso/i.test((span.textContent || "").trim());
     });
     const titleInput = titleLabel?.querySelector("input");
-    if (titleInput && titleInput.value && !new RegExp(`\\b${select.value}\\b`).test(titleInput.value)) {
-      setNativeInputValue(titleInput, `${titleInput.value.trim()} (${formatFxAmount(local, select.value)} ${select.value})`);
+    if (titleInput && titleInput.value) {
+      const code = expenseFxState.localCode;
+      const tag = `(${formatFxAmount(localAmt, code)} ${code})`;
+      if (!new RegExp(`\\b${code}\\b`).test(titleInput.value)) {
+        setNativeInputValue(titleInput, `${titleInput.value.trim()} ${tag}`);
+      }
     }
   }
 
@@ -4149,7 +4671,7 @@ Regole pv-places:
       (event) => {
         const btn = event.target?.closest?.("button[type='submit']");
         if (!btn) return;
-        if (!document.querySelector("#pv-expense-currency")) return;
+        if (!document.querySelector(".pv-expense-fx #pv-expense-local")) return;
         convertExpenseAmountBeforeSubmit();
       },
       true
@@ -4157,7 +4679,7 @@ Regole pv-places:
     document.addEventListener(
       "submit",
       () => {
-        if (!document.querySelector("#pv-expense-currency")) return;
+        if (!document.querySelector(".pv-expense-fx #pv-expense-local")) return;
         convertExpenseAmountBeforeSubmit();
       },
       true
