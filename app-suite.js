@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ab";
+  const VER = "20261102ae";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -129,36 +129,66 @@
   }
 
   function reopenDock(id) {
-    const target = id || currentDockPanelId || desiredPanelId();
-    if (!target) return;
+    // Clear dismiss first so enhance* can mount the current section panel.
     const d = readDismissed();
-    delete d[target];
     delete d["*"];
+    if (id) delete d[id];
+    else {
+      Object.keys(d).forEach((k) => {
+        delete d[k];
+      });
+    }
+    writeJson(DOCK_DISMISS_KEY, d);
+
+    // Mount section tools for the active tab (may have been skipped while dismissed).
+    if (tripAuth()) {
+      safe(enhanceItineraryStops);
+      safe(enhancePlaces);
+      safe(enhancePreventivo);
+      safe(enhanceBookings);
+      safe(enhanceDocuments);
+      safe(enhancePacking);
+      safe(enhanceNotes);
+      safe(enhanceShare);
+    }
+
+    let target = id || currentDockPanelId || desiredPanelId() || "pv-as-panel-itinerary";
+    if (!document.getElementById(target)) {
+      mountSectionPanel(
+        target,
+        `<div class="pv-as-card">
+          <strong>Strumenti della sezione</strong>
+          <p class="pv-as-hint">Apri una tab del viaggio (Itinerario, Prenotazioni, Documenti…) per vedere le azioni dedicate. Chiudi con × quando hai finito.</p>
+        </div>`
+      );
+    }
+    delete d[target];
     writeJson(DOCK_DISMISS_KEY, d);
     showOnlyPanel(target, { force: true });
     refreshReopenChip(null);
+    placePortal();
+    return Boolean(document.body.classList.contains("pv-as-dock-open"));
   }
 
-  function refreshReopenChip(forPanelId) {
-    let chip = document.getElementById("pv-as-reopen");
-    if (!forPanelId || !isDockDismissed(forPanelId)) {
-      chip?.remove();
-      document.body.classList.remove("pv-as-reopen-visible");
-      return;
+  function refreshReopenChip(_forPanelId) {
+    // Floating "Strumenti" chip overlapped trip content — tools live in Menu instead.
+    document.getElementById("pv-as-reopen")?.remove();
+    document.body.classList.remove("pv-as-reopen-visible");
+  }
+
+  /** Keep the tools dock closed until the user opens it from Menu. */
+  function ensureDockStartsClosed() {
+    if (!tripAuth()) return;
+    try {
+      if (sessionStorage.getItem("pv-as-dock-autohide-v1") === "1") return;
+      sessionStorage.setItem("pv-as-dock-autohide-v1", "1");
+    } catch {
+      /* private mode */
     }
-    if (!chip) {
-      chip = document.createElement("button");
-      chip.type = "button";
-      chip.id = "pv-as-reopen";
-      chip.className = "pv-as-reopen";
-      chip.textContent = "Strumenti";
-      chip.title = "Riapri strumenti extra";
-      chip.addEventListener("click", () => reopenDock(chip.dataset.panel));
-      document.body.appendChild(chip);
-    }
-    chip.dataset.panel = forPanelId;
-    chip.hidden = false;
-    document.body.classList.add("pv-as-reopen-visible");
+    const d = readDismissed();
+    if (d["*"]) return;
+    d["*"] = Date.now();
+    writeJson(DOCK_DISMISS_KEY, d);
   }
 
   function mountSectionPanel(id, html) {
@@ -294,11 +324,13 @@
       .pv-as-checkin.stop-done::after{content:" · fatto";font-size:.75rem;color:#0f5a40;font-weight:700}
       .pv-as-fav{margin-left:6px;border:0;background:transparent;cursor:pointer;font-size:1rem;line-height:1;color:#c45}
       .pv-as-install{
-        position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+        position:fixed;left:12px;right:12px;bottom:calc(96px + env(safe-area-inset-bottom,0px));
         z-index:120500;display:none;gap:10px;align-items:center;padding:12px 14px;
         border-radius:16px;background:#16353b;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.2)
       }
       .pv-as-install.show{display:flex}
+      /* Never cover itinerary / day strip while a trip is open */
+      body.pv-trip-open .pv-as-install{display:none!important}
       .pv-as-install button{appearance:none;border:0;border-radius:999px;padding:8px 12px;font:700 .8rem inherit;cursor:pointer}
       .pv-as-install .go{background:#007d82;color:#fff}
       .pv-as-install .no{background:transparent;color:#cfe;border:1px solid #4a6}
@@ -327,13 +359,7 @@
       body.pv-as-dock-open .app-shell{
         padding-bottom:calc(var(--pv-as-dock-h, 42vh) + 24px) !important;
       }
-      /* Reopen chip: mid-left, clear of account bar and FABs */
-      .pv-as-reopen{
-        position:fixed;left:12px;right:auto;top:auto;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:120100;
-        appearance:none;border:1px solid #007d82;background:#007d82;color:#fff;border-radius:999px;
-        padding:8px 12px;font:700 .74rem inherit;cursor:pointer;box-shadow:0 6px 16px rgba(15,45,50,.16);
-        max-width:min(48vw,180px)
-      }
+      #pv-as-reopen{display:none!important}
       /* Stack FABs above dock: Preventivo lower, Pronty one slot higher */
       body.pv-as-dock-open .pv-prev-launch{
         bottom:calc(var(--pv-as-dock-h, 42vh) + 18px)!important;
@@ -350,14 +376,9 @@
         box-shadow:0 4px 14px rgba(15,45,50,.08)
       }
       #pv-as-cache-status[hidden]{display:none!important}
-      body.pv-as-reopen-visible #pv-as-cache-status{display:none!important}
       /* Keep stop action icons clear of right-side FABs */
       @media (max-width:720px){
         article.stop-card .stop-footer{padding-right:72px}
-      }
-      /* Sticky trip tabs on mobile so the dock can't trap navigation */
-      @media (max-width:720px){
-        .pv-as-reopen{padding:8px 11px;font-size:.72rem}
         #pv-as-portal{left:8px;right:8px;max-height:min(36vh,380px)}
         /* Sit below the fixed account chip so taps hit tabs, not the chip */
         .workspace-tabs{
@@ -1534,7 +1555,17 @@
   }
 
   function showInstallBanner() {
-    if (sessionStorage.getItem("pv-as-install-dismissed")) return;
+    try {
+      if (localStorage.getItem("pv-as-install-dismissed") === "1") return;
+      if (sessionStorage.getItem("pv-as-install-dismissed") === "1") return;
+    } catch {
+      /* ignore */
+    }
+    // Don't cover trip itinerary / day picker — offer install from home only.
+    if (tripAuth() || document.body.classList.contains("pv-trip-open")) {
+      document.getElementById("pv-as-install")?.classList.remove("show");
+      return;
+    }
     let bar = document.getElementById("pv-as-install");
     if (!bar) {
       bar = document.createElement("div");
@@ -1560,7 +1591,12 @@
         bar.classList.remove("show");
       });
       bar.querySelector(".no")?.addEventListener("click", () => {
-        sessionStorage.setItem("pv-as-install-dismissed", "1");
+        try {
+          localStorage.setItem("pv-as-install-dismissed", "1");
+          sessionStorage.setItem("pv-as-install-dismissed", "1");
+        } catch {
+          /* ignore */
+        }
         bar.classList.remove("show");
       });
     }
@@ -1625,6 +1661,7 @@
     safe(enhanceNewTripForm);
     safe(enhanceAccountChip);
     if (tripAuth()) {
+      safe(ensureDockStartsClosed);
       safe(enhanceItineraryStops);
       safe(() => {
         void repairInvalidStopDays();
