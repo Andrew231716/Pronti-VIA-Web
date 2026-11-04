@@ -22,8 +22,8 @@ const plat = readFileSync("pv-platform.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
 
-test("stamp pv-platform-20261104g wired", () => {
-  assert.match(index, /pv-platform-20261104g\.js/);
+test("stamp pv-platform-20261104h wired", () => {
+  assert.match(index, /pv-platform-20261104h\.js/);
 });
 
 test("enter animation is opt-in (pv-plat-entering)", () => {
@@ -44,11 +44,12 @@ test("same-tab click is ignored", () => {
   assert.match(plat, /if \(btn\.dataset\.tab === activeTab\) return/);
 });
 
-test("Hub labels are speakable (Collabora / Panoramica)", () => {
-  assert.match(plat, /Hub · Collabora/);
+test("Hub labels are speakable (Collaborazione / Panoramica)", () => {
+  assert.match(plat, /HUB · Collaborazione|Hub · Collabora/);
   assert.match(plat, /\["dash", "Panoramica"\]/);
   assert.match(ux, /data-ux="hub"/);
   assert.match(ux, /Apri Hub/);
+  assert.match(ux, /__pvNavHome|__pvNavTrips|__pvNavAi/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

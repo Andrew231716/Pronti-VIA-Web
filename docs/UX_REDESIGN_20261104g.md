@@ -136,3 +136,13 @@ Backend Netlify, schema trip, CORS, sync/outbox, magic-extras, React SPA bundle,
 
 Vedi `docs/VERIFY_UX_20261104g.md`.  
 E2E **30/30** + deep verify mobile/desktop **30/30** dopo fixture trip SPA-completa (`e2e/fixtures/valid-trip.mjs`).
+
+## 8. Evoluzione stile (20261104h) — riferimenti utente
+
+Applicato lo schema concettuale **Home · Viaggi · HUB · Assistente IA · Profilo**:
+- navigazione primaria a capsula (glass) in basso;
+- HUB come tab dedicata dell’ambiente collaborativo;
+- IA sempre raggiungibile dalla nav (+ bacchetta flottante sopra la capsule);
+- Profilo apre gli strumenti/account (ex Menu).
+
+Brand teal Pronti? VIA! mantenuto; accenti soft su HUB/IA solo per stato attivo.

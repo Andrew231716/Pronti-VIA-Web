@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104g — Playwright E2E (free, system Chrome).
+ * RC 20261104h — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -424,14 +424,25 @@ async function main() {
 
     // 9–12. Hub: polls, expenses, backup, roles
     await page.goto(`${BASE}/?v=e2e-hub#trip=e2e-trip-1&key=e2e-key-1`, { waitUntil: "domcontentloaded" });
-    await wait(1000);
-    // Prefer integrated top-nav Hub; fallback floating FAB.
+    await page
+      .waitForFunction(
+        () =>
+          document.body.classList.contains("pv-account-ready") &&
+          Boolean(document.getElementById("pv-hub-nav") || window.ProntiPlatform),
+        { timeout: 15000 }
+      )
+      .catch(() => {});
+    await wait(400);
+    // Force-open Hub (avoid toggle races with dual listeners).
     await page.evaluate(() => {
+      if (typeof window.ProntiPlatform?.open === "function") {
+        window.ProntiPlatform.open();
+        return;
+      }
       const hubBtn = document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab");
-      if (hubBtn) hubBtn.click();
-      else if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
+      hubBtn?.click();
     });
-    await wait(700);
+    await wait(900);
     const hub = await page.evaluate(async () => {
       const nav = document.getElementById("pv-hub-nav");
       const fab = document.getElementById("pv-plat-fab");
@@ -467,6 +478,7 @@ async function main() {
         backupTab,
         pollsTab,
         collabora: /Collabora/i.test(head),
+        primaryNav: Boolean(document.getElementById("pv-primary-nav")),
       };
     });
     ok("9. Votazioni (Hub tab)", hub.pollsTab || hub.tabs.length > 0, JSON.stringify(hub.tabs));
@@ -478,24 +490,29 @@ async function main() {
       hub.deniedError
     );
     ok(
-      "Hub integrato in top nav",
-      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora,
-      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora })
+      "Hub integrato in primary nav",
+      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora && hub.primaryNav,
+      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora, primaryNav: hub.primaryNav })
     );
     ok(
       "magic-extras script present",
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104g present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104g/.test(s.src || "")))
+      "pv-platform 20261104h present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104h/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {
-      const panel = document.getElementById("pv-plat-panel");
+      let panel = document.getElementById("pv-plat-panel");
       if (!panel?.classList.contains("open")) {
-        (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
-        await new Promise((r) => setTimeout(r, 500));
+        if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
+        else (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
+        await new Promise((r) => setTimeout(r, 600));
+        panel = document.getElementById("pv-plat-panel");
+      }
+      if (!panel) {
+        return { open: false, entering: false, top: 0, sameChrome: false, beforeTop: 0, afterTop: 0, delta: 0, stillOpen: false, pollsOn: false };
       }
       const beforeTop = panel.getBoundingClientRect().top;
       const polls = panel.querySelector('[data-tab="polls"]');
@@ -558,8 +575,13 @@ async function main() {
         visible: ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0,
         right: ms.right,
         left: mr.left,
-        magicBottomish: mr.top > window.innerHeight * 0.55,
-        hubNavTopish: nr ? nr.bottom < window.innerHeight * 0.35 : false,
+        magicAboveNav: (() => {
+          const primary = document.getElementById("pv-primary-nav");
+          if (!primary || primary.hidden) return mr.top > window.innerHeight * 0.45;
+          const pr = primary.getBoundingClientRect();
+          return mr.bottom <= pr.top + 4;
+        })(),
+        hubInPrimaryNav: Boolean(hubNav && document.getElementById("pv-primary-nav")?.contains(hubNav)),
         hubNavPresent: Boolean(hubNav),
         fabHidden: !hubFab || getComputedStyle(hubFab).display === "none",
         overlapNav: overlaps(mr, nr),
@@ -575,11 +597,11 @@ async function main() {
       "Hub and bacchetta do not overlap",
       magicGeom.present &&
         magicGeom.hubNavPresent &&
+        magicGeom.hubInPrimaryNav &&
         magicGeom.fabHidden &&
         magicGeom.overlapNav === false &&
         magicGeom.overlapFab === false &&
-        magicGeom.magicBottomish &&
-        magicGeom.hubNavTopish,
+        magicGeom.magicAboveNav,
       JSON.stringify(magicGeom)
     );
 

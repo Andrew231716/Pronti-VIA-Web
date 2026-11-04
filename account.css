@@ -7,10 +7,16 @@
   --pv-account-line: #d7e4e6;
   --pv-account-danger: #b42318;
   --pv-ease: cubic-bezier(0.22, 0.8, 0.22, 1);
+  --pv-nav-h: 64px;
+  --pv-nav-gap: 12px;
 }
 
 body.pv-account-ready {
   padding-top: 48px;
+}
+
+body.pv-primary-nav-ready {
+  padding-bottom: calc(var(--pv-nav-h) + var(--pv-nav-gap) + env(safe-area-inset-bottom, 0px));
 }
 
 #pv-account-chip,
@@ -256,39 +262,122 @@ body.pv-account-ready {
   font-weight: 700;
 }
 
-#pv-account-chip .pv-account-chip-actions {
+#pv-account-chip .pv-account-chip-hint {
+  flex: 0 0 auto;
+  font: 700 0.78rem/1 inherit;
+  letter-spacing: 0.02em;
+  color: var(--pv-account-teal);
+}
+
+/* Primary bottom nav — Home · Viaggi · HUB · IA · Profilo */
+#pv-primary-nav {
+  position: fixed;
+  z-index: 99995;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 max(12px, env(safe-area-inset-left)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+#pv-primary-nav[hidden] {
+  display: none !important;
+}
+
+#pv-primary-nav .pv-primary-nav-inner {
+  pointer-events: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(21, 59, 71, 0.08);
+  box-shadow: 0 10px 30px rgba(16, 42, 48, 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+#pv-primary-nav .pv-nav-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--pv-account-muted);
+  border-radius: 18px;
+  min-height: 52px;
+  padding: 6px 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  font: 650 0.62rem/1.1 inherit;
+  letter-spacing: 0.01em;
+  transition: background 0.16s ease, color 0.16s ease, transform 0.16s var(--pv-ease);
+}
+
+#pv-primary-nav .pv-nav-item:active {
+  transform: scale(0.96);
+}
+
+#pv-primary-nav .pv-nav-ico {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex: 0 0 auto;
+  justify-content: center;
+  color: inherit;
 }
 
-#pv-account-chip #pv-hub-nav,
-#pv-account-chip #pv-account-menu {
-  flex: 0 0 auto;
-  border: 0;
-  border-radius: 999px;
-  padding: 9px 14px;
-  font: 700 0.85rem/1 inherit;
-  cursor: pointer;
-  min-height: 36px;
+#pv-primary-nav .pv-nav-item.is-active {
+  color: var(--pv-account-teal-deep);
 }
 
-#pv-account-chip #pv-hub-nav {
-  background: #e7f4f4;
+#pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
+  background: rgba(0, 125, 130, 0.12);
   color: var(--pv-account-teal);
-  border: 1px solid rgba(0, 125, 130, 0.22);
 }
 
-#pv-account-chip #pv-hub-nav[aria-expanded="true"] {
-  background: var(--pv-account-teal);
-  color: #fff;
-  border-color: transparent;
+#pv-primary-nav .pv-nav-hub.is-active .pv-nav-ico,
+#pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico {
+  background: rgba(109, 92, 182, 0.14);
+  color: #5b4bb0;
 }
 
-#pv-account-chip #pv-account-menu {
-  background: var(--pv-account-teal);
-  color: #fff;
+#pv-primary-nav .pv-nav-ai.is-active .pv-nav-ico,
+#pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico {
+  background: rgba(214, 164, 58, 0.18);
+  color: #9a6b10;
+}
+
+#pv-primary-nav .pv-nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Lift floating FABs above the capsule nav */
+body.pv-primary-nav-ready #pv-magic-open,
+body.pv-primary-nav-ready .pv-prev-launch {
+  bottom: calc(var(--pv-nav-h) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.pv-primary-nav-ready #pv-plat-fab {
+  bottom: calc(var(--pv-nav-h) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (min-width: 900px) {
+  #pv-primary-nav .pv-primary-nav-inner {
+    max-width: 560px;
+  }
+  #pv-primary-nav .pv-nav-item {
+    font-size: 0.68rem;
+  }
 }
 
 .share-inputs {
@@ -325,6 +414,7 @@ body.pv-account-ready {
 /* Print / PDF friendly */
 @media print {
   #pv-account-chip,
+  #pv-primary-nav,
   #pv-account-gate,
   #pv-magic-root,
   #pv-ux-toolbar,
@@ -338,6 +428,7 @@ body.pv-account-ready {
   }
   body {
     padding-top: 0 !important;
+    padding-bottom: 0 !important;
     background: #fff !important;
     color: #111 !important;
   }

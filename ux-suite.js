@@ -266,7 +266,7 @@
         outline:3px solid rgba(0,125,130,.45);outline-offset:2px
       }
       @media print{
-        #pv-account-chip,#pv-magic-root,#pv-ux-toast,#pv-offline-chip,.pv-prev-launch{display:none!important}
+        #pv-account-chip,#pv-primary-nav,#pv-magic-root,#pv-ux-toast,#pv-offline-chip,.pv-prev-launch{display:none!important}
       }
     `;
   }
@@ -807,9 +807,10 @@
     const inTrip = Boolean(tripAuth());
     const menuBtn = document.getElementById("pv-account-menu");
     menuBtn?.setAttribute("aria-expanded", "true");
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("profile");
     const section = inTrip ? activeSectionMeta() : null;
     openModal(
-      inTrip && section ? `Menu · ${section.label}` : "Menu",
+      inTrip && section ? `Profilo · ${section.label}` : "Profilo e strumenti",
       `${
         inTrip
           ? `<div class="pv-menu-section">
@@ -923,6 +924,58 @@
     );
   }
   window.__pvOpenAccountMenu = openAccountMenu;
+
+  function navGoHome() {
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("home");
+    // Close overlays
+    document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+    document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
+    if (tripAuth()) {
+      location.hash = "";
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    const homeLink = [...document.querySelectorAll("a, button")].find((el) =>
+      /^I tuoi viaggi$/i.test((el.textContent || "").trim())
+    );
+    homeLink?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+  }
+
+  function navGoTrips() {
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("trips");
+    document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+    if (tripAuth()) {
+      const tab = [...document.querySelectorAll("button, [role=tab], a")].find((el) =>
+        /^Itinerario$/i.test((el.textContent || "").trim())
+      );
+      tab?.click();
+      tab?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+      const stop = [...document.querySelectorAll("h2, h3, button")].find((el) =>
+        /itinerario|Aggiungi tappa/i.test(el.textContent || "")
+      );
+      stop?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+      return;
+    }
+    // Fuori viaggio: apri gestisci viaggi
+    openManageTrips();
+  }
+
+  function navGoAi() {
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("ai");
+    document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+    const aiBtn = document.getElementById("pv-nav-ai");
+    aiBtn?.setAttribute("aria-expanded", "true");
+    const magic = document.getElementById("pv-magic-open");
+    if (magic) {
+      magic.click();
+      return;
+    }
+    toast("Bacchetta magica disponibile quando il viaggio è pronto", "warn");
+  }
+
+  window.__pvNavHome = navGoHome;
+  window.__pvNavTrips = navGoTrips;
+  window.__pvNavAi = navGoAi;
 
   function openSearchSheet() {
     openModal(
@@ -1575,6 +1628,26 @@
     }
   }
 
+  function syncPrimaryNavState() {
+    if (typeof window.__pvSetPrimaryNav !== "function") return;
+    if (document.body.classList.contains("pv-plat-open")) {
+      window.__pvSetPrimaryNav("hub");
+      return;
+    }
+    if (document.body.classList.contains("pv-magic-open")) {
+      window.__pvSetPrimaryNav("ai");
+      document.getElementById("pv-nav-ai")?.setAttribute("aria-expanded", "true");
+      return;
+    }
+    document.getElementById("pv-nav-ai")?.setAttribute("aria-expanded", "false");
+    const menuOpen = Boolean(document.querySelector(".pv-ux-modal.pv-open"));
+    if (menuOpen) {
+      window.__pvSetPrimaryNav("profile");
+      return;
+    }
+    window.__pvSetPrimaryNav(tripAuth() ? "trips" : "home");
+  }
+
   function tick() {
     ensureStyles();
     ensureItineraryLayoutPolish();
@@ -1586,6 +1659,7 @@
     enhanceRecentTripsDelete();
     injectTripDeleteButton();
     injectHomeDeleteEntry();
+    syncPrimaryNavState();
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {

@@ -1,57 +1,48 @@
-# Verifica approfondita UX redesign — `20261104g`
+# Verifica UX redesign 20261104g
 
-**Branch:** `cursor/ux-ui-redesign-nav-hub-4f39`  
-**Comandi:** `npm test` · `npm run test:e2e` · `npm run test:verify-ux`
+Eseguita: 2026-11-04T15:20:34.383Z (UTC)
 
-## Esito complessivo: PASS
+**Esito: PASS** — 30 pass / 0 fail
 
-| Suite | Esito |
-|---|---|
-| Unit + syntax | PASS |
-| E2E Playwright (`e2e/run-rc-playwright.mjs`) | **30/30 PASS** |
-| Deep verify mobile+desktop (`scripts/verify-ux-redesign-20261104g.mjs`) | **30/30 PASS** |
-
-## Causa del “schermo bianco” precedente
-
-Il mock E2E restituiva `expenses` **senza** `shares[]` (e senza `transfers`/`stops` completi). La SPA itera `expense.shares` → `TypeError: shares is not iterable` e il contenuto viaggio non montava.
-
-**Fix verifica:** fixture SPA-compatibile in `e2e/fixtures/valid-trip.mjs`, usata da E2E e dallo script di deep verify. Nessuna modifica alla logica IA / backend produzione.
-
-## Matrice funzionalità (dopo redesign)
-
-| Funzione | Come si raggiunge | Verificato |
+| Check | Esito | Dettaglio |
 |---|---|---|
-| Hub top-nav | `#pv-hub-nav` | PASS mobile+desktop |
-| Hub FAB nascosto | `body.pv-hub-nav-ready` | PASS |
-| Hub toggle open/close | no double-bind | PASS |
-| Hub · Collabora + 8 tab | Panoramica→Impostazioni | PASS (contenuto >0 ogni tab) |
-| Menu → Apri Hub | `data-ux=hub` | PASS |
-| Menu categorie | Azioni rapide / Organizza / Soldi / Collabora / Altro / Account | PASS |
-| Cerca | `data-ux=search` | PASS |
-| Invita con codice | `data-ux=invite` | PASS |
-| Checklist | `data-ux=checklist` | PASS |
-| Preventivo e spese | `data-ux=compare` | PASS |
-| Altri strumenti | `data-ux=more` | PASS |
-| Bacchetta + Lingua | `#pv-magic-open` | PASS |
-| Trip content (Itinerario, tappe) | SPA con fixture valida | PASS (Colosseo / Roma) |
-| Login / save cloud / outbox / 409 / guest / ruoli 403 | E2E | PASS |
-| No overlap Hub↔bacchetta | geometria | PASS |
+| [mobile] Hub+Menu in chrome | PASS | {"hub":true,"menu":true,"fabHidden":true} |
+| [mobile] FAB nascosto | PASS |  |
+| [mobile] Stamp 20261104h + magic | PASS | ["http://127.0.0.1:3465/assets/magic-extras-20261104e.js","http://127.0.0.1:3465/assets/ux-suite-20261104h.js","http://1 |
+| [mobile] Contenuto viaggio (non bianco) | PASS | Questo viaggio è solo su questo dispositivo. Per gli amici: Condividi viaggio e aspetta il link pronto.
+×
+Pronti?
+VIA!
+I |
+| [mobile] Nessun shares/transfers crash | PASS |  |
+| [mobile] Menu categorie complete | PASS | {"azioni":true,"organizza":true,"soldi":true,"collabora":true,"altro":true,"account":true,"acts":["section-tools","searc |
+| [mobile] Menu → Apri Hub | PASS | {"open":true,"title":true,"tabs":["dash","polls","prep","stats","cal","archive","backup","settings"]} |
+| [mobile] Hub tab tutte con contenuto | PASS | [{"tab":"dash","on":true,"len":245,"entering":false},{"tab":"polls","on":true,"len":174,"entering":false},{"tab":"prep", |
+| [mobile] Bacchetta + tab Lingua | PASS | {"open":true,"tabs":["Idee","Chiedi","Lingua"],"hasLingua":true} |
+| [mobile] Hub open→close | PASS | {"bound":true,"open1":true,"open2":false} |
+| [mobile] Menu → Cerca | PASS | {"clicked":true} |
+| [mobile] Menu → Invita | PASS | {"clicked":true} |
+| [mobile] Menu → Checklist | PASS | {"clicked":true} |
+| [mobile] Menu → Preventivo e spese | PASS | {"clicked":true} |
+| [mobile] Menu → Altri strumenti | PASS | {"clicked":true} |
+| [desktop] Hub+Menu in chrome | PASS | {"hub":true,"menu":true,"fabHidden":true} |
+| [desktop] FAB nascosto | PASS |  |
+| [desktop] Stamp 20261104h + magic | PASS | ["http://127.0.0.1:3465/assets/magic-extras-20261104e.js","http://127.0.0.1:3465/assets/ux-suite-20261104h.js","http://1 |
+| [desktop] Contenuto viaggio (non bianco) | PASS | Questo viaggio è solo su questo dispositivo. Per gli amici: Condividi viaggio e aspetta il link pronto.
+×
+Pronti?
+VIA!
+I |
+| [desktop] Nessun shares/transfers crash | PASS |  |
+| [desktop] Menu categorie complete | PASS | {"azioni":true,"organizza":true,"soldi":true,"collabora":true,"altro":true,"account":true,"acts":["section-tools","searc |
+| [desktop] Menu → Apri Hub | PASS | {"open":true,"title":true,"tabs":["dash","polls","prep","stats","cal","archive","backup","settings"]} |
+| [desktop] Hub tab tutte con contenuto | PASS | [{"tab":"dash","on":true,"len":245,"entering":false},{"tab":"polls","on":true,"len":174,"entering":false},{"tab":"prep", |
+| [desktop] Bacchetta + tab Lingua | PASS | {"open":true,"tabs":["Idee","Chiedi","Lingua"],"hasLingua":true} |
+| [desktop] Hub open→close | PASS | {"bound":true,"open1":true,"open2":false} |
+| [desktop] Menu → Cerca | PASS | {"clicked":true} |
+| [desktop] Menu → Invita | PASS | {"clicked":true} |
+| [desktop] Menu → Checklist | PASS | {"clicked":true} |
+| [desktop] Menu → Preventivo e spese | PASS | {"clicked":true} |
+| [desktop] Menu → Altri strumenti | PASS | {"clicked":true} |
 
-## Screenshot evidenza
-
-- `verify-mobile-01-trip.png` — viaggio renderizzato + Hub/Menu in chrome  
-- `verify-mobile-02-menu.png` — Menu categorizzato  
-- `verify-mobile-03-hub.png` — Hub · Collabora  
-- `verify-mobile-04-magic.png` — Bacchetta  
-- `verify-desktop-01-trip.png` — layout desktop  
-- analoghi `verify-desktop-02…04`
-
-## Residui / non bloccanti
-
-- Occasional `TypeError: Failed to fetch` su chiamate secondarie mockate in E2E (filtrato; **non** più `shares`/`transfers`).
-- Soft-login guest può mostrare «Ciao, Ospite …» anche con sessione seed (comportamento preesistente account gate, fuori scope redesign).
-- Computer-use GUI agent non disponibile in questa sessione (quota modello); verifica fatta via Playwright headless Chrome di sistema.
-
-## Nessun merge/deploy
-
-Verifica completata sul branch PR; merge solo con autorizzazione esplicita.
+Screenshot in artifacts: `verify-mobile-*.png`, `verify-desktop-*.png`.

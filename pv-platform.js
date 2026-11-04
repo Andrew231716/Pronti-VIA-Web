@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104g — Hub integrated in top nav (no alien FAB)
+ * Stamp: 20261104h — Hub in primary bottom nav (schema Home/Viaggi/HUB/IA/Profilo)
  */
 (() => {
-  const VER = "20261104g";
+  const VER = "20261104h";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -318,8 +318,8 @@
   --pv-plat-shadow: 0 12px 32px rgba(0,0,0,.35);
 }
 /*
-  Hub lives in the top account chrome (#pv-hub-nav). Floating FAB is fallback only
-  when the chip is missing (e.g. early boot) — then keep it bottom-left clear of Pronty.
+  Hub lives in the primary bottom nav (#pv-hub-nav). Floating FAB is fallback only
+  when the nav is missing (e.g. early boot) — then keep it bottom-left clear of Pronty.
 */
 #pv-plat-fab {
   position: fixed; z-index: 120100;
@@ -337,17 +337,20 @@ body.pv-hub-nav-ready #pv-plat-fab {
 }
 body.pv-magic-open #pv-plat-fab,
 body.pv-magic-open #pv-hub-nav {
-  opacity: 0.45;
+  opacity: 0.55;
 }
 #pv-plat-panel {
   position: fixed; z-index: 120150; inset: auto 0 0 0;
-  max-height: min(88vh, 920px);
-  background: var(--pv-plat-bg); color: var(--pv-plat-ink);
-  border-radius: 22px 22px 0 0; box-shadow: 0 -8px 40px rgba(12,40,48,.18);
+  max-height: min(90vh, 940px);
+  background: #eef3f5; color: var(--pv-plat-ink);
+  border-radius: 26px 26px 0 0; box-shadow: 0 -12px 48px rgba(12,40,48,.16);
   border-top: 1px solid var(--pv-plat-border);
-  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+  padding: 14px 14px calc(88px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
   transform: translateY(0); opacity: 1;
+}
+body:not(.pv-primary-nav-ready) #pv-plat-panel {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 #pv-plat-panel.open { display: block; }
 #pv-plat-panel.open.pv-plat-entering {
@@ -360,34 +363,49 @@ body.pv-magic-open #pv-hub-nav {
   #pv-plat-fab, #pv-plat-panel { transition: none !important; }
   #pv-plat-panel.open.pv-plat-entering { transform: none; opacity: 1; }
 }
+@media (min-width: 900px) {
+  #pv-plat-panel {
+    left: 50%; right: auto; width: min(720px, calc(100vw - 48px));
+    transform: translateX(-50%);
+    border-radius: 22px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    max-height: min(78vh, 820px);
+    padding-bottom: 18px;
+  }
+  #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(14px); }
+}
 #pv-plat-body { min-height: 120px; }
 #pv-plat-body.pv-plat-body-busy { opacity: .72; }
 #pv-plat-panel .pv-plat-head {
-  display:flex; align-items:flex-start; gap:10px; margin-bottom:8px;
+  display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;
+  padding: 4px 2px 10px; border-bottom: 1px solid rgba(20,52,58,.08);
 }
 #pv-plat-panel .pv-plat-head > div { flex:1; min-width:0; }
 #pv-plat-panel .pv-plat-head strong {
-  display:block; font:700 1.15rem/1.25 Georgia, "Times New Roman", serif; color: var(--pv-plat-ink);
+  display:block; font:700 1.2rem/1.25 system-ui,sans-serif; color: var(--pv-plat-ink);
+  letter-spacing: -0.01em;
 }
 #pv-plat-panel .pv-plat-head .pv-plat-lead {
-  margin:4px 0 0; font:400 0.82rem/1.4 system-ui,sans-serif; color: var(--pv-plat-muted);
+  margin:4px 0 0; font:400 0.84rem/1.45 system-ui,sans-serif; color: var(--pv-plat-muted);
 }
 #pv-plat-panel .pv-plat-tabs {
   display:flex; flex-wrap:nowrap; gap:6px; margin:0 0 12px; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0 6px;
 }
 #pv-plat-panel .pv-plat-tabs::-webkit-scrollbar { display:none; }
 #pv-plat-panel .pv-plat-tabs button, .pv-plat-btn {
   border:1px solid var(--pv-plat-border); background: var(--pv-plat-card);
   color: var(--pv-plat-ink); border-radius: 999px; padding: 8px 12px;
   font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
+  box-shadow: 0 1px 0 rgba(16,42,48,.04);
 }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
   background: var(--pv-plat-card); border:1px solid var(--pv-plat-border);
-  border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
+  border-radius: 18px; padding: 14px 16px; margin-bottom: 12px;
+  box-shadow: 0 6px 18px rgba(16,42,48,.05);
 }
-.pv-plat-card h3 { margin:0 0 6px; font:700 14px/1.3 Georgia,serif; }
+.pv-plat-card h3 { margin:0 0 6px; font:700 14px/1.3 system-ui,sans-serif; }
 .pv-plat-muted { color: var(--pv-plat-muted); font: 400 12px/1.45 system-ui,sans-serif; }
 .pv-plat-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
 .pv-plat-stat { padding:10px; border-radius:12px; background: rgba(0,125,130,.08); }
@@ -522,7 +540,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     return el;
   }
   function ensureFab() {
-    // Preferred: Hub in the top account chrome (integrated navigation).
+    // Preferred: Hub in the primary bottom nav (integrated navigation).
     const nav = document.getElementById("pv-hub-nav");
     if (nav) {
       document.body.classList.add("pv-hub-nav-ready");
@@ -574,8 +592,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     panel.innerHTML = `
       <div class="pv-plat-head">
         <div>
-          <strong>Hub · Collabora</strong>
-          <p class="pv-plat-lead">Voti, preparazione, numeri e backup del viaggio — tutto il lavoro di gruppo in un posto.</p>
+          <strong>HUB · Collaborazione</strong>
+          <p class="pv-plat-lead">Gruppi, votazioni, spese di gruppo, preparazione e backup — l’ambiente condiviso del viaggio.</p>
         </div>
         <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
@@ -614,6 +632,10 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     for (const id of ["pv-hub-nav", "pv-plat-fab"]) {
       const el = document.getElementById(id);
       if (el) el.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (open && typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("hub");
+    if (!open && typeof window.__pvSetPrimaryNav === "function") {
+      window.__pvSetPrimaryNav(document.body.classList.contains("pv-trip-open") ? "trips" : "home");
     }
     if (open) {
       if (!wasOpen) playPanelEnter(panel);

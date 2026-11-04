@@ -24,8 +24,11 @@ const ux = readFileSync("ux-suite.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
-test("Hub integrated in account chrome (#pv-hub-nav)", () => {
+test("Hub integrated in primary nav (#pv-hub-nav)", () => {
   assert.match(account, /id="pv-hub-nav"/);
+  assert.match(account, /pv-primary-nav/);
+  assert.match(account, /data-nav="home"/);
+  assert.match(account, /data-nav="ai"/);
   assert.match(plat, /pv-hub-nav-ready/);
   assert.match(plat, /body\.pv-hub-nav-ready #pv-plat-fab/);
 });
@@ -57,9 +60,10 @@ test("renderFab only skips spinner, not trip-error main.loading", () => {
   assert.doesNotMatch(magic, /if \(document\.querySelector\("main\.loading"\)\) return/);
 });
 
-test("stamp shell wired (platform 20261104g + magic 20261104e)", () => {
-  assert.match(index, /pv-platform-20261104g\.js/);
+test("stamp shell wired (platform 20261104h + magic 20261104e)", () => {
+  assert.match(index, /pv-platform-20261104h\.js/);
   assert.match(index, /magic-extras-20261104e\.js/);
+  assert.match(index, /ux-suite-20261104h\.js/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

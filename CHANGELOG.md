@@ -1,5 +1,14 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104h] — 2026-11-04
+
+### UX — navigazione primaria stile riferimento
+- Bottom nav a 5 sezioni: **Home · Viaggi · HUB · IA · Profilo** (schema concettuale dell’utente).
+- Capsula glassmorphism, icone + etichette, safe-area; Hub e Profilo non più pill isolate in top bar.
+- Top chip semplificato (saluto + brand); HUB come ambiente collaborativo (pannello dashboard, padding sopra la nav).
+- Assistente IA raggiungibile dalla nav (oltre alla bacchetta flottante, sollevata sopra la capsule).
+- Stamp shell `20261104h`. Nessuna funzionalità rimossa; magic-extras invariato.
+
 ## [20261104g] — 2026-11-04
 
 ### UX/UI redesign — Hub, Menu, navigazione

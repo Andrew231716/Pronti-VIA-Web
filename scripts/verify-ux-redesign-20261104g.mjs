@@ -175,12 +175,12 @@ async function runViewport(browser, label, viewport, isMobile) {
       bodyText: (document.body.innerText || "").slice(0, 400),
       hasColosseo: /Colosseo/i.test(document.body.innerText || ""),
       hasRoma: /Roma|Verifica Roma|E2E Roma/i.test(document.body.innerText || ""),
-      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104g|magic-extras/.test(s)),
+      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104[gh]|magic-extras/.test(s)),
     };
   });
   ok(`[${label}] Hub+Menu in chrome`, chrome.hub && chrome.menu, JSON.stringify({ hub: chrome.hub, menu: chrome.menu, fabHidden: chrome.fabHidden }));
   ok(`[${label}] FAB nascosto`, chrome.fabHidden);
-  ok(`[${label}] Stamp 20261104g + magic`, chrome.scripts.some((s) => /pv-platform-20261104g/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
+  ok(`[${label}] Stamp 20261104h + magic`, chrome.scripts.some((s) => /pv-platform-20261104h/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
   ok(`[${label}] Contenuto viaggio (non bianco)`, chrome.hasColosseo || chrome.hasRoma, chrome.bodyText.slice(0, 160));
   ok(`[${label}] Nessun shares/transfers crash`, !errors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)), errors.slice(0, 3).join(" | "));
 
@@ -225,7 +225,7 @@ async function runViewport(browser, label, viewport, isMobile) {
     const panel = document.getElementById("pv-plat-panel");
     return {
       open: panel?.classList.contains("open"),
-      title: /Hub · Collabora/i.test(panel?.innerText || ""),
+      title: /HUB · Collaborazione|Hub · Collabora/i.test(panel?.innerText || ""),
       tabs: [...panel?.querySelectorAll("[data-tab]") || []].map((b) => b.dataset.tab),
     };
   });
