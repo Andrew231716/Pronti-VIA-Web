@@ -78,14 +78,21 @@
       .day-strip,[class*="day-strip"],[class*="DayStrip"]{
         scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
       }
-      /* Keep FABs stacked and clear of the home indicator (Preventivo above Pronty) */
+      /*
+        Right-side FAB stack (restored after Hub regression):
+        - Pronty / bacchetta at the lower slot
+        - Preventivo above it
+        Hub was moved to the LEFT in pv-platform — do not pin Pronty under Hub.
+      */
       #pv-magic-root .pv-magic-btn{
         bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
+        z-index:120050!important;
       }
       .pv-prev-launch{
         bottom:calc(90px + env(safe-area-inset-bottom,0px))!important;
         right:calc(14px + env(safe-area-inset-right,0px))!important;
+        z-index:120060!important;
       }
       #pv-ux-toast{
         position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));
@@ -114,7 +121,9 @@
       }
       .members-list .pv-role-badge.guest{background:#fff3cd;color:#7a5b00}
       #pv-offline-chip{
-        position:fixed;left:12px;bottom:calc(18px + env(safe-area-inset-bottom,0px));
+        position:fixed;
+        left:calc(72px + env(safe-area-inset-left,0px));
+        bottom:calc(18px + env(safe-area-inset-bottom,0px));
         z-index:99980;padding:6px 10px;border-radius:999px;display:none;
         font:700 11px/1.2 inherit;background:#7a1f1f;color:#fff;
         box-shadow:0 6px 16px rgba(0,0,0,.12)
