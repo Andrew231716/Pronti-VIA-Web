@@ -506,6 +506,43 @@ async function main() {
       "magic-extras script present",
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
+    ok(
+      "pv-platform 20261104f present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104f/.test(s.src || "")))
+    );
+    // Tab switch: panel stays open, no enter-class bounce, chrome reused.
+    const tabFluid = await page.evaluate(async () => {
+      const panel = document.getElementById("pv-plat-panel");
+      if (!panel?.classList.contains("open")) {
+        document.getElementById("pv-plat-fab")?.click();
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      const beforeTop = panel.getBoundingClientRect().top;
+      const polls = panel.querySelector('[data-tab="polls"]');
+      polls?.click();
+      await new Promise((r) => setTimeout(r, 120));
+      const mid = {
+        open: panel.classList.contains("open"),
+        entering: panel.classList.contains("pv-plat-entering"),
+        top: panel.getBoundingClientRect().top,
+        sameChrome: Boolean(panel.querySelector(".pv-plat-head") && panel.querySelector("#pv-plat-body")),
+      };
+      await new Promise((r) => setTimeout(r, 500));
+      const afterTop = panel.getBoundingClientRect().top;
+      return {
+        ...mid,
+        beforeTop,
+        afterTop,
+        delta: Math.abs(afterTop - beforeTop),
+        stillOpen: panel.classList.contains("open"),
+        pollsOn: panel.querySelector('[data-tab="polls"]')?.classList.contains("on"),
+      };
+    });
+    ok(
+      "Hub tab switch stays open without bounce",
+      tabFluid.stillOpen && tabFluid.pollsOn && !tabFluid.entering && tabFluid.delta < 24,
+      JSON.stringify(tabFluid)
+    );
 
     // Bacchetta magica: wait for trip shell (not spinner) then assert FAB geometry.
     await page.waitForFunction(

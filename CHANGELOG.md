@@ -1,5 +1,12 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104f] — 2026-11-04
+
+### Hub panel — tab switch fluido
+- Cambio sezione Hub **non** riavvia più l’animazione di ingresso (su/giù).
+- Chrome del pannello riusato; contenuto tab caricato e poi scambiato (niente flash «Caricamento…» che collassa l’altezza).
+- Stamp `pv-platform-20261104f`; test `test-hub-panel-fluid-20261104f.mjs`.
+
 ## [20261104e] — 2026-11-04
 
 ### Bacchetta · Lingua — parlare sul posto
