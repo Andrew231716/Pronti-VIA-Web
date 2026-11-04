@@ -4,16 +4,43 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { createKv } from "./_store.mjs";
+import {
+  assertMutationAllowed,
+  permissionForMutation,
+  roleMapFromTrip,
+} from "../../lib/roles.mjs";
+import { corsHeadersFor as buildCors } from "../../lib/cors.mjs";
 
 const TRIPS_BASE =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-};
+function corsHeadersFor(event) {
+  return buildCors(event, {
+    methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
+}
+
+function actorMemberId(event, body) {
+  const header =
+    event.headers?.["x-pronti-member-id"] ||
+    event.headers?.["X-Pronti-Member-Id"] ||
+    "";
+  const fromBody = body?.actorMemberId || body?.memberId || "";
+  return String(header || fromBody || "").trim();
+}
+
+let corsHeaders = corsHeadersFor(null);
+
+function persistenceFlags(saved) {
+  const backend = saved?.backend || "store";
+  const memoryOnly = backend === "memory";
+  return {
+    source: backend,
+    local: memoryOnly,
+    durable: !memoryOnly,
+  };
+}
 
 function json(status, body) {
   return {
@@ -137,6 +164,7 @@ async function storeHandler(event, path) {
       source: "store",
     };
     const saved = await tripsKv.setJSON(`trip:${newId}`, record);
+    const persist = persistenceFlags(saved);
     return json(200, {
       id: newId,
       key,
@@ -144,8 +172,7 @@ async function storeHandler(event, path) {
       trip: record.trip,
       revision: 1,
       canEdit: true,
-      local: false,
-      source: saved.backend || "store",
+      ...persist,
     });
   }
 
@@ -179,12 +206,26 @@ async function storeHandler(event, path) {
       return json(400, { error: "Dati viaggio non validi." });
     }
     const nextTrip = normalizeTripBody(body);
+    const memberId = actorMemberId(event, body);
+    const perm = permissionForMutation(method, {
+      trip: nextTrip,
+      __prevRoles: record.trip?.meta?.roles,
+    });
+    const gate = assertMutationAllowed(record.trip, memberId, perm);
+    if (!gate.ok) {
+      return json(403, {
+        error: gate.error || "Operazione non autorizzata per il tuo ruolo.",
+        role: gate.role,
+        permission: gate.permission,
+      });
+    }
     const serverRev = Number(record.revision) || 1;
     const clientRev = Number(body.revision);
     // Optimistic lock: reject stale PUTs so concurrent saves don't silently clobber.
     if (Number.isFinite(clientRev) && clientRev !== serverRev) {
       return json(409, {
-        error: "Versione non aggiornata. Ricarica e riprova.",
+        error:
+          "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte.",
         id,
         key: record.key,
         viewToken: record.viewToken,
@@ -195,6 +236,16 @@ async function storeHandler(event, path) {
         source: "store",
       });
     }
+    // Merge meta; when actor is declared without "roles" permission, keep existing roles.
+    const rolesGate = assertMutationAllowed(record.trip, memberId, "roles");
+    const mergedMeta = {
+      ...(record.trip?.meta && typeof record.trip.meta === "object" ? record.trip.meta : {}),
+      ...(nextTrip.meta && typeof nextTrip.meta === "object" ? nextTrip.meta : {}),
+    };
+    if (memberId && !rolesGate.ok) {
+      mergedMeta.roles = roleMapFromTrip(record.trip);
+    }
+    nextTrip.meta = mergedMeta;
     const updated = {
       ...record,
       trip: { ...nextTrip, budget: typeof nextTrip.budget === "number" ? nextTrip.budget : 0 },
@@ -202,7 +253,8 @@ async function storeHandler(event, path) {
       updated: new Date().toISOString(),
       source: "store",
     };
-    await tripsKv.setJSON(`trip:${id}`, updated);
+    const saved = await tripsKv.setJSON(`trip:${id}`, updated);
+    const persist = persistenceFlags(saved);
     return json(200, {
       id,
       key: record.key,
@@ -210,13 +262,26 @@ async function storeHandler(event, path) {
       trip: updated.trip,
       revision: updated.revision,
       canEdit: true,
-      local: false,
-      source: "store",
+      ...persist,
     });
   }
 
   if (method === "DELETE") {
     if (!canEdit) return json(403, { error: "Solo chi ha la chiave di modifica può eliminare il viaggio." });
+    let body = {};
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      body = {};
+    }
+    const memberId = actorMemberId(event, body);
+    const gate = assertMutationAllowed(record.trip, memberId, "delete");
+    if (!gate.ok) {
+      return json(403, {
+        error: gate.error || "Solo il proprietario può eliminare il viaggio.",
+        role: gate.role,
+      });
+    }
     await tripsKv.del(`trip:${id}`);
     return json(200, { ok: true, id, deleted: true });
   }
@@ -225,6 +290,7 @@ async function storeHandler(event, path) {
 }
 
 export async function handler(event) {
+  corsHeaders = corsHeadersFor(event);
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }

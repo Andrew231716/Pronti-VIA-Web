@@ -1,8 +1,36 @@
 import { getStore } from "@netlify/blobs";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { ALLOWED_ORIGINS, corsHeadersFor } from "../../lib/cors.mjs";
 
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 365 * 10; // ~10 years; client also remembers in localStorage
+// Sliding session: 30 days. Client must re-auth after expiry (was ~10 years).
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const MAX_TRIPS = 40;
+const RATE_WINDOW_MS = 15 * 60 * 1000;
+const RATE_MAX_AUTH = 20;
+const rateBuckets = new Map();
+
+function clientIp(event) {
+  const xf = event.headers?.["x-forwarded-for"] || event.headers?.["X-Forwarded-For"] || "";
+  return String(xf).split(",")[0].trim() || event.headers?.["client-ip"] || "unknown";
+}
+
+function rateLimit(key, max = RATE_MAX_AUTH) {
+  const now = Date.now();
+  let bucket = rateBuckets.get(key);
+  if (!bucket || now - bucket.start > RATE_WINDOW_MS) {
+    bucket = { start: now, count: 0 };
+    rateBuckets.set(key, bucket);
+  }
+  bucket.count += 1;
+  return bucket.count <= max;
+}
+
+function corsFor(event) {
+  return corsHeadersFor(event, {
+    methods: "GET, POST, PUT, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
+}
 
 function getAccountStore() {
   const siteID =
@@ -20,17 +48,18 @@ function getAccountStore() {
   return getStore("pronti-via-accounts");
 }
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+let activeCors = {
+  "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0],
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
   "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+  Vary: "Origin",
 };
 
 function json(status, body, extraHeaders = {}) {
   return {
     statusCode: status,
     headers: {
-      ...corsHeaders,
+      ...activeCors,
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
       ...extraHeaders,
@@ -105,7 +134,7 @@ async function getSession(store, token) {
   if (!token) return null;
   const session = await store.get(`session:${token}`, { type: "json" });
   if (!session?.username) return null;
-  // Keep long-lived sessions; refresh expiry on use.
+  // Sliding refresh within 30-day TTL.
   if (session.expiresAt && Date.now() > session.expiresAt) {
     await store.delete(`session:${token}`);
     return null;
@@ -122,10 +151,11 @@ async function getSession(store, token) {
 }
 
 export async function handler(event) {
+  activeCors = corsFor(event);
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
-      headers: corsHeaders,
+      headers: activeCors,
       body: "",
     };
   }
@@ -147,6 +177,10 @@ export async function handler(event) {
 
   try {
     if (event.httpMethod === "POST" && action === "register") {
+      const ip = clientIp(event);
+      if (!rateLimit(`reg:${ip}`, 10)) {
+        return json(429, { error: "Troppi tentativi. Riprova tra qualche minuto." });
+      }
       const username = normalizeUsername(body.username);
       const password = body.password;
       const userError = validateUsername(username);
@@ -182,10 +216,16 @@ export async function handler(event) {
         token,
         user: { username, displayName },
         trips: [],
+        expiresAt: Date.now() + SESSION_TTL_MS,
+        sessionTtlMs: SESSION_TTL_MS,
       });
     }
 
     if (event.httpMethod === "POST" && action === "login") {
+      const ip = clientIp(event);
+      if (!rateLimit(`login:${ip}`)) {
+        return json(429, { error: "Troppi tentativi di accesso. Riprova più tardi." });
+      }
       const username = normalizeUsername(body.username);
       const password = body.password;
       if (!username || !password) {
@@ -208,6 +248,8 @@ export async function handler(event) {
         token,
         user: { username: user.username, displayName: user.displayName || user.username },
         trips,
+        expiresAt: Date.now() + SESSION_TTL_MS,
+        sessionTtlMs: SESSION_TTL_MS,
       });
     }
 
@@ -256,6 +298,8 @@ export async function handler(event) {
       return json(200, {
         user: { username: user.username, displayName: user.displayName || user.username },
         trips,
+        expiresAt: Date.now() + SESSION_TTL_MS,
+        sessionTtlMs: SESSION_TTL_MS,
       });
     }
 

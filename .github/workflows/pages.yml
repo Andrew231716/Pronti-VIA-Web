@@ -19,14 +19,16 @@ jobs:
         run: |
           mkdir -p site
           for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
-                   magic-extras.js expense-suite.js app-suite.js preventivo-islanda.js ux-suite.js sw.js \
+                   magic-extras.js expense-suite.js app-suite.js preventivo-islanda.js ux-suite.js pv-platform.js sw.js \
                    favicon.svg logo.png coast.jpg iceland.svg manifest.webmanifest map.html \
-                   vercel.json _redirects README.md pronti-via-logo.png; do
+                   vercel.json _redirects _headers README.md AUDIT.md ROADMAP.md ARCHITECTURE.md CHANGELOG.md \
+                   SECURITY.md BACKUP.md DEPLOYMENT.md COSTS.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
           done
           [ -d assets ] && cp -a assets site/
           [ -d vendor ] && cp -a vendor site/
           [ -d brand ] && cp -a brand site/
+          [ -d lib ] && cp -a lib site/
           touch site/.nojekyll
 
           python3 <<'PY'
@@ -46,6 +48,7 @@ jobs:
               "/app-suite.js",
               "/preventivo-islanda.js",
               "/ux-suite.js",
+              "/pv-platform.js",
               "/sw.js",
               "/ios-form-fix.js",
               "/account.css",
@@ -84,7 +87,7 @@ jobs:
               import json
               data = json.loads(manifest.read_text(encoding="utf-8"))
               data["id"] = f"{base}/"
-              data["start_url"] = f"{base}/?v=20261102x"
+              data["start_url"] = f"{base}/?v=20261104b"
               data["scope"] = f"{base}/"
               for icon in data.get("icons", []):
                   src = icon.get("src", "")

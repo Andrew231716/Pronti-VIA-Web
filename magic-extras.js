@@ -1095,7 +1095,7 @@
           <input type="checkbox" data-idx="${idx}" ${already ? "" : "checked"} ${already ? "disabled" : ""} />
           <span>
             <strong>${escapeHtml(poi.title)}</strong>
-            <span class="pv-meta">${escapeHtml(placeKindMeta(poi.kind).label)} · Giorno ${poi.day || "da decidere"}${already ? " · già in itinerario" : ""}</span>
+            <span class="pv-meta">${escapeHtml(placeKindMeta(poi.kind).label)} · Giorno ${escapeHtml(poi.day || "da decidere")}${already ? " · già in itinerario" : ""}</span>
           </span>
         `;
         list.appendChild(label);

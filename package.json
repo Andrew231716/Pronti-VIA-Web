@@ -1,16 +1,20 @@
 {
   "name": "pronti-via-web",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
-  "description": "Pronti? VIA! static web app",
+  "description": "Pronti? VIA! — organizzazione viaggi individuali e di gruppo (static PWA, costo zero)",
   "scripts": {
-    "test": "node --check netlify/functions/account.mjs && node --check account.js"
+    "test": "npm run test:syntax && npm run test:unit",
+    "test:syntax": "node --check netlify/functions/account.mjs && node --check netlify/functions/trips.mjs && node --check netlify/functions/share.mjs && node --check netlify/functions/_store.mjs && node --check netlify/functions/places.mjs && node --check netlify/functions/proxy.mjs && node --check netlify/functions/search.mjs && node --check lib/cors.mjs && node --check account.js && node --check api-shim.js && node --check pv-platform.js && node --check sw.js",
+    "test:unit": "node scripts/unit/run-all.mjs && node scripts/unit/test-rc-20261104b.mjs && node scripts/unit/test-cors-20261104c.mjs",
+    "test:e2e": "node e2e/run-rc-playwright.mjs",
+    "test:all": "npm test && npm run test:e2e"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Andrew231716/Pronti-VIA-Web.git"
   },
-  "keywords": [],
+  "keywords": ["travel", "pwa", "offline", "supabase", "netlify"],
   "author": "",
   "license": "ISC",
   "bugs": {

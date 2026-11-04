@@ -2,6 +2,8 @@ const SESSION_KEY = "viavia-account-v1";
 const USERS_KEY = "viavia-accounts-db-v1";
 const TRIPS_KEY = "viavia-recent-links-v1";
 const API = "/api/account";
+/** Client-side session ceiling (matches server 30d sliding). Local tokens keep 30d too. */
+const CLIENT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
 const state = {
   token: null,
@@ -26,6 +28,16 @@ function writeJson(key, value) {
 function readSession() {
   const session = readJson(SESSION_KEY, null);
   if (!session?.user?.username) return null;
+  const exp = Number(session.expiresAt);
+  if (Number.isFinite(exp) && Date.now() > exp) {
+    writeJson(SESSION_KEY, null);
+    return null;
+  }
+  // Legacy sessions without expiresAt: keep once, stamp a fresh 30d window.
+  if (!Number.isFinite(exp) && session.token) {
+    session.expiresAt = Date.now() + CLIENT_SESSION_TTL_MS;
+    writeJson(SESSION_KEY, session);
+  }
   return session;
 }
 
@@ -472,13 +484,16 @@ async function onDeleteAccount() {
 async function activateSession(data, { bootApp = true } = {}) {
   state.token = data.token;
   state.user = data.user;
-  // Persist until the browser site data is cleared (or explicit logout).
+  const expiresAt =
+    Number(data.expiresAt) ||
+    Date.now() + (Number(data.sessionTtlMs) || CLIENT_SESSION_TTL_MS);
   writeSession({
     token: data.token,
     user: data.user,
     guest: Boolean(data.guest),
     remembered: true,
     savedAt: new Date().toISOString(),
+    expiresAt,
   });
 
   const merged = mergeTrips(data.trips || [], readLocalTrips());
@@ -506,7 +521,7 @@ let appLoaded = false;
 async function loadApp() {
   if (appLoaded) return;
   appLoaded = true;
-  await import("/assets/index-loadfix-20261029a.js");
+  await import("/assets/index-loadfix-20261104b.js");
 }
 
 let syncTimer = null;
@@ -729,6 +744,9 @@ async function boot() {
           user: data.user,
           remembered: true,
           savedAt: new Date().toISOString(),
+          expiresAt:
+            Number(data.expiresAt) ||
+            Date.now() + (Number(data.sessionTtlMs) || CLIENT_SESSION_TTL_MS),
         });
         showChip();
       }

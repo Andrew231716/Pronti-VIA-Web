@@ -1,3 +1,5 @@
+import { corsHeadersFor } from "../../lib/cors.mjs";
+
 const USER_AGENT = "ProntiVIAWeb/1.0 (https://pronti-via-k7es.netlify.app; travel planner)";
 
 const DESTINATION_TYPES = new Set([
@@ -16,13 +18,18 @@ const DESTINATION_TYPES = new Set([
   "locality",
 ]);
 
+let activeCors = corsHeadersFor(null, {
+  methods: "GET, OPTIONS",
+  headers: "Content-Type",
+});
+
 function json(status, body) {
   return {
     statusCode: status,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "public, max-age=300",
-      "Access-Control-Allow-Origin": "*",
+      ...activeCors,
     },
     body: JSON.stringify(body),
   };
@@ -392,14 +399,14 @@ async function searchPhoton(q, scope) {
 }
 
 export async function handler(event) {
+  activeCors = corsHeadersFor(event, {
+    methods: "GET, OPTIONS",
+    headers: "Content-Type",
+  });
   if (event.httpMethod === "OPTIONS") {
     return {
       statusCode: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
+      headers: activeCors,
       body: "",
     };
   }

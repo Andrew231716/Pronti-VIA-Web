@@ -4,15 +4,15 @@
  * Stays → LockTrip MCP (live hotel/apartment availability)
  */
 
+import { corsHeadersFor } from "../../lib/cors.mjs";
+
 const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-};
+let corsHeaders = corsHeadersFor(null, {
+  methods: "GET, POST, OPTIONS",
+  headers: "Content-Type, Authorization",
+});
 
 function json(status, body) {
   return {
@@ -421,6 +421,10 @@ async function searchStays(body) {
 }
 
 export async function handler(event) {
+  corsHeaders = corsHeadersFor(event, {
+    methods: "GET, POST, OPTIONS",
+    headers: "Content-Type, Authorization",
+  });
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }
