@@ -120,15 +120,17 @@
         font-size:.68rem;font-weight:700;background:#e8f4f4;color:#0f5a5e
       }
       .members-list .pv-role-badge.guest{background:#fff3cd;color:#7a5b00}
+      /* Offline chip: top bar under account chrome (Hub no longer occupies bottom-left). */
       #pv-offline-chip{
         position:fixed;
-        left:calc(72px + env(safe-area-inset-left,0px));
-        bottom:calc(18px + env(safe-area-inset-bottom,0px));
-        z-index:99980;padding:6px 10px;border-radius:999px;display:none;
+        top:calc(54px + env(safe-area-inset-top,0px));
+        left:50%;transform:translateX(-50%);
+        z-index:99980;padding:6px 12px;border-radius:999px;display:none;
         font:700 11px/1.2 inherit;background:#7a1f1f;color:#fff;
         box-shadow:0 6px 16px rgba(0,0,0,.12)
       }
       #pv-offline-chip.show{display:inline-flex}
+      body.pv-plat-open #pv-offline-chip{opacity:.85}
       .pv-menu-section{margin:0 0 14px}
       .pv-menu-section h3{
         margin:0 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7380
@@ -812,42 +814,64 @@
         inTrip
           ? `<div class="pv-menu-section">
               <div class="pv-menu-context">
-                <strong>Sei nella tab</strong>
+                <strong>Sei in</strong>
                 <em>${escapeHtml(section.label)}</em>
-                <p>Gli strumenti qui sotto valgono solo per questa tab. Se cambi sezione (es. da Itinerario a Spese), cambia anche il contenuto.</p>
+                <p>Le azioni rapide qui sotto valgono per questa sezione. Le tab in alto (Itinerario, Spese…) restano la navigazione principale del viaggio.</p>
               </div>
-              <h3>Strumenti di questa tab</h3>
+              <h3>Azioni rapide</h3>
               <div class="pv-menu-grid">
                 <button type="button" class="pv-menu-tools" data-ux="section-tools">
                   <strong>${escapeHtml(section.title)}</strong>
                   <span>${escapeHtml(section.hint)}</span>
                 </button>
+                <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
-              <h3>Questo viaggio</h3>
+              <h3>Organizza</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Vedi chi c’è ed elimina gli ospiti dal link</span></button>
-                <button type="button" data-ux="compare"><strong>Preventivo vs spese</strong><span>Confronta il budget stimato con le spese reali</span></button>
-                <button type="button" data-ux="invite"><strong>Codice invito</strong><span>Condividi un codice a 6 caratteri</span></button>
-                <button type="button" data-ux="checklist"><strong>Checklist pre-partenza</strong><span>Promemoria prima di partire</span></button>
-                <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
-                <button type="button" data-ux="more"><strong>Altro</strong><span>Attività, template, versioni, export</span></button>
+                <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
+                <button type="button" data-ux="invite"><strong>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
+                <button type="button" data-ux="checklist"><strong>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
+              <h3>Soldi</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="compare"><strong>Preventivo e spese</strong><span>Confronta stima e spese reali</span></button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
+              <h3>Collabora</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="hub"><strong>Apri Hub</strong><span>Votazioni, preparazione, numeri, backup e impostazioni</span></button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
+              <h3>Altro</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="more"><strong>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
               </div>
             </div>`
           : `<div class="pv-menu-section">
-              <h3>Viaggi</h3>
+              <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="manage-trips"><strong>I tuoi viaggi</strong><span>Apri i viaggi recenti o gestiscili dal cestino</span></button>
-                <button type="button" data-ux="home-hint"><strong>Apri un viaggio</strong><span>Usa «I tuoi viaggi» in alto oppure creane uno nuovo</span></button>
+                <button type="button" data-ux="manage-trips"><strong>Gestisci viaggi</strong><span>Apri o elimina i viaggi salvati</span></button>
+                <button type="button" data-ux="home-hint"><strong>Crea o apri un viaggio</strong><span>Usa «Nuovo viaggio» o «I tuoi viaggi» in homepage</span></button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
+              <h3>Collabora</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="hub"><strong>Apri Hub</strong><span>Panoramica, backup e impostazioni anche fuori dal viaggio</span></button>
               </div>
             </div>`
       }
        <div class="pv-menu-section">
-         <h3>Il tuo account</h3>
+         <h3>Account</h3>
          <div class="pv-menu-grid">
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
-           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella definitivamente il login su questo dispositivo/cloud</span></button>
+           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella il login su questo dispositivo/cloud</span></button>
          </div>
        </div>
        <div class="pv-menu-section">
@@ -856,7 +880,7 @@
            ${
              inTrip
                ? `<button type="button" class="danger" data-ux="delete-trip"><strong>Elimina viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>`
-               : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`
+               : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`
            }
          </div>
        </div>`,
@@ -869,7 +893,11 @@
               closeModal();
               menuBtn?.setAttribute("aria-expanded", "false");
               if (act === "companions") void openCompanionsManager();
-              else if (act === "section-tools") {
+              else if (act === "hub") {
+                if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
+                else if (document.getElementById("pv-hub-nav")) document.getElementById("pv-hub-nav").click();
+                else document.getElementById("pv-plat-fab")?.click();
+              } else if (act === "section-tools") {
                 let opened = false;
                 if (typeof window.__pvAppSuite?.reopenDock === "function") {
                   opened = Boolean(window.__pvAppSuite.reopenDock());

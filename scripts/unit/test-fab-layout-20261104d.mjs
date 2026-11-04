@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Post-merge FAB layout: Hub must not cover bacchetta magica.
+ * FAB / Hub layout: Hub integrated in top nav; bacchetta stays on the right.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -21,19 +21,22 @@ function test(name, fn) {
 const plat = readFileSync("pv-platform.js", "utf8");
 const magic = readFileSync("magic-extras.js", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
+const account = readFileSync("account.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
-test("Hub FAB anchored to the left (not right stack)", () => {
-  assert.match(plat, /#pv-plat-fab \{[\s\S]*?left:\s*max\(12px/);
-  assert.match(plat, /right:\s*auto/);
-  assert.doesNotMatch(
-    plat.replace(/@media[\s\S]*?#pv-plat-fab[\s\S]*?}/, ""),
-    /#pv-plat-fab \{[\s\S]*?right:\s*max\(12px/
-  );
+test("Hub integrated in account chrome (#pv-hub-nav)", () => {
+  assert.match(account, /id="pv-hub-nav"/);
+  assert.match(plat, /pv-hub-nav-ready/);
+  assert.match(plat, /body\.pv-hub-nav-ready #pv-plat-fab/);
 });
 
-test("Hub hides while magic sheet open", () => {
-  assert.match(plat, /body\.pv-magic-open #pv-plat-fab/);
+test("Fallback Hub FAB stays left (not right stack)", () => {
+  assert.match(plat, /#pv-plat-fab \{[\s\S]*?left:\s*max\(12px/);
+  assert.match(plat, /right:\s*auto/);
+});
+
+test("Hub trigger dims while magic sheet open", () => {
+  assert.match(plat, /body\.pv-magic-open #pv-hub-nav/);
   assert.match(magic, /body\.pv-magic-open #pv-plat-fab/);
 });
 
@@ -54,10 +57,9 @@ test("renderFab only skips spinner, not trip-error main.loading", () => {
   assert.doesNotMatch(magic, /if \(document\.querySelector\("main\.loading"\)\) return/);
 });
 
-test("stamp shell wired (platform 20261104f + magic 20261104e)", () => {
-  assert.match(index, /pv-platform-20261104f\.js/);
+test("stamp shell wired (platform 20261104g + magic 20261104e)", () => {
+  assert.match(index, /pv-platform-20261104g\.js/);
   assert.match(index, /magic-extras-20261104e\.js/);
-  assert.match(index, /20261104d/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

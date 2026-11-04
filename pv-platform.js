@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104b
+ * Stamp: 20261104g — Hub integrated in top nav (no alien FAB)
  */
 (() => {
-  const VER = "20261104b";
+  const VER = "20261104g";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -317,7 +317,10 @@
   --pv-plat-border: rgba(231,242,243,.12);
   --pv-plat-shadow: 0 12px 32px rgba(0,0,0,.35);
 }
-/* Hub FAB lives on the LEFT so it never covers Pronty (bacchetta) / Preventivo on the right. */
+/*
+  Hub lives in the top account chrome (#pv-hub-nav). Floating FAB is fallback only
+  when the chip is missing (e.g. early boot) — then keep it bottom-left clear of Pronty.
+*/
 #pv-plat-fab {
   position: fixed; z-index: 120100;
   left: max(12px, env(safe-area-inset-left, 0px));
@@ -329,25 +332,24 @@
   transition: opacity .2s ease, transform .16s ease;
 }
 #pv-plat-fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-/* While Pronty sheet is open, hide Hub so it does not fight the sheet/FABs. */
-body.pv-magic-open #pv-plat-fab {
-  opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;
+body.pv-hub-nav-ready #pv-plat-fab {
+  display: none !important;
 }
-body.pv-plat-open #pv-offline-chip {
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+body.pv-magic-open #pv-plat-fab,
+body.pv-magic-open #pv-hub-nav {
+  opacity: 0.45;
 }
 #pv-plat-panel {
   position: fixed; z-index: 120150; inset: auto 0 0 0;
   max-height: min(88vh, 920px);
   background: var(--pv-plat-bg); color: var(--pv-plat-ink);
-  border-radius: 20px 20px 0 0; box-shadow: var(--pv-plat-shadow);
+  border-radius: 22px 22px 0 0; box-shadow: 0 -8px 40px rgba(12,40,48,.18);
+  border-top: 1px solid var(--pv-plat-border);
   padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
-  /* Resting open pose — tab content swaps must NOT re-run enter animation. */
   transform: translateY(0); opacity: 1;
 }
 #pv-plat-panel.open { display: block; }
-/* Enter animation only while .pv-plat-entering is present (toggled on open). */
 #pv-plat-panel.open.pv-plat-entering {
   transform: translateY(14px); opacity: 0;
 }
@@ -361,14 +363,24 @@ body.pv-plat-open #pv-offline-chip {
 #pv-plat-body { min-height: 120px; }
 #pv-plat-body.pv-plat-body-busy { opacity: .72; }
 #pv-plat-panel .pv-plat-head {
-  display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  display:flex; align-items:flex-start; gap:10px; margin-bottom:8px;
 }
-#pv-plat-panel .pv-plat-head strong { flex:1; font:700 16px/1.2 Georgia, "Times New Roman", serif; }
-#pv-plat-panel .pv-plat-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+#pv-plat-panel .pv-plat-head > div { flex:1; min-width:0; }
+#pv-plat-panel .pv-plat-head strong {
+  display:block; font:700 1.15rem/1.25 Georgia, "Times New Roman", serif; color: var(--pv-plat-ink);
+}
+#pv-plat-panel .pv-plat-head .pv-plat-lead {
+  margin:4px 0 0; font:400 0.82rem/1.4 system-ui,sans-serif; color: var(--pv-plat-muted);
+}
+#pv-plat-panel .pv-plat-tabs {
+  display:flex; flex-wrap:nowrap; gap:6px; margin:0 0 12px; overflow-x:auto;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px;
+}
+#pv-plat-panel .pv-plat-tabs::-webkit-scrollbar { display:none; }
 #pv-plat-panel .pv-plat-tabs button, .pv-plat-btn {
   border:1px solid var(--pv-plat-border); background: var(--pv-plat-card);
   color: var(--pv-plat-ink); border-radius: 999px; padding: 8px 12px;
-  font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px;
+  font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
 }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
@@ -403,8 +415,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 }
 @media (min-width: 860px) {
   #pv-plat-panel {
-    inset: 72px auto auto 24px; width: min(440px, 92vw); max-height: calc(100vh - 96px);
-    border-radius: 18px; bottom: auto;
+    inset: 64px 24px auto auto; width: min(460px, 92vw); max-height: calc(100vh - 88px);
+    border-radius: 18px; bottom: auto; left: auto;
+    box-shadow: var(--pv-plat-shadow); border: 1px solid var(--pv-plat-border);
   }
   #pv-plat-fab { bottom: 24px; left: 24px; right: auto; }
 }
@@ -502,16 +515,32 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   /* ---------- UI shell ---------- */
   let activeTab = "dash";
+  function bindHubTrigger(el) {
+    if (!el || el.dataset.pvHubBound === "1") return el;
+    el.dataset.pvHubBound = "1";
+    el.addEventListener("click", () => togglePanel());
+    return el;
+  }
   function ensureFab() {
-    if (document.getElementById("pv-plat-fab")) return;
-    const fab = document.createElement("button");
+    // Preferred: Hub in the top account chrome (integrated navigation).
+    const nav = document.getElementById("pv-hub-nav");
+    if (nav) {
+      document.body.classList.add("pv-hub-nav-ready");
+      document.getElementById("pv-plat-fab")?.remove();
+      bindHubTrigger(nav);
+      return nav;
+    }
+    document.body.classList.remove("pv-hub-nav-ready");
+    let fab = document.getElementById("pv-plat-fab");
+    if (fab) return bindHubTrigger(fab);
+    fab = document.createElement("button");
     fab.id = "pv-plat-fab";
     fab.type = "button";
-    fab.title = "Hub Pronti? VIA!";
-    fab.setAttribute("aria-label", "Apri hub piattaforma");
+    fab.title = "Hub · Collabora";
+    fab.setAttribute("aria-label", "Apri Hub collaborativo");
     fab.textContent = "Hub";
-    fab.addEventListener("click", () => togglePanel());
     document.body.appendChild(fab);
+    return bindHubTrigger(fab);
   }
   let panelRenderSeq = 0;
   function playPanelEnter(panel) {
@@ -533,22 +562,25 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   function ensurePanelChrome(panel) {
     if (panel.querySelector("#pv-plat-body")) return;
     const tabs = [
-      ["dash", "Dashboard"],
-      ["polls", "Voti"],
+      ["dash", "Panoramica"],
+      ["polls", "Votazioni"],
       ["prep", "Preparazione"],
-      ["stats", "Statistiche"],
+      ["stats", "Numeri"],
       ["cal", "Calendario"],
-      ["archive", "Archivio"],
+      ["archive", "Ricordi"],
       ["backup", "Backup"],
       ["settings", "Impostazioni"],
     ];
     panel.innerHTML = `
       <div class="pv-plat-head">
-        <strong>Pronti? VIA! Hub</strong>
-        <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi">Chiudi</button>
+        <div>
+          <strong>Hub · Collabora</strong>
+          <p class="pv-plat-lead">Voti, preparazione, numeri e backup del viaggio — tutto il lavoro di gruppo in un posto.</p>
+        </div>
+        <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
-      <div class="pv-plat-tabs">${tabs
-        .map(([id, label]) => `<button type="button" data-tab="${id}">${label}</button>`)
+      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${tabs
+        .map(([id, label]) => `<button type="button" role="tab" data-tab="${id}">${label}</button>`)
         .join("")}</div>
       <div id="pv-plat-body"></div>
     `;
@@ -579,8 +611,10 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const wasOpen = panel.classList.contains("open");
     panel.classList.toggle("open", open);
     document.body.classList.toggle("pv-plat-open", open);
-    const fab = document.getElementById("pv-plat-fab");
-    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    for (const id of ["pv-hub-nav", "pv-plat-fab"]) {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("aria-expanded", open ? "true" : "false");
+    }
     if (open) {
       if (!wasOpen) playPanelEnter(panel);
       void renderPanel({ tabSwitch: wasOpen });
@@ -1345,6 +1379,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     injectCss();
     applyTheme();
     ensureFab();
+    // Chip may mount after platform boot — rebind when account becomes ready.
+    const mo = new MutationObserver(() => {
+      if (document.getElementById("pv-hub-nav")) ensureFab();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));
     window.addEventListener("pv-outbox-changed", () => {
       /* badge refresh when settings open */

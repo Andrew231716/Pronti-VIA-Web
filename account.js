@@ -217,7 +217,10 @@ function ensureUi() {
   chip.innerHTML = `
     <div class="pv-account-chip-main">
       <span class="pv-account-chip-who">Ciao, <strong id="pv-account-chip-label"></strong></span>
-      <button type="button" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false">Menu</button>
+      <div class="pv-account-chip-actions" role="toolbar" aria-label="Navigazione principale">
+        <button type="button" id="pv-hub-nav" aria-haspopup="dialog" aria-expanded="false" title="Hub · Collabora con il gruppo">Hub</button>
+        <button type="button" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false">Menu</button>
+      </div>
     </div>
   `;
   document.body.appendChild(chip);
@@ -227,6 +230,16 @@ function ensureUi() {
   });
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
+  // Hub open/close is owned by pv-platform (bindHubTrigger). Fallback only if unbound.
+  chip.querySelector("#pv-hub-nav").addEventListener("click", () => {
+    const hub = document.getElementById("pv-hub-nav");
+    if (hub?.dataset?.pvHubBound === "1") return;
+    if (typeof window.ProntiPlatform?.open === "function") {
+      window.ProntiPlatform.open();
+      return;
+    }
+    document.getElementById("pv-plat-fab")?.click();
+  });
   chip.querySelector("#pv-account-menu").addEventListener("click", () => {
     if (typeof window.__pvOpenAccountMenu === "function") {
       window.__pvOpenAccountMenu();

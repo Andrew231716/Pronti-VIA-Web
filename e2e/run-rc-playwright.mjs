@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104d — Playwright E2E (free, system Chrome).
+ * RC 20261104g — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -443,13 +443,15 @@ async function main() {
     // 9–12. Hub: polls, expenses, backup, roles
     await page.goto(`${BASE}/?v=e2e-hub#trip=e2e-trip-1&key=e2e-key-1`, { waitUntil: "domcontentloaded" });
     await wait(1000);
-    // Ensure trip mock also on this page context (already routed)
+    // Prefer integrated top-nav Hub; fallback floating FAB.
     await page.evaluate(() => {
-      const fab = document.getElementById("pv-plat-fab");
-      if (fab) fab.click();
+      const hubBtn = document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab");
+      if (hubBtn) hubBtn.click();
+      else if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
     });
     await wait(700);
     const hub = await page.evaluate(async () => {
+      const nav = document.getElementById("pv-hub-nav");
       const fab = document.getElementById("pv-plat-fab");
       const panel = document.getElementById("pv-plat-panel");
       const tabs = [...document.querySelectorAll("#pv-plat-panel [data-tab], .pv-plat-tabs button")].map(
@@ -470,8 +472,10 @@ async function main() {
       const expensesPresent = /Spese|expenses/i.test(text);
       const backupTab = tabs.some((t) => /backup/i.test(t));
       const pollsTab = tabs.some((t) => /vot|poll/i.test(t));
+      const head = panel?.querySelector(".pv-plat-head")?.innerText || "";
       return {
-        fab: Boolean(fab),
+        nav: Boolean(nav),
+        fabHidden: !fab || getComputedStyle(fab).display === "none",
         panel: Boolean(panel) && getComputedStyle(panel).display !== "none",
         tabs,
         api: typeof api,
@@ -480,41 +484,35 @@ async function main() {
         expensesPresent,
         backupTab,
         pollsTab,
+        collabora: /Collabora/i.test(head),
       };
     });
     ok("9. Votazioni (Hub tab)", hub.pollsTab || hub.tabs.length > 0, JSON.stringify(hub.tabs));
-    ok("10. Spese (presenza UI)", hub.expensesPresent || hub.fab, "expenses UI/hub");
+    ok("10. Spese (presenza UI)", hub.expensesPresent || hub.nav, "expenses UI/hub");
     ok("11. Backup (Hub tab)", hub.backupTab || /backup/i.test(hub.tabs.join(",")), JSON.stringify(hub.tabs));
     ok(
       "12. Ruoli: operazione non autorizzata → 403",
       hub.denied === 403 && /visualizzatore|non consentita|non autorizz/i.test(hub.deniedError),
       hub.deniedError
     );
-    ok("Hub piattaforma presente", hub.fab && hub.api === "object", JSON.stringify({ fab: hub.fab, api: hub.api }));
-    const fabGeom = await page.evaluate(() => {
-      const hub = document.getElementById("pv-plat-fab");
-      if (!hub) return null;
-      const s = getComputedStyle(hub);
-      return { left: s.left, right: s.right, bottom: s.bottom };
-    });
     ok(
-      "Hub FAB on left (clears right bacchetta stack)",
-      fabGeom && Number.parseFloat(fabGeom.left) < 80,
-      JSON.stringify(fabGeom)
+      "Hub integrato in top nav",
+      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora,
+      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora })
     );
     ok(
       "magic-extras script present",
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104f present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104f/.test(s.src || "")))
+      "pv-platform 20261104g present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104g/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {
       const panel = document.getElementById("pv-plat-panel");
       if (!panel?.classList.contains("open")) {
-        document.getElementById("pv-plat-fab")?.click();
+        (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
         await new Promise((r) => setTimeout(r, 500));
       }
       const beforeTop = panel.getBoundingClientRect().top;
@@ -556,7 +554,8 @@ async function main() {
     ).catch(() => {});
     const magicGeom = await page.evaluate(() => {
       const magic = document.querySelector("#pv-magic-open");
-      const hub = document.getElementById("pv-plat-fab");
+      const hubNav = document.getElementById("pv-hub-nav");
+      const hubFab = document.getElementById("pv-plat-fab");
       if (!magic) {
         return {
           present: false,
@@ -567,18 +566,22 @@ async function main() {
         };
       }
       const mr = magic.getBoundingClientRect();
-      const hr = hub?.getBoundingClientRect();
+      const nr = hubNav?.getBoundingClientRect();
+      const fr = hubFab && getComputedStyle(hubFab).display !== "none" ? hubFab.getBoundingClientRect() : null;
       const ms = getComputedStyle(magic);
+      const overlaps = (a, b) =>
+        Boolean(a && b) && !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
       return {
         present: true,
         visible: ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0,
         right: ms.right,
         left: mr.left,
-        hubLeft: hr?.left ?? null,
-        hubRight: hr?.right ?? null,
-        overlap:
-          hr &&
-          !(mr.right < hr.left || mr.left > hr.right || mr.bottom < hr.top || mr.top > hr.bottom),
+        magicBottomish: mr.top > window.innerHeight * 0.55,
+        hubNavTopish: nr ? nr.bottom < window.innerHeight * 0.35 : false,
+        hubNavPresent: Boolean(hubNav),
+        fabHidden: !hubFab || getComputedStyle(hubFab).display === "none",
+        overlapNav: overlaps(mr, nr),
+        overlapFab: overlaps(mr, fr),
       };
     });
     ok(
@@ -588,7 +591,13 @@ async function main() {
     );
     ok(
       "Hub and bacchetta do not overlap",
-      magicGeom.present && magicGeom.overlap === false && magicGeom.left > (magicGeom.hubRight || 0),
+      magicGeom.present &&
+        magicGeom.hubNavPresent &&
+        magicGeom.fabHidden &&
+        magicGeom.overlapNav === false &&
+        magicGeom.overlapFab === false &&
+        magicGeom.magicBottomish &&
+        magicGeom.hubNavTopish,
       JSON.stringify(magicGeom)
     );
 

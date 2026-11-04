@@ -1,5 +1,19 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104g] — 2026-11-04
+
+### UX/UI redesign — Hub, Menu, navigazione
+- **Hub** integrato nella top bar account (`#pv-hub-nav`) accanto a Menu: non è più un FAB flottante «alieno». Il FAB resta solo fallback se il chip non è montato.
+- Titolo pannello **Hub · Collabora** + lead chiaro sulle funzioni di gruppo; tab con etichette parlanti (Panoramica, Votazioni, Preparazione…).
+- **Menu** riorganizzato per categorie: Azioni rapide · Organizza · Soldi · Collabora · Altro · Account · Zona pericolosa (fuori viaggio: I tuoi viaggi · Collabora).
+- Voce Menu **Apri Hub** (stesso pannello collaborativo).
+- Chip offline riposizionato in alto al centro (libera il basso a destra per la bacchetta).
+- Bacchetta magica / Lingua / endpoint IA **invariati** (`magic-extras-20261104e`).
+- Stamp shell `pv-shell-20261104g`; asset `pv-platform-20261104g` + `ux-suite-20261104g`.
+- Docs: `docs/UX_REDESIGN_20261104g.md` (mappa prima/dopo, architettura menu/Hub).
+- Test unit aggiornati + E2E Hub su `#pv-hub-nav`.
+- Nessuna funzionalità rimossa; nessun merge/deploy automatico.
+
 ## [20261104f] — 2026-11-04
 
 ### Hub panel — tab switch fluido
