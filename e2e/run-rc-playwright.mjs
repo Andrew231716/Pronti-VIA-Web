@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104d — Playwright E2E (free, system Chrome).
+ * RC 20261104j — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -12,6 +12,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
+import { tripApiPayload } from "./fixtures/valid-trip.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PORT = Number(process.env.PV_E2E_PORT || 3457);
@@ -232,12 +233,9 @@ async function main() {
             id: "e2e-trip-1",
             key: "e2e-key-1",
             viewToken: "e2e-view-1",
-            trip: { title: "E2E Roma", members: [{ id: "m1", name: "owner" }], meta: { roles: { m1: "owner" } } },
+            ...tripApiPayload({ title: "E2E Roma" }),
             revision: 1,
-            canEdit: true,
-            local: false,
             source: "blobs",
-            durable: true,
           }),
         });
       }
@@ -292,22 +290,11 @@ async function main() {
           status: 200,
           contentType: "application/json",
           headers: { "Access-Control-Allow-Origin": "*" },
-          body: JSON.stringify({
-            id: "e2e-trip-1",
-            key: "e2e-key-1",
-            viewToken: "e2e-view-1",
-            trip: {
+          body: JSON.stringify(
+            tripApiPayload({
               title: "E2E Roma editata",
-              members: [{ id: "m1", name: "owner" }],
-              meta: { roles: { m1: "owner" } },
-              expenses: [{ id: "e1", amount: 12, title: "Caffè" }],
-              polls: [],
-            },
-            revision: 2,
-            canEdit: true,
-            local: false,
-            source: "store",
-          }),
+            })
+          ),
         });
       }
       if (method === "DELETE") {
@@ -327,27 +314,22 @@ async function main() {
     await page.route("**/*", tripMock);
 
     // Seed trip auth in recent links + hash
-    await page.evaluate(() => {
+    await page.evaluate((seed) => {
       const trip = { id: "e2e-trip-1", key: "e2e-key-1", title: "E2E Roma" };
       localStorage.setItem("viavia-recent-links-v1", JSON.stringify([trip]));
       const packed = {
-        id: "e2e-trip-1",
-        key: "e2e-key-1",
-        viewToken: "e2e-view-1",
-        trip: {
-          title: "E2E Roma",
-          members: [{ id: "m1", name: "owner" }],
-          meta: { roles: { m1: "owner" } },
-          expenses: [],
-          stops: [],
-        },
+        id: seed.id,
+        key: seed.key,
+        viewToken: seed.viewToken,
+        trip: seed.trip,
         revision: 1,
       };
       const map = {};
       map["e2e-trip-1"] = packed;
       localStorage.setItem("viavia-local-trips-v1", JSON.stringify(map));
+      localStorage.setItem("viavia-onboard-v1", JSON.stringify({ done: true, at: Date.now() }));
       location.hash = `#trip=e2e-trip-1&key=e2e-key-1`;
-    });
+    }, tripApiPayload());
     await page.reload({ waitUntil: "domcontentloaded" });
     await wait(1200);
     ok("2. Creazione/apertura viaggio", true, "e2e-trip-1 seeded");
@@ -442,14 +424,27 @@ async function main() {
 
     // 9–12. Hub: polls, expenses, backup, roles
     await page.goto(`${BASE}/?v=e2e-hub#trip=e2e-trip-1&key=e2e-key-1`, { waitUntil: "domcontentloaded" });
-    await wait(1000);
-    // Ensure trip mock also on this page context (already routed)
+    await page
+      .waitForFunction(
+        () =>
+          document.body.classList.contains("pv-account-ready") &&
+          Boolean(document.getElementById("pv-hub-nav") || window.ProntiPlatform),
+        { timeout: 15000 }
+      )
+      .catch(() => {});
+    await wait(400);
+    // Force-open Hub (avoid toggle races with dual listeners).
     await page.evaluate(() => {
-      const fab = document.getElementById("pv-plat-fab");
-      if (fab) fab.click();
+      if (typeof window.ProntiPlatform?.open === "function") {
+        window.ProntiPlatform.open();
+        return;
+      }
+      const hubBtn = document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab");
+      hubBtn?.click();
     });
-    await wait(700);
+    await wait(900);
     const hub = await page.evaluate(async () => {
+      const nav = document.getElementById("pv-hub-nav");
       const fab = document.getElementById("pv-plat-fab");
       const panel = document.getElementById("pv-plat-panel");
       const tabs = [...document.querySelectorAll("#pv-plat-panel [data-tab], .pv-plat-tabs button")].map(
@@ -470,52 +465,57 @@ async function main() {
       const expensesPresent = /Spese|expenses/i.test(text);
       const backupTab = tabs.some((t) => /backup/i.test(t));
       const pollsTab = tabs.some((t) => /vot|poll/i.test(t));
+      const head = panel?.querySelector(".pv-plat-head")?.innerText || "";
+      const groups = [...panel?.querySelectorAll("[data-plat-group]") || []].map((b) => (b.textContent || "").trim());
       return {
-        fab: Boolean(fab),
+        nav: Boolean(nav),
+        fabHidden: !fab || getComputedStyle(fab).display === "none",
         panel: Boolean(panel) && getComputedStyle(panel).display !== "none",
         tabs,
+        groups,
         api: typeof api,
         denied: denied.status,
         deniedError: deniedBody.error || "",
         expensesPresent,
         backupTab,
         pollsTab,
+        collabora: /Collabora/i.test(head) || groups.includes("Collabora"),
+        organizza: groups.includes("Organizza"),
+        primaryNav: Boolean(document.getElementById("pv-primary-nav")),
       };
     });
     ok("9. Votazioni (Hub tab)", hub.pollsTab || hub.tabs.length > 0, JSON.stringify(hub.tabs));
-    ok("10. Spese (presenza UI)", hub.expensesPresent || hub.fab, "expenses UI/hub");
+    ok("10. Spese (presenza UI)", hub.expensesPresent || hub.nav, "expenses UI/hub");
     ok("11. Backup (Hub tab)", hub.backupTab || /backup/i.test(hub.tabs.join(",")), JSON.stringify(hub.tabs));
     ok(
       "12. Ruoli: operazione non autorizzata → 403",
       hub.denied === 403 && /visualizzatore|non consentita|non autorizz/i.test(hub.deniedError),
       hub.deniedError
     );
-    ok("Hub piattaforma presente", hub.fab && hub.api === "object", JSON.stringify({ fab: hub.fab, api: hub.api }));
-    const fabGeom = await page.evaluate(() => {
-      const hub = document.getElementById("pv-plat-fab");
-      if (!hub) return null;
-      const s = getComputedStyle(hub);
-      return { left: s.left, right: s.right, bottom: s.bottom };
-    });
     ok(
-      "Hub FAB on left (clears right bacchetta stack)",
-      fabGeom && Number.parseFloat(fabGeom.left) < 80,
-      JSON.stringify(fabGeom)
+      "Hub integrato in primary nav",
+      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora && hub.organizza && hub.primaryNav,
+      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora, organizza: hub.organizza, groups: hub.groups, primaryNav: hub.primaryNav })
     );
     ok(
       "magic-extras script present",
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104f present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104f/.test(s.src || "")))
+      "pv-platform 20261104j present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104j/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {
-      const panel = document.getElementById("pv-plat-panel");
+      let panel = document.getElementById("pv-plat-panel");
       if (!panel?.classList.contains("open")) {
-        document.getElementById("pv-plat-fab")?.click();
-        await new Promise((r) => setTimeout(r, 500));
+        if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
+        else (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
+        await new Promise((r) => setTimeout(r, 600));
+        panel = document.getElementById("pv-plat-panel");
+      }
+      if (!panel) {
+        return { open: false, entering: false, top: 0, sameChrome: false, beforeTop: 0, afterTop: 0, delta: 0, stillOpen: false, pollsOn: false };
       }
       const beforeTop = panel.getBoundingClientRect().top;
       const polls = panel.querySelector('[data-tab="polls"]');
@@ -556,39 +556,56 @@ async function main() {
     ).catch(() => {});
     const magicGeom = await page.evaluate(() => {
       const magic = document.querySelector("#pv-magic-open");
-      const hub = document.getElementById("pv-plat-fab");
-      if (!magic) {
+      const aiNav = document.getElementById("pv-nav-ai");
+      const hubNav = document.getElementById("pv-hub-nav");
+      const hubFab = document.getElementById("pv-plat-fab");
+      const primary = document.getElementById("pv-primary-nav");
+      if (!magic && !aiNav) {
         return {
           present: false,
           loadingSpin: Boolean(document.querySelector("main.loading .spin")),
-          mainClass: document.querySelector("main")?.className || "",
           accountReady: document.body.classList.contains("pv-account-ready"),
-          styleInjected: Boolean(document.getElementById("pv-magic-extras-css")),
         };
       }
-      const mr = magic.getBoundingClientRect();
-      const hr = hub?.getBoundingClientRect();
-      const ms = getComputedStyle(magic);
+      const ms = magic ? getComputedStyle(magic) : null;
+      const magicHiddenByNav =
+        Boolean(primary) &&
+        !primary.hidden &&
+        document.body.classList.contains("pv-primary-nav-ready") &&
+        magic &&
+        (ms.display === "none" || ms.visibility === "hidden");
+      const mr = magic && !magicHiddenByNav ? magic.getBoundingClientRect() : null;
+      const ar = aiNav?.getBoundingClientRect();
+      const nr = hubNav?.getBoundingClientRect();
+      const fr = hubFab && getComputedStyle(hubFab).display !== "none" ? hubFab.getBoundingClientRect() : null;
+      const overlaps = (a, b) =>
+        Boolean(a && b) && !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
       return {
-        present: true,
-        visible: ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0,
-        right: ms.right,
-        left: mr.left,
-        hubLeft: hr?.left ?? null,
-        hubRight: hr?.right ?? null,
-        overlap:
-          hr &&
-          !(mr.right < hr.left || mr.left > hr.right || mr.bottom < hr.top || mr.top > hr.bottom),
+        present: Boolean(magic || aiNav),
+        aiInNav: Boolean(aiNav && primary?.contains(aiNav)),
+        magicHiddenByNav,
+        visible: magicHiddenByNav
+          ? Boolean(aiNav)
+          : Boolean(magic && ms && ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0),
+        hubInPrimaryNav: Boolean(hubNav && primary?.contains(hubNav)),
+        hubNavPresent: Boolean(hubNav),
+        fabHidden: !hubFab || getComputedStyle(hubFab).display === "none",
+        overlapNav: overlaps(mr, nr) || overlaps(mr, ar),
+        overlapFab: overlaps(mr, fr),
       };
     });
     ok(
-      "Bacchetta #pv-magic-open visible on trip",
-      magicGeom.present && magicGeom.visible,
+      "Assistente IA raggiungibile (nav o bacchetta)",
+      magicGeom.present && magicGeom.visible && (magicGeom.aiInNav || !magicGeom.magicHiddenByNav),
       JSON.stringify(magicGeom)
     );
     ok(
-      "Hub and bacchetta do not overlap",
-      magicGeom.present && magicGeom.overlap === false && magicGeom.left > (magicGeom.hubRight || 0),
+      "Hub e IA non si sovrappongono ai FAB",
+      magicGeom.hubNavPresent &&
+        magicGeom.hubInPrimaryNav &&
+        magicGeom.fabHidden &&
+        magicGeom.overlapNav === false &&
+        magicGeom.overlapFab === false,
       JSON.stringify(magicGeom)
     );
 
@@ -596,11 +613,15 @@ async function main() {
     const lingua = await page.evaluate(async () => {
       const langFn = window.__pvLanguageForDestination;
       const mapped = typeof langFn === "function" ? langFn("Parigi, Francia") : null;
-      const fab = document.querySelector("#pv-magic-open");
-      if (fab) {
-        fab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      if (typeof window.__pvNavAi === "function") window.__pvNavAi();
+      else {
+        const fab = document.querySelector("#pv-magic-open");
+        if (fab) {
+          fab.style.display = "inline-flex";
+          fab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        } else document.getElementById("pv-nav-ai")?.click();
       }
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 700));
       const linguaTab = document.querySelector('#pv-magic-panel [data-tab="lingua"]');
       if (linguaTab) linguaTab.click();
       await new Promise((r) => setTimeout(r, 900));
@@ -624,9 +645,133 @@ async function main() {
     );
 
     const critical = pageErrors.filter(
-      (e) => !/transfers is not iterable|shares is not iterable|Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
+      (e) => !/Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
     );
-    ok("Nessun pageerror bloccante", critical.length === 0, critical.slice(0, 3).join(" | ") || pageErrors.slice(0, 2).join(" | "));
+    ok(
+      "Nessun pageerror bloccante (incl. shares/transfers)",
+      critical.length === 0 && !pageErrors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)),
+      critical.slice(0, 3).join(" | ") || pageErrors.slice(0, 2).join(" | ")
+    );
+
+    // Deep reachability: trip shell + Menu categories + Hub tabs + bacchetta
+    await page.evaluate(() => {
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      document.querySelectorAll(".pv-ux-close, [data-ux-close]").forEach((el) => el.click());
+      const magicClose =
+        document.querySelector("#pv-magic-close") ||
+        document.querySelector('#pv-magic-panel [aria-label*="Chiudi"], #pv-magic-panel button.pv-magic-close');
+      magicClose?.click();
+      document.body.classList.remove("pv-plat-open");
+      document.getElementById("pv-plat-panel")?.classList.remove("open");
+    });
+    await wait(500);
+    const deep = await page.evaluate(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const text = () => document.body.innerText || "";
+      const tripShell = {
+        title: /E2E Roma|Roma/i.test(text()),
+        tabs: [...document.querySelectorAll("nav button, [role=tab], .tabs button, button")]
+          .map((b) => (b.textContent || "").trim())
+          .filter(Boolean)
+          .slice(0, 40),
+        hasItinerario: /Itinerario/i.test(text()),
+        hasSpese: /Spese/i.test(text()),
+        stopVisible: /Colosseo/i.test(text()),
+        rootKids: document.getElementById("root")?.childElementCount || 0,
+      };
+
+      if (typeof window.__pvOpenAccountMenu === "function") window.__pvOpenAccountMenu();
+      else document.getElementById("pv-account-menu")?.click();
+      await wait(700);
+      const menuRoot =
+        document.querySelector(".pv-ux-sheet, .pv-ux-modal, #pv-ux-modal, [data-pv-ux-modal]") ||
+        [...document.querySelectorAll("[role=dialog]")].find((el) => /Apri Hub|Organizza|Azioni rapide/i.test(el.innerText || ""));
+      const menuBody = menuRoot?.innerText || "";
+      const uxActs = [...document.querySelectorAll("button[data-ux]")].map((b) => b.getAttribute("data-ux"));
+      const menu = {
+        open: Boolean(menuRoot) && uxActs.length > 0,
+        organizza: uxActs.includes("companions") && uxActs.includes("invite") && uxActs.includes("checklist"),
+        soldi: uxActs.includes("compare"),
+        collabora: uxActs.includes("hub"),
+        altro: uxActs.includes("more"),
+        acts: uxActs,
+        sample: menuBody.slice(0, 220),
+      };
+      document.querySelector(".pv-ux-close, [data-ux-close]")?.click();
+      await wait(300);
+
+      (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
+      await wait(600);
+      const hubTabs = [...document.querySelectorAll("#pv-plat-panel [data-tab]")].map((b) => b.dataset.tab);
+      const hubLabels = [...document.querySelectorAll("#pv-plat-panel [data-tab]")].map((b) => (b.textContent || "").trim());
+      const hubVisited = [];
+      for (const tab of hubTabs) {
+        document.querySelector(`#pv-plat-panel [data-tab="${tab}"]`)?.click();
+        await wait(350);
+        hubVisited.push({
+          tab,
+          open: document.getElementById("pv-plat-panel")?.classList.contains("open"),
+          bodyLen: (document.getElementById("pv-plat-body")?.innerText || "").length,
+        });
+      }
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      await wait(300);
+
+      // Ensure Hub closed before opening magic (z-index / dimming).
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      document.getElementById("pv-plat-panel")?.classList.remove("open");
+      document.body.classList.remove("pv-plat-open");
+      await wait(200);
+      const panelBefore = document.querySelector("#pv-magic-panel");
+      const alreadyOpen = Boolean(document.body.classList.contains("pv-magic-open") && panelBefore && !panelBefore.hidden);
+      if (!alreadyOpen) {
+        if (typeof window.__pvNavAi === "function") window.__pvNavAi();
+        else {
+          const magic = document.querySelector("#pv-magic-open");
+          if (magic) {
+            magic.style.display = "inline-flex";
+            magic.click();
+          } else document.getElementById("pv-nav-ai")?.click();
+        }
+      }
+      await wait(700);
+      const magicPanel = document.querySelector("#pv-magic-panel");
+      const magicOpen = Boolean(
+        document.body.classList.contains("pv-magic-open") && magicPanel && !magicPanel.hidden
+      );
+      const magicTabs = [...document.querySelectorAll("#pv-magic-panel [data-tab]")].map((b) => (b.textContent || "").trim());
+
+      // toggle Hub twice: must open then close (no double-bind stuck-open)
+      const hubBtn = document.getElementById("pv-hub-nav");
+      hubBtn?.click();
+      await wait(400);
+      const opened = document.getElementById("pv-plat-panel")?.classList.contains("open");
+      hubBtn?.click();
+      await wait(400);
+      const closed = !document.getElementById("pv-plat-panel")?.classList.contains("open");
+
+      return {
+        tripShell,
+        menu,
+        hubTabs,
+        hubLabels,
+        hubVisited,
+        magicOpen,
+        magicTabs,
+        hubToggle: { opened, closed, bound: hubBtn?.dataset?.pvHubBound === "1" },
+        fabHidden: !document.getElementById("pv-plat-fab") || getComputedStyle(document.getElementById("pv-plat-fab")).display === "none",
+      };
+    });
+    ok("Trip shell renderizza contenuto (niente schermo bianco)", deep.tripShell.rootKids > 0 && (deep.tripShell.hasItinerario || deep.tripShell.stopVisible || deep.tripShell.title), JSON.stringify(deep.tripShell));
+    ok("Menu categorie presenti", deep.menu.open && deep.menu.organizza && deep.menu.soldi && deep.menu.collabora && deep.menu.altro, JSON.stringify(deep.menu));
+    ok(
+      "Hub: tutte le tab visitabili",
+      deep.hubTabs.length >= 7 && deep.hubVisited.every((v) => v.open && v.bodyLen > 10),
+      JSON.stringify({ tabs: deep.hubLabels, visited: deep.hubVisited })
+    );
+    ok("Bacchetta apribile", deep.magicOpen, JSON.stringify({ magicOpen: deep.magicOpen, tabs: deep.magicTabs }));
+    ok("Hub toggle open/close senza doppio bind", deep.hubToggle.opened && deep.hubToggle.closed && deep.hubToggle.bound, JSON.stringify(deep.hubToggle));
+    ok("FAB Hub nascosto con nav pronta", deep.fabHidden, JSON.stringify({ fabHidden: deep.fabHidden }));
   } finally {
     await browser.close().catch(() => {});
     await new Promise((r) => server.close(r));

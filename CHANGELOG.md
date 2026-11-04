@@ -1,5 +1,47 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104j] — 2026-11-04
+
+### UX polish — Hub groups, banner, home cards
+- Hub: tab raggruppate in **Collabora** (Panoramica, Votazioni, Preparazione, Numeri) e **Organizza** (Calendario, Ricordi, Backup, Impostazioni).
+- Banner «solo su questo dispositivo»: chip compatto, copy più corta.
+- Home/Recent: card viaggio con thumb + meta; filtri Tutti / In arrivo / Passati.
+- Stamp `20261104j` (`pv-platform` + `ux-suite` + shell CSS).
+
+## [20261104i] — 2026-11-04
+
+### UX polish post-riferimenti
+- Bacchetta flottante nascosta con nav primaria (IA nella capsule); Preventivo solo, sollevato.
+- Hub: copy umana (backup/settings/dash), countdown in italiano, «Prossimi passi».
+- Onboarding spiega Home/Viaggi/HUB/IA/Profilo (anche fuori viaggio).
+- Profilo: Hub demoted, eliminazioni in zona pericolosa; elenco viaggi senza ID criptici.
+- Safe-area top chip + padding sheet/toast sopra la capsule.
+- Stamp `20261104i`.
+
+## [20261104h] — 2026-11-04
+
+### UX — navigazione primaria stile riferimento
+- Bottom nav a 5 sezioni: **Home · Viaggi · HUB · IA · Profilo** (schema concettuale dell’utente).
+- Capsula glassmorphism, icone + etichette, safe-area; Hub e Profilo non più pill isolate in top bar.
+- Top chip semplificato (saluto + brand); HUB come ambiente collaborativo (pannello dashboard, padding sopra la nav).
+- Assistente IA raggiungibile dalla nav (oltre alla bacchetta flottante, sollevata sopra la capsule).
+- Stamp shell `20261104h`. Nessuna funzionalità rimossa; magic-extras invariato.
+
+## [20261104g] — 2026-11-04
+
+### UX/UI redesign — Hub, Menu, navigazione
+- **Hub** integrato nella top bar account (`#pv-hub-nav`) accanto a Menu: non è più un FAB flottante «alieno». Il FAB resta solo fallback se il chip non è montato.
+- Titolo pannello **Hub · Collabora** + lead chiaro sulle funzioni di gruppo; tab con etichette parlanti (Panoramica, Votazioni, Preparazione…).
+- **Menu** riorganizzato per categorie: Azioni rapide · Organizza · Soldi · Collabora · Altro · Account · Zona pericolosa (fuori viaggio: I tuoi viaggi · Collabora).
+- Voce Menu **Apri Hub** (stesso pannello collaborativo).
+- Chip offline riposizionato in alto al centro (libera il basso a destra per la bacchetta).
+- Bacchetta magica / Lingua / endpoint IA **invariati** (`magic-extras-20261104e`).
+- Stamp shell `pv-shell-20261104g`; asset `pv-platform-20261104g` + `ux-suite-20261104g`.
+- Docs: `docs/UX_REDESIGN_20261104g.md` (mappa prima/dopo, architettura menu/Hub).
+- Test unit aggiornati + E2E Hub su `#pv-hub-nav`.
+- Verifica approfondita: fixture trip SPA-completa (`e2e/fixtures/valid-trip.mjs`) elimina falsi `shares is not iterable`; E2E 30/30 + `npm run test:verify-ux` 30/30 (mobile/desktop).
+- Nessuna funzionalità rimossa; nessun merge/deploy automatico.
+
 ## [20261104f] — 2026-11-04
 
 ### Hub panel — tab switch fluido

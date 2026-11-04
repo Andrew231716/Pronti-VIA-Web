@@ -217,25 +217,118 @@ function ensureUi() {
   chip.innerHTML = `
     <div class="pv-account-chip-main">
       <span class="pv-account-chip-who">Ciao, <strong id="pv-account-chip-label"></strong></span>
-      <button type="button" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false">Menu</button>
+      <span class="pv-account-chip-hint" id="pv-account-chip-hint">Pronti? VIA!</span>
     </div>
   `;
   document.body.appendChild(chip);
+
+  // Primary nav — schema: Home · Viaggi · HUB · Assistente IA · Profilo
+  const nav = document.createElement("nav");
+  nav.id = "pv-primary-nav";
+  nav.hidden = true;
+  nav.setAttribute("aria-label", "Navigazione principale");
+  nav.innerHTML = `
+    <div class="pv-primary-nav-inner" role="toolbar">
+      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page" title="Home — panoramica e nuovo viaggio">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
+        </span>
+        <span class="pv-nav-label">Home</span>
+      </button>
+      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips" title="Viaggi — itinerario o elenco">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h9l2 4H7l2-4z"/><path d="M7 8v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
+        </span>
+        <span class="pv-nav-label">Viaggi</span>
+      </button>
+      <button type="button" class="pv-nav-item pv-nav-hub" data-nav="hub" id="pv-hub-nav" aria-haspopup="dialog" aria-expanded="false" title="HUB — collabora con il gruppo">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19"/><path d="M14 14.2c1.5-.7 3.2-.5 4.8.8.6.5 1 1.2 1.2 2"/></svg>
+        </span>
+        <span class="pv-nav-label">HUB</span>
+      </button>
+      <button type="button" class="pv-nav-item pv-nav-ai" data-nav="ai" id="pv-nav-ai" aria-haspopup="dialog" aria-expanded="false" title="Assistente IA — bacchetta magica">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.2 4.2L17.5 8.5 13.2 9.8 12 14l-1.2-4.2L6.5 8.5l4.3-1.3L12 3z"/><path d="M18.5 14.5 19 16l1.5.5L19 17l-.5 1.5L18 17l-1.5-.5L18 16l.5-1.5z"/></svg>
+        </span>
+        <span class="pv-nav-label">IA</span>
+      </button>
+      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e strumenti">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/><circle cx="18.2" cy="6.2" r="2" /><path d="M17.2 6.2h2M18.2 5.2v2"/></svg>
+        </span>
+        <span class="pv-nav-label">Profilo</span>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(nav);
 
   gate.querySelectorAll("[data-mode]").forEach((button) => {
     button.addEventListener("click", () => setMode(button.dataset.mode));
   });
 
   gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
-  chip.querySelector("#pv-account-menu").addEventListener("click", () => {
+
+  function setNavCurrent(which) {
+    nav.querySelectorAll(".pv-nav-item").forEach((btn) => {
+      const on = btn.dataset.nav === which;
+      btn.classList.toggle("is-active", on);
+      if (on) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    });
+  }
+  window.__pvSetPrimaryNav = setNavCurrent;
+
+  // Hub open/close is owned by pv-platform (bindHubTrigger). Fallback only if unbound.
+  nav.querySelector("#pv-hub-nav").addEventListener("click", () => {
+    setNavCurrent("hub");
+    const hub = document.getElementById("pv-hub-nav");
+    if (hub?.dataset?.pvHubBound === "1") return;
+    if (typeof window.ProntiPlatform?.open === "function") {
+      window.ProntiPlatform.open();
+      return;
+    }
+    document.getElementById("pv-plat-fab")?.click();
+  });
+
+  nav.querySelector("#pv-nav-home").addEventListener("click", () => {
+    setNavCurrent("home");
+    if (typeof window.__pvNavHome === "function") {
+      window.__pvNavHome();
+      return;
+    }
+    if (location.hash) location.hash = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  nav.querySelector("#pv-nav-trips").addEventListener("click", () => {
+    setNavCurrent("trips");
+    if (typeof window.__pvNavTrips === "function") {
+      window.__pvNavTrips();
+      return;
+    }
+    document.querySelector('a[href*="I tuoi"], button, a')?.blur();
+  });
+
+  nav.querySelector("#pv-nav-ai").addEventListener("click", () => {
+    setNavCurrent("ai");
+    if (typeof window.__pvNavAi === "function") {
+      window.__pvNavAi();
+      return;
+    }
+    document.getElementById("pv-magic-open")?.click();
+  });
+
+  nav.querySelector("#pv-account-menu").addEventListener("click", () => {
+    setNavCurrent("profile");
     if (typeof window.__pvOpenAccountMenu === "function") {
       window.__pvOpenAccountMenu();
       return;
     }
-    // Fallback if ux-suite is not loaded yet.
     const choice = window.confirm("Esci dall’account?");
     if (choice) onLogout();
   });
+
   // Kept for programmatic use / older hooks.
   window.__pvAccountLogout = onLogout;
   window.__pvAccountDelete = onDeleteAccount;
@@ -261,7 +354,9 @@ function showGate(message = "") {
   const gate = document.getElementById("pv-account-gate");
   gate.hidden = false;
   document.getElementById("pv-account-chip").hidden = true;
-  document.body.classList.remove("pv-account-ready");
+  const nav = document.getElementById("pv-primary-nav");
+  if (nav) nav.hidden = true;
+  document.body.classList.remove("pv-account-ready", "pv-primary-nav-ready");
   document.getElementById("pv-account-error").textContent = message;
   document.documentElement.style.overflow = "hidden";
 }
@@ -278,7 +373,9 @@ function showChip() {
   const label = document.getElementById("pv-account-chip-label");
   label.textContent = state.user?.displayName || state.user?.username || "Account";
   chip.hidden = false;
-  document.body.classList.add("pv-account-ready");
+  const nav = document.getElementById("pv-primary-nav");
+  if (nav) nav.hidden = false;
+  document.body.classList.add("pv-account-ready", "pv-primary-nav-ready");
 }
 
 async function upsertLocalUser(usernameRaw, password, displayName) {
@@ -692,10 +789,12 @@ function clearGuestSession() {
   state.user = null;
   try {
     document.getElementById("pv-account-chip").hidden = true;
+    const nav = document.getElementById("pv-primary-nav");
+    if (nav) nav.hidden = true;
   } catch {
     /* ignore */
   }
-  document.body.classList.remove("pv-account-ready");
+  document.body.classList.remove("pv-account-ready", "pv-primary-nav-ready");
   return true;
 }
 

@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104b
+ * Stamp: 20261104j — Hub tab groups + quieter local banner + home cards
  */
 (() => {
-  const VER = "20261104b";
+  const VER = "20261104j";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -317,7 +317,10 @@
   --pv-plat-border: rgba(231,242,243,.12);
   --pv-plat-shadow: 0 12px 32px rgba(0,0,0,.35);
 }
-/* Hub FAB lives on the LEFT so it never covers Pronty (bacchetta) / Preventivo on the right. */
+/*
+  Hub lives in the primary bottom nav (#pv-hub-nav). Floating FAB is fallback only
+  when the nav is missing (e.g. early boot) — then keep it bottom-left clear of Pronty.
+*/
 #pv-plat-fab {
   position: fixed; z-index: 120100;
   left: max(12px, env(safe-area-inset-left, 0px));
@@ -329,25 +332,27 @@
   transition: opacity .2s ease, transform .16s ease;
 }
 #pv-plat-fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
-/* While Pronty sheet is open, hide Hub so it does not fight the sheet/FABs. */
-body.pv-magic-open #pv-plat-fab {
-  opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;
+body.pv-hub-nav-ready #pv-plat-fab {
+  display: none !important;
 }
-body.pv-plat-open #pv-offline-chip {
-  bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+body.pv-magic-open #pv-plat-fab,
+body.pv-magic-open #pv-hub-nav {
+  opacity: 0.55;
 }
 #pv-plat-panel {
   position: fixed; z-index: 120150; inset: auto 0 0 0;
-  max-height: min(88vh, 920px);
-  background: var(--pv-plat-bg); color: var(--pv-plat-ink);
-  border-radius: 20px 20px 0 0; box-shadow: var(--pv-plat-shadow);
-  padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
+  max-height: min(90vh, 940px);
+  background: #eef3f5; color: var(--pv-plat-ink);
+  border-radius: 26px 26px 0 0; box-shadow: 0 -12px 48px rgba(12,40,48,.16);
+  border-top: 1px solid var(--pv-plat-border);
+  padding: 14px 14px calc(88px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
-  /* Resting open pose — tab content swaps must NOT re-run enter animation. */
   transform: translateY(0); opacity: 1;
 }
+body:not(.pv-primary-nav-ready) #pv-plat-panel {
+  padding-bottom: calc(16px + env(safe-area-inset-bottom));
+}
 #pv-plat-panel.open { display: block; }
-/* Enter animation only while .pv-plat-entering is present (toggled on open). */
 #pv-plat-panel.open.pv-plat-entering {
   transform: translateY(14px); opacity: 0;
 }
@@ -358,24 +363,63 @@ body.pv-plat-open #pv-offline-chip {
   #pv-plat-fab, #pv-plat-panel { transition: none !important; }
   #pv-plat-panel.open.pv-plat-entering { transform: none; opacity: 1; }
 }
+@media (min-width: 900px) {
+  #pv-plat-panel {
+    left: 50%; right: auto; width: min(720px, calc(100vw - 48px));
+    transform: translateX(-50%);
+    border-radius: 22px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    max-height: min(78vh, 820px);
+    padding-bottom: 18px;
+  }
+  #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(14px); }
+}
 #pv-plat-body { min-height: 120px; }
 #pv-plat-body.pv-plat-body-busy { opacity: .72; }
 #pv-plat-panel .pv-plat-head {
-  display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;
+  padding: 4px 2px 10px; border-bottom: 1px solid rgba(20,52,58,.08);
 }
-#pv-plat-panel .pv-plat-head strong { flex:1; font:700 16px/1.2 Georgia, "Times New Roman", serif; }
-#pv-plat-panel .pv-plat-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+#pv-plat-panel .pv-plat-head > div { flex:1; min-width:0; }
+#pv-plat-panel .pv-plat-head strong {
+  display:block; font:700 1.2rem/1.25 system-ui,sans-serif; color: var(--pv-plat-ink);
+  letter-spacing: -0.01em;
+}
+#pv-plat-panel .pv-plat-head .pv-plat-lead {
+  margin:4px 0 0; font:400 0.84rem/1.45 system-ui,sans-serif; color: var(--pv-plat-muted);
+}
+#pv-plat-panel .pv-plat-tab-groups {
+  display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px;
+  padding:4px; border-radius:14px; background: rgba(20,52,58,.06);
+}
+#pv-plat-panel .pv-plat-tab-groups button {
+  border:0; background:transparent; color: var(--pv-plat-muted);
+  border-radius: 11px; padding: 10px 12px; min-height:40px;
+  font: 700 13px/1.2 system-ui,sans-serif; cursor:pointer;
+}
+#pv-plat-panel .pv-plat-tab-groups button.on {
+  background: #fff; color: var(--pv-plat-accent);
+  box-shadow: 0 2px 8px rgba(16,42,48,.08);
+}
+#pv-plat-panel .pv-plat-tabs {
+  display:flex; flex-wrap:nowrap; gap:6px; margin:0 0 12px; overflow-x:auto;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0 6px;
+}
+#pv-plat-panel .pv-plat-tabs::-webkit-scrollbar { display:none; }
 #pv-plat-panel .pv-plat-tabs button, .pv-plat-btn {
   border:1px solid var(--pv-plat-border); background: var(--pv-plat-card);
   color: var(--pv-plat-ink); border-radius: 999px; padding: 8px 12px;
-  font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px;
+  font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
+  box-shadow: 0 1px 0 rgba(16,42,48,.04);
 }
+#pv-plat-panel .pv-plat-tabs button[hidden] { display:none !important; }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
   background: var(--pv-plat-card); border:1px solid var(--pv-plat-border);
-  border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
+  border-radius: 18px; padding: 14px 16px; margin-bottom: 12px;
+  box-shadow: 0 6px 18px rgba(16,42,48,.05);
 }
-.pv-plat-card h3 { margin:0 0 6px; font:700 14px/1.3 Georgia,serif; }
+.pv-plat-card h3 { margin:0 0 6px; font:700 14px/1.3 system-ui,sans-serif; }
 .pv-plat-muted { color: var(--pv-plat-muted); font: 400 12px/1.45 system-ui,sans-serif; }
 .pv-plat-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
 .pv-plat-stat { padding:10px; border-radius:12px; background: rgba(0,125,130,.08); }
@@ -403,8 +447,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 }
 @media (min-width: 860px) {
   #pv-plat-panel {
-    inset: 72px auto auto 24px; width: min(440px, 92vw); max-height: calc(100vh - 96px);
-    border-radius: 18px; bottom: auto;
+    inset: 64px 24px auto auto; width: min(460px, 92vw); max-height: calc(100vh - 88px);
+    border-radius: 18px; bottom: auto; left: auto;
+    box-shadow: var(--pv-plat-shadow); border: 1px solid var(--pv-plat-border);
   }
   #pv-plat-fab { bottom: 24px; left: 24px; right: auto; }
 }
@@ -502,16 +547,32 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   /* ---------- UI shell ---------- */
   let activeTab = "dash";
+  function bindHubTrigger(el) {
+    if (!el || el.dataset.pvHubBound === "1") return el;
+    el.dataset.pvHubBound = "1";
+    el.addEventListener("click", () => togglePanel());
+    return el;
+  }
   function ensureFab() {
-    if (document.getElementById("pv-plat-fab")) return;
-    const fab = document.createElement("button");
+    // Preferred: Hub in the primary bottom nav (integrated navigation).
+    const nav = document.getElementById("pv-hub-nav");
+    if (nav) {
+      document.body.classList.add("pv-hub-nav-ready");
+      document.getElementById("pv-plat-fab")?.remove();
+      bindHubTrigger(nav);
+      return nav;
+    }
+    document.body.classList.remove("pv-hub-nav-ready");
+    let fab = document.getElementById("pv-plat-fab");
+    if (fab) return bindHubTrigger(fab);
+    fab = document.createElement("button");
     fab.id = "pv-plat-fab";
     fab.type = "button";
-    fab.title = "Hub Pronti? VIA!";
-    fab.setAttribute("aria-label", "Apri hub piattaforma");
+    fab.title = "Hub · Collabora";
+    fab.setAttribute("aria-label", "Apri Hub collaborativo");
     fab.textContent = "Hub";
-    fab.addEventListener("click", () => togglePanel());
     document.body.appendChild(fab);
+    return bindHubTrigger(fab);
   }
   let panelRenderSeq = 0;
   function playPanelEnter(panel) {
@@ -530,39 +591,89 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       });
     });
   }
+  const HUB_GROUPS = {
+    collab: {
+      label: "Collabora",
+      tabs: [
+        ["dash", "Panoramica"],
+        ["polls", "Votazioni"],
+        ["prep", "Preparazione"],
+        ["stats", "Numeri"],
+      ],
+    },
+    trip: {
+      label: "Organizza",
+      tabs: [
+        ["cal", "Calendario"],
+        ["archive", "Ricordi"],
+        ["backup", "Backup"],
+        ["settings", "Impostazioni"],
+      ],
+    },
+  };
+  let activeGroup = "collab";
+  function groupForTab(tab) {
+    if (HUB_GROUPS.trip.tabs.some(([id]) => id === tab)) return "trip";
+    return "collab";
+  }
   function ensurePanelChrome(panel) {
-    if (panel.querySelector("#pv-plat-body")) return;
-    const tabs = [
-      ["dash", "Dashboard"],
-      ["polls", "Voti"],
-      ["prep", "Preparazione"],
-      ["stats", "Statistiche"],
-      ["cal", "Calendario"],
-      ["archive", "Archivio"],
-      ["backup", "Backup"],
-      ["settings", "Impostazioni"],
-    ];
+    // Recreate if older single-row chrome (pre-grouping).
+    if (panel.querySelector("#pv-plat-body") && panel.querySelector(".pv-plat-tab-groups")) return;
+    activeGroup = groupForTab(activeTab);
+    const allTabs = [...HUB_GROUPS.collab.tabs, ...HUB_GROUPS.trip.tabs];
     panel.innerHTML = `
       <div class="pv-plat-head">
-        <strong>Pronti? VIA! Hub</strong>
-        <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi">Chiudi</button>
+        <div>
+          <strong>HUB · Collaborazione</strong>
+          <p class="pv-plat-lead">Tutto ciò che fate insieme: voti, cose da preparare, numeri e copie di sicurezza.</p>
+        </div>
+        <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
-      <div class="pv-plat-tabs">${tabs
-        .map(([id, label]) => `<button type="button" data-tab="${id}">${label}</button>`)
+      <div class="pv-plat-tab-groups" role="tablist" aria-label="Aree Hub">
+        ${Object.entries(HUB_GROUPS)
+          .map(
+            ([id, g]) =>
+              `<button type="button" class="pv-plat-group${id === activeGroup ? " on" : ""}" data-plat-group="${id}">${g.label}</button>`
+          )
+          .join("")}
+      </div>
+      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${allTabs
+        .map(
+          ([id, label]) =>
+            `<button type="button" role="tab" data-tab="${id}" data-group="${groupForTab(id)}" hidden>${label}</button>`
+        )
         .join("")}</div>
       <div id="pv-plat-body"></div>
     `;
     panel.querySelector("[data-plat=close]")?.addEventListener("click", () => togglePanel(false));
+    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const g = btn.dataset.platGroup;
+        if (g === activeGroup) return;
+        activeGroup = g;
+        const first = HUB_GROUPS[g].tabs[0][0];
+        if (!HUB_GROUPS[g].tabs.some(([id]) => id === activeTab)) activeTab = first;
+        syncTabButtons(panel);
+        void renderPanel({ tabSwitch: true });
+      });
+    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
+        activeGroup = groupForTab(activeTab);
         void renderPanel({ tabSwitch: true });
       });
     });
   }
   function syncTabButtons(panel) {
+    activeGroup = groupForTab(activeTab);
+    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.platGroup === activeGroup);
+    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
+      const inGroup = btn.dataset.group === activeGroup;
+      btn.hidden = !inGroup;
       btn.classList.toggle("on", btn.dataset.tab === activeTab);
     });
   }
@@ -579,8 +690,14 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const wasOpen = panel.classList.contains("open");
     panel.classList.toggle("open", open);
     document.body.classList.toggle("pv-plat-open", open);
-    const fab = document.getElementById("pv-plat-fab");
-    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    for (const id of ["pv-hub-nav", "pv-plat-fab"]) {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    if (open && typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("hub");
+    if (!open && typeof window.__pvSetPrimaryNav === "function") {
+      window.__pvSetPrimaryNav(document.body.classList.contains("pv-trip-open") ? "trips" : "home");
+    }
     if (open) {
       if (!wasOpen) playPanelEnter(panel);
       void renderPanel({ tabSwitch: wasOpen });
@@ -683,23 +800,25 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
         <p class="pv-plat-muted">${escapeHtml(trip.destination || "Destinazione da definire")}</p>
         <div class="pv-plat-grid" style="margin-top:10px">
-          <div class="pv-plat-stat"><b>${dLeft == null ? "—" : dLeft >= 0 ? dLeft + "g" : "via"}</b><span>Alla partenza</span></div>
+          <div class="pv-plat-stat"><b>${
+            dLeft == null ? "—" : dLeft > 0 ? `tra ${dLeft} gg` : dLeft === 0 ? "oggi" : "concluso"
+          }</b><span>Partenza</span></div>
           <div class="pv-plat-stat"><b>${duration || "—"}</b><span>Giorni</span></div>
-          <div class="pv-plat-stat"><b>${members.length || 1}</b><span>Partecipanti</span></div>
+          <div class="pv-plat-stat"><b>${members.length || 1}</b><span>In gruppo</span></div>
           <div class="pv-plat-stat"><b>${euro(spent)}</b><span>Spese</span></div>
         </div>
-        <p class="pv-plat-muted" style="margin-top:8px">Budget ${euro(budget)} · residuo ${euro(budget - spent)}</p>
+        <p class="pv-plat-muted" style="margin-top:8px">Budget ${euro(budget)} · resta ${euro(Math.max(0, budget - spent))}</p>
       </div>
       <div class="pv-plat-card">
-        <h3>Attività da completare</h3>
-        <ul class="pv-plat-list">${(todos.length ? todos : ["Tutto in ordine per ora."])
+        <h3>Prossimi passi</h3>
+        <ul class="pv-plat-list">${(todos.length ? todos : ["Niente di urgente — puoi esplorare le sezioni qui sotto."])
           .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>
         <div class="pv-plat-actions">
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">Preparazione</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">Votazioni</button>
-          <button type="button" class="pv-plat-btn" data-plat="optimize">Ottimizza tappe</button>
           <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">Mappa</a>
+          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">Riordina tappe</button>
         </div>
       </div>`;
   }
@@ -940,16 +1059,16 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderBackup() {
     return `<div class="pv-plat-card">
-      <h3>Backup e ripristino</h3>
-      <p class="pv-plat-muted">Export indipendente da hosting/DB. Prima dell'import vedi un riepilogo; nessuna sovrascrittura cieca.</p>
+      <h3>Copia di sicurezza</h3>
+      <p class="pv-plat-muted">Scarica una copia del viaggio sul tuo dispositivo. Se importi un file, vedi prima un riepilogo: niente sovrascritture a sorpresa.</p>
       <div class="pv-plat-actions">
-        <button type="button" class="pv-plat-btn" data-plat="backup-export">Scarica backup JSON</button>
+        <button type="button" class="pv-plat-btn" data-plat="backup-export">Scarica copia</button>
       </div>
-      <label class="pv-plat-muted">Importa file backup
+      <label class="pv-plat-muted">Ripristina da file
         <input class="pv-plat-input" id="pv-backup-file" type="file" accept="application/json,.json" />
       </label>
       <pre id="pv-backup-summary" class="pv-plat-muted" style="white-space:pre-wrap"></pre>
-      <button type="button" class="pv-plat-btn" data-plat="backup-apply" hidden>Applica merge sicuro</button>
+      <button type="button" class="pv-plat-btn" data-plat="backup-apply" hidden>Ripristina senza cancellare tutto</button>
     </div>`;
   }
 
@@ -957,23 +1076,36 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
+    const pending = Array.isArray(outbox) ? outbox.length : 0;
     return `<div class="pv-plat-card">
       <h3>Aspetto</h3>
       <label class="pv-plat-muted">Tema
         <select class="pv-plat-input" id="pv-theme">
-          <option value="system" ${theme === "system" ? "selected" : ""}>Sistema</option>
+          <option value="system" ${theme === "system" ? "selected" : ""}>Come il telefono</option>
           <option value="light" ${theme === "light" ? "selected" : ""}>Chiaro</option>
           <option value="dark" ${theme === "dark" ? "selected" : ""}>Scuro</option>
         </select>
       </label>
-      <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica tema</button>
-      <p class="pv-plat-muted" style="margin-top:10px">Versione hub ${VER} · online: ${
-      navigator.onLine ? "sì" : "no"
-    } · in coda sync: ${outbox.length}</p>
-      <p class="pv-plat-muted">La coda riprova i PUT locali/falliti finché il server non conferma. Non dichiara sync senza conferma.</p>
-      <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova sincronizzazione</button>
-      <p class="pv-plat-muted" style="margin-top:10px"><strong>Ruoli:</strong> proprietario / amministratore / collaboratore / visualizzatore.
-      Enforcement UI + header <code>X-Pronti-Member-Id</code>. Limite: con sola edit-key condivisa il server non può autenticare criptograficamente il membro senza tale header.</p>
+      <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica</button>
+      <h3 style="margin-top:16px">Sincronizzazione</h3>
+      <p class="pv-plat-muted">${
+        navigator.onLine
+          ? pending
+            ? `${pending} modifiche in attesa di conferma dal server.`
+            : "Online — tutto sincronizzato per ora."
+          : "Offline — le modifiche restano su questo dispositivo finché torni online."
+      }</p>
+      <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova ora</button>
+      <details style="margin-top:14px">
+        <summary class="pv-plat-muted" style="cursor:pointer">Chi può fare cosa</summary>
+        <p class="pv-plat-muted" style="margin-top:8px">
+          <strong>Proprietario</strong> gestisce tutto ·
+          <strong>Amministratore</strong> invita e modifica ·
+          <strong>Collaboratore</strong> modifica contenuti ·
+          <strong>Visualizzatore</strong> legge e vota.
+        </p>
+      </details>
+      <p class="pv-plat-muted" style="margin-top:10px;font-size:11px">Hub ${VER}</p>
     </div>`;
   }
 
@@ -1345,6 +1477,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     injectCss();
     applyTheme();
     ensureFab();
+    // Chip may mount after platform boot — rebind when account becomes ready.
+    const mo = new MutationObserver(() => {
+      if (document.getElementById("pv-hub-nav")) ensureFab();
+    });
+    mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));
     window.addEventListener("pv-outbox-changed", () => {
       /* badge refresh when settings open */
