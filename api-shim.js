@@ -259,11 +259,20 @@
     return m ? m[1].trim() : "";
   }
 
+  function isEphemeralPersistence(data) {
+    if (!data || typeof data !== "object") return false;
+    if (data.local === true) return true;
+    if (data.durable === false) return true;
+    const src = String(data.source || "").toLowerCase();
+    return src === "memory";
+  }
+
   function cacheTripRecord(id, record) {
     if (!id || !record?.trip) return;
     const db = readLocalTrips();
     // Never persist private budget into the shared/local trip blob.
     const sharedTrip = { ...record.trip, budget: 0 };
+    const ephemeral = isEphemeralPersistence(record);
     db[id] = {
       id,
       key: record.key || db[id]?.key || "",
@@ -272,13 +281,31 @@
       revision: record.revision || 1,
       canEdit: record.canEdit !== false,
       updated: record.updated || new Date().toISOString(),
-      // Explicit cloud sync (local:false) must clear a prior local-only flag.
-      local:
-        record.local === false
+      source: record.source || db[id]?.source || "",
+      // Explicit durable cloud sync clears a prior local-only flag.
+      // Memory/ephemeral backends must stay local:true so UI never claims cloud save.
+      local: ephemeral
+        ? true
+        : record.local === false
           ? false
           : Boolean(record.local || db[id]?.local),
     };
     writeLocalTrips(db);
+    try {
+      window.dispatchEvent(
+        new CustomEvent("pv-save-status", {
+          detail: {
+            tripId: id,
+            local: db[id].local,
+            source: db[id].source || (db[id].local ? "local" : "server"),
+            revision: db[id].revision,
+            at: Date.now(),
+          },
+        })
+      );
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Seed trip from share-hash payload so recipients can open shared trips. */
@@ -1380,11 +1407,16 @@
                   canEdit: data.canEdit,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
+                  source: data.source,
+                  durable: data.durable,
+                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
               }
               if (method === "POST" && data?.id && data?.trip) {
-                cacheTripRecord(data.id, { ...data, local: false });
+                cacheTripRecord(data.id, {
+                  ...data,
+                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
+                });
               }
               if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
                 cacheTripRecord(id, {
@@ -1394,7 +1426,9 @@
                   canEdit: true,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
+                  source: data.source,
+                  durable: data.durable,
+                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
               }
               if (method === "DELETE" && (data?.deleted || data?.ok)) {
@@ -1431,7 +1465,12 @@
             if (filesPath && method === "GET" && !filesParts[2] && !Array.isArray(data?.files)) {
               return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
             }
-            if (method === "POST" && data?.id) cacheTripRecord(data.id, { ...data, local: false });
+            if (method === "POST" && data?.id) {
+              cacheTripRecord(data.id, {
+                ...data,
+                local: isEphemeralPersistence(data) ? true : Boolean(data.local),
+              });
+            }
             if (method === "GET" && !filesPath) {
               const id = data.id || tripIdHint;
               if (id && data?.trip) {
@@ -1442,7 +1481,9 @@
                   canEdit: data.canEdit,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
+                  source: data.source,
+                  durable: data.durable,
+                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
               }
             }
@@ -1456,7 +1497,9 @@
                   canEdit: true,
                   key: bearerKey(writeInit),
                   updated: data.updated,
-                  local: false,
+                  source: data.source,
+                  durable: data.durable,
+                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
               }
             }

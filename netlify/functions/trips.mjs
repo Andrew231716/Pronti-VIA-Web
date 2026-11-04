@@ -8,12 +8,39 @@ import { createKv } from "./_store.mjs";
 const TRIPS_BASE =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-};
+const ALLOWED_ORIGINS = [
+  "https://andrew231716.github.io",
+  "https://pronti-via-k7es.netlify.app",
+];
+
+function corsHeadersFor(event) {
+  const origin = event?.headers?.origin || event?.headers?.Origin || "";
+  const allow =
+    ALLOWED_ORIGINS.includes(origin) ||
+    /^https:\/\/[a-z0-9-]+\.netlify\.app$/i.test(origin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
+      ? origin || ALLOWED_ORIGINS[0]
+      : ALLOWED_ORIGINS[0];
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
+let corsHeaders = corsHeadersFor(null);
+
+function persistenceFlags(saved) {
+  const backend = saved?.backend || "store";
+  const memoryOnly = backend === "memory";
+  return {
+    source: backend,
+    local: memoryOnly,
+    durable: !memoryOnly,
+  };
+}
 
 function json(status, body) {
   return {
@@ -137,6 +164,7 @@ async function storeHandler(event, path) {
       source: "store",
     };
     const saved = await tripsKv.setJSON(`trip:${newId}`, record);
+    const persist = persistenceFlags(saved);
     return json(200, {
       id: newId,
       key,
@@ -144,8 +172,7 @@ async function storeHandler(event, path) {
       trip: record.trip,
       revision: 1,
       canEdit: true,
-      local: false,
-      source: saved.backend || "store",
+      ...persist,
     });
   }
 
@@ -202,7 +229,8 @@ async function storeHandler(event, path) {
       updated: new Date().toISOString(),
       source: "store",
     };
-    await tripsKv.setJSON(`trip:${id}`, updated);
+    const saved = await tripsKv.setJSON(`trip:${id}`, updated);
+    const persist = persistenceFlags(saved);
     return json(200, {
       id,
       key: record.key,
@@ -210,8 +238,7 @@ async function storeHandler(event, path) {
       trip: updated.trip,
       revision: updated.revision,
       canEdit: true,
-      local: false,
-      source: "store",
+      ...persist,
     });
   }
 
@@ -225,6 +252,7 @@ async function storeHandler(event, path) {
 }
 
 export async function handler(event) {
+  corsHeaders = corsHeadersFor(event);
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }
