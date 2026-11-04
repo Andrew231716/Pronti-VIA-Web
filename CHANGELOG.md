@@ -1,5 +1,20 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104b] — 2026-11-04
+
+### Release candidate remediation
+- **B1:** toast SPA allineato a persistenza reale (`Salvato e sincronizzato` / `Salvato su questo dispositivo…` / errore / 409). Helper `__pvSaveToast` / `__pvCreateToast` in `api-shim` + `lib/sync-state.mjs`.
+- **Outbox Hub:** coda reale `viavia-platform-outbox-v1` con flush solo dopo conferma server.
+- **Ruoli:** soft enforcement Hub + `trips.mjs` (403); limiti in `docs/ROLE_LIMITS.md`.
+- **CORS:** `lib/cors.mjs` (Pages, Netlify, `*.vercel.app`, localhost) — nessun wildcard `*`.
+- Stamp asset/shell `20261104b`.
+- Test: `test-rc-20261104b.mjs` + Playwright `e2e/run-rc-playwright.mjs`.
+- Docs: `RELEASE_AUDIT.md`, `BUGS_AND_REGRESSIONS.md`, `E2E_TEST_PLAN.md` aggiornati — verdetto **PASS** (candidato), no auto-merge.
+
+### Notes
+- Nessun servizio a pagamento aggiunto.
+- Compatibilità dati: ruoli in `trip.meta.roles`; legacy allow senza member header.
+
 ## [20261104a] — 2026-11-04
 
 ### Security

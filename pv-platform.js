@@ -1,16 +1,61 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104a
+ * Stamp: 20261104b
  */
 (() => {
-  const VER = "20261104a";
+  const VER = "20261104b";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
   const REMINDERS_LOCAL = "viavia-reminders-local-v1";
   const ARCHIVE_KEY = "viavia-archive-index-v1";
   const FX_CACHE_KEY = "viavia-fx-cache-v1";
+
+  const ROLE_PERMS = {
+    owner: ["edit", "invite", "roles", "delete", "expenses", "stops", "docs", "polls", "checklist", "polls-vote"],
+    admin: ["edit", "invite", "expenses", "stops", "docs", "polls", "checklist", "polls-vote"],
+    member: ["edit", "expenses", "stops", "polls", "checklist", "polls-vote"],
+    readonly: ["docs-read", "polls-vote"],
+  };
+  function normalizeRole(role) {
+    const r = String(role || "").toLowerCase();
+    if (r === "proprietario") return "owner";
+    if (r === "amministratore") return "admin";
+    if (r === "collaboratore") return "member";
+    if (r === "visualizzatore" || r === "viewer") return "readonly";
+    if (ROLE_PERMS[r]) return r;
+    return "member";
+  }
+  function canRole(role, permission) {
+    const list = ROLE_PERMS[normalizeRole(role)] || [];
+    return list.includes(permission) || (permission === "polls-vote" && list.includes("polls"));
+  }
+  function currentIdentity() {
+    try {
+      const s = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return s?.user?.displayName || s?.user?.username || "";
+    } catch {
+      return "";
+    }
+  }
+  function memberIdForTrip(trip) {
+    const idn = currentIdentity().trim().toLowerCase();
+    if (!idn) return "";
+    for (const m of trip?.members || []) {
+      if (String(m?.name || "").trim().toLowerCase() === idn) return m.id || "";
+      if (String(m?.username || "").trim().toLowerCase() === idn) return m.id || "";
+    }
+    return "";
+  }
+  function roleForTrip(trip) {
+    const mid = memberIdForTrip(trip);
+    const roles = trip?.meta?.roles || {};
+    if (mid && roles[mid]) return normalizeRole(roles[mid]);
+    if ((trip?.members || [])[0]?.id && mid === trip.members[0].id) return "owner";
+    if (mid) return "member";
+    return "member"; // edit-key holder without member match: legacy collaborator
+  }
 
   /* ---------- tiny utils (mirrors lib/* for browser IIFE) ---------- */
   function escapeHtml(s) {
@@ -358,8 +403,18 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
   function onSaveEvent(detail) {
     if (!detail) return;
-    if (detail.local) showStatus("Salvato solo su questo dispositivo", "local");
-    else showStatus("Salvato sul server", "server");
+    if (detail.conflict || detail.message?.includes?.("Versione non aggiornata")) {
+      showStatus(detail.message || window.__pvSaveMsg?.CONFLICT || "Conflitto di versione", "error");
+      return;
+    }
+    const msg =
+      detail.message ||
+      (typeof window.__pvSaveToast === "function"
+        ? window.__pvSaveToast(detail)
+        : detail.local
+          ? "Salvato su questo dispositivo. In attesa di sincronizzazione"
+          : "Salvato e sincronizzato");
+    showStatus(msg, detail.local ? "local" : "server");
   }
 
   /* ---------- trip fetch/save ---------- */
@@ -374,30 +429,44 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
     return { auth, data, trip: data.trip || {} };
   }
-  async function saveTripMeta(mutator) {
+  async function saveTripMeta(mutator, { permission = "edit" } = {}) {
     const { auth, data, trip } = await fetchTrip();
     if (data.canEdit === false) throw new Error("Solo lettura: non puoi modificare.");
+    const role = roleForTrip(trip);
+    if (!canRole(role, permission)) {
+      throw new Error(`Operazione non consentita per il ruolo «${role}».`);
+    }
+    const memberId = memberIdForTrip(trip);
     const next = structuredClone ? structuredClone(trip) : JSON.parse(JSON.stringify(trip));
     next.meta = next.meta && typeof next.meta === "object" ? next.meta : {};
     mutator(next);
-    const body = { trip: next, revision: data.revision };
+    const body = { trip: next, revision: data.revision, actorMemberId: memberId || undefined };
     const run = async () => {
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${auth.key}`,
+      };
+      if (memberId) headers["X-Pronti-Member-Id"] = memberId;
       const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.key}`,
-        },
+        headers,
         body: JSON.stringify(body),
       });
       const out = await res.json().catch(() => ({}));
-      if (res.status === 409) throw new Error("Conflitto di versione: ricarica e riprova.");
-      if (!res.ok) throw new Error(out.error || "Salvataggio non riuscito");
-      if (out.local || out.source === "memory") {
-        showStatus("Salvato in locale (backend non durevole)", "local");
-      } else {
-        showStatus("Salvato sul server", "server");
+      if (res.status === 409) {
+        throw new Error(
+          window.__pvSaveMsg?.CONFLICT ||
+            "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte."
+        );
       }
+      if (!res.ok) throw new Error(out.error || "Salvataggio non riuscito");
+      const msg =
+        typeof window.__pvSaveToast === "function"
+          ? window.__pvSaveToast(out)
+          : out.local || out.source === "memory"
+            ? "Salvato su questo dispositivo. In attesa di sincronizzazione"
+            : "Salvato e sincronizzato";
+      showStatus(msg, out.local || out.source === "memory" ? "local" : "server");
       return out;
     };
     if (typeof window.__pvEnqueueTripWrite === "function") {
@@ -808,7 +877,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   function renderSettings() {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
-    const outbox = readJson(OUTBOX_KEY, []);
+    const outbox =
+      typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
     return `<div class="pv-plat-card">
       <h3>Aspetto</h3>
       <label class="pv-plat-muted">Tema
@@ -821,8 +891,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica tema</button>
       <p class="pv-plat-muted" style="margin-top:10px">Versione hub ${VER} · online: ${
       navigator.onLine ? "sì" : "no"
-    } · coda: ${outbox.length}</p>
+    } · in coda sync: ${outbox.length}</p>
+      <p class="pv-plat-muted">La coda riprova i PUT locali/falliti finché il server non conferma. Non dichiara sync senza conferma.</p>
       <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova sincronizzazione</button>
+      <p class="pv-plat-muted" style="margin-top:10px"><strong>Ruoli:</strong> proprietario / amministratore / collaboratore / visualizzatore.
+      Enforcement UI + header <code>X-Pronti-Member-Id</code>. Limite: con sola edit-key condivisa il server non può autenticare criptograficamente il membro senza tale header.</p>
     </div>`;
   }
 
@@ -1146,9 +1219,29 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       applyTheme(mode);
       showStatus("Tema aggiornato", "server");
     });
-    body.querySelector("[data-plat=flush-outbox]")?.addEventListener("click", () => {
-      writeJson(OUTBOX_KEY, []);
-      showStatus("Coda svuotata / sync ok", "server");
+    body.querySelector("[data-plat=flush-outbox]")?.addEventListener("click", async () => {
+      if (typeof window.__pvFlushOutbox !== "function") {
+        showStatus("Outbox non disponibile", "error");
+        return;
+      }
+      showStatus("Sincronizzazione in corso…", "pending");
+      const result = await window.__pvFlushOutbox();
+      if (result.flushed && !result.left) {
+        showStatus("Salvato e sincronizzato", "server");
+      } else if (result.flushed) {
+        showStatus(
+          `Sincronizzati ${result.flushed}, ancora in coda ${result.left}`,
+          "local"
+        );
+      } else if (result.left) {
+        showStatus(
+          `Ancora ${result.left} in coda (rete/conflitto). Non dichiarata sincronizzata.`,
+          "local"
+        );
+      } else {
+        showStatus("Nessuna operazione in coda", "server");
+      }
+      void renderPanel();
     });
   }
 
@@ -1175,8 +1268,16 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     applyTheme();
     ensureFab();
     window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));
-    window.addEventListener("online", () => showStatus("Di nuovo online", "server"));
-    window.addEventListener("offline", () => showStatus("Offline — modifiche in locale", "local"));
+    window.addEventListener("pv-outbox-changed", () => {
+      /* badge refresh when settings open */
+    });
+    window.addEventListener("online", () => {
+      showStatus("Di nuovo online — sincronizzazione…", "server");
+      if (typeof window.__pvFlushOutbox === "function") void window.__pvFlushOutbox();
+    });
+    window.addEventListener("offline", () =>
+      showStatus("Offline — le modifiche restano in coda locale", "local")
+    );
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyTheme());
     }
@@ -1186,6 +1287,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       splitEqualCents,
       expenseCents,
       validateBackup,
+      roleForTrip,
+      canRole,
       open: () => togglePanel(true),
     };
   }

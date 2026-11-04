@@ -29,6 +29,190 @@
   }
   window.__pvEnqueueTripWrite = enqueueTripWrite;
 
+  /* ---- Shared persistence honesty (mirrors lib/sync-state.mjs) ---- */
+  const OUTBOX_KEY = "viavia-platform-outbox-v1";
+  const SAVE_MSG = {
+    SERVER: "Salvato e sincronizzato",
+    LOCAL: "Salvato su questo dispositivo. In attesa di sincronizzazione",
+    ERROR: "Salvataggio non riuscito",
+    CONFLICT:
+      "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte.",
+    CREATE_SERVER: "Viaggio creato e sincronizzato. Conserva il link per ritrovarlo.",
+    CREATE_LOCAL:
+      "Viaggio creato su questo dispositivo. In attesa di sincronizzazione. Conserva il link.",
+  };
+
+  function classifyPersistence(data = {}) {
+    if (data && data.ok === false) return "error";
+    if (data.local === true || String(data.source || "").toLowerCase() === "memory") return "local";
+    if (data.durable === false) return "local";
+    const src = String(data.source || "").toLowerCase();
+    if (src === "blobs" || src === "file" || src === "supabase" || src === "store") return "server";
+    if (data.local === false) return "server";
+    return "pending";
+  }
+
+  function saveToastFromResponse(data = {}, { create = false } = {}) {
+    const status = classifyPersistence(data || {});
+    if (create) {
+      return status === "local" || status === "pending" ? SAVE_MSG.CREATE_LOCAL : SAVE_MSG.CREATE_SERVER;
+    }
+    if (status === "local" || status === "pending") return SAVE_MSG.LOCAL;
+    if (status === "error") return SAVE_MSG.ERROR;
+    return SAVE_MSG.SERVER;
+  }
+
+  function readOutbox() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(OUTBOX_KEY) || "[]");
+      return Array.isArray(raw) ? raw : [];
+    } catch {
+      return [];
+    }
+  }
+  function writeOutbox(q) {
+    try {
+      localStorage.setItem(OUTBOX_KEY, JSON.stringify((q || []).slice(0, 100)));
+    } catch {
+      /* quota */
+    }
+  }
+  function enqueueOutboxItem(item) {
+    const q = readOutbox().filter(
+      (x) => !(x.tripId && item.tripId && x.tripId === item.tripId && x.type === item.type)
+    );
+    q.unshift({
+      id: item.id || `op-${Date.now().toString(36)}`,
+      type: item.type || "trip-put",
+      tripId: item.tripId || "",
+      key: item.key || "",
+      revision: item.revision,
+      payload: item.payload ?? null,
+      createdAt: item.createdAt || new Date().toISOString(),
+      attempts: Number(item.attempts) || 0,
+    });
+    writeOutbox(q);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-outbox-changed", { detail: { count: q.length } }));
+    } catch {
+      /* ignore */
+    }
+  }
+  function clearOutboxTrip(tripId, type = "trip-put") {
+    const q = readOutbox().filter((x) => !(x.tripId === tripId && x.type === type));
+    writeOutbox(q);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-outbox-changed", { detail: { count: q.length } }));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function flushOutbox() {
+    if (!navigator.onLine) return { flushed: 0, left: readOutbox().length };
+    let q = readOutbox();
+    let flushed = 0;
+    const left = [];
+    for (const item of q) {
+      if (item.type !== "trip-put" || !item.tripId || !item.key || !item.payload) {
+        left.push(item);
+        continue;
+      }
+      try {
+        const res = await originalFetch(`/api/trips/${encodeURIComponent(item.tripId)}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${item.key}`,
+          },
+          body: JSON.stringify({
+            trip: item.payload,
+            revision: item.revision,
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 409) {
+          left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: "conflict" });
+          try {
+            window.dispatchEvent(
+              new CustomEvent("pv-save-status", {
+                detail: { tripId: item.tripId, conflict: true, message: SAVE_MSG.CONFLICT },
+              })
+            );
+          } catch {
+            /* ignore */
+          }
+          continue;
+        }
+        if (!res.ok) {
+          left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: data.error || "fail" });
+          continue;
+        }
+        const ephemeral =
+          data.local === true || String(data.source || "").toLowerCase() === "memory";
+        if (ephemeral) {
+          left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: "still-local" });
+          continue;
+        }
+        flushed += 1;
+        try {
+          window.dispatchEvent(
+            new CustomEvent("pv-save-status", {
+              detail: {
+                tripId: item.tripId,
+                local: false,
+                source: data.source || "server",
+                message: SAVE_MSG.SERVER,
+              },
+            })
+          );
+        } catch {
+          /* ignore */
+        }
+      } catch {
+        left.push({ ...item, attempts: (item.attempts || 0) + 1 });
+      }
+    }
+    writeOutbox(left);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-outbox-changed", { detail: { count: left.length } }));
+    } catch {
+      /* ignore */
+    }
+    return { flushed, left: left.length };
+  }
+
+  function noteWritePersistence(method, tripId, key, data, tripPayload, revision) {
+    if (!tripId) return;
+    const ephemeral =
+      !data ||
+      data.local === true ||
+      String(data.source || "").toLowerCase() === "memory" ||
+      data.durable === false;
+    if ((method === "PUT" || method === "PATCH") && ephemeral && tripPayload) {
+      enqueueOutboxItem({
+        type: "trip-put",
+        tripId,
+        key: key || "",
+        revision,
+        payload: tripPayload,
+      });
+    }
+    if ((method === "PUT" || method === "PATCH" || method === "POST") && data && !ephemeral) {
+      clearOutboxTrip(tripId, "trip-put");
+    }
+  }
+
+  window.__pvClassifyPersistence = classifyPersistence;
+  window.__pvSaveToast = (data) => saveToastFromResponse(data, { create: false });
+  window.__pvCreateToast = (data) => saveToastFromResponse(data, { create: true });
+  window.__pvSaveMsg = SAVE_MSG;
+  window.__pvFlushOutbox = flushOutbox;
+  window.__pvReadOutbox = readOutbox;
+  window.addEventListener("online", () => {
+    void flushOutbox();
+  });
+
   const originalFetch = window.fetch.bind(window);
   const onGitHubPages = /\.github\.io$/i.test(location.hostname);
   const sameOriginApiProxy =
@@ -265,6 +449,32 @@
     if (data.durable === false) return true;
     const src = String(data.source || "").toLowerCase();
     return src === "memory";
+  }
+
+  function tripPayloadFromInit(init) {
+    try {
+      const body = typeof init?.body === "string" ? JSON.parse(init.body) : null;
+      if (body?.trip && typeof body.trip === "object") return body.trip;
+      if (body && typeof body === "object" && !Array.isArray(body)) return body;
+    } catch {
+      /* ignore */
+    }
+    return null;
+  }
+
+  function trackTripWriteResult(method, tripId, init, data) {
+    const key = bearerKey(init);
+    const tripPayload = tripPayloadFromInit(init);
+    const rev = data?.revision ?? (typeof init?.body === "string"
+      ? (() => {
+          try {
+            return JSON.parse(init.body).revision;
+          } catch {
+            return undefined;
+          }
+        })()
+      : undefined);
+    noteWritePersistence(method, tripId, key, data, tripPayload, rev);
   }
 
   function cacheTripRecord(id, record) {
@@ -1417,6 +1627,7 @@
                   ...data,
                   local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
+                trackTripWriteResult(method, data.id, writeInit, data);
               }
               if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
                 cacheTripRecord(id, {
@@ -1430,6 +1641,7 @@
                   durable: data.durable,
                   local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
+                trackTripWriteResult(method, id, writeInit, data);
               }
               if (method === "DELETE" && (data?.deleted || data?.ok)) {
                 purgeLocalTrip(id || tripIdHint);
@@ -1470,6 +1682,7 @@
                 ...data,
                 local: isEphemeralPersistence(data) ? true : Boolean(data.local),
               });
+              trackTripWriteResult(method, data.id, writeInit, data);
             }
             if (method === "GET" && !filesPath) {
               const id = data.id || tripIdHint;
@@ -1501,6 +1714,7 @@
                   durable: data.durable,
                   local: isEphemeralPersistence(data) ? true : Boolean(data.local),
                 });
+                trackTripWriteResult(method, id, writeInit, data);
               }
             }
             if (method === "DELETE" && (data?.deleted || data?.ok || res.status === 200)) {
@@ -1530,7 +1744,24 @@
         return withPrivateBudgetResponse(res, tripIdHint);
       } catch {
         // All remote proxies failed — durable local fallback.
-        return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        const localRes = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        try {
+          if (
+            method === "PUT" ||
+            method === "PATCH" ||
+            method === "POST"
+          ) {
+            const data = await localRes.clone().json();
+            trackTripWriteResult(method, data.id || tripIdHint, writeInit, {
+              ...data,
+              local: true,
+              source: data.source || "local",
+            });
+          }
+        } catch {
+          /* ignore */
+        }
+        return localRes;
       }
     
       };

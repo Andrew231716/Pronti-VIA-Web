@@ -1,12 +1,7 @@
+import { corsHeadersFor } from "../../lib/cors.mjs";
+
 const UPSTREAM =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-};
 
 function upstreamPath(event) {
   const raw = String(event.path || event.rawPath || "");
@@ -22,6 +17,10 @@ function upstreamPath(event) {
 }
 
 export async function handler(event) {
+  const corsHeaders = corsHeadersFor(event, {
+    methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 204, headers: corsHeaders, body: "" };
   }

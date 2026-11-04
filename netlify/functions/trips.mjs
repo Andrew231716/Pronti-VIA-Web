@@ -4,30 +4,30 @@
  */
 import { randomBytes, randomUUID } from "node:crypto";
 import { createKv } from "./_store.mjs";
+import {
+  assertMutationAllowed,
+  permissionForMutation,
+  roleMapFromTrip,
+} from "../../lib/roles.mjs";
+import { corsHeadersFor as buildCors } from "../../lib/cors.mjs";
 
 const TRIPS_BASE =
   "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
 
-const ALLOWED_ORIGINS = [
-  "https://andrew231716.github.io",
-  "https://pronti-via-k7es.netlify.app",
-];
-
 function corsHeadersFor(event) {
-  const origin = event?.headers?.origin || event?.headers?.Origin || "";
-  const allow =
-    ALLOWED_ORIGINS.includes(origin) ||
-    /^https:\/\/[a-z0-9-]+\.netlify\.app$/i.test(origin) ||
-    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
-      ? origin || ALLOWED_ORIGINS[0]
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Max-Age": "86400",
-    Vary: "Origin",
-  };
+  return buildCors(event, {
+    methods: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
+}
+
+function actorMemberId(event, body) {
+  const header =
+    event.headers?.["x-pronti-member-id"] ||
+    event.headers?.["X-Pronti-Member-Id"] ||
+    "";
+  const fromBody = body?.actorMemberId || body?.memberId || "";
+  return String(header || fromBody || "").trim();
 }
 
 let corsHeaders = corsHeadersFor(null);
@@ -206,12 +206,26 @@ async function storeHandler(event, path) {
       return json(400, { error: "Dati viaggio non validi." });
     }
     const nextTrip = normalizeTripBody(body);
+    const memberId = actorMemberId(event, body);
+    const perm = permissionForMutation(method, {
+      trip: nextTrip,
+      __prevRoles: record.trip?.meta?.roles,
+    });
+    const gate = assertMutationAllowed(record.trip, memberId, perm);
+    if (!gate.ok) {
+      return json(403, {
+        error: gate.error || "Operazione non autorizzata per il tuo ruolo.",
+        role: gate.role,
+        permission: gate.permission,
+      });
+    }
     const serverRev = Number(record.revision) || 1;
     const clientRev = Number(body.revision);
     // Optimistic lock: reject stale PUTs so concurrent saves don't silently clobber.
     if (Number.isFinite(clientRev) && clientRev !== serverRev) {
       return json(409, {
-        error: "Versione non aggiornata. Ricarica e riprova.",
+        error:
+          "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte.",
         id,
         key: record.key,
         viewToken: record.viewToken,
@@ -222,6 +236,16 @@ async function storeHandler(event, path) {
         source: "store",
       });
     }
+    // Merge meta; when actor is declared without "roles" permission, keep existing roles.
+    const rolesGate = assertMutationAllowed(record.trip, memberId, "roles");
+    const mergedMeta = {
+      ...(record.trip?.meta && typeof record.trip.meta === "object" ? record.trip.meta : {}),
+      ...(nextTrip.meta && typeof nextTrip.meta === "object" ? nextTrip.meta : {}),
+    };
+    if (memberId && !rolesGate.ok) {
+      mergedMeta.roles = roleMapFromTrip(record.trip);
+    }
+    nextTrip.meta = mergedMeta;
     const updated = {
       ...record,
       trip: { ...nextTrip, budget: typeof nextTrip.budget === "number" ? nextTrip.budget : 0 },
@@ -244,6 +268,20 @@ async function storeHandler(event, path) {
 
   if (method === "DELETE") {
     if (!canEdit) return json(403, { error: "Solo chi ha la chiave di modifica può eliminare il viaggio." });
+    let body = {};
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch {
+      body = {};
+    }
+    const memberId = actorMemberId(event, body);
+    const gate = assertMutationAllowed(record.trip, memberId, "delete");
+    if (!gate.ok) {
+      return json(403, {
+        error: gate.error || "Solo il proprietario può eliminare il viaggio.",
+        role: gate.role,
+      });
+    }
     await tripsKv.del(`trip:${id}`);
     return json(200, { ok: true, id, deleted: true });
   }

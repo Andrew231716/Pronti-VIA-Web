@@ -1,5 +1,6 @@
 import { getStore } from "@netlify/blobs";
 import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { ALLOWED_ORIGINS, corsHeadersFor } from "../../lib/cors.mjs";
 
 // Sliding session: 30 days. Client must re-auth after expiry (was ~10 years).
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -24,29 +25,11 @@ function rateLimit(key, max = RATE_MAX_AUTH) {
   return bucket.count <= max;
 }
 
-const ALLOWED_ORIGINS = [
-  "https://andrew231716.github.io",
-  "https://pronti-via-k7es.netlify.app",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
-  "http://localhost:8888",
-  "http://127.0.0.1:8888",
-];
-
 function corsFor(event) {
-  const origin = event.headers?.origin || event.headers?.Origin || "";
-  const allow =
-    ALLOWED_ORIGINS.includes(origin) ||
-    /^https:\/\/[a-z0-9-]+\.netlify\.app$/i.test(origin) ||
-    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
-      ? origin
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allow || "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Vary": "Origin",
-  };
+  return corsHeadersFor(event, {
+    methods: "GET, POST, PUT, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
 }
 
 function getAccountStore() {

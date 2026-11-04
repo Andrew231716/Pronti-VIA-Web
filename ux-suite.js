@@ -346,10 +346,22 @@
       body: JSON.stringify({ trip, revision }),
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status === 409) {
+      throw new Error(
+        (typeof window.__pvSaveMsg?.CONFLICT === "string" && window.__pvSaveMsg.CONFLICT) ||
+          "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte."
+      );
+    }
     if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito");
     pushRevision(auth.id, data.revision, data.trip || trip);
     logActivity(auth.id, "Viaggio salvato");
-    toast("Salvato", "ok");
+    const msg =
+      typeof window.__pvSaveToast === "function"
+        ? window.__pvSaveToast(data)
+        : data.local || data.source === "memory"
+          ? "Salvato su questo dispositivo. In attesa di sincronizzazione"
+          : "Salvato e sincronizzato";
+    toast(msg, data.local || data.source === "memory" ? "warn" : "ok");
     return data;
   }
 

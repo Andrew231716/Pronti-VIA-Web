@@ -5,27 +5,13 @@
  */
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createKv } from "./_store.mjs";
-
-const ALLOWED_ORIGINS = [
-  "https://andrew231716.github.io",
-  "https://pronti-via-k7es.netlify.app",
-];
+import { corsHeadersFor as buildCors } from "../../lib/cors.mjs";
 
 function corsHeadersFor(event) {
-  const origin = event?.headers?.origin || event?.headers?.Origin || "";
-  const allow =
-    ALLOWED_ORIGINS.includes(origin) ||
-    /^https:\/\/[a-z0-9-]+\.netlify\.app$/i.test(origin) ||
-    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
-      ? origin || ALLOWED_ORIGINS[0]
-      : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-    "Access-Control-Max-Age": "86400",
-    Vary: "Origin",
-  };
+  return buildCors(event, {
+    methods: "GET, POST, DELETE, OPTIONS",
+    headers: "Content-Type, Authorization, X-Pronti-Member-Id",
+  });
 }
 
 const shareKv = createKv("pronti-via-shares");

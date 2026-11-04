@@ -9,7 +9,7 @@
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261104a";
+  const ASSET_VER = "20261104b";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
