@@ -1,0 +1,858 @@
+const SESSION_KEY = "viavia-account-v1";
+const USERS_KEY = "viavia-accounts-db-v1";
+const TRIPS_KEY = "viavia-recent-links-v1";
+const API = "/api/account";
+/** Client-side session ceiling (matches server 30d sliding). Local tokens keep 30d too. */
+const CLIENT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+
+const state = {
+  token: null,
+  user: null,
+  mode: "login",
+};
+
+function readJson(key, fallback) {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || "null");
+    return value == null ? fallback : value;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJson(key, value) {
+  if (value == null) localStorage.removeItem(key);
+  else localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readSession() {
+  const session = readJson(SESSION_KEY, null);
+  if (!session?.user?.username) return null;
+  const exp = Number(session.expiresAt);
+  if (Number.isFinite(exp) && Date.now() > exp) {
+    writeJson(SESSION_KEY, null);
+    return null;
+  }
+  // Legacy sessions without expiresAt: keep once, stamp a fresh 30d window.
+  if (!Number.isFinite(exp) && session.token) {
+    session.expiresAt = Date.now() + CLIENT_SESSION_TTL_MS;
+    writeJson(SESSION_KEY, session);
+  }
+  return session;
+}
+
+function writeSession(session) {
+  writeJson(SESSION_KEY, session);
+}
+
+function readUsers() {
+  const users = readJson(USERS_KEY, {});
+  return users && typeof users === "object" ? users : {};
+}
+
+function writeUsers(users) {
+  writeJson(USERS_KEY, users);
+}
+
+function readLocalTrips() {
+  const trips = readJson(TRIPS_KEY, []);
+  return Array.isArray(trips) ? trips : [];
+}
+
+function writeLocalTrips(trips) {
+  writeJson(TRIPS_KEY, trips.slice(0, 40));
+}
+
+function normalizeUsername(raw) {
+  return String(raw || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function mergeTrips(remote = [], local = []) {
+  const map = new Map();
+  for (const trip of [...remote, ...local]) {
+    if (!trip?.id || !trip?.key) continue;
+    const prev = map.get(trip.id);
+    if (!prev) {
+      map.set(trip.id, {
+        id: trip.id,
+        key: trip.key,
+        title: trip.title || "Viaggio",
+      });
+    } else if (trip.title && trip.title !== "Viaggio") {
+      prev.title = trip.title;
+      prev.key = trip.key || prev.key;
+    }
+  }
+  return [...map.values()].slice(0, 40);
+}
+
+function bufferToHex(buffer) {
+  return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToBuffer(hex) {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i += 1) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes.buffer;
+}
+
+async function hashPassword(password, saltHex) {
+  const enc = new TextEncoder();
+  const salt = saltHex
+    ? new Uint8Array(hexToBuffer(saltHex))
+    : crypto.getRandomValues(new Uint8Array(16));
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+  const bits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: 120000,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+  return {
+    salt: bufferToHex(salt),
+    hash: bufferToHex(bits),
+  };
+}
+
+async function verifyPassword(password, salt, hash) {
+  const next = await hashPassword(password, salt);
+  return next.hash === hash;
+}
+
+async function api(action, { method = "POST", body, token } = {}) {
+  const headers = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const isGet = method === "GET";
+  if (!isGet) headers["Content-Type"] = "application/json";
+  const payload = isGet ? undefined : JSON.stringify({ action, ...(body || {}) });
+  const query = isGet ? `?action=${encodeURIComponent(action)}` : "";
+  // Same-origin first (Netlify / shim), then direct Netlify fallback for GitHub Pages.
+  const targets = [
+    `${API}${query}`,
+    `https://pronti-via-k7es.netlify.app/api/account${query}`,
+  ];
+  let lastErr;
+  for (const url of targets) {
+    try {
+      const response = await fetch(url, {
+        method,
+        headers,
+        body: payload,
+        cache: "no-store",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || "Operazione non riuscita.");
+        error.status = response.status;
+        // Soft-fail only transport/host issues to the next target.
+        if (response.status === 503 || response.status === 502 || response.status === 404) {
+          lastErr = error;
+          continue;
+        }
+        throw error;
+      }
+      return data;
+    } catch (err) {
+      lastErr = err;
+      if (err?.status && err.status !== 503 && err.status !== 502 && err.status !== 404) throw err;
+    }
+  }
+  throw lastErr || new Error("Sync account non disponibile.");
+}
+
+function ensureUi() {
+  if (document.getElementById("pv-account-gate")) return;
+
+  const gate = document.createElement("div");
+  gate.id = "pv-account-gate";
+  gate.innerHTML = `
+    <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
+      <div class="pv-account-brand">
+        <img class="pv-account-mark" src="./logo.png" width="34" height="34" alt="">
+        <strong>Pronti? VIA!</strong>
+      </div>
+      <h1 id="pv-account-title">Accedi al tuo spazio</h1>
+      <p>Con un nome utente i tuoi viaggi restano salvati su questo dispositivo finché non cancelli i dati del browser.</p>
+      <div class="pv-account-tabs" role="tablist">
+        <button type="button" data-mode="login" aria-selected="true">Accedi</button>
+        <button type="button" data-mode="register" aria-selected="false">Crea account</button>
+      </div>
+      <form id="pv-account-form">
+        <div class="pv-account-field">
+          <label for="pv-username">Nome utente</label>
+          <input id="pv-username" name="username" autocomplete="username" required minlength="3" maxlength="32" placeholder="es. anna">
+        </div>
+        <div class="pv-account-field">
+          <label for="pv-password">Password</label>
+          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="min. 8 caratteri, lettera e numero">
+        </div>
+        <div class="pv-account-error" id="pv-account-error" aria-live="polite"></div>
+        <button class="pv-account-submit" type="submit">Entra</button>
+      </form>
+      <div class="pv-account-note">
+        L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.
+      </div>
+    </div>
+  `;
+  document.body.appendChild(gate);
+
+  const chip = document.createElement("div");
+  chip.id = "pv-account-chip";
+  chip.hidden = true;
+  chip.innerHTML = `
+    <div class="pv-account-chip-main">
+      <span class="pv-account-chip-who">Ciao, <strong id="pv-account-chip-label"></strong></span>
+      <span class="pv-account-chip-hint" id="pv-account-chip-hint">Pronti? VIA!</span>
+    </div>
+  `;
+  document.body.appendChild(chip);
+
+  // Primary nav — schema: Home · Viaggi · HUB · Assistente IA · Profilo
+  const nav = document.createElement("nav");
+  nav.id = "pv-primary-nav";
+  nav.hidden = true;
+  nav.setAttribute("aria-label", "Navigazione principale");
+  nav.innerHTML = `
+    <div class="pv-primary-nav-inner" role="toolbar">
+      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page" title="Home — panoramica e nuovo viaggio">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
+        </span>
+        <span class="pv-nav-label">Home</span>
+      </button>
+      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips" title="Viaggi — itinerario o elenco">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h9l2 4H7l2-4z"/><path d="M7 8v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
+        </span>
+        <span class="pv-nav-label">Viaggi</span>
+      </button>
+      <button type="button" class="pv-nav-item pv-nav-hub" data-nav="hub" id="pv-hub-nav" aria-haspopup="dialog" aria-expanded="false" title="HUB — collabora con il gruppo">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19"/><path d="M14 14.2c1.5-.7 3.2-.5 4.8.8.6.5 1 1.2 1.2 2"/></svg>
+        </span>
+        <span class="pv-nav-label">HUB</span>
+      </button>
+      <button type="button" class="pv-nav-item pv-nav-ai" data-nav="ai" id="pv-nav-ai" aria-haspopup="dialog" aria-expanded="false" title="Assistente IA — bacchetta magica">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.2 4.2L17.5 8.5 13.2 9.8 12 14l-1.2-4.2L6.5 8.5l4.3-1.3L12 3z"/><path d="M18.5 14.5 19 16l1.5.5L19 17l-.5 1.5L18 17l-1.5-.5L18 16l.5-1.5z"/></svg>
+        </span>
+        <span class="pv-nav-label">IA</span>
+      </button>
+      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e strumenti">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/><circle cx="18.2" cy="6.2" r="2" /><path d="M17.2 6.2h2M18.2 5.2v2"/></svg>
+        </span>
+        <span class="pv-nav-label">Profilo</span>
+      </button>
+    </div>
+  `;
+  document.body.appendChild(nav);
+
+  gate.querySelectorAll("[data-mode]").forEach((button) => {
+    button.addEventListener("click", () => setMode(button.dataset.mode));
+  });
+
+  gate.querySelector("#pv-account-form").addEventListener("submit", onSubmit);
+
+  function setNavCurrent(which) {
+    nav.querySelectorAll(".pv-nav-item").forEach((btn) => {
+      const on = btn.dataset.nav === which;
+      btn.classList.toggle("is-active", on);
+      if (on) btn.setAttribute("aria-current", "page");
+      else btn.removeAttribute("aria-current");
+    });
+  }
+  window.__pvSetPrimaryNav = setNavCurrent;
+
+  // Hub open/close is owned by pv-platform (bindHubTrigger). Fallback only if unbound.
+  nav.querySelector("#pv-hub-nav").addEventListener("click", () => {
+    setNavCurrent("hub");
+    const hub = document.getElementById("pv-hub-nav");
+    if (hub?.dataset?.pvHubBound === "1") return;
+    if (typeof window.ProntiPlatform?.open === "function") {
+      window.ProntiPlatform.open();
+      return;
+    }
+    document.getElementById("pv-plat-fab")?.click();
+  });
+
+  nav.querySelector("#pv-nav-home").addEventListener("click", () => {
+    setNavCurrent("home");
+    if (typeof window.__pvNavHome === "function") {
+      window.__pvNavHome();
+      return;
+    }
+    if (location.hash) location.hash = "";
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  nav.querySelector("#pv-nav-trips").addEventListener("click", () => {
+    setNavCurrent("trips");
+    if (typeof window.__pvNavTrips === "function") {
+      window.__pvNavTrips();
+      return;
+    }
+    document.querySelector('a[href*="I tuoi"], button, a')?.blur();
+  });
+
+  nav.querySelector("#pv-nav-ai").addEventListener("click", () => {
+    setNavCurrent("ai");
+    if (typeof window.__pvNavAi === "function") {
+      window.__pvNavAi();
+      return;
+    }
+    document.getElementById("pv-magic-open")?.click();
+  });
+
+  nav.querySelector("#pv-account-menu").addEventListener("click", () => {
+    setNavCurrent("profile");
+    if (typeof window.__pvOpenAccountMenu === "function") {
+      window.__pvOpenAccountMenu();
+      return;
+    }
+    const choice = window.confirm("Esci dall’account?");
+    if (choice) onLogout();
+  });
+
+  // Kept for programmatic use / older hooks.
+  window.__pvAccountLogout = onLogout;
+  window.__pvAccountDelete = onDeleteAccount;
+}
+
+function setMode(mode) {
+  state.mode = mode === "register" ? "register" : "login";
+  const gate = document.getElementById("pv-account-gate");
+  gate.querySelectorAll("[data-mode]").forEach((button) => {
+    button.setAttribute("aria-selected", String(button.dataset.mode === state.mode));
+  });
+  gate.querySelector("#pv-account-title").textContent =
+    state.mode === "register" ? "Crea il tuo account" : "Accedi al tuo spazio";
+  gate.querySelector(".pv-account-submit").textContent =
+    state.mode === "register" ? "Crea account" : "Entra";
+  gate.querySelector("#pv-password").autocomplete =
+    state.mode === "register" ? "new-password" : "current-password";
+  gate.querySelector("#pv-account-error").textContent = "";
+}
+
+function showGate(message = "") {
+  ensureUi();
+  const gate = document.getElementById("pv-account-gate");
+  gate.hidden = false;
+  document.getElementById("pv-account-chip").hidden = true;
+  const nav = document.getElementById("pv-primary-nav");
+  if (nav) nav.hidden = true;
+  document.body.classList.remove("pv-account-ready", "pv-primary-nav-ready");
+  document.getElementById("pv-account-error").textContent = message;
+  document.documentElement.style.overflow = "hidden";
+}
+
+function hideGate() {
+  const gate = document.getElementById("pv-account-gate");
+  if (gate) gate.hidden = true;
+  document.documentElement.style.overflow = "";
+}
+
+function showChip() {
+  ensureUi();
+  const chip = document.getElementById("pv-account-chip");
+  const label = document.getElementById("pv-account-chip-label");
+  label.textContent = state.user?.displayName || state.user?.username || "Account";
+  chip.hidden = false;
+  const nav = document.getElementById("pv-primary-nav");
+  if (nav) nav.hidden = false;
+  document.body.classList.add("pv-account-ready", "pv-primary-nav-ready");
+}
+
+async function upsertLocalUser(usernameRaw, password, displayName) {
+  const username = normalizeUsername(usernameRaw);
+  if (username.length < 3 || username.length > 32) {
+    throw new Error("Il nome utente deve avere tra 3 e 32 caratteri.");
+  }
+  if (!/^[a-z0-9._ -]+$/i.test(username)) {
+    throw new Error("Usa solo lettere, numeri, spazi, punti, _ e -.");
+  }
+  if (!password || password.length < 8) {
+    throw new Error("La password deve avere almeno 8 caratteri.");
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    throw new Error("Usa almeno una lettera e un numero nella password.");
+  }
+  const users = readUsers();
+  const { salt, hash } = await hashPassword(password);
+  const prev = users[username];
+  users[username] = {
+    username,
+    displayName: String(displayName || usernameRaw || username).trim().slice(0, 40) || username,
+    salt,
+    hash,
+    createdAt: prev?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  writeUsers(users);
+  return users[username];
+}
+
+async function registerLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  const users = readUsers();
+  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
+  const saved = await upsertLocalUser(usernameRaw, password, usernameRaw);
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: saved.displayName },
+    trips: readLocalTrips(),
+  };
+}
+
+async function loginLocal(usernameRaw, password) {
+  const username = normalizeUsername(usernameRaw);
+  const users = readUsers();
+  const user = users[username];
+  if (!user?.salt || !user?.hash || !(await verifyPassword(password, user.salt, user.hash))) {
+    throw new Error("Nome utente o password non corretti.");
+  }
+  return {
+    token: `local:${username}`,
+    user: { username: user.username, displayName: user.displayName || user.username },
+    trips: readLocalTrips(),
+  };
+}
+
+async function onSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const submit = form.querySelector(".pv-account-submit");
+  const error = document.getElementById("pv-account-error");
+  const mode = state.mode;
+  const username = form.username.value;
+  const password = form.password.value;
+  submit.disabled = true;
+  error.textContent = "";
+  try {
+    let data;
+    let localError;
+    try {
+      data = mode === "register"
+        ? await registerLocal(username, password)
+        : await loginLocal(username, password);
+    } catch (err) {
+      if (mode === "register") throw err;
+      localError = err;
+    }
+
+    if (!data) {
+      try {
+        const cloud = await api("login", {
+          body: { username, password, displayName: username },
+        });
+        if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
+        data = { token: cloud.token, user: cloud.user, trips: cloud.trips || [] };
+        // Cache credentials locally so next login works offline too.
+        try {
+          await upsertLocalUser(username, password, data.user?.displayName || username);
+        } catch {
+          /* local write failed — ignore */
+        }
+      } catch (cloudErr) {
+        throw localError || cloudErr || new Error("Nome utente o password non corretti.");
+      }
+    } else {
+      // Mirror local accounts when cloud storage is available.
+      try {
+        const action = mode === "register" ? "register" : "login";
+        const cloud = await api(action, {
+          body: { username, password, displayName: username },
+        });
+        if (cloud?.token && cloud?.user?.username) {
+          data.token = cloud.token;
+          data.user = cloud.user;
+          data.trips = mergeTrips(cloud.trips || [], data.trips || []);
+        }
+      } catch (err) {
+        if (mode === "register" && err.status === 409) {
+          const users = readUsers();
+          delete users[normalizeUsername(username)];
+          writeUsers(users);
+          throw new Error("Questo account esiste già online. Accedi oppure scegli un altro nome utente.");
+        }
+        /* keep local session */
+      }
+    }
+
+    await activateSession(data);
+  } catch (err) {
+    error.textContent = err.message || "Accesso non riuscito.";
+  } finally {
+    submit.disabled = false;
+  }
+}
+
+async function onLogout() {
+  try {
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("logout", { token: state.token });
+    }
+  } catch {
+    /* ignore */
+  }
+  state.token = null;
+  state.user = null;
+  writeSession(null);
+  showGate();
+  location.hash = "";
+  location.reload();
+}
+
+function wipeLocalUser(username) {
+  const users = readUsers();
+  const key = normalizeUsername(username);
+  if (users[key]) {
+    delete users[key];
+    writeUsers(users);
+  }
+}
+
+async function onDeleteAccount() {
+  const username = state.user?.username || "";
+  if (!username) return;
+  const ok = window.confirm(
+    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+  );
+  if (!ok) return;
+  const password = window.prompt("Conferma con la password dell’account:");
+  if (password == null) return;
+  if (!String(password).trim()) {
+    window.alert("Password obbligatoria per eliminare l’account.");
+    return;
+  }
+  try {
+    if (state.token && !String(state.token).startsWith("local:")) {
+      await api("delete-account", {
+        token: state.token,
+        body: { username, password },
+      });
+    } else {
+      // Local-only account: verify password then wipe.
+      await loginLocal(username, password);
+    }
+  } catch (err) {
+    // Still try cloud delete if local verify failed but cloud may have the account.
+    try {
+      await api("delete-account", {
+        token: state.token && !String(state.token).startsWith("local:") ? state.token : undefined,
+        body: { username, password },
+      });
+    } catch (cloudErr) {
+      window.alert(cloudErr.message || err.message || "Eliminazione non riuscita.");
+      return;
+    }
+  }
+  wipeLocalUser(username);
+  try {
+    localStorage.removeItem("viavia-preventivo-v2");
+    localStorage.removeItem("viavia-preventivo-v1");
+  } catch {
+    /* ignore */
+  }
+  state.token = null;
+  state.user = null;
+  writeSession(null);
+  window.alert("Account eliminato.");
+  showGate();
+  location.hash = "";
+  location.reload();
+}
+
+async function activateSession(data, { bootApp = true } = {}) {
+  state.token = data.token;
+  state.user = data.user;
+  const expiresAt =
+    Number(data.expiresAt) ||
+    Date.now() + (Number(data.sessionTtlMs) || CLIENT_SESSION_TTL_MS);
+  writeSession({
+    token: data.token,
+    user: data.user,
+    guest: Boolean(data.guest),
+    remembered: true,
+    savedAt: new Date().toISOString(),
+    expiresAt,
+  });
+
+  const merged = mergeTrips(data.trips || [], readLocalTrips());
+  writeLocalTrips(merged);
+
+  if (state.token && !String(state.token).startsWith("local:")) {
+    try {
+      await api("save-trips", {
+        method: "PUT",
+        token: state.token,
+        body: { trips: merged },
+      });
+    } catch {
+      /* offline / blobs unavailable */
+    }
+  }
+
+  hideGate();
+  showChip();
+  startTripSync();
+  if (bootApp) await loadApp();
+}
+
+let appLoaded = false;
+async function loadApp() {
+  if (appLoaded) return;
+  appLoaded = true;
+  await import("/Pronti-VIA-Web/assets/index-loadfix-20261104d.js");
+}
+
+let syncTimer = null;
+let lastPayload = "";
+let joinInFlight = null;
+const joinedTrips = new Set();
+
+function currentDisplayName() {
+  return (state.user?.displayName || state.user?.username || "").trim();
+}
+
+function namesMatch(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+
+async function ensureCurrentUserOnTrip() {
+  const name = currentDisplayName();
+  if (!name) return;
+
+  const params = new URLSearchParams(location.hash.replace(/^#/, ""));
+  const tripId = params.get("trip");
+  const key = params.get("key");
+  if (!tripId || !key) return;
+
+  const joinKey = `${tripId}:${name.toLowerCase()}`;
+  if (joinedTrips.has(joinKey) || joinInFlight === joinKey) return;
+  joinInFlight = joinKey;
+
+  try {
+    const response = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || !data?.trip) return;
+    if (data.canEdit === false) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
+    const members = Array.isArray(data.trip.members) ? data.trip.members : [];
+    if (members.some((member) => namesMatch(member?.name, name))) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
+    // Honor removals from the trip owner: blocked names must not auto-rejoin via the shared link.
+    const blocked = Array.isArray(data.trip?.meta?.blockedMembers) ? data.trip.meta.blockedMembers : [];
+    const isBlocked = blocked.some((entry) =>
+      namesMatch(typeof entry === "string" ? entry : entry?.name, name)
+    );
+    if (isBlocked) {
+      joinedTrips.add(joinKey);
+      return;
+    }
+
+    const nextTrip = {
+      ...data.trip,
+      members: [
+        ...members,
+        { id: crypto.randomUUID(), name },
+      ].slice(0, 30),
+    };
+
+    const save = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        trip: nextTrip,
+        revision: data.revision,
+      }),
+    });
+    if (save.ok) {
+      joinedTrips.add(joinKey);
+      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
+      // Safari stuck on the loading screen when the trips proxy is slow.
+    }
+  } catch {
+    /* ignore transient join failures */
+  } finally {
+    if (joinInFlight === joinKey) joinInFlight = null;
+  }
+}
+
+function startMemberJoinSync() {
+  const run = () => {
+    ensureCurrentUserOnTrip();
+  };
+  run();
+  window.addEventListener("hashchange", () => {
+    joinedTrips.clear();
+    // Leaving a shared link while guest → back to login gate (free, no sticky ospite).
+    if (!hashHasSharedTrip()) {
+      const session = readSession();
+      if (session?.guest) {
+        clearGuestSession();
+        showGate();
+        return;
+      }
+    } else {
+      const session = readSession();
+      if (!session?.user?.username) {
+        void activateSession(makeGuestSession(), { bootApp: true });
+        return;
+      }
+    }
+    setTimeout(run, 600);
+  });
+  setTimeout(run, 1500);
+  setTimeout(run, 4000);
+}
+
+function startTripSync() {
+  if (syncTimer) return;
+  const push = async () => {
+    if (!state.token || String(state.token).startsWith("local:")) return;
+    const trips = readLocalTrips();
+    const payload = JSON.stringify(trips);
+    if (payload === lastPayload) return;
+    lastPayload = payload;
+    try {
+      await api("save-trips", {
+        method: "PUT",
+        token: state.token,
+        body: { trips },
+      });
+    } catch {
+      lastPayload = "";
+    }
+  };
+  syncTimer = setInterval(push, 4000);
+  window.addEventListener("hashchange", () => setTimeout(push, 800));
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") push();
+  });
+  startMemberJoinSync();
+}
+
+function hashHasSharedTrip() {
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    return Boolean(params.get("trip") && params.get("key"));
+  } catch {
+    return false;
+  }
+}
+
+function makeGuestSession() {
+  const suffix = Date.now().toString(36).slice(-5);
+  const username = `ospite-${suffix}`;
+  // Unique display name so one "Elimina" cannot block every future guest named "Ospite".
+  return {
+    token: `local:${username}`,
+    user: { username, displayName: `Ospite ${suffix}` },
+    trips: readLocalTrips(),
+    guest: true,
+  };
+}
+
+function clearGuestSession() {
+  const session = readSession();
+  if (!session?.guest) return false;
+  writeSession(null);
+  state.token = null;
+  state.user = null;
+  try {
+    document.getElementById("pv-account-chip").hidden = true;
+    const nav = document.getElementById("pv-primary-nav");
+    if (nav) nav.hidden = true;
+  } catch {
+    /* ignore */
+  }
+  document.body.classList.remove("pv-account-ready", "pv-primary-nav-ready");
+  return true;
+}
+
+async function boot() {
+  ensureUi();
+  const session = readSession();
+  if (!session?.user?.username) {
+    // Shared trip links should open without forcing registration.
+    if (hashHasSharedTrip()) {
+      const guest = makeGuestSession();
+      await activateSession(guest, { bootApp: true });
+      return;
+    }
+    showGate();
+    return;
+  }
+
+  // Guest sessions are only for shared links — do not stick around on the home page.
+  if (session.guest && !hashHasSharedTrip()) {
+    clearGuestSession();
+    showGate();
+    return;
+  }
+
+  // Local session is enough: stay logged in across reloads until cache/site data is cleared.
+  await activateSession(
+    {
+      token: session.token || `local:${session.user.username}`,
+      user: session.user,
+      trips: readLocalTrips(),
+      guest: Boolean(session.guest),
+    },
+    { bootApp: true }
+  );
+
+  // Optional background refresh from cloud; never clears the local session on failure.
+  if (session.token && !String(session.token).startsWith("local:")) {
+    try {
+      const data = await api("me", { method: "GET", token: session.token });
+      const merged = mergeTrips(data.trips || [], readLocalTrips());
+      writeLocalTrips(merged);
+      if (data.user) {
+        state.user = data.user;
+        writeSession({
+          token: session.token,
+          user: data.user,
+          remembered: true,
+          savedAt: new Date().toISOString(),
+          expiresAt:
+            Number(data.expiresAt) ||
+            Date.now() + (Number(data.sessionTtlMs) || CLIENT_SESSION_TTL_MS),
+        });
+        showChip();
+      }
+    } catch {
+      /* keep remembered local access */
+    }
+  }
+}
+
+boot();
