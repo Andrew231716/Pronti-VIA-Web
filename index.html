@@ -19,7 +19,7 @@
   <script>
     try {
       if ("caches" in window) {
-        const keep = "pv-shell-20261104d";
+        const keep = "pv-shell-20261104e";
         caches.keys().then((keys) => keys.forEach((k) => {
           if (k !== keep && String(k).startsWith("pv-shell-")) caches.delete(k);
         }));
@@ -27,7 +27,7 @@
     } catch (_) {}
   </script>
   <script src="/assets/api-shim-20261104d.js"></script>
-  <script src="/assets/magic-extras-20261104d.js"></script>
+  <script src="/assets/magic-extras-20261104e.js"></script>
   <script src="/assets/expense-suite-20261104d.js"></script>
   <script src="/assets/app-suite-20261104d.js"></script>
   <script src="/assets/preventivo-islanda-20261104d.js"></script>

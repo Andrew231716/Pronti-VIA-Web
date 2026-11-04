@@ -176,9 +176,20 @@
       #${ROOT_ID} .pv-lang-pair{display:grid;gap:10px}
       #${ROOT_ID} .pv-lang-pair label{display:grid;gap:4px;border:0;padding:0;font-size:.78rem;font-weight:700;color:#4d676e;letter-spacing:.04em;text-transform:uppercase}
       #${ROOT_ID} .pv-lang-pair textarea{min-height:72px;resize:vertical;font:400 .92rem inherit;text-transform:none;letter-spacing:normal;color:#122f34}
-      #${ROOT_ID} .pv-phrase{appearance:none;border:1px solid #d9e7e7;background:#f7fbfb;border-radius:12px;padding:8px 10px;text-align:left;cursor:pointer;width:100%;margin:0 0 6px}
-      #${ROOT_ID} .pv-phrase strong{display:block;font-size:.86rem;color:#122f34}
-      #${ROOT_ID} .pv-phrase span{display:block;font-size:.78rem;color:#4d676e;margin-top:2px}
+      #${ROOT_ID} .pv-lang-situations{display:flex;flex-wrap:nowrap;gap:8px;margin:0 0 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+      #${ROOT_ID} .pv-lang-situations::-webkit-scrollbar{display:none}
+      #${ROOT_ID} .pv-lang-situations button{appearance:none;border:1px solid #b8d0d0;background:#fff;color:#124048;border-radius:999px;padding:9px 12px;font:600 12px inherit;cursor:pointer;white-space:nowrap;flex:0 0 auto;min-height:38px}
+      #${ROOT_ID} .pv-lang-situations button.active{background:#007d82;color:#fff;border-color:#007d82}
+      #${ROOT_ID} .pv-phrase{appearance:none;border:1px solid #d9e7e7;background:#f7fbfb;border-radius:14px;padding:12px;text-align:left;cursor:pointer;width:100%;margin:0 0 8px;display:grid;gap:6px}
+      #${ROOT_ID} .pv-phrase strong{display:block;font-size:1.02rem;color:#0f2c31;line-height:1.35}
+      #${ROOT_ID} .pv-phrase .pv-phrase-it{display:block;font-size:.84rem;color:#4d676e}
+      #${ROOT_ID} .pv-phrase .pv-phrase-hint{display:block;font-size:.78rem;color:#007d82;font-weight:600}
+      #${ROOT_ID} .pv-phrase-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+      #${ROOT_ID} .pv-phrase-actions button{appearance:none;border:0;border-radius:10px;padding:8px 10px;font:600 12px inherit;cursor:pointer;min-height:36px;background:#e4f2f2;color:#0f5a60}
+      #${ROOT_ID} .pv-lang-say{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0 0 12px}
+      #${ROOT_ID} .pv-lang-say input{width:100%;border:1px solid #b8d0d0;border-radius:12px;padding:12px 14px;font:inherit;color:#122f34;background:#fff;min-height:44px}
+      #${ROOT_ID} .pv-lang-say button{appearance:none;border:0;border-radius:12px;padding:12px 14px;background:#007d82;color:#fff;font:600 13px inherit;cursor:pointer;min-height:44px;white-space:nowrap}
+      #${ROOT_ID} .pv-lang-home{margin:0 0 12px;padding:10px 12px;border-radius:12px;background:#eef6f6;color:#1d3338;font-size:.88rem;line-height:1.45}
       @media (max-width:640px){
         #${ROOT_ID} .pv-magic-btn{
           right:16px;width:58px;height:58px;
@@ -2760,126 +2771,237 @@ Regole pv-places:
     }
   }
 
+  /**
+   * Curated local→Italian phrasebooks for speaking on the ground.
+   * Entries: { local, it, hint?, situation }
+   * situation: essential | food | directions | emergency
+   */
   const PHRASEBOOK = {
     en: [
-      ["Hello", "Ciao"],
-      ["Thank you", "Grazie"],
-      ["Please", "Per favore"],
-      ["How much is it?", "Quanto costa?"],
-      ["Where is the bathroom?", "Dov’è il bagno?"],
-      ["I would like…", "Vorrei…"],
-      ["Do you speak English?", "Parli inglese?"],
-      ["Help!", "Aiuto!"],
-      ["The bill, please", "Il conto, per favore"],
-      ["Where is…?", "Dove si trova…?"],
+      { local: "Hello", it: "Ciao", situation: "essential" },
+      { local: "Thank you", it: "Grazie", situation: "essential" },
+      { local: "Please", it: "Per favore", situation: "essential" },
+      { local: "Excuse me", it: "Scusa / Permesso", situation: "essential" },
+      { local: "How much is it?", it: "Quanto costa?", situation: "food" },
+      { local: "I would like…", it: "Vorrei…", situation: "food" },
+      { local: "The bill, please", it: "Il conto, per favore", situation: "food" },
+      { local: "Where is the bathroom?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Where is…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "I don’t understand", it: "Non capisco", situation: "essential" },
+      { local: "Do you speak English?", it: "Parli inglese?", situation: "essential" },
+      { local: "Help!", it: "Aiuto!", situation: "emergency" },
+      { local: "Call a doctor", it: "Chiamate un medico", situation: "emergency" },
     ],
     is: [
-      ["Halló", "Ciao"],
-      ["Takk", "Grazie"],
-      ["Afsakið", "Scusa / Permesso"],
-      ["Hvað kostar þetta?", "Quanto costa?"],
-      ["Hvar er salernið?", "Dov’è il bagno?"],
-      ["Ég ætla að fá…", "Vorrei…"],
-      ["Talarðu ensku?", "Parli inglese?"],
-      ["Hjálp!", "Aiuto!"],
-      ["Reikninginn, takk", "Il conto, per favore"],
-      ["Hvar er…?", "Dove si trova…?"],
+      { local: "Halló", it: "Ciao", hint: "ha-llo", situation: "essential" },
+      { local: "Takk", it: "Grazie", situation: "essential" },
+      { local: "Afsakið", it: "Scusa / Permesso", hint: "af-sa-kith", situation: "essential" },
+      { local: "Hvað kostar þetta?", it: "Quanto costa?", hint: "kvath kostar thetta", situation: "food" },
+      { local: "Ég ætla að fá…", it: "Vorrei…", hint: "ye eghtla ath fau", situation: "food" },
+      { local: "Reikninginn, takk", it: "Il conto, per favore", situation: "food" },
+      { local: "Hvar er salernið?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Hvar er…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "Ég skil ekki", it: "Non capisco", situation: "essential" },
+      { local: "Talarðu ensku?", it: "Parli inglese?", situation: "essential" },
+      { local: "Hjálp!", it: "Aiuto!", situation: "emergency" },
+      { local: "Hringdu í lækni", it: "Chiamate un medico", situation: "emergency" },
     ],
     fr: [
-      ["Bonjour", "Ciao / Buongiorno"],
-      ["Merci", "Grazie"],
-      ["S’il vous plaît", "Per favore"],
-      ["Ça coûte combien ?", "Quanto costa?"],
-      ["Où sont les toilettes ?", "Dov’è il bagno?"],
-      ["Je voudrais…", "Vorrei…"],
-      ["Parlez-vous anglais ?", "Parli inglese?"],
-      ["Au secours !", "Aiuto!"],
-      ["L’addition, s’il vous plaît", "Il conto, per favore"],
-      ["Où est… ?", "Dove si trova…?"],
+      { local: "Bonjour", it: "Ciao / Buongiorno", situation: "essential" },
+      { local: "Merci", it: "Grazie", situation: "essential" },
+      { local: "S’il vous plaît", it: "Per favore", situation: "essential" },
+      { local: "Pardon / Excusez-moi", it: "Scusa / Permesso", situation: "essential" },
+      { local: "Ça coûte combien ?", it: "Quanto costa?", situation: "food" },
+      { local: "Je voudrais…", it: "Vorrei…", situation: "food" },
+      { local: "L’addition, s’il vous plaît", it: "Il conto, per favore", situation: "food" },
+      { local: "Où sont les toilettes ?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Où est… ?", it: "Dove si trova…?", situation: "directions" },
+      { local: "Je ne comprends pas", it: "Non capisco", situation: "essential" },
+      { local: "Parlez-vous anglais ?", it: "Parli inglese?", situation: "essential" },
+      { local: "Au secours !", it: "Aiuto!", situation: "emergency" },
+      { local: "Appelez un médecin", it: "Chiamate un medico", situation: "emergency" },
     ],
     de: [
-      ["Hallo", "Ciao"],
-      ["Danke", "Grazie"],
-      ["Bitte", "Per favore"],
-      ["Was kostet das?", "Quanto costa?"],
-      ["Wo ist die Toilette?", "Dov’è il bagno?"],
-      ["Ich hätte gern…", "Vorrei…"],
-      ["Sprechen Sie Englisch?", "Parli inglese?"],
-      ["Hilfe!", "Aiuto!"],
-      ["Die Rechnung, bitte", "Il conto, per favore"],
-      ["Wo ist…?", "Dove si trova…?"],
+      { local: "Hallo", it: "Ciao", situation: "essential" },
+      { local: "Danke", it: "Grazie", situation: "essential" },
+      { local: "Bitte", it: "Per favore", situation: "essential" },
+      { local: "Entschuldigung", it: "Scusa / Permesso", situation: "essential" },
+      { local: "Was kostet das?", it: "Quanto costa?", situation: "food" },
+      { local: "Ich hätte gern…", it: "Vorrei…", situation: "food" },
+      { local: "Die Rechnung, bitte", it: "Il conto, per favore", situation: "food" },
+      { local: "Wo ist die Toilette?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Wo ist…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "Ich verstehe nicht", it: "Non capisco", situation: "essential" },
+      { local: "Sprechen Sie Englisch?", it: "Parli inglese?", situation: "essential" },
+      { local: "Hilfe!", it: "Aiuto!", situation: "emergency" },
+      { local: "Rufen Sie einen Arzt", it: "Chiamate un medico", situation: "emergency" },
     ],
     es: [
-      ["Hola", "Ciao"],
-      ["Gracias", "Grazie"],
-      ["Por favor", "Per favore"],
-      ["¿Cuánto cuesta?", "Quanto costa?"],
-      ["¿Dónde está el baño?", "Dov’è il bagno?"],
-      ["Quisiera…", "Vorrei…"],
-      ["¿Habla inglés?", "Parli inglese?"],
-      ["¡Ayuda!", "Aiuto!"],
-      ["La cuenta, por favor", "Il conto, per favore"],
-      ["¿Dónde está…?", "Dove si trova…?"],
+      { local: "Hola", it: "Ciao", situation: "essential" },
+      { local: "Gracias", it: "Grazie", situation: "essential" },
+      { local: "Por favor", it: "Per favore", situation: "essential" },
+      { local: "Perdón / Con permiso", it: "Scusa / Permesso", situation: "essential" },
+      { local: "¿Cuánto cuesta?", it: "Quanto costa?", situation: "food" },
+      { local: "Quisiera…", it: "Vorrei…", situation: "food" },
+      { local: "La cuenta, por favor", it: "Il conto, per favore", situation: "food" },
+      { local: "¿Dónde está el baño?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "¿Dónde está…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "No entiendo", it: "Non capisco", situation: "essential" },
+      { local: "¿Habla inglés?", it: "Parli inglese?", situation: "essential" },
+      { local: "¡Ayuda!", it: "Aiuto!", situation: "emergency" },
+      { local: "Llame a un médico", it: "Chiamate un medico", situation: "emergency" },
     ],
     pt: [
-      ["Olá", "Ciao"],
-      ["Obrigado / Obrigada", "Grazie"],
-      ["Por favor", "Per favore"],
-      ["Quanto custa?", "Quanto costa?"],
-      ["Onde fica o banheiro?", "Dov’è il bagno?"],
-      ["Eu gostaria de…", "Vorrei…"],
-      ["Fala inglês?", "Parli inglese?"],
-      ["Socorro!", "Aiuto!"],
-      ["A conta, por favor", "Il conto, per favore"],
-      ["Onde fica…?", "Dove si trova…?"],
+      { local: "Olá", it: "Ciao", situation: "essential" },
+      { local: "Obrigado / Obrigada", it: "Grazie", situation: "essential" },
+      { local: "Por favor", it: "Per favore", situation: "essential" },
+      { local: "Com licença / Desculpe", it: "Scusa / Permesso", situation: "essential" },
+      { local: "Quanto custa?", it: "Quanto costa?", situation: "food" },
+      { local: "Eu gostaria de…", it: "Vorrei…", situation: "food" },
+      { local: "A conta, por favor", it: "Il conto, per favore", situation: "food" },
+      { local: "Onde fica o banheiro?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Onde fica…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "Não entendo", it: "Non capisco", situation: "essential" },
+      { local: "Fala inglês?", it: "Parli inglese?", situation: "essential" },
+      { local: "Socorro!", it: "Aiuto!", situation: "emergency" },
+      { local: "Chame um médico", it: "Chiamate un medico", situation: "emergency" },
     ],
     ja: [
-      ["こんにちは (Konnichiwa)", "Ciao"],
-      ["ありがとう (Arigatō)", "Grazie"],
-      ["お願いします (Onegaishimasu)", "Per favore"],
-      ["いくらですか (Ikura desu ka?)", "Quanto costa?"],
-      ["トイレはどこですか", "Dov’è il bagno?"],
-      ["…をお願いします", "Vorrei…"],
-      ["英語を話せますか", "Parli inglese?"],
-      ["助けて！", "Aiuto!"],
-      ["お会計お願いします", "Il conto, per favore"],
-      ["…はどこですか", "Dove si trova…?"],
+      { local: "こんにちは", it: "Ciao", hint: "Konnichiwa", situation: "essential" },
+      { local: "ありがとう", it: "Grazie", hint: "Arigatō", situation: "essential" },
+      { local: "お願いします", it: "Per favore", hint: "Onegaishimasu", situation: "essential" },
+      { local: "すみません", it: "Scusa / Permesso", hint: "Sumimasen", situation: "essential" },
+      { local: "いくらですか", it: "Quanto costa?", hint: "Ikura desu ka?", situation: "food" },
+      { local: "…をお願いします", it: "Vorrei…", situation: "food" },
+      { local: "お会計お願いします", it: "Il conto, per favore", hint: "Okaikei onegaishimasu", situation: "food" },
+      { local: "トイレはどこですか", it: "Dov’è il bagno?", hint: "Toire wa doko desu ka?", situation: "directions" },
+      { local: "…はどこですか", it: "Dove si trova…?", situation: "directions" },
+      { local: "わかりません", it: "Non capisco", hint: "Wakarimasen", situation: "essential" },
+      { local: "英語を話せますか", it: "Parli inglese?", hint: "Eigo o hanasemasu ka?", situation: "essential" },
+      { local: "助けて！", it: "Aiuto!", hint: "Tasukete!", situation: "emergency" },
+      { local: "医者を呼んでください", it: "Chiamate un medico", hint: "Isha o yonde kudasai", situation: "emergency" },
+    ],
+    it: [
+      { local: "Buongiorno", it: "Buongiorno", situation: "essential" },
+      { local: "Grazie", it: "Grazie", situation: "essential" },
+      { local: "Per favore", it: "Per favore", situation: "essential" },
+      { local: "Scusi / Permesso", it: "Scusi / Permesso", situation: "essential" },
+      { local: "Quanto costa?", it: "Quanto costa?", situation: "food" },
+      { local: "Vorrei…", it: "Vorrei…", situation: "food" },
+      { local: "Il conto, per favore", it: "Il conto, per favore", situation: "food" },
+      { local: "Dov’è il bagno?", it: "Dov’è il bagno?", situation: "directions" },
+      { local: "Dove si trova…?", it: "Dove si trova…?", situation: "directions" },
+      { local: "Non capisco", it: "Non capisco", situation: "essential" },
+      { local: "Parla inglese?", it: "Parla inglese?", situation: "essential" },
+      { local: "Aiuto!", it: "Aiuto!", situation: "emergency" },
+      { local: "Chiamate un medico", it: "Chiamate un medico", situation: "emergency" },
     ],
   };
+
+  /** Italian seed phrases used to build a local phrasebook via free MyMemory when curated data is missing. */
+  const PHRASE_SEEDS = [
+    { it: "Ciao", situation: "essential" },
+    { it: "Grazie", situation: "essential" },
+    { it: "Per favore", situation: "essential" },
+    { it: "Scusa, permesso", situation: "essential" },
+    { it: "Quanto costa?", situation: "food" },
+    { it: "Vorrei questo", situation: "food" },
+    { it: "Il conto, per favore", situation: "food" },
+    { it: "Dov’è il bagno?", situation: "directions" },
+    { it: "Dove si trova…?", situation: "directions" },
+    { it: "Non capisco", situation: "essential" },
+    { it: "Parli inglese?", situation: "essential" },
+    { it: "Aiuto!", situation: "emergency" },
+    { it: "Chiamate un medico", situation: "emergency" },
+  ];
+
+  const LANG_SITUATIONS = [
+    { id: "essential", label: "Essenziali" },
+    { id: "food", label: "Ristorante" },
+    { id: "directions", label: "Direzioni" },
+    { id: "emergency", label: "Emergenza" },
+  ];
 
   function languageForDestination(destination) {
     const q = String(destination || "").toLowerCase();
     const rules = [
-      { re: /islanda|\bisland\b|iceland|reykjav/, code: "is", name: "Islandese", pair: "it|is" },
-      { re: /regno unito|uk|inghilterra|scozia|london|londra|ireland|irlanda|usa|stati uniti|canada|australia/, code: "en", name: "Inglese", pair: "it|en" },
-      { re: /france|francia|parigi|paris/, code: "fr", name: "Francese", pair: "it|fr" },
-      { re: /germania|germany|berlin|monaco|österreich|austria|svizzera|switzerland/, code: "de", name: "Tedesco", pair: "it|de" },
-      { re: /spain|spagna|madrid|barcellona|mexico|messico/, code: "es", name: "Spagnolo", pair: "it|es" },
-      { re: /portugal|portogallo|lisbona|brasile|brazil/, code: "pt", name: "Portoghese", pair: "it|pt" },
-      { re: /giappone|japan|tokyo|osaka|kyoto/, code: "ja", name: "Giapponese", pair: "it|ja" },
-      { re: /norvegia|norway/, code: "en", name: "Norvegese (base EN)", pair: "it|no" },
-      { re: /svezia|sweden/, code: "en", name: "Svedese (base EN)", pair: "it|sv" },
-      { re: /danimarca|denmark/, code: "en", name: "Danese (base EN)", pair: "it|da" },
-      { re: /olanda|netherlands|amsterdam/, code: "en", name: "Olandese (base EN)", pair: "it|nl" },
-      { re: /grecia|greece|athen/, code: "en", name: "Greco (base EN)", pair: "it|el" },
-      { re: /turchia|turkey|istanbul/, code: "en", name: "Turco (base EN)", pair: "it|tr" },
-      { re: /polonia|poland/, code: "en", name: "Polacco (base EN)", pair: "it|pl" },
-      { re: /italia|rome|roma|milan|firenze/, code: "en", name: "Italiano (sei a casa)", pair: "it|en" },
+      { re: /islanda|\bisland\b|iceland|reykjav/, code: "is", name: "Islandese", pair: "it|is", speech: "is-IS" },
+      { re: /regno unito|\buk\b|inghilterra|scozia|london|londra|ireland|irlanda|usa|stati uniti|canada|australia|nuova zelanda|new zealand/, code: "en", name: "Inglese", pair: "it|en", speech: "en-GB" },
+      { re: /france|francia|parigi|paris|belgio|belgium|bruxelles/, code: "fr", name: "Francese", pair: "it|fr", speech: "fr-FR" },
+      { re: /germania|germany|berlin|monaco di baviera|münchen|munich|österreich|austria|vienna|svizzera tedesca|zurigo|zürich/, code: "de", name: "Tedesco", pair: "it|de", speech: "de-DE" },
+      { re: /spain|spagna|madrid|barcellona|barcelona|mexico|messico|argentina|cile|chile|colombia|peru|perù/, code: "es", name: "Spagnolo", pair: "it|es", speech: "es-ES" },
+      { re: /portugal|portogallo|lisbona|lisboa|brasile|brazil|rio de janeiro|são paulo|sao paulo/, code: "pt", name: "Portoghese", pair: "it|pt", speech: "pt-PT" },
+      { re: /giappone|japan|tokyo|osaka|kyoto/, code: "ja", name: "Giapponese", pair: "it|ja", speech: "ja-JP" },
+      { re: /norvegia|norway|oslo/, code: "no", name: "Norvegese", pair: "it|no", speech: "nb-NO" },
+      { re: /svezia|sweden|stockholm|stoccolma/, code: "sv", name: "Svedese", pair: "it|sv", speech: "sv-SE" },
+      { re: /danimarca|denmark|copenhagen|copenaghen/, code: "da", name: "Danese", pair: "it|da", speech: "da-DK" },
+      { re: /olanda|netherlands|amsterdam|olandese|paesi bassi/, code: "nl", name: "Olandese", pair: "it|nl", speech: "nl-NL" },
+      { re: /grecia|greece|athen|atene/, code: "el", name: "Greco", pair: "it|el", speech: "el-GR" },
+      { re: /turchia|turkey|istanbul|ankara/, code: "tr", name: "Turco", pair: "it|tr", speech: "tr-TR" },
+      { re: /polonia|poland|varsavia|warsaw|krakow|cracovia/, code: "pl", name: "Polacco", pair: "it|pl", speech: "pl-PL" },
+      { re: /cina|china|pechino|beijing|shanghai|hong kong/, code: "zh-CN", name: "Cinese", pair: "it|zh-CN", speech: "zh-CN" },
+      { re: /corea|korea|seoul|seul/, code: "ko", name: "Coreano", pair: "it|ko", speech: "ko-KR" },
+      { re: /thailandia|thailand|bangkok/, code: "th", name: "Thailandese", pair: "it|th", speech: "th-TH" },
+      { re: /croazia|croatia|dubrovnik|zagabria|zagreb/, code: "hr", name: "Croato", pair: "it|hr", speech: "hr-HR" },
+      { re: /marocco|morocco|marrakech|casablanca|tunisia|algeria|egitto|egypt|cairo|dubai|emirati|qatar|arabia/, code: "ar", name: "Arabo", pair: "it|ar", speech: "ar-SA" },
+      { re: /italia|italy|rome|roma|milan|milano|firenze|napoli|venezia|torino|bologna|sicilia|sardegna/, code: "it", name: "Italiano", pair: "it|it", speech: "it-IT", home: true },
     ];
     for (const rule of rules) {
       if (rule.re.test(q)) return rule;
     }
-    return { code: "en", name: "Inglese", pair: "it|en" };
+    return { code: "en", name: "Inglese", pair: "it|en", speech: "en-GB" };
   }
 
   async function translateText(text, langpair) {
     const q = String(text || "").trim();
     if (!q) return "";
+    const [a, b] = String(langpair || "").split("|");
+    if (a && b && a === b) return q;
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(q.slice(0, 450))}&langpair=${encodeURIComponent(langpair)}`;
     const data = await fetch(url, { signal: AbortSignal.timeout(12000) }).then((r) => r.json());
     const out = data?.responseData?.translatedText;
-    if (!out || /INVALID|QUERY LENGTH/i.test(out)) throw new Error("Traduzione non disponibile");
+    if (!out || /INVALID|QUERY LENGTH|MYMEMORY WARNING/i.test(out)) throw new Error("Traduzione non disponibile");
     return out;
+  }
+
+  function speakLocalText(text, speechLang) {
+    const q = String(text || "").trim();
+    if (!q) return false;
+    if (typeof window === "undefined" || !window.speechSynthesis || typeof SpeechSynthesisUtterance === "undefined") {
+      return false;
+    }
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(q);
+      utter.lang = speechLang || "en-GB";
+      utter.rate = 0.92;
+      const voices = window.speechSynthesis.getVoices?.() || [];
+      const match =
+        voices.find((v) => v.lang === utter.lang) ||
+        voices.find((v) => String(v.lang || "").toLowerCase().startsWith(String(utter.lang).slice(0, 2).toLowerCase()));
+      if (match) utter.voice = match;
+      window.speechSynthesis.speak(utter);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function buildLocalPhrasebook(lang) {
+    if (Array.isArray(PHRASEBOOK[lang.code]) && PHRASEBOOK[lang.code].length) {
+      return PHRASEBOOK[lang.code];
+    }
+    const [, dst] = String(lang.pair || "it|en").split("|");
+    const out = [];
+    for (const seed of PHRASE_SEEDS) {
+      try {
+        const local = await translateText(seed.it, `it|${dst}`);
+        out.push({ local, it: seed.it, situation: seed.situation });
+      } catch {
+        /* skip seed if free translator fails */
+      }
+    }
+    return out.length ? out : PHRASEBOOK.en;
   }
 
   async function renderLanguageTab(panel) {
@@ -2901,63 +3023,172 @@ Regole pv-places:
     }
     magicTripCache = { ...(magicTripCache || {}), ...trip };
     const lang = languageForDestination(trip.destination);
-    const phrases = PHRASEBOOK[lang.code] || PHRASEBOOK.en;
     const [src, dst] = lang.pair.split("|");
+    const canSpeak = typeof window !== "undefined" && !!window.speechSynthesis;
 
     panel.innerHTML = `
       <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("lingua")}
         <h3>${AI_NAME} · Lingua</h3>
-        <p class="pv-lead">Basi per <strong>${escapeHtml(trip.destination || "il viaggio")}</strong> · ${escapeHtml(lang.name)}. Frasi utili + traduzione.</p>
+        <p class="pv-lead">Ti aiuto a <strong>parlare sul posto</strong> a <strong>${escapeHtml(trip.destination || "destinazione")}</strong> · lingua locale: <strong>${escapeHtml(lang.name)}</strong>.</p>
       </div>
       <div class="pv-panel-body">
-        <div id="pv-phrases"></div>
-        <p style="margin:14px 0 8px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4d676e">Traduzione simultanea</p>
+        ${
+          lang.home
+            ? `<p class="pv-lang-home">Sei in Italia: la lingua del posto è l’italiano. Qui sotto trovi frasi utili e, se serve, la traduzione verso un’altra lingua.</p>`
+            : `<p class="pv-lang-home">Frasi da dire in <strong>${escapeHtml(lang.name)}</strong>. Tocca <em>Ascolta</em> per sentirne la pronuncia, poi ripetile.</p>`
+        }
+        <p style="margin:0 0 8px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4d676e">Come si dice…</p>
+        <form class="pv-lang-say" id="pv-lang-say">
+          <input id="pv-lang-say-input" type="text" autocomplete="off" placeholder="Es. Dove posso comprare l’acqua?" aria-label="Frase in italiano da tradurre" />
+          <button type="submit">Dimmi</button>
+        </form>
+        <p class="pv-status" id="pv-lang-say-status">Scrivi in italiano: ti do la frase nella lingua del posto${canSpeak ? " e la pronunciamo" : ""}.</p>
+        <div class="pv-lang-situations" id="pv-lang-situations" role="tablist" aria-label="Situazioni"></div>
+        <div id="pv-phrases"><p class="pv-status">Preparo il frasario locale…</p></div>
+        <p style="margin:14px 0 8px;font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4d676e">Traduzione libera</p>
         <div class="pv-lang-pair">
           <label>Italiano
-            <textarea id="pv-tr-it" placeholder="Scrivi in italiano…"></textarea>
+            <textarea id="pv-tr-it" placeholder="Scrivi quello che vuoi dire…"></textarea>
           </label>
-          <label>${escapeHtml(lang.name)} (${escapeHtml(dst.toUpperCase())})
-            <textarea id="pv-tr-local" placeholder="Traduzione in tempo reale…"></textarea>
+          <label>${escapeHtml(lang.name)} (${escapeHtml(String(dst || "").toUpperCase())})
+            <textarea id="pv-tr-local" placeholder="Frase da dire sul posto…"></textarea>
           </label>
         </div>
-        <p class="pv-status" id="pv-tr-status">Digita sopra: traduco in entrambe le direzioni.</p>
+        <p class="pv-status" id="pv-tr-status">Digita in italiano → ottieni la lingua del posto (e viceversa).</p>
       </div>
       <div class="pv-panel-foot">
-        <div class="pv-actions"><button type="button" class="ghost pv-magic-close">Chiudi</button></div>
+        <div class="pv-actions">
+          <button type="button" class="primary" id="pv-tr-speak" ${canSpeak ? "" : "disabled"}>Ascolta traduzione</button>
+          <button type="button" class="ghost pv-magic-close">Chiudi</button>
+        </div>
       </div>
     `;
     bindMagicTabs(panel);
     bindPanelChrome(panel);
-    const phraseHost = panel.querySelector("#pv-phrases");
-    for (const [local, it] of phrases) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "pv-phrase";
-      btn.innerHTML = `<strong>${escapeHtml(local)}</strong><span>${escapeHtml(it)}</span>`;
-      btn.onclick = () => {
-        panel.querySelector("#pv-tr-local").value = local;
-        panel.querySelector("#pv-tr-it").value = it;
-        panel.querySelector("#pv-tr-status").textContent = "Frase pronta · puoi modificarla e ritradurre.";
-      };
-      phraseHost.appendChild(btn);
-    }
 
-    let tIt = 0;
-    let tLocal = 0;
+    const phraseHost = panel.querySelector("#pv-phrases");
+    const sitHost = panel.querySelector("#pv-lang-situations");
     const itBox = panel.querySelector("#pv-tr-it");
     const localBox = panel.querySelector("#pv-tr-local");
     const status = panel.querySelector("#pv-tr-status");
+    const sayStatus = panel.querySelector("#pv-lang-say-status");
+    let activeSituation = "essential";
+    let phrases = [];
 
+    function fillBoxes(local, it, note) {
+      localBox.value = local || "";
+      itBox.value = it || "";
+      if (note) status.textContent = note;
+    }
+
+    function renderPhrases() {
+      phraseHost.innerHTML = "";
+      const list = phrases.filter((p) => p.situation === activeSituation);
+      if (!list.length) {
+        phraseHost.innerHTML = `<p class="pv-status">Nessuna frase in questa situazione.</p>`;
+        return;
+      }
+      for (const phrase of list) {
+        const row = document.createElement("div");
+        row.className = "pv-phrase";
+        row.innerHTML = `
+          <strong lang="${escapeHtml(lang.code)}">${escapeHtml(phrase.local)}</strong>
+          <span class="pv-phrase-it">${escapeHtml(phrase.it)}</span>
+          ${phrase.hint ? `<span class="pv-phrase-hint">Si dice: ${escapeHtml(phrase.hint)}</span>` : ""}
+          <div class="pv-phrase-actions">
+            <button type="button" data-act="speak" ${canSpeak ? "" : "disabled"}>Ascolta</button>
+            <button type="button" data-act="use">Usa</button>
+            <button type="button" data-act="copy">Copia</button>
+          </div>
+        `;
+        row.querySelector('[data-act="speak"]').onclick = (ev) => {
+          ev.stopPropagation();
+          const ok = speakLocalText(phrase.local, lang.speech || dst);
+          status.textContent = ok
+            ? `Ascolta e ripeti · ${lang.name}`
+            : "Sintesi vocale non disponibile su questo dispositivo";
+        };
+        row.querySelector('[data-act="use"]').onclick = (ev) => {
+          ev.stopPropagation();
+          fillBoxes(phrase.local, phrase.it, "Frase pronta · puoi modificarla e ritradurre.");
+          speakLocalText(phrase.local, lang.speech || dst);
+        };
+        row.querySelector('[data-act="copy"]').onclick = async (ev) => {
+          ev.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(phrase.local);
+            status.textContent = "Frase locale copiata";
+          } catch {
+            fillBoxes(phrase.local, phrase.it, "Copia non disponibile — frase caricata nei campi.");
+          }
+        };
+        phraseHost.appendChild(row);
+      }
+    }
+
+    for (const sit of LANG_SITUATIONS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = sit.label;
+      btn.dataset.situation = sit.id;
+      btn.classList.toggle("active", sit.id === activeSituation);
+      btn.onclick = () => {
+        activeSituation = sit.id;
+        for (const el of sitHost.querySelectorAll("button")) {
+          el.classList.toggle("active", el.dataset.situation === activeSituation);
+        }
+        renderPhrases();
+      };
+      sitHost.appendChild(btn);
+    }
+
+    try {
+      phrases = await buildLocalPhrasebook(lang);
+      renderPhrases();
+    } catch (err) {
+      phraseHost.innerHTML = `<p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Frasario non disponibile")}</p>`;
+    }
+
+    panel.querySelector("#pv-lang-say").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const text = String(panel.querySelector("#pv-lang-say-input").value || "").trim();
+      if (!text) return;
+      sayStatus.textContent = "Traduco nella lingua del posto…";
+      try {
+        const local = await translateText(text, `${src}|${dst}`);
+        fillBoxes(local, text, "Frase pronta da dire sul posto.");
+        const ok = speakLocalText(local, lang.speech || dst);
+        sayStatus.textContent = ok
+          ? `In ${lang.name}: «${local}» — ascolta e ripeti.`
+          : `In ${lang.name}: «${local}».`;
+      } catch (err) {
+        sayStatus.textContent = err instanceof Error ? err.message : "Traduzione non riuscita";
+      }
+    });
+
+    panel.querySelector("#pv-tr-speak").onclick = () => {
+      const text = localBox.value.trim() || itBox.value.trim();
+      if (!text) {
+        status.textContent = "Scrivi o scegli una frase da ascoltare.";
+        return;
+      }
+      const spoken = localBox.value.trim() || text;
+      const ok = speakLocalText(spoken, lang.speech || dst);
+      status.textContent = ok ? "Ascolto in corso…" : "Sintesi vocale non disponibile";
+    };
+
+    let tIt = 0;
+    let tLocal = 0;
     itBox.addEventListener("input", () => {
       clearTimeout(tIt);
       tIt = setTimeout(async () => {
         const text = itBox.value.trim();
         if (!text) return;
-        status.textContent = "Traduco…";
+        status.textContent = "Traduco nella lingua del posto…";
         try {
           localBox.value = await translateText(text, `${src}|${dst}`);
-          status.textContent = "Aggiornato";
+          status.textContent = "Pronuncia la frase locale qui sotto (Ascolta traduzione).";
         } catch (err) {
           status.textContent = err instanceof Error ? err.message : "Errore traduzione";
         }
@@ -2969,7 +3200,7 @@ Regole pv-places:
       tLocal = setTimeout(async () => {
         const text = localBox.value.trim();
         if (!text) return;
-        status.textContent = "Traduco…";
+        status.textContent = "Traduco in italiano…";
         try {
           itBox.value = await translateText(text, `${dst}|${src}`);
           status.textContent = "Aggiornato";
@@ -2979,6 +3210,10 @@ Regole pv-places:
       }, 450);
     });
   }
+
+  // Test hooks (no paid services).
+  window.__pvLanguageForDestination = languageForDestination;
+  window.__pvSpeakLocalText = speakLocalText;
 
   function escapeHtml(value) {
     return String(value || "")

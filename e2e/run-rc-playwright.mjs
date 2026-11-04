@@ -504,7 +504,7 @@ async function main() {
     );
     ok(
       "magic-extras script present",
-      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104d/.test(s.src || "")))
+      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
 
     // Bacchetta magica: wait for trip shell (not spinner) then assert FAB geometry.
@@ -555,6 +555,36 @@ async function main() {
       JSON.stringify(magicGeom)
     );
 
+    // Lingua: speak-the-local-language helpers + tab UI
+    const lingua = await page.evaluate(async () => {
+      const langFn = window.__pvLanguageForDestination;
+      const mapped = typeof langFn === "function" ? langFn("Parigi, Francia") : null;
+      const fab = document.querySelector("#pv-magic-open");
+      if (fab) {
+        fab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      }
+      await new Promise((r) => setTimeout(r, 600));
+      const linguaTab = document.querySelector('#pv-magic-panel [data-tab="lingua"]');
+      if (linguaTab) linguaTab.click();
+      await new Promise((r) => setTimeout(r, 900));
+      const panelText = document.querySelector("#pv-magic-panel")?.innerText || "";
+      return {
+        mapped,
+        speakHook: typeof window.__pvSpeakLocalText === "function",
+        panelHasSpeak: /parlare sul posto|Come si dice|Ascolta/i.test(panelText),
+        situations: /Essenziali|Ristorante|Direzioni|Emergenza/i.test(panelText),
+      };
+    });
+    ok(
+      "Lingua maps destination to local language",
+      lingua.mapped && lingua.mapped.code === "fr" && lingua.mapped.pair === "it|fr",
+      JSON.stringify(lingua.mapped)
+    );
+    ok(
+      "Lingua tab helps speaking on site",
+      lingua.speakHook && lingua.panelHasSpeak && lingua.situations,
+      JSON.stringify(lingua)
+    );
 
     const critical = pageErrors.filter(
       (e) => !/transfers is not iterable|shares is not iterable|Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
