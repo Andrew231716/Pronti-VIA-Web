@@ -9,7 +9,7 @@
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261102ah";
+  const ASSET_VER = "20261102ai";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -424,6 +424,8 @@
   function animateDockIn(host) {
     if (!host) return;
     clearTimeout(host._dockOutT);
+    // Already visible — do not restart enter transition (that caused the pulse).
+    if (!host.hidden && host.classList.contains("pv-dock-in")) return;
     host.hidden = false;
     host.classList.remove("pv-dock-in");
     requestAnimationFrame(() => {
@@ -433,6 +435,7 @@
 
   function animateDockOut(host) {
     if (!host) return;
+    if (host.hidden && !host.classList.contains("pv-dock-in")) return;
     host.classList.remove("pv-dock-in");
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     clearTimeout(host._dockOutT);
@@ -446,10 +449,15 @@
   }
 
   function syncExpenseDockClass(open) {
+    const host = document.getElementById("pv-es-portal") || (open ? expensePortal() : null);
+    const wasOpen = document.body.classList.contains("pv-es-dock-open") && host && !host.hidden;
     document.body.classList.toggle("pv-es-dock-open", Boolean(open));
-    const host = document.getElementById("pv-es-portal");
     if (open && host) {
-      animateDockIn(host);
+      if (!wasOpen) animateDockIn(host);
+      else {
+        host.hidden = false;
+        host.classList.add("pv-dock-in");
+      }
       placeExpensePortal();
     } else {
       if (host) host.style.bottom = "calc(10px + env(safe-area-inset-bottom,0px))";
@@ -457,7 +465,11 @@
         document.documentElement.style.removeProperty("--pv-es-dock-h");
       }
       document.body.classList.remove("pv-es-dock-open");
-      animateDockOut(host);
+      if (wasOpen) animateDockOut(host);
+      else if (host) {
+        host.hidden = true;
+        host.classList.remove("pv-dock-in");
+      }
     }
   }
 

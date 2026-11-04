@@ -3,7 +3,7 @@
  * Homegrown overlays: non modifica lo schema React (sidecar localStorage + UI).
  */
 (() => {
-  const VER = "20261102ah";
+  const VER = "20261102ai";
   const STYLE_ID = "pv-app-suite-css";
   const FAV_KEY = "viavia-place-favs-v1";
   const STOP_META_KEY = "viavia-stop-meta-v1";
@@ -248,6 +248,8 @@
   function animateDockIn(host) {
     if (!host) return;
     clearTimeout(host._dockOutT);
+    // Already visible — do not restart enter transition (that caused the pulse).
+    if (!host.hidden && host.classList.contains("pv-dock-in")) return;
     host.hidden = false;
     host.classList.remove("pv-dock-in");
     requestAnimationFrame(() => {
@@ -257,6 +259,8 @@
 
   function animateDockOut(host) {
     if (!host) return;
+    // Already closed — skip (MutationObserver ticks used to retrigger this).
+    if (host.hidden && !host.classList.contains("pv-dock-in")) return;
     host.classList.remove("pv-dock-in");
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     clearTimeout(host._dockOutT);
@@ -271,16 +275,20 @@
 
   function showOnlyPanel(id, opts = {}) {
     const force = Boolean(opts.force);
+    const host = portalHost();
+    const wasOpen = document.body.classList.contains("pv-as-dock-open") && !host.hidden;
     if (id && !force && isDockDismissed(id)) {
       currentDockPanelId = id;
-      const host = portalHost();
       document.body.classList.toggle("pv-as-dock-open", false);
       document.documentElement.style.removeProperty("--pv-as-dock-h");
-      animateDockOut(host);
+      if (wasOpen) animateDockOut(host);
+      else {
+        host.hidden = true;
+        host.classList.remove("pv-dock-in");
+      }
       refreshReopenChip(id);
       return;
     }
-    const host = portalHost();
     let any = false;
     [...host.children].forEach((el) => {
       if (el.classList?.contains("pv-as-dock-title")) {
@@ -294,12 +302,20 @@
     document.body.classList.toggle("pv-as-dock-open", any);
     if (any) {
       currentDockPanelId = id;
-      animateDockIn(host);
+      if (!wasOpen) animateDockIn(host);
+      else {
+        host.hidden = false;
+        host.classList.add("pv-dock-in");
+      }
       placePortal(host);
       refreshReopenChip(null);
     } else {
       document.documentElement.style.removeProperty("--pv-as-dock-h");
-      animateDockOut(host);
+      if (wasOpen) animateDockOut(host);
+      else {
+        host.hidden = true;
+        host.classList.remove("pv-dock-in");
+      }
       if (currentDockPanelId && isDockDismissed(currentDockPanelId)) {
         refreshReopenChip(currentDockPanelId);
       } else {
