@@ -112,17 +112,21 @@ test("api-shim exposes toast helpers", () => {
   assert.match(shim, /Salvato e sincronizzato/);
 });
 
-test("CORS allowlist: Pages/Netlify/Vercel/localhost, no wildcard", () => {
+test("CORS allowlist: Pages/Netlify/localhost; reject open vercel/netlify", () => {
   assert.equal(isAllowedOrigin("https://andrew231716.github.io"), true);
   assert.equal(isAllowedOrigin("https://pronti-via-k7es.netlify.app"), true);
-  assert.equal(isAllowedOrigin("https://demo.vercel.app"), true);
+  assert.equal(isAllowedOrigin("https://demo.vercel.app"), false);
+  assert.equal(isAllowedOrigin("https://evil-attacker.vercel.app"), false);
+  assert.equal(isAllowedOrigin("https://evil-attacker.netlify.app"), false);
   assert.equal(isAllowedOrigin("https://evil.example.com"), false);
   assert.equal(isAllowedOrigin("*"), false);
-  assert.equal(resolveAllowOrigin("https://evil.example.com"), "https://andrew231716.github.io");
-  assert.notEqual(resolveAllowOrigin(""), "*");
-  const h = corsHeadersFor({ headers: { origin: "https://foo.vercel.app" } });
-  assert.equal(h["Access-Control-Allow-Origin"], "https://foo.vercel.app");
-  assert.match(h["Access-Control-Allow-Headers"], /X-Pronti-Member-Id/);
+  assert.equal(resolveAllowOrigin("https://evil.example.com"), null);
+  assert.equal(resolveAllowOrigin(""), null);
+  const denied = corsHeadersFor({ headers: { origin: "https://foo.vercel.app" } });
+  assert.equal(denied["Access-Control-Allow-Origin"], undefined);
+  const ok = corsHeadersFor({ headers: { origin: "https://andrew231716.github.io" } });
+  assert.equal(ok["Access-Control-Allow-Origin"], "https://andrew231716.github.io");
+  assert.match(ok["Access-Control-Allow-Headers"], /X-Pronti-Member-Id/);
   for (const file of [
     "netlify/functions/account.mjs",
     "netlify/functions/trips.mjs",
