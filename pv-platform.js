@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104h — Hub in primary bottom nav (schema Home/Viaggi/HUB/IA/Profilo)
+ * Stamp: 20261104i — Hub/nav polish: copy umana, dash chiara, IA in capsule
  */
 (() => {
-  const VER = "20261104h";
+  const VER = "20261104i";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -593,7 +593,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       <div class="pv-plat-head">
         <div>
           <strong>HUB · Collaborazione</strong>
-          <p class="pv-plat-lead">Gruppi, votazioni, spese di gruppo, preparazione e backup — l’ambiente condiviso del viaggio.</p>
+          <p class="pv-plat-lead">Tutto ciò che fate insieme: voti, cose da preparare, numeri e copie di sicurezza.</p>
         </div>
         <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
@@ -739,23 +739,25 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
         <p class="pv-plat-muted">${escapeHtml(trip.destination || "Destinazione da definire")}</p>
         <div class="pv-plat-grid" style="margin-top:10px">
-          <div class="pv-plat-stat"><b>${dLeft == null ? "—" : dLeft >= 0 ? dLeft + "g" : "via"}</b><span>Alla partenza</span></div>
+          <div class="pv-plat-stat"><b>${
+            dLeft == null ? "—" : dLeft > 0 ? `tra ${dLeft} gg` : dLeft === 0 ? "oggi" : "concluso"
+          }</b><span>Partenza</span></div>
           <div class="pv-plat-stat"><b>${duration || "—"}</b><span>Giorni</span></div>
-          <div class="pv-plat-stat"><b>${members.length || 1}</b><span>Partecipanti</span></div>
+          <div class="pv-plat-stat"><b>${members.length || 1}</b><span>In gruppo</span></div>
           <div class="pv-plat-stat"><b>${euro(spent)}</b><span>Spese</span></div>
         </div>
-        <p class="pv-plat-muted" style="margin-top:8px">Budget ${euro(budget)} · residuo ${euro(budget - spent)}</p>
+        <p class="pv-plat-muted" style="margin-top:8px">Budget ${euro(budget)} · resta ${euro(Math.max(0, budget - spent))}</p>
       </div>
       <div class="pv-plat-card">
-        <h3>Attività da completare</h3>
-        <ul class="pv-plat-list">${(todos.length ? todos : ["Tutto in ordine per ora."])
+        <h3>Prossimi passi</h3>
+        <ul class="pv-plat-list">${(todos.length ? todos : ["Niente di urgente — puoi esplorare le sezioni qui sotto."])
           .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>
         <div class="pv-plat-actions">
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">Preparazione</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">Votazioni</button>
-          <button type="button" class="pv-plat-btn" data-plat="optimize">Ottimizza tappe</button>
           <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">Mappa</a>
+          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">Riordina tappe</button>
         </div>
       </div>`;
   }
@@ -996,16 +998,16 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderBackup() {
     return `<div class="pv-plat-card">
-      <h3>Backup e ripristino</h3>
-      <p class="pv-plat-muted">Export indipendente da hosting/DB. Prima dell'import vedi un riepilogo; nessuna sovrascrittura cieca.</p>
+      <h3>Copia di sicurezza</h3>
+      <p class="pv-plat-muted">Scarica una copia del viaggio sul tuo dispositivo. Se importi un file, vedi prima un riepilogo: niente sovrascritture a sorpresa.</p>
       <div class="pv-plat-actions">
-        <button type="button" class="pv-plat-btn" data-plat="backup-export">Scarica backup JSON</button>
+        <button type="button" class="pv-plat-btn" data-plat="backup-export">Scarica copia</button>
       </div>
-      <label class="pv-plat-muted">Importa file backup
+      <label class="pv-plat-muted">Ripristina da file
         <input class="pv-plat-input" id="pv-backup-file" type="file" accept="application/json,.json" />
       </label>
       <pre id="pv-backup-summary" class="pv-plat-muted" style="white-space:pre-wrap"></pre>
-      <button type="button" class="pv-plat-btn" data-plat="backup-apply" hidden>Applica merge sicuro</button>
+      <button type="button" class="pv-plat-btn" data-plat="backup-apply" hidden>Ripristina senza cancellare tutto</button>
     </div>`;
   }
 
@@ -1013,23 +1015,36 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
+    const pending = Array.isArray(outbox) ? outbox.length : 0;
     return `<div class="pv-plat-card">
       <h3>Aspetto</h3>
       <label class="pv-plat-muted">Tema
         <select class="pv-plat-input" id="pv-theme">
-          <option value="system" ${theme === "system" ? "selected" : ""}>Sistema</option>
+          <option value="system" ${theme === "system" ? "selected" : ""}>Come il telefono</option>
           <option value="light" ${theme === "light" ? "selected" : ""}>Chiaro</option>
           <option value="dark" ${theme === "dark" ? "selected" : ""}>Scuro</option>
         </select>
       </label>
-      <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica tema</button>
-      <p class="pv-plat-muted" style="margin-top:10px">Versione hub ${VER} · online: ${
-      navigator.onLine ? "sì" : "no"
-    } · in coda sync: ${outbox.length}</p>
-      <p class="pv-plat-muted">La coda riprova i PUT locali/falliti finché il server non conferma. Non dichiara sync senza conferma.</p>
-      <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova sincronizzazione</button>
-      <p class="pv-plat-muted" style="margin-top:10px"><strong>Ruoli:</strong> proprietario / amministratore / collaboratore / visualizzatore.
-      Enforcement UI + header <code>X-Pronti-Member-Id</code>. Limite: con sola edit-key condivisa il server non può autenticare criptograficamente il membro senza tale header.</p>
+      <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica</button>
+      <h3 style="margin-top:16px">Sincronizzazione</h3>
+      <p class="pv-plat-muted">${
+        navigator.onLine
+          ? pending
+            ? `${pending} modifiche in attesa di conferma dal server.`
+            : "Online — tutto sincronizzato per ora."
+          : "Offline — le modifiche restano su questo dispositivo finché torni online."
+      }</p>
+      <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova ora</button>
+      <details style="margin-top:14px">
+        <summary class="pv-plat-muted" style="cursor:pointer">Chi può fare cosa</summary>
+        <p class="pv-plat-muted" style="margin-top:8px">
+          <strong>Proprietario</strong> gestisce tutto ·
+          <strong>Amministratore</strong> invita e modifica ·
+          <strong>Collaboratore</strong> modifica contenuti ·
+          <strong>Visualizzatore</strong> legge e vota.
+        </p>
+      </details>
+      <p class="pv-plat-muted" style="margin-top:10px;font-size:11px">Hub ${VER}</p>
     </div>`;
   }
 

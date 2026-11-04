@@ -146,3 +146,11 @@ Applicato lo schema concettuale **Home · Viaggi · HUB · Assistente IA · Prof
 - Profilo apre gli strumenti/account (ex Menu).
 
 Brand teal Pronti? VIA! mantenuto; accenti soft su HUB/IA solo per stato attivo.
+
+
+## 9. Polish 20261104i
+
+- IA solo in capsule (bacchetta flottante nascosta con nav)
+- Hub copy umana + Prossimi passi
+- Onboarding 5 tab; Profilo ripulito; viaggi senza ID criptici
+- Safe-area e stack FAB/Preventivo

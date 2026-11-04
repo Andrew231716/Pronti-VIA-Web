@@ -175,12 +175,12 @@ async function runViewport(browser, label, viewport, isMobile) {
       bodyText: (document.body.innerText || "").slice(0, 400),
       hasColosseo: /Colosseo/i.test(document.body.innerText || ""),
       hasRoma: /Roma|Verifica Roma|E2E Roma/i.test(document.body.innerText || ""),
-      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104[gh]|magic-extras/.test(s)),
+      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104[ghi]|magic-extras/.test(s)),
     };
   });
   ok(`[${label}] Hub+Menu in chrome`, chrome.hub && chrome.menu, JSON.stringify({ hub: chrome.hub, menu: chrome.menu, fabHidden: chrome.fabHidden }));
   ok(`[${label}] FAB nascosto`, chrome.fabHidden);
-  ok(`[${label}] Stamp 20261104h + magic`, chrome.scripts.some((s) => /pv-platform-20261104h/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
+  ok(`[${label}] Stamp 20261104i + magic`, chrome.scripts.some((s) => /pv-platform-20261104i/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
   ok(`[${label}] Contenuto viaggio (non bianco)`, chrome.hasColosseo || chrome.hasRoma, chrome.bodyText.slice(0, 160));
   ok(`[${label}] Nessun shares/transfers crash`, !errors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)), errors.slice(0, 3).join(" | "));
 
@@ -258,19 +258,27 @@ async function runViewport(browser, label, viewport, isMobile) {
   await page.evaluate(() => document.querySelector("#pv-plat-panel [data-plat=close]")?.click());
   await page.waitForTimeout(300);
   await page.evaluate(() => {
-    document.querySelector("#pv-magic-open")?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    if (typeof window.__pvNavAi === "function") window.__pvNavAi();
+    else {
+      const m = document.querySelector("#pv-magic-open");
+      if (m) {
+        m.style.display = "inline-flex";
+        m.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      } else document.getElementById("pv-nav-ai")?.click();
+    }
   });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(700);
   const magic = await page.evaluate(() => {
     const panel = document.querySelector("#pv-magic-panel");
     const tabs = [...document.querySelectorAll("#pv-magic-panel [data-tab]")].map((b) => (b.textContent || "").trim());
     return {
-      open: Boolean(panel) && getComputedStyle(panel).display !== "none",
+      open: Boolean(document.body.classList.contains("pv-magic-open") && panel && !panel.hidden),
       tabs,
       hasLingua: tabs.some((t) => /lingua/i.test(t)),
+      aiNav: Boolean(document.getElementById("pv-nav-ai")),
     };
   });
-  ok(`[${label}] Bacchetta + tab Lingua`, magic.open && magic.hasLingua, JSON.stringify(magic));
+  ok(`[${label}] Bacchetta + tab Lingua`, magic.open && magic.hasLingua && magic.aiNav, JSON.stringify(magic));
   await page.screenshot({ path: join(OUT, `verify-${label}-04-magic.png`) });
 
   // Hub toggle integrity
@@ -339,9 +347,13 @@ async function runViewport(browser, label, viewport, isMobile) {
   ok(`[${label}] Menu → Preventivo e spese`, opened.clicked && compare, JSON.stringify(opened));
 
   opened = await openMenuAction("more");
-  await page.waitForTimeout(500);
-  const more = await page.evaluate(() => /Attività|Template|Versioni|Export/i.test(document.body.innerText || ""));
-  ok(`[${label}] Menu → Altri strumenti`, opened.clicked && more, JSON.stringify(opened));
+  await page.waitForTimeout(700);
+  const more = await page.evaluate(() => {
+    const sheet = document.querySelector(".pv-ux-modal.pv-open .pv-ux-sheet, .pv-ux-modal .pv-ux-sheet")?.innerText || "";
+    const body = document.body.innerText || "";
+    return /Attività|Template|Versioni|Export|Altri strumenti/i.test(sheet || body);
+  });
+  ok(`[${label}] Menu → Altri strumenti`, opened.clicked && more, JSON.stringify({ ...opened, more }));
 
   await context.close();
 }

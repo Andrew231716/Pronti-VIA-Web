@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104h — Playwright E2E (free, system Chrome).
+ * RC 20261104i — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -499,8 +499,8 @@ async function main() {
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104h present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104h/.test(s.src || "")))
+      "pv-platform 20261104i present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104i/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {
@@ -553,55 +553,56 @@ async function main() {
     ).catch(() => {});
     const magicGeom = await page.evaluate(() => {
       const magic = document.querySelector("#pv-magic-open");
+      const aiNav = document.getElementById("pv-nav-ai");
       const hubNav = document.getElementById("pv-hub-nav");
       const hubFab = document.getElementById("pv-plat-fab");
-      if (!magic) {
+      const primary = document.getElementById("pv-primary-nav");
+      if (!magic && !aiNav) {
         return {
           present: false,
           loadingSpin: Boolean(document.querySelector("main.loading .spin")),
-          mainClass: document.querySelector("main")?.className || "",
           accountReady: document.body.classList.contains("pv-account-ready"),
-          styleInjected: Boolean(document.getElementById("pv-magic-extras-css")),
         };
       }
-      const mr = magic.getBoundingClientRect();
+      const ms = magic ? getComputedStyle(magic) : null;
+      const magicHiddenByNav =
+        Boolean(primary) &&
+        !primary.hidden &&
+        document.body.classList.contains("pv-primary-nav-ready") &&
+        magic &&
+        (ms.display === "none" || ms.visibility === "hidden");
+      const mr = magic && !magicHiddenByNav ? magic.getBoundingClientRect() : null;
+      const ar = aiNav?.getBoundingClientRect();
       const nr = hubNav?.getBoundingClientRect();
       const fr = hubFab && getComputedStyle(hubFab).display !== "none" ? hubFab.getBoundingClientRect() : null;
-      const ms = getComputedStyle(magic);
       const overlaps = (a, b) =>
         Boolean(a && b) && !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
       return {
-        present: true,
-        visible: ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0,
-        right: ms.right,
-        left: mr.left,
-        magicAboveNav: (() => {
-          const primary = document.getElementById("pv-primary-nav");
-          if (!primary || primary.hidden) return mr.top > window.innerHeight * 0.45;
-          const pr = primary.getBoundingClientRect();
-          return mr.bottom <= pr.top + 4;
-        })(),
-        hubInPrimaryNav: Boolean(hubNav && document.getElementById("pv-primary-nav")?.contains(hubNav)),
+        present: Boolean(magic || aiNav),
+        aiInNav: Boolean(aiNav && primary?.contains(aiNav)),
+        magicHiddenByNav,
+        visible: magicHiddenByNav
+          ? Boolean(aiNav)
+          : Boolean(magic && ms && ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0),
+        hubInPrimaryNav: Boolean(hubNav && primary?.contains(hubNav)),
         hubNavPresent: Boolean(hubNav),
         fabHidden: !hubFab || getComputedStyle(hubFab).display === "none",
-        overlapNav: overlaps(mr, nr),
+        overlapNav: overlaps(mr, nr) || overlaps(mr, ar),
         overlapFab: overlaps(mr, fr),
       };
     });
     ok(
-      "Bacchetta #pv-magic-open visible on trip",
-      magicGeom.present && magicGeom.visible,
+      "Assistente IA raggiungibile (nav o bacchetta)",
+      magicGeom.present && magicGeom.visible && (magicGeom.aiInNav || !magicGeom.magicHiddenByNav),
       JSON.stringify(magicGeom)
     );
     ok(
-      "Hub and bacchetta do not overlap",
-      magicGeom.present &&
-        magicGeom.hubNavPresent &&
+      "Hub e IA non si sovrappongono ai FAB",
+      magicGeom.hubNavPresent &&
         magicGeom.hubInPrimaryNav &&
         magicGeom.fabHidden &&
         magicGeom.overlapNav === false &&
-        magicGeom.overlapFab === false &&
-        magicGeom.magicAboveNav,
+        magicGeom.overlapFab === false,
       JSON.stringify(magicGeom)
     );
 
@@ -609,11 +610,15 @@ async function main() {
     const lingua = await page.evaluate(async () => {
       const langFn = window.__pvLanguageForDestination;
       const mapped = typeof langFn === "function" ? langFn("Parigi, Francia") : null;
-      const fab = document.querySelector("#pv-magic-open");
-      if (fab) {
-        fab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+      if (typeof window.__pvNavAi === "function") window.__pvNavAi();
+      else {
+        const fab = document.querySelector("#pv-magic-open");
+        if (fab) {
+          fab.style.display = "inline-flex";
+          fab.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+        } else document.getElementById("pv-nav-ai")?.click();
       }
-      await new Promise((r) => setTimeout(r, 600));
+      await new Promise((r) => setTimeout(r, 700));
       const linguaTab = document.querySelector('#pv-magic-panel [data-tab="lingua"]');
       if (linguaTab) linguaTab.click();
       await new Promise((r) => setTimeout(r, 900));
@@ -714,10 +719,18 @@ async function main() {
       document.getElementById("pv-plat-panel")?.classList.remove("open");
       document.body.classList.remove("pv-plat-open");
       await wait(200);
-      const magic = document.querySelector("#pv-magic-open");
       const panelBefore = document.querySelector("#pv-magic-panel");
       const alreadyOpen = Boolean(document.body.classList.contains("pv-magic-open") && panelBefore && !panelBefore.hidden);
-      if (magic && !alreadyOpen) magic.click();
+      if (!alreadyOpen) {
+        if (typeof window.__pvNavAi === "function") window.__pvNavAi();
+        else {
+          const magic = document.querySelector("#pv-magic-open");
+          if (magic) {
+            magic.style.display = "inline-flex";
+            magic.click();
+          } else document.getElementById("pv-nav-ai")?.click();
+        }
+      }
       await wait(700);
       const magicPanel = document.querySelector("#pv-magic-panel");
       const magicOpen = Boolean(

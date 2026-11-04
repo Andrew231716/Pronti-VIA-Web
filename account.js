@@ -229,31 +229,31 @@ function ensureUi() {
   nav.setAttribute("aria-label", "Navigazione principale");
   nav.innerHTML = `
     <div class="pv-primary-nav-inner" role="toolbar">
-      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page">
+      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page" title="Home — panoramica e nuovo viaggio">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
         </span>
         <span class="pv-nav-label">Home</span>
       </button>
-      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips">
+      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips" title="Viaggi — itinerario o elenco">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h9l2 4H7l2-4z"/><path d="M7 8v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
         </span>
         <span class="pv-nav-label">Viaggi</span>
       </button>
-      <button type="button" class="pv-nav-item pv-nav-hub" data-nav="hub" id="pv-hub-nav" aria-haspopup="dialog" aria-expanded="false" title="Hub · Collabora">
+      <button type="button" class="pv-nav-item pv-nav-hub" data-nav="hub" id="pv-hub-nav" aria-haspopup="dialog" aria-expanded="false" title="HUB — collabora con il gruppo">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19"/><path d="M14 14.2c1.5-.7 3.2-.5 4.8.8.6.5 1 1.2 1.2 2"/></svg>
         </span>
         <span class="pv-nav-label">HUB</span>
       </button>
-      <button type="button" class="pv-nav-item pv-nav-ai" data-nav="ai" id="pv-nav-ai" aria-haspopup="dialog" aria-expanded="false" title="Assistente IA · Bacchetta magica">
+      <button type="button" class="pv-nav-item pv-nav-ai" data-nav="ai" id="pv-nav-ai" aria-haspopup="dialog" aria-expanded="false" title="Assistente IA — bacchetta magica">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.2 4.2L17.5 8.5 13.2 9.8 12 14l-1.2-4.2L6.5 8.5l4.3-1.3L12 3z"/><path d="M18.5 14.5 19 16l1.5.5L19 17l-.5 1.5L18 17l-1.5-.5L18 16l.5-1.5z"/></svg>
         </span>
         <span class="pv-nav-label">IA</span>
       </button>
-      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false">
+      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e strumenti">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/><circle cx="18.2" cy="6.2" r="2" /><path d="M17.2 6.2h2M18.2 5.2v2"/></svg>
         </span>

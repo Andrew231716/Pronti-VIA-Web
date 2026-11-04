@@ -1,5 +1,15 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104i] — 2026-11-04
+
+### UX polish post-riferimenti
+- Bacchetta flottante nascosta con nav primaria (IA nella capsule); Preventivo solo, sollevato.
+- Hub: copy umana (backup/settings/dash), countdown in italiano, «Prossimi passi».
+- Onboarding spiega Home/Viaggi/HUB/IA/Profilo (anche fuori viaggio).
+- Profilo: Hub demoted, eliminazioni in zona pericolosa; elenco viaggi senza ID criptici.
+- Safe-area top chip + padding sheet/toast sopra la capsule.
+- Stamp `20261104i`.
+
 ## [20261104h] — 2026-11-04
 
 ### UX — navigazione primaria stile riferimento

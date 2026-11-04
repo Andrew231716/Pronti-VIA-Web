@@ -79,10 +79,9 @@
         scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
       }
       /*
-        Right-side FAB stack (restored after Hub regression):
-        - Pronty / bacchetta at the lower slot
-        - Preventivo above it
-        Hub was moved to the LEFT in pv-platform — do not pin Pronty under Hub.
+        Right-side FAB stack:
+        - Senza primary nav: Pronty in basso, Preventivo sopra
+        - Con primary nav: Pronty nascosto (IA in capsule), Preventivo sopra la nav
       */
       #pv-magic-root .pv-magic-btn{
         bottom:calc(18px + env(safe-area-inset-bottom,0px))!important;
@@ -94,12 +93,21 @@
         right:calc(14px + env(safe-area-inset-right,0px))!important;
         z-index:120060!important;
       }
+      body.pv-primary-nav-ready .pv-prev-launch{
+        bottom:calc(82px + env(safe-area-inset-bottom,0px))!important;
+      }
+      body.pv-primary-nav-ready #pv-magic-root .pv-magic-btn{
+        display:none!important;
+      }
       #pv-ux-toast{
         position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));
         transform:translateX(-50%);z-index:130000;max-width:min(440px,92vw);
         background:#153b47;color:#fff;padding:12px 14px;border-radius:12px;
         font:600 13px/1.35 inherit;box-shadow:0 12px 32px rgba(0,0,0,.28);
         opacity:0;pointer-events:none;transition:opacity .2s ease
+      }
+      body.pv-primary-nav-ready #pv-ux-toast{
+        bottom:calc(88px + env(safe-area-inset-bottom,0px));
       }
       #pv-ux-toast.show{opacity:1;pointer-events:auto}
       #pv-ux-toast.ok{background:#0f5a40}
@@ -216,11 +224,15 @@
       .pv-ux-modal.pv-open .pv-ux-back{opacity:1}
       .pv-ux-modal .pv-ux-sheet{
         position:relative;z-index:1;width:min(560px,100%);max-height:min(88vh,840px);overflow:auto;
-        background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px 28px;
+        background:#f7fafb;border-radius:22px 22px 0 0;padding:16px 16px calc(28px + env(safe-area-inset-bottom,0px));
         box-shadow:0 -18px 50px rgba(21,59,71,.18);color:var(--pv-ink);
         transform:translateY(18px);opacity:0;
         transition:transform var(--pv-motion) var(--pv-ease),opacity .22s ease;
         overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+      }
+      body.pv-primary-nav-ready .pv-ux-modal .pv-ux-sheet{
+        padding-bottom:calc(88px + env(safe-area-inset-bottom,0px));
+        max-height:min(82vh,840px);
       }
       .pv-ux-modal.pv-open .pv-ux-sheet{transform:translateY(0);opacity:1}
       /* Shared dock enter/leave (app + expense portals) */
@@ -522,21 +534,27 @@
     const links = readRecentLinks();
     const body =
       links.length === 0
-        ? `<p class="small-note" style="margin:0 0 12px;color:#5b7380">Nessun viaggio recente su questo dispositivo.</p>
+        ? `<div class="pv-empty-state" style="margin:4px 0 8px">
+             <h3>Nessun viaggio ancora</h3>
+             <p>Crea il primo dalla home con «Nuovo viaggio», oppure apri un link condiviso.</p>
+           </div>
            <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`
-        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Tocca il cestino per rimuovere un viaggio da questo dispositivo e, se possibile, anche dal cloud.</p>
+        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Apri un viaggio o rimuovilo da questo dispositivo (e dal cloud se disponibile).</p>
            <div class="pv-trip-manage-list">
              ${links
-               .map(
-                 (t, i) => `<div class="pv-trip-manage-row" data-idx="${i}">
+               .map((t, i) => {
+                 const dest = t.destination || t.meta?.destination || "";
+                 const when = [t.start || t.meta?.start, t.end || t.meta?.end].filter(Boolean).join(" → ");
+                 const meta = [dest, when].filter(Boolean).join(" · ") || "Salvato su questo dispositivo";
+                 return `<div class="pv-trip-manage-row" data-idx="${i}">
                    <div class="grow">
                      <strong>${escapeHtml(t.title || "Viaggio")}</strong>
-                     <span>${escapeHtml(String(t.id).slice(0, 8))}…</span>
+                     <span class="pv-trip-meta">${escapeHtml(meta)}</span>
                    </div>
                    <a class="pv-ux-ghost" href="#${new URLSearchParams({ trip: t.id, key: t.key })}">Apri</a>
                    <button type="button" class="danger pv-trash-icon-btn" data-del="${i}" aria-label="Rimuovi ${escapeHtml(t.title || "viaggio")}" title="Rimuovi viaggio">${trashIconSvg(15)}</button>
-                 </div>`
-               )
+                 </div>`;
+               })
                .join("")}
            </div>
            <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`;
@@ -843,36 +861,30 @@
               </div>
             </div>
             <div class="pv-menu-section">
-              <h3>Collabora</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="hub"><strong>Apri Hub</strong><span>Votazioni, preparazione, numeri, backup e impostazioni</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
               <h3>Altro</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="more"><strong>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
+                <button type="button" data-ux="hub"><strong>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso · voti, preparazione, backup</span></button>
               </div>
             </div>`
           : `<div class="pv-menu-section">
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="manage-trips"><strong>Gestisci viaggi</strong><span>Apri o elimina i viaggi salvati</span></button>
-                <button type="button" data-ux="home-hint"><strong>Crea o apri un viaggio</strong><span>Usa «Nuovo viaggio» o «I tuoi viaggi» in homepage</span></button>
+                <button type="button" data-ux="manage-trips"><strong>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
+                <button type="button" data-ux="home-hint"><strong>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
-              <h3>Collabora</h3>
+              <h3>Altro</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="hub"><strong>Apri Hub</strong><span>Panoramica, backup e impostazioni anche fuori dal viaggio</span></button>
+                <button type="button" data-ux="hub"><strong>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso</span></button>
               </div>
             </div>`
       }
        <div class="pv-menu-section">
-         <h3>Account</h3>
+         <h3>Il tuo account</h3>
          <div class="pv-menu-grid">
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
-           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella il login su questo dispositivo/cloud</span></button>
          </div>
        </div>
        <div class="pv-menu-section">
@@ -883,6 +895,7 @@
                ? `<button type="button" class="danger" data-ux="delete-trip"><strong>Elimina viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>`
                : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`
            }
+           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella il login su questo dispositivo/cloud</span></button>
          </div>
        </div>`,
       {
@@ -911,7 +924,10 @@
               else if (act === "more") openMoreTools();
               else if (act === "manage-trips") openManageTrips();
               else if (act === "delete-trip") void deleteCurrentTrip();
-              else if (act === "home-hint") toast("Apri un viaggio dalla lista o creane uno nuovo", "ok");
+              else if (act === "home-hint") {
+                if (typeof window.__pvNavHome === "function") window.__pvNavHome();
+                else toast("Usa «Nuovo viaggio» in homepage", "ok");
+              }
               else if (act === "logout") {
                 if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
               } else if (act === "delete-account") {
@@ -927,36 +943,37 @@
 
   function navGoHome() {
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("home");
-    // Close overlays
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
     document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
+    // Home = landing: esci dal viaggio e mostra crea/apri
     if (tripAuth()) {
       location.hash = "";
+      toast("Home — crea un viaggio o aprine uno recente", "ok");
       return;
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
-    const homeLink = [...document.querySelectorAll("a, button")].find((el) =>
-      /^I tuoi viaggi$/i.test((el.textContent || "").trim())
+    const createBtn = [...document.querySelectorAll("button, a")].find((el) =>
+      /nuovo viaggio/i.test((el.textContent || "").trim())
     );
-    homeLink?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+    createBtn?.scrollIntoView?.({ block: "center", behavior: "smooth" });
   }
 
   function navGoTrips() {
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("trips");
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
     if (tripAuth()) {
+      // In viaggio: workspace (itinerario)
       const tab = [...document.querySelectorAll("button, [role=tab], a")].find((el) =>
         /^Itinerario$/i.test((el.textContent || "").trim())
       );
       tab?.click();
-      tab?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
       const stop = [...document.querySelectorAll("h2, h3, button")].find((el) =>
-        /itinerario|Aggiungi tappa/i.test(el.textContent || "")
+        /Il nostro itinerario|Aggiungi tappa/i.test(el.textContent || "")
       );
       stop?.scrollIntoView?.({ block: "start", behavior: "smooth" });
       return;
     }
-    // Fuori viaggio: apri gestisci viaggi
+    // Fuori viaggio: elenco / apri
     openManageTrips();
   }
 
@@ -965,12 +982,14 @@
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
     const aiBtn = document.getElementById("pv-nav-ai");
     aiBtn?.setAttribute("aria-expanded", "true");
+    // Bacchetta può essere display:none con primary nav — click() resta valido
     const magic = document.getElementById("pv-magic-open");
     if (magic) {
+      magic.style.display = "inline-flex";
       magic.click();
       return;
     }
-    toast("Bacchetta magica disponibile quando il viaggio è pronto", "warn");
+    toast(tripAuth() ? "Assistente in caricamento…" : "Apri un viaggio per usare l’assistente IA", "warn");
   }
 
   window.__pvNavHome = navGoHome;
@@ -1563,22 +1582,29 @@
     if (document.getElementById("pv-account-gate") && !document.getElementById("pv-account-gate").hidden) {
       return;
     }
-    if (!tripAuth()) return;
     openModal(
-      "In 30 secondi",
+      "Come muoverti in Pronti? VIA!",
       `<div class="pv-onboard-steps">
-        <div><strong>1. Itinerario</strong>Aggiungi le tappe giorno per giorno.</div>
-        <div><strong>2. Condividi</strong>Invia il link (o un codice invito) al gruppo.</div>
-        <div><strong>3. Preventivo</strong>Usa la tab Preventivo per costi ed eSIM.</div>
+        <div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div>
+        <div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div>
+        <div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div>
+        <div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div>
+        <div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div>
       </div>
       <div class="pv-ux-actions">
-        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">Ho capito</button>
+        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">Inizia</button>
       </div>`,
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString() });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261104i" });
             closeModal();
+            if (!tripAuth()) {
+              const createBtn = [...document.querySelectorAll("button, a")].find((el) =>
+                /nuovo viaggio/i.test((el.textContent || "").trim())
+              );
+              createBtn?.scrollIntoView?.({ block: "center", behavior: "smooth" });
+            }
           });
         },
       }
