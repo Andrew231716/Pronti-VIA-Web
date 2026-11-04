@@ -89,14 +89,16 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      #${ROOT_ID}{position:fixed;inset:0;z-index:80;pointer-events:none;font-family:inherit}
-      #${ROOT_ID}.pv-open{z-index:100050;pointer-events:auto}
+      /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
+      #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
+      #${ROOT_ID}.pv-open{z-index:120200;pointer-events:auto}
       #${ROOT_ID} > *{pointer-events:auto}
       #${ROOT_ID} .pv-magic-scrim{display:none;position:fixed;inset:0;background:rgba(12,32,40,.48);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:0}
       #${ROOT_ID}.pv-open .pv-magic-scrim{display:block}
       /* While Pronty is open, hide competing FABs so they don't crowd the sheet */
       #${ROOT_ID}.pv-open .pv-magic-btn,
-      body.pv-magic-open .pv-prev-launch{opacity:0!important;pointer-events:none!important;visibility:hidden!important}
+      body.pv-magic-open .pv-prev-launch,
+      body.pv-magic-open #pv-plat-fab{opacity:0!important;pointer-events:none!important;visibility:hidden!important}
       #${ROOT_ID} .pv-magic-btn{
         appearance:none;border:0;position:fixed;right:${FAB_DOCK_RIGHT}px;bottom:${PRONTY_FAB_BOTTOM};z-index:2;
         width:${FAB_SIZE}px;height:${FAB_SIZE}px;border-radius:50%;padding:0;
@@ -955,7 +957,10 @@
       document.getElementById(ROOT_ID)?.remove();
       return;
     }
-    if (document.querySelector("main.loading")) return;
+    // SPA uses class "loading" for BOTH the spinner ("Apriamo…") and the hard
+    // error ("Non riusciamo ad aprire…"). Only block the FAB during the spinner
+    // — Pronty must remain reachable once a trip hash is present (incl. error).
+    if (document.querySelector("main.loading .spin")) return;
 
     const root = ensureRoot();
     // Keep an open suggestion panel intact (MutationObserver would otherwise wipe it).
@@ -5885,6 +5890,7 @@ Regole pv-places:
   };
 
   function tick() {
+    if (typeof document !== "undefined" && document.hidden) return;
     renderFab();
     injectPackingTemplates();
     injectBudgetAndCharts();

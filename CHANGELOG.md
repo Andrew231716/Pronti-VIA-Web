@@ -1,5 +1,16 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104d] — 2026-11-04
+
+### Post-merge regression fix
+- **Bacchetta magica:** non era rimossa — era **coperta** dall’Hub FAB (`z-index` 120100 vs magic-root 80) sullo stesso angolo destro. Ripristinata la visibilità alzando lo stacking della bacchetta e spostando Hub a **sinistra**.
+- **Gate spinner:** `renderFab` non tratta più lo schermo errore SPA (`main.loading` senza `.spin`) come loading — la bacchetta torna montabile anche se il trip fallisce l’apertura.
+- **Hub overlap:** `#pv-plat-fab` ancorato a sinistra + safe-area; nascosto con `body.pv-magic-open`; chip offline spostato per non collidere.
+- **Fluidità:** transizione Hub panel; `prefers-reduced-motion`; skip `tick()` magic quando `document.hidden`.
+- Stamp shell/assets `20261104d`.
+- Test: `test-fab-layout-20261104d.mjs` + E2E assert Hub a sinistra + `#pv-magic-open` visible / no overlap.
+- Nessun merge/publish in questo fix (branch dedicato).
+
 ## [20261104c] — 2026-11-04
 
 ### Security — CORS P1

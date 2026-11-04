@@ -317,15 +317,25 @@
   --pv-plat-border: rgba(231,242,243,.12);
   --pv-plat-shadow: 0 12px 32px rgba(0,0,0,.35);
 }
+/* Hub FAB lives on the LEFT so it never covers Pronty (bacchetta) / Preventivo on the right. */
 #pv-plat-fab {
   position: fixed; z-index: 120100;
-  right: max(12px, env(safe-area-inset-right));
-  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: auto;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
   width: 52px; height: 52px; border-radius: 16px; border: 0;
   background: var(--pv-plat-accent); color: #fff; font: 700 13px/1 system-ui,sans-serif;
   box-shadow: var(--pv-plat-shadow); cursor: pointer;
+  transition: opacity .2s ease, transform .16s ease;
 }
 #pv-plat-fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+/* While Pronty sheet is open, hide Hub so it does not fight the sheet/FABs. */
+body.pv-magic-open #pv-plat-fab {
+  opacity: 0 !important; pointer-events: none !important; visibility: hidden !important;
+}
+body.pv-plat-open #pv-offline-chip {
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+}
 #pv-plat-panel {
   position: fixed; z-index: 120150; inset: auto 0 0 0;
   max-height: min(88vh, 920px);
@@ -333,8 +343,16 @@
   border-radius: 20px 20px 0 0; box-shadow: var(--pv-plat-shadow);
   padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
+  transform: translateY(12px); opacity: 0;
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+  will-change: transform, opacity;
+  contain: layout style;
 }
-#pv-plat-panel.open { display: block; }
+#pv-plat-panel.open { display: block; transform: translateY(0); opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #pv-plat-fab, #pv-plat-panel { transition: none !important; }
+  #pv-plat-panel { transform: none; opacity: 1; }
+}
 #pv-plat-panel .pv-plat-head {
   display:flex; align-items:center; gap:8px; margin-bottom:10px;
 }
@@ -378,10 +396,10 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 }
 @media (min-width: 860px) {
   #pv-plat-panel {
-    inset: 72px 24px auto auto; width: min(440px, 92vw); max-height: calc(100vh - 96px);
+    inset: 72px auto auto 24px; width: min(440px, 92vw); max-height: calc(100vh - 96px);
     border-radius: 18px; bottom: auto;
   }
-  #pv-plat-fab { bottom: 24px; }
+  #pv-plat-fab { bottom: 24px; left: 24px; right: auto; }
 }
 `;
     document.head.appendChild(s);
@@ -499,6 +517,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
     const open = force == null ? !panel.classList.contains("open") : force;
     panel.classList.toggle("open", open);
+    document.body.classList.toggle("pv-plat-open", open);
+    const fab = document.getElementById("pv-plat-fab");
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
     if (open) void renderPanel();
   }
   async function renderPanel() {

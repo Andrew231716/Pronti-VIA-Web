@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104b — Playwright E2E (free, system Chrome).
+ * RC 20261104d — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -161,9 +161,9 @@ async function main() {
     await wait(1000);
     const stampOk = await page.evaluate(() => {
       const scripts = [...document.scripts].map((s) => s.src);
-      return scripts.some((s) => s.includes("20261104b"));
+      return scripts.some((s) => s.includes("20261104d"));
     });
-    ok("stamp 20261104b loaded", stampOk);
+    ok("stamp 20261104d loaded", stampOk);
 
     const user = `e2e_${Date.now().toString(36)}`;
     const pass = "Test1234";
@@ -491,6 +491,70 @@ async function main() {
       hub.deniedError
     );
     ok("Hub piattaforma presente", hub.fab && hub.api === "object", JSON.stringify({ fab: hub.fab, api: hub.api }));
+    const fabGeom = await page.evaluate(() => {
+      const hub = document.getElementById("pv-plat-fab");
+      if (!hub) return null;
+      const s = getComputedStyle(hub);
+      return { left: s.left, right: s.right, bottom: s.bottom };
+    });
+    ok(
+      "Hub FAB on left (clears right bacchetta stack)",
+      fabGeom && Number.parseFloat(fabGeom.left) < 80,
+      JSON.stringify(fabGeom)
+    );
+    ok(
+      "magic-extras script present",
+      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104d/.test(s.src || "")))
+    );
+
+    // Bacchetta magica: wait for trip shell (not spinner) then assert FAB geometry.
+    await page.waitForFunction(
+      () => {
+        const spin = document.querySelector("main.loading .spin");
+        const magic = document.querySelector("#pv-magic-open");
+        const ready = document.body.classList.contains("pv-account-ready");
+        return ready && !spin && Boolean(magic);
+      },
+      { timeout: 20000 }
+    ).catch(() => {});
+    const magicGeom = await page.evaluate(() => {
+      const magic = document.querySelector("#pv-magic-open");
+      const hub = document.getElementById("pv-plat-fab");
+      if (!magic) {
+        return {
+          present: false,
+          loadingSpin: Boolean(document.querySelector("main.loading .spin")),
+          mainClass: document.querySelector("main")?.className || "",
+          accountReady: document.body.classList.contains("pv-account-ready"),
+          styleInjected: Boolean(document.getElementById("pv-magic-extras-css")),
+        };
+      }
+      const mr = magic.getBoundingClientRect();
+      const hr = hub?.getBoundingClientRect();
+      const ms = getComputedStyle(magic);
+      return {
+        present: true,
+        visible: ms.visibility !== "hidden" && ms.display !== "none" && mr.width > 0,
+        right: ms.right,
+        left: mr.left,
+        hubLeft: hr?.left ?? null,
+        hubRight: hr?.right ?? null,
+        overlap:
+          hr &&
+          !(mr.right < hr.left || mr.left > hr.right || mr.bottom < hr.top || mr.top > hr.bottom),
+      };
+    });
+    ok(
+      "Bacchetta #pv-magic-open visible on trip",
+      magicGeom.present && magicGeom.visible,
+      JSON.stringify(magicGeom)
+    );
+    ok(
+      "Hub and bacchetta do not overlap",
+      magicGeom.present && magicGeom.overlap === false && magicGeom.left > (magicGeom.hubRight || 0),
+      JSON.stringify(magicGeom)
+    );
+
 
     const critical = pageErrors.filter(
       (e) => !/transfers is not iterable|shares is not iterable|Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
