@@ -343,16 +343,23 @@ body.pv-plat-open #pv-offline-chip {
   border-radius: 20px 20px 0 0; box-shadow: var(--pv-plat-shadow);
   padding: 12px 14px calc(16px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
-  transform: translateY(12px); opacity: 0;
-  transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
-  will-change: transform, opacity;
-  contain: layout style;
+  /* Resting open pose — tab content swaps must NOT re-run enter animation. */
+  transform: translateY(0); opacity: 1;
 }
-#pv-plat-panel.open { display: block; transform: translateY(0); opacity: 1; }
+#pv-plat-panel.open { display: block; }
+/* Enter animation only while .pv-plat-entering is present (toggled on open). */
+#pv-plat-panel.open.pv-plat-entering {
+  transform: translateY(14px); opacity: 0;
+}
+#pv-plat-panel.open.pv-plat-anim {
+  transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+}
 @media (prefers-reduced-motion: reduce) {
   #pv-plat-fab, #pv-plat-panel { transition: none !important; }
-  #pv-plat-panel { transform: none; opacity: 1; }
+  #pv-plat-panel.open.pv-plat-entering { transform: none; opacity: 1; }
 }
+#pv-plat-body { min-height: 120px; }
+#pv-plat-body.pv-plat-body-busy { opacity: .72; }
 #pv-plat-panel .pv-plat-head {
   display:flex; align-items:center; gap:8px; margin-bottom:10px;
 }
@@ -506,25 +513,25 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     fab.addEventListener("click", () => togglePanel());
     document.body.appendChild(fab);
   }
-  function togglePanel(force) {
-    let panel = document.getElementById("pv-plat-panel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "pv-plat-panel";
-      panel.setAttribute("role", "dialog");
-      panel.setAttribute("aria-label", "Hub Pronti VIA");
-      document.body.appendChild(panel);
-    }
-    const open = force == null ? !panel.classList.contains("open") : force;
-    panel.classList.toggle("open", open);
-    document.body.classList.toggle("pv-plat-open", open);
-    const fab = document.getElementById("pv-plat-fab");
-    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) void renderPanel();
+  let panelRenderSeq = 0;
+  function playPanelEnter(panel) {
+    if (!panel || window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
+    panel.classList.add("pv-plat-entering", "pv-plat-anim");
+    // Double rAF: apply starting pose, then release to resting open pose.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        panel.classList.remove("pv-plat-entering");
+        const done = () => {
+          panel.classList.remove("pv-plat-anim");
+          panel.removeEventListener("transitionend", done);
+        };
+        panel.addEventListener("transitionend", done);
+        setTimeout(done, 280);
+      });
+    });
   }
-  async function renderPanel() {
-    const panel = document.getElementById("pv-plat-panel");
-    if (!panel) return;
+  function ensurePanelChrome(panel) {
+    if (panel.querySelector("#pv-plat-body")) return;
     const tabs = [
       ["dash", "Dashboard"],
       ["polls", "Voti"],
@@ -541,35 +548,85 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi">Chiudi</button>
       </div>
       <div class="pv-plat-tabs">${tabs
-        .map(
-          ([id, label]) =>
-            `<button type="button" data-tab="${id}" class="${id === activeTab ? "on" : ""}">${label}</button>`
-        )
+        .map(([id, label]) => `<button type="button" data-tab="${id}">${label}</button>`)
         .join("")}</div>
-      <div id="pv-plat-body"><p class="pv-plat-muted">Caricamento…</p></div>
+      <div id="pv-plat-body"></div>
     `;
     panel.querySelector("[data-plat=close]")?.addEventListener("click", () => togglePanel(false));
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
+        if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
-        void renderPanel();
+        void renderPanel({ tabSwitch: true });
       });
     });
+  }
+  function syncTabButtons(panel) {
+    panel.querySelectorAll("[data-tab]").forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.tab === activeTab);
+    });
+  }
+  function togglePanel(force) {
+    let panel = document.getElementById("pv-plat-panel");
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = "pv-plat-panel";
+      panel.setAttribute("role", "dialog");
+      panel.setAttribute("aria-label", "Hub Pronti VIA");
+      document.body.appendChild(panel);
+    }
+    const open = force == null ? !panel.classList.contains("open") : force;
+    const wasOpen = panel.classList.contains("open");
+    panel.classList.toggle("open", open);
+    document.body.classList.toggle("pv-plat-open", open);
+    const fab = document.getElementById("pv-plat-fab");
+    if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) {
+      if (!wasOpen) playPanelEnter(panel);
+      void renderPanel({ tabSwitch: wasOpen });
+    } else {
+      panel.classList.remove("pv-plat-entering", "pv-plat-anim");
+    }
+  }
+  async function renderTabHtml(tab) {
+    if (tab === "dash") return renderDash();
+    if (tab === "polls") return renderPolls();
+    if (tab === "prep") return renderPrep();
+    if (tab === "stats") return renderStats();
+    if (tab === "cal") return renderCal();
+    if (tab === "archive") return renderArchive();
+    if (tab === "backup") return renderBackup();
+    return renderSettings();
+  }
+  async function renderPanel({ tabSwitch = false } = {}) {
+    const panel = document.getElementById("pv-plat-panel");
+    if (!panel) return;
+    ensurePanelChrome(panel);
+    syncTabButtons(panel);
     const body = panel.querySelector("#pv-plat-body");
+    if (!body) return;
+    const seq = ++panelRenderSeq;
+    const prevH = body.getBoundingClientRect().height;
+    if (tabSwitch && prevH > 80) body.style.minHeight = `${Math.round(prevH)}px`;
+    body.classList.add("pv-plat-body-busy");
     try {
-      if (activeTab === "dash") body.innerHTML = await renderDash();
-      else if (activeTab === "polls") body.innerHTML = await renderPolls();
-      else if (activeTab === "prep") body.innerHTML = await renderPrep();
-      else if (activeTab === "stats") body.innerHTML = await renderStats();
-      else if (activeTab === "cal") body.innerHTML = await renderCal();
-      else if (activeTab === "archive") body.innerHTML = await renderArchive();
-      else if (activeTab === "backup") body.innerHTML = await renderBackup();
-      else body.innerHTML = renderSettings();
+      const html = await renderTabHtml(activeTab);
+      if (seq !== panelRenderSeq) return; // newer tab click won
+      body.innerHTML = html;
       wireBody(body);
     } catch (err) {
+      if (seq !== panelRenderSeq) return;
       body.innerHTML = `<div class="pv-plat-card"><p class="pv-plat-muted">${escapeHtml(
         err.message || "Errore"
       )}</p></div>`;
+    } finally {
+      if (seq === panelRenderSeq) {
+        body.classList.remove("pv-plat-body-busy");
+        // Release height lock after paint so the next tab can size naturally.
+        requestAnimationFrame(() => {
+          if (seq === panelRenderSeq) body.style.minHeight = "";
+        });
+      }
     }
   }
 
