@@ -7,6 +7,16 @@
 - Chrome del pannello riusato; contenuto tab caricato e poi scambiato (niente flash «Caricamento…» che collassa l’altezza).
 - Stamp `pv-platform-20261104f`; test `test-hub-panel-fluid-20261104f.mjs`.
 
+## [20261104e] — 2026-11-04
+
+### Bacchetta · Lingua — parlare sul posto
+- Tab **Lingua** riorientata ad aiutare a **parlare nella lingua del posto** (non solo dizionario).
+- Situazioni: Essenziali / Ristorante / Direzioni / Emergenza.
+- «Come si dice…» (IT → lingua locale) + **Ascolta** via Web Speech API (gratuita, on-device).
+- Destinazioni mappate a lingue reali (no/sv/da/nl/el/…); frasario dinamico via MyMemory quando manca il curato.
+- Stamp `magic-extras-20261104e`; test `test-lingua-speak-20261104e.mjs`.
+- Nessun servizio a pagamento.
+
 ## [20261104d] — 2026-11-04
 
 ### Post-merge regression fix

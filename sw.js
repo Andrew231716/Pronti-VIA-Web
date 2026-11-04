@@ -15,7 +15,7 @@ const PRECACHE = [
   // Must match account.js dynamic import (loadfix = bugfix, not loadForm).
   "./assets/index-loadfix-20261104d.js",
   "./assets/api-shim-20261104d.js",
-  "./assets/magic-extras-20261104d.js",
+  "./assets/magic-extras-20261104e.js",
   "./assets/expense-suite-20261104d.js",
   "./assets/app-suite-20261104d.js",
   "./assets/preventivo-islanda-20261104d.js",
