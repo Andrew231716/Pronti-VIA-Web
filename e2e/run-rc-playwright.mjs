@@ -12,6 +12,7 @@ import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
+import { tripApiPayload } from "./fixtures/valid-trip.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const PORT = Number(process.env.PV_E2E_PORT || 3457);
@@ -232,12 +233,9 @@ async function main() {
             id: "e2e-trip-1",
             key: "e2e-key-1",
             viewToken: "e2e-view-1",
-            trip: { title: "E2E Roma", members: [{ id: "m1", name: "owner" }], meta: { roles: { m1: "owner" } } },
+            ...tripApiPayload({ title: "E2E Roma" }),
             revision: 1,
-            canEdit: true,
-            local: false,
             source: "blobs",
-            durable: true,
           }),
         });
       }
@@ -292,22 +290,11 @@ async function main() {
           status: 200,
           contentType: "application/json",
           headers: { "Access-Control-Allow-Origin": "*" },
-          body: JSON.stringify({
-            id: "e2e-trip-1",
-            key: "e2e-key-1",
-            viewToken: "e2e-view-1",
-            trip: {
+          body: JSON.stringify(
+            tripApiPayload({
               title: "E2E Roma editata",
-              members: [{ id: "m1", name: "owner" }],
-              meta: { roles: { m1: "owner" } },
-              expenses: [{ id: "e1", amount: 12, title: "Caffè" }],
-              polls: [],
-            },
-            revision: 2,
-            canEdit: true,
-            local: false,
-            source: "store",
-          }),
+            })
+          ),
         });
       }
       if (method === "DELETE") {
@@ -327,27 +314,22 @@ async function main() {
     await page.route("**/*", tripMock);
 
     // Seed trip auth in recent links + hash
-    await page.evaluate(() => {
+    await page.evaluate((seed) => {
       const trip = { id: "e2e-trip-1", key: "e2e-key-1", title: "E2E Roma" };
       localStorage.setItem("viavia-recent-links-v1", JSON.stringify([trip]));
       const packed = {
-        id: "e2e-trip-1",
-        key: "e2e-key-1",
-        viewToken: "e2e-view-1",
-        trip: {
-          title: "E2E Roma",
-          members: [{ id: "m1", name: "owner" }],
-          meta: { roles: { m1: "owner" } },
-          expenses: [],
-          stops: [],
-        },
+        id: seed.id,
+        key: seed.key,
+        viewToken: seed.viewToken,
+        trip: seed.trip,
         revision: 1,
       };
       const map = {};
       map["e2e-trip-1"] = packed;
       localStorage.setItem("viavia-local-trips-v1", JSON.stringify(map));
+      localStorage.setItem("viavia-onboard-v1", JSON.stringify({ done: true, at: Date.now() }));
       location.hash = `#trip=e2e-trip-1&key=e2e-key-1`;
-    });
+    }, tripApiPayload());
     await page.reload({ waitUntil: "domcontentloaded" });
     await wait(1200);
     ok("2. Creazione/apertura viaggio", true, "e2e-trip-1 seeded");
@@ -633,9 +615,125 @@ async function main() {
     );
 
     const critical = pageErrors.filter(
-      (e) => !/transfers is not iterable|shares is not iterable|Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
+      (e) => !/Failed to fetch|ERR_INTERNET|net::ERR/i.test(e)
     );
-    ok("Nessun pageerror bloccante", critical.length === 0, critical.slice(0, 3).join(" | ") || pageErrors.slice(0, 2).join(" | "));
+    ok(
+      "Nessun pageerror bloccante (incl. shares/transfers)",
+      critical.length === 0 && !pageErrors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)),
+      critical.slice(0, 3).join(" | ") || pageErrors.slice(0, 2).join(" | ")
+    );
+
+    // Deep reachability: trip shell + Menu categories + Hub tabs + bacchetta
+    await page.evaluate(() => {
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      document.querySelectorAll(".pv-ux-close, [data-ux-close]").forEach((el) => el.click());
+      const magicClose =
+        document.querySelector("#pv-magic-close") ||
+        document.querySelector('#pv-magic-panel [aria-label*="Chiudi"], #pv-magic-panel button.pv-magic-close');
+      magicClose?.click();
+      document.body.classList.remove("pv-plat-open");
+      document.getElementById("pv-plat-panel")?.classList.remove("open");
+    });
+    await wait(500);
+    const deep = await page.evaluate(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+      const text = () => document.body.innerText || "";
+      const tripShell = {
+        title: /E2E Roma|Roma/i.test(text()),
+        tabs: [...document.querySelectorAll("nav button, [role=tab], .tabs button, button")]
+          .map((b) => (b.textContent || "").trim())
+          .filter(Boolean)
+          .slice(0, 40),
+        hasItinerario: /Itinerario/i.test(text()),
+        hasSpese: /Spese/i.test(text()),
+        stopVisible: /Colosseo/i.test(text()),
+        rootKids: document.getElementById("root")?.childElementCount || 0,
+      };
+
+      if (typeof window.__pvOpenAccountMenu === "function") window.__pvOpenAccountMenu();
+      else document.getElementById("pv-account-menu")?.click();
+      await wait(700);
+      const menuRoot =
+        document.querySelector(".pv-ux-sheet, .pv-ux-modal, #pv-ux-modal, [data-pv-ux-modal]") ||
+        [...document.querySelectorAll("[role=dialog]")].find((el) => /Apri Hub|Organizza|Azioni rapide/i.test(el.innerText || ""));
+      const menuBody = menuRoot?.innerText || "";
+      const uxActs = [...document.querySelectorAll("button[data-ux]")].map((b) => b.getAttribute("data-ux"));
+      const menu = {
+        open: Boolean(menuRoot) && uxActs.length > 0,
+        organizza: uxActs.includes("companions") && uxActs.includes("invite") && uxActs.includes("checklist"),
+        soldi: uxActs.includes("compare"),
+        collabora: uxActs.includes("hub"),
+        altro: uxActs.includes("more"),
+        acts: uxActs,
+        sample: menuBody.slice(0, 220),
+      };
+      document.querySelector(".pv-ux-close, [data-ux-close]")?.click();
+      await wait(300);
+
+      (document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab"))?.click();
+      await wait(600);
+      const hubTabs = [...document.querySelectorAll("#pv-plat-panel [data-tab]")].map((b) => b.dataset.tab);
+      const hubLabels = [...document.querySelectorAll("#pv-plat-panel [data-tab]")].map((b) => (b.textContent || "").trim());
+      const hubVisited = [];
+      for (const tab of hubTabs) {
+        document.querySelector(`#pv-plat-panel [data-tab="${tab}"]`)?.click();
+        await wait(350);
+        hubVisited.push({
+          tab,
+          open: document.getElementById("pv-plat-panel")?.classList.contains("open"),
+          bodyLen: (document.getElementById("pv-plat-body")?.innerText || "").length,
+        });
+      }
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      await wait(300);
+
+      // Ensure Hub closed before opening magic (z-index / dimming).
+      document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+      document.getElementById("pv-plat-panel")?.classList.remove("open");
+      document.body.classList.remove("pv-plat-open");
+      await wait(200);
+      const magic = document.querySelector("#pv-magic-open");
+      const panelBefore = document.querySelector("#pv-magic-panel");
+      const alreadyOpen = Boolean(document.body.classList.contains("pv-magic-open") && panelBefore && !panelBefore.hidden);
+      if (magic && !alreadyOpen) magic.click();
+      await wait(700);
+      const magicPanel = document.querySelector("#pv-magic-panel");
+      const magicOpen = Boolean(
+        document.body.classList.contains("pv-magic-open") && magicPanel && !magicPanel.hidden
+      );
+      const magicTabs = [...document.querySelectorAll("#pv-magic-panel [data-tab]")].map((b) => (b.textContent || "").trim());
+
+      // toggle Hub twice: must open then close (no double-bind stuck-open)
+      const hubBtn = document.getElementById("pv-hub-nav");
+      hubBtn?.click();
+      await wait(400);
+      const opened = document.getElementById("pv-plat-panel")?.classList.contains("open");
+      hubBtn?.click();
+      await wait(400);
+      const closed = !document.getElementById("pv-plat-panel")?.classList.contains("open");
+
+      return {
+        tripShell,
+        menu,
+        hubTabs,
+        hubLabels,
+        hubVisited,
+        magicOpen,
+        magicTabs,
+        hubToggle: { opened, closed, bound: hubBtn?.dataset?.pvHubBound === "1" },
+        fabHidden: !document.getElementById("pv-plat-fab") || getComputedStyle(document.getElementById("pv-plat-fab")).display === "none",
+      };
+    });
+    ok("Trip shell renderizza contenuto (niente schermo bianco)", deep.tripShell.rootKids > 0 && (deep.tripShell.hasItinerario || deep.tripShell.stopVisible || deep.tripShell.title), JSON.stringify(deep.tripShell));
+    ok("Menu categorie presenti", deep.menu.open && deep.menu.organizza && deep.menu.soldi && deep.menu.collabora && deep.menu.altro, JSON.stringify(deep.menu));
+    ok(
+      "Hub: tutte le tab visitabili",
+      deep.hubTabs.length >= 7 && deep.hubVisited.every((v) => v.open && v.bodyLen > 10),
+      JSON.stringify({ tabs: deep.hubLabels, visited: deep.hubVisited })
+    );
+    ok("Bacchetta apribile", deep.magicOpen, JSON.stringify({ magicOpen: deep.magicOpen, tabs: deep.magicTabs }));
+    ok("Hub toggle open/close senza doppio bind", deep.hubToggle.opened && deep.hubToggle.closed && deep.hubToggle.bound, JSON.stringify(deep.hubToggle));
+    ok("FAB Hub nascosto con nav pronta", deep.fabHidden, JSON.stringify({ fabHidden: deep.fabHidden }));
   } finally {
     await browser.close().catch(() => {});
     await new Promise((r) => server.close(r));

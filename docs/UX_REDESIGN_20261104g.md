@@ -131,3 +131,8 @@ Nessuna modifica a logica, endpoint o stamp `20261104e`.
 ## 6. Non modificato di proposito
 
 Backend Netlify, schema trip, CORS, sync/outbox, magic-extras, React SPA bundle, servizi a pagamento (nessuno introdotto).
+
+## 7. Verifica approfondita
+
+Vedi `docs/VERIFY_UX_20261104g.md`.  
+E2E **30/30** + deep verify mobile/desktop **30/30** dopo fixture trip SPA-completa (`e2e/fixtures/valid-trip.mjs`).

@@ -12,6 +12,7 @@
 - Stamp shell `pv-shell-20261104g`; asset `pv-platform-20261104g` + `ux-suite-20261104g`.
 - Docs: `docs/UX_REDESIGN_20261104g.md` (mappa prima/dopo, architettura menu/Hub).
 - Test unit aggiornati + E2E Hub su `#pv-hub-nav`.
+- Verifica approfondita: fixture trip SPA-completa (`e2e/fixtures/valid-trip.mjs`) elimina falsi `shares is not iterable`; E2E 30/30 + `npm run test:verify-ux` 30/30 (mobile/desktop).
 - Nessuna funzionalità rimossa; nessun merge/deploy automatico.
 
 ## [20261104f] — 2026-11-04
