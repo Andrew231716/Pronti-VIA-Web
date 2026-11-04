@@ -432,6 +432,38 @@ body.pv-primary-nav-ready #pv-plat-fab {
   z-index: 1 !important;
 }
 
+/* Local-only banner: compact chip, not a full-width yellow slab */
+#pv-local-only-banner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 8px 12px 0 !important;
+  padding: 8px 10px 8px 12px !important;
+  max-width: min(520px, calc(100% - 24px)) !important;
+  width: auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(180, 120, 40, 0.22) !important;
+  border-bottom: 1px solid rgba(180, 120, 40, 0.22) !important;
+  background: rgba(255, 248, 235, 0.95) !important;
+  color: #7a4b00 !important;
+  font: 600 12px/1.35 inherit !important;
+  box-shadow: 0 4px 14px rgba(90, 60, 20, 0.06);
+  text-align: left !important;
+  justify-content: flex-start !important;
+}
+#pv-local-only-banner.pv-banner-compact span {
+  flex: 1;
+  min-width: 0;
+}
+#pv-local-only-banner [data-pv-local-dismiss] {
+  width: 28px !important;
+  height: 28px !important;
+  background: transparent !important;
+  border: 1px solid rgba(180, 120, 40, 0.28) !important;
+}
+
 /* Print / PDF friendly */
 @media print {
   #pv-account-chip,

@@ -133,7 +133,10 @@ async function bootTrip(page) {
     }));
     localStorage.setItem("viavia-onboard-v1", JSON.stringify({ done: true, at: Date.now() }));
     localStorage.setItem("viavia-recent-links-v1", JSON.stringify([{ id: seed.id, key: seed.key, title: seed.trip.title }]));
-    localStorage.setItem("viavia-local-trips-v1", JSON.stringify({ [seed.id]: seed }));
+    localStorage.setItem(
+      "viavia-local-trips-v1",
+      JSON.stringify({ [seed.id]: { ...seed, local: true, source: "local", durable: false } })
+    );
   }, tripApiPayload({ title: "Verifica Roma" }));
   await installAccountRoute(page);
   const errors = [];
@@ -175,14 +178,31 @@ async function runViewport(browser, label, viewport, isMobile) {
       bodyText: (document.body.innerText || "").slice(0, 400),
       hasColosseo: /Colosseo/i.test(document.body.innerText || ""),
       hasRoma: /Roma|Verifica Roma|E2E Roma/i.test(document.body.innerText || ""),
-      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104[ghi]|magic-extras/.test(s)),
+      scripts: [...document.scripts].map((s) => s.src).filter((s) => /20261104[ghij]|magic-extras/.test(s)),
     };
   });
   ok(`[${label}] Hub+Menu in chrome`, chrome.hub && chrome.menu, JSON.stringify({ hub: chrome.hub, menu: chrome.menu, fabHidden: chrome.fabHidden }));
   ok(`[${label}] FAB nascosto`, chrome.fabHidden);
-  ok(`[${label}] Stamp 20261104i + magic`, chrome.scripts.some((s) => /pv-platform-20261104i/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
+  ok(`[${label}] Stamp 20261104j + magic`, chrome.scripts.some((s) => /pv-platform-20261104j/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261104e/.test(s)), JSON.stringify(chrome.scripts));
   ok(`[${label}] Contenuto viaggio (non bianco)`, chrome.hasColosseo || chrome.hasRoma, chrome.bodyText.slice(0, 160));
   ok(`[${label}] Nessun shares/transfers crash`, !errors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)), errors.slice(0, 3).join(" | "));
+
+  // Allow backup interval (1.2s) to polish local banner
+  await page.waitForTimeout(1600);
+  const banner = await page.evaluate(() => {
+    const b = document.getElementById("pv-local-only-banner");
+    return {
+      present: Boolean(b),
+      compact: b?.classList.contains("pv-banner-compact"),
+      short: /Salvato solo qui/i.test(b?.innerText || ""),
+      text: (b?.innerText || "").slice(0, 120),
+    };
+  });
+  ok(
+    `[${label}] Banner locale compatto`,
+    banner.present && banner.compact && banner.short,
+    JSON.stringify(banner)
+  );
 
   await page.screenshot({ path: join(OUT, `verify-${label}-01-trip.png`) });
 
@@ -226,12 +246,19 @@ async function runViewport(browser, label, viewport, isMobile) {
     return {
       open: panel?.classList.contains("open"),
       title: /HUB · Collaborazione|Hub · Collabora/i.test(panel?.innerText || ""),
+      groups: [...panel?.querySelectorAll("[data-plat-group]") || []].map((b) => (b.textContent || "").trim()),
       tabs: [...panel?.querySelectorAll("[data-tab]") || []].map((b) => b.dataset.tab),
+      visibleTabs: [...panel?.querySelectorAll("[data-tab]") || []].filter((b) => !b.hidden).map((b) => b.dataset.tab),
     };
   });
-  ok(`[${label}] Menu → Apri Hub`, hubFromMenu.open && hubFromMenu.title && hubFromMenu.tabs.length >= 7, JSON.stringify(hubFromMenu));
+  ok(
+    `[${label}] Menu → Apri Hub`,
+    hubFromMenu.open && hubFromMenu.title && hubFromMenu.tabs.length >= 7 &&
+      hubFromMenu.groups.includes("Collabora") && hubFromMenu.groups.includes("Organizza"),
+    JSON.stringify(hubFromMenu)
+  );
 
-  // Visit every Hub tab
+  // Visit every Hub tab (incl. other group — click switches group)
   const hubVisit = await page.evaluate(async () => {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     const out = [];
@@ -245,12 +272,22 @@ async function runViewport(browser, label, viewport, isMobile) {
         entering: document.getElementById("pv-plat-panel")?.classList.contains("pv-plat-entering"),
       });
     }
-    return out;
+    // Switch group UI explicitly
+    const org = document.querySelector('#pv-plat-panel [data-plat-group="trip"]');
+    org?.click();
+    await wait(200);
+    const visible = [...document.querySelectorAll("#pv-plat-panel [data-tab]")].filter((b) => !b.hidden).map((b) => b.dataset.tab);
+    return { tabs: out, groupVisible: visible };
   });
   ok(
     `[${label}] Hub tab tutte con contenuto`,
-    hubVisit.length >= 7 && hubVisit.every((t) => t.len > 8 && !t.entering),
-    JSON.stringify(hubVisit)
+    hubVisit.tabs.length >= 7 && hubVisit.tabs.every((t) => t.len > 8 && !t.entering),
+    JSON.stringify(hubVisit.tabs)
+  );
+  ok(
+    `[${label}] Hub gruppo Organizza`,
+    hubVisit.groupVisible.includes("cal") && hubVisit.groupVisible.includes("backup"),
+    JSON.stringify(hubVisit.groupVisible)
   );
   await page.screenshot({ path: join(OUT, `verify-${label}-03-hub.png`) });
 

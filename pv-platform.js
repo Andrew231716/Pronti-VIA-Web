@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104i — Hub/nav polish: copy umana, dash chiara, IA in capsule
+ * Stamp: 20261104j — Hub tab groups + quieter local banner + home cards
  */
 (() => {
-  const VER = "20261104i";
+  const VER = "20261104j";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -388,6 +388,19 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
 #pv-plat-panel .pv-plat-head .pv-plat-lead {
   margin:4px 0 0; font:400 0.84rem/1.45 system-ui,sans-serif; color: var(--pv-plat-muted);
 }
+#pv-plat-panel .pv-plat-tab-groups {
+  display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px;
+  padding:4px; border-radius:14px; background: rgba(20,52,58,.06);
+}
+#pv-plat-panel .pv-plat-tab-groups button {
+  border:0; background:transparent; color: var(--pv-plat-muted);
+  border-radius: 11px; padding: 10px 12px; min-height:40px;
+  font: 700 13px/1.2 system-ui,sans-serif; cursor:pointer;
+}
+#pv-plat-panel .pv-plat-tab-groups button.on {
+  background: #fff; color: var(--pv-plat-accent);
+  box-shadow: 0 2px 8px rgba(16,42,48,.08);
+}
 #pv-plat-panel .pv-plat-tabs {
   display:flex; flex-wrap:nowrap; gap:6px; margin:0 0 12px; overflow-x:auto;
   -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0 6px;
@@ -399,6 +412,7 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
   box-shadow: 0 1px 0 rgba(16,42,48,.04);
 }
+#pv-plat-panel .pv-plat-tabs button[hidden] { display:none !important; }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
   background: var(--pv-plat-card); border:1px solid var(--pv-plat-border);
@@ -577,18 +591,36 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       });
     });
   }
+  const HUB_GROUPS = {
+    collab: {
+      label: "Collabora",
+      tabs: [
+        ["dash", "Panoramica"],
+        ["polls", "Votazioni"],
+        ["prep", "Preparazione"],
+        ["stats", "Numeri"],
+      ],
+    },
+    trip: {
+      label: "Organizza",
+      tabs: [
+        ["cal", "Calendario"],
+        ["archive", "Ricordi"],
+        ["backup", "Backup"],
+        ["settings", "Impostazioni"],
+      ],
+    },
+  };
+  let activeGroup = "collab";
+  function groupForTab(tab) {
+    if (HUB_GROUPS.trip.tabs.some(([id]) => id === tab)) return "trip";
+    return "collab";
+  }
   function ensurePanelChrome(panel) {
-    if (panel.querySelector("#pv-plat-body")) return;
-    const tabs = [
-      ["dash", "Panoramica"],
-      ["polls", "Votazioni"],
-      ["prep", "Preparazione"],
-      ["stats", "Numeri"],
-      ["cal", "Calendario"],
-      ["archive", "Ricordi"],
-      ["backup", "Backup"],
-      ["settings", "Impostazioni"],
-    ];
+    // Recreate if older single-row chrome (pre-grouping).
+    if (panel.querySelector("#pv-plat-body") && panel.querySelector(".pv-plat-tab-groups")) return;
+    activeGroup = groupForTab(activeTab);
+    const allTabs = [...HUB_GROUPS.collab.tabs, ...HUB_GROUPS.trip.tabs];
     panel.innerHTML = `
       <div class="pv-plat-head">
         <div>
@@ -597,22 +629,51 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         </div>
         <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
-      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${tabs
-        .map(([id, label]) => `<button type="button" role="tab" data-tab="${id}">${label}</button>`)
+      <div class="pv-plat-tab-groups" role="tablist" aria-label="Aree Hub">
+        ${Object.entries(HUB_GROUPS)
+          .map(
+            ([id, g]) =>
+              `<button type="button" class="pv-plat-group${id === activeGroup ? " on" : ""}" data-plat-group="${id}">${g.label}</button>`
+          )
+          .join("")}
+      </div>
+      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${allTabs
+        .map(
+          ([id, label]) =>
+            `<button type="button" role="tab" data-tab="${id}" data-group="${groupForTab(id)}" hidden>${label}</button>`
+        )
         .join("")}</div>
       <div id="pv-plat-body"></div>
     `;
     panel.querySelector("[data-plat=close]")?.addEventListener("click", () => togglePanel(false));
+    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const g = btn.dataset.platGroup;
+        if (g === activeGroup) return;
+        activeGroup = g;
+        const first = HUB_GROUPS[g].tabs[0][0];
+        if (!HUB_GROUPS[g].tabs.some(([id]) => id === activeTab)) activeTab = first;
+        syncTabButtons(panel);
+        void renderPanel({ tabSwitch: true });
+      });
+    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
+        activeGroup = groupForTab(activeTab);
         void renderPanel({ tabSwitch: true });
       });
     });
   }
   function syncTabButtons(panel) {
+    activeGroup = groupForTab(activeTab);
+    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
+      btn.classList.toggle("on", btn.dataset.platGroup === activeGroup);
+    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
+      const inGroup = btn.dataset.group === activeGroup;
+      btn.hidden = !inGroup;
       btn.classList.toggle("on", btn.dataset.tab === activeTab);
     });
   }

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104i — Playwright E2E (free, system Chrome).
+ * RC 20261104j — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -466,18 +466,21 @@ async function main() {
       const backupTab = tabs.some((t) => /backup/i.test(t));
       const pollsTab = tabs.some((t) => /vot|poll/i.test(t));
       const head = panel?.querySelector(".pv-plat-head")?.innerText || "";
+      const groups = [...panel?.querySelectorAll("[data-plat-group]") || []].map((b) => (b.textContent || "").trim());
       return {
         nav: Boolean(nav),
         fabHidden: !fab || getComputedStyle(fab).display === "none",
         panel: Boolean(panel) && getComputedStyle(panel).display !== "none",
         tabs,
+        groups,
         api: typeof api,
         denied: denied.status,
         deniedError: deniedBody.error || "",
         expensesPresent,
         backupTab,
         pollsTab,
-        collabora: /Collabora/i.test(head),
+        collabora: /Collabora/i.test(head) || groups.includes("Collabora"),
+        organizza: groups.includes("Organizza"),
         primaryNav: Boolean(document.getElementById("pv-primary-nav")),
       };
     });
@@ -491,16 +494,16 @@ async function main() {
     );
     ok(
       "Hub integrato in primary nav",
-      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora && hub.primaryNav,
-      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora, primaryNav: hub.primaryNav })
+      hub.nav && hub.fabHidden && hub.api === "object" && hub.collabora && hub.organizza && hub.primaryNav,
+      JSON.stringify({ nav: hub.nav, fabHidden: hub.fabHidden, api: hub.api, collabora: hub.collabora, organizza: hub.organizza, groups: hub.groups, primaryNav: hub.primaryNav })
     );
     ok(
       "magic-extras script present",
       await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104i present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104i/.test(s.src || "")))
+      "pv-platform 20261104j present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104j/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {

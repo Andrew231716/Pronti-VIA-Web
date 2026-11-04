@@ -22,8 +22,8 @@ const plat = readFileSync("pv-platform.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
 
-test("stamp pv-platform-20261104i wired", () => {
-  assert.match(index, /pv-platform-20261104i\.js/);
+test("stamp pv-platform-20261104j wired", () => {
+  assert.match(index, /pv-platform-20261104j\.js/);
 });
 
 test("enter animation is opt-in (pv-plat-entering)", () => {
@@ -50,6 +50,22 @@ test("Hub labels are speakable (Collaborazione / Panoramica)", () => {
   assert.match(ux, /data-ux="hub"/);
   assert.match(ux, /Funzioni di gruppo \(HUB\)|Apri Hub/);
   assert.match(ux, /__pvNavHome|__pvNavTrips|__pvNavAi/);
+});
+
+test("Hub tabs grouped Collabora / Organizza", () => {
+  assert.match(plat, /HUB_GROUPS/);
+  assert.match(plat, /label:\s*"Collabora"/);
+  assert.match(plat, /label:\s*"Organizza"/);
+  assert.match(plat, /pv-plat-tab-groups/);
+  assert.match(plat, /data-plat-group/);
+  assert.match(plat, /syncTabButtons/);
+});
+
+test("Home cards + compact local banner in ux-suite", () => {
+  assert.match(ux, /enhanceHomeTripCards/);
+  assert.match(ux, /pv-home-seg/);
+  assert.match(ux, /polishLocalOnlyBanner/);
+  assert.match(ux, /pv-banner-compact/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

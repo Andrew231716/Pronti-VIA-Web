@@ -1,5 +1,13 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261104j] — 2026-11-04
+
+### UX polish — Hub groups, banner, home cards
+- Hub: tab raggruppate in **Collabora** (Panoramica, Votazioni, Preparazione, Numeri) e **Organizza** (Calendario, Ricordi, Backup, Impostazioni).
+- Banner «solo su questo dispositivo»: chip compatto, copy più corta.
+- Home/Recent: card viaggio con thumb + meta; filtri Tutti / In arrivo / Passati.
+- Stamp `20261104j` (`pv-platform` + `ux-suite` + shell CSS).
+
 ## [20261104i] — 2026-11-04
 
 ### UX polish post-riferimenti

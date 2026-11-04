@@ -205,6 +205,41 @@
       }
       .recent-trips .pv-recent-row > a.booking-card{margin:0;flex:1;min-width:0}
       .recent-trips .pv-recent-row > .pv-delete-trip{flex:0 0 auto}
+      /* Home trip cards — mockup-inspired */
+      .recent-trips.pv-home-cards{
+        display:grid;gap:12px;margin-top:8px
+      }
+      .recent-trips .pv-home-seg{
+        display:inline-flex;gap:4px;padding:4px;margin:0 0 10px;border-radius:999px;
+        background:#e8f1f1;max-width:100%
+      }
+      .recent-trips .pv-home-seg button{
+        appearance:none;border:0;border-radius:999px;padding:8px 14px;min-height:36px;
+        font:700 12px/1 inherit;cursor:pointer;background:transparent;color:#5b7380
+      }
+      .recent-trips .pv-home-seg button.on{background:#fff;color:#007d82;box-shadow:0 1px 4px rgba(0,80,90,.1)}
+      .recent-trips .pv-trip-card{
+        display:flex;gap:12px;align-items:stretch;padding:0;overflow:hidden;
+        border:1px solid var(--pv-line);border-radius:18px;background:#fff;
+        box-shadow:0 8px 22px rgba(16,42,48,.06);text-decoration:none;color:inherit
+      }
+      .recent-trips .pv-trip-card .pv-trip-thumb{
+        flex:0 0 92px;min-height:92px;
+        background:
+          linear-gradient(160deg,rgba(0,125,130,.55),rgba(15,52,58,.35)),
+          radial-gradient(circle at 30% 30%,#7fd0d4,#007d82 55%,#0a4e52);
+      }
+      .recent-trips .pv-trip-card .pv-trip-body{
+        flex:1;min-width:0;padding:12px 12px 12px 0;display:flex;flex-direction:column;justify-content:center;gap:4px
+      }
+      .recent-trips .pv-trip-card strong{font-size:1rem;line-height:1.25}
+      .recent-trips .pv-trip-card .pv-trip-meta{font-size:.78rem;color:#5b7380}
+      .recent-trips .pv-recent-row.pv-card-wrap{margin:0;align-items:stretch}
+      .recent-trips .pv-recent-row.pv-card-wrap > .pv-delete-trip{
+        align-self:center;margin-right:8px
+      }
+      .recent-trips .pv-recent-row[hidden],
+      .recent-trips .pv-trip-card[hidden]{display:none!important}
       .toolbar-actions .pv-delete-trip-btn,
       .pv-delete-trip-btn{
         appearance:none;border:1px solid #f0c4c0;background:#fff5f4;color:#c62828;
@@ -585,19 +620,131 @@
     });
   }
 
+  function parseTripCardWhen(text) {
+    // Best-effort: ISO-like or IT short dates in card text.
+    const m = String(text || "").match(/(\d{4}-\d{2}-\d{2})|(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/);
+    if (!m) return null;
+    const raw = m[1] || m[2];
+    const d = Date.parse(raw.includes("-") && raw.length >= 10 ? raw : raw.split(/[\/.]/).reverse().join("-"));
+    return Number.isFinite(d) ? d : null;
+  }
+
+  function enhanceHomeTripCards() {
+    const host = document.querySelector(".recent-trips");
+    if (!host || tripAuth()) return;
+    host.classList.add("pv-home-cards");
+
+    // Segment: Recenti / In arrivo
+    if (!host.querySelector(".pv-home-seg")) {
+      const seg = document.createElement("div");
+      seg.className = "pv-home-seg";
+      seg.innerHTML = `
+        <button type="button" data-seg="all" class="on">Tutti</button>
+        <button type="button" data-seg="upcoming">In arrivo</button>
+        <button type="button" data-seg="past">Passati</button>`;
+      host.prepend(seg);
+      seg.querySelectorAll("button").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
+          const mode = btn.dataset.seg;
+          const now = Date.now();
+          host.querySelectorAll(".pv-recent-row, a.booking-card.pv-trip-card").forEach((row) => {
+            const when = Number(row.dataset.pvWhen || 0) || null;
+            let show = true;
+            if (mode === "upcoming") show = when != null && when >= now - 86400000;
+            if (mode === "past") show = when != null && when < now - 86400000;
+            row.hidden = !show;
+          });
+        });
+      });
+    }
+
+    const links = [...host.querySelectorAll("a.booking-card, a.pv-recent-trip-open")];
+    for (const card of links) {
+      if (card.dataset.pvCarded === "1") continue;
+      card.dataset.pvCarded = "1";
+      card.classList.add("pv-trip-card");
+      const title = (card.querySelector("strong")?.textContent || card.textContent || "Viaggio").trim();
+      const metaText = (card.innerText || "").replace(title, "").replace(/\s+/g, " ").trim();
+      const when = parseTripCardWhen(card.innerText || "");
+      if (when) {
+        const row = card.closest(".pv-recent-row") || card;
+        row.dataset.pvWhen = String(when);
+      }
+      if (!card.querySelector(".pv-trip-thumb")) {
+        const thumb = document.createElement("div");
+        thumb.className = "pv-trip-thumb";
+        thumb.setAttribute("aria-hidden", "true");
+        const body = document.createElement("div");
+        body.className = "pv-trip-body";
+        const strong = document.createElement("strong");
+        strong.textContent = title || "Viaggio";
+        const meta = document.createElement("span");
+        meta.className = "pv-trip-meta";
+        meta.textContent = metaText || "Apri per continuare";
+        body.appendChild(strong);
+        body.appendChild(meta);
+        // Clear original dense content but keep href
+        card.textContent = "";
+        card.appendChild(thumb);
+        card.appendChild(body);
+      }
+      let row = card.closest(".pv-recent-row");
+      if (!row) {
+        row = document.createElement("div");
+        row.className = "pv-recent-row pv-card-wrap";
+        card.parentNode?.insertBefore(row, card);
+        row.appendChild(card);
+      } else {
+        row.classList.add("pv-card-wrap");
+      }
+    }
+  }
+
+  function polishLocalOnlyBanner() {
+    const banner = document.getElementById("pv-local-only-banner");
+    if (!banner) return;
+    banner.classList.add("pv-banner-compact");
+    // Drop magic-extras inline slab styles so account.css chip rules win.
+    if (banner.dataset.pvStyleCleared !== "1") {
+      banner.style.padding = "";
+      banner.style.background = "";
+      banner.style.borderBottom = "";
+      banner.style.margin = "";
+      banner.style.font = "";
+      banner.style.gap = "";
+      banner.style.alignItems = "";
+      banner.style.justifyContent = "";
+      banner.style.textAlign = "";
+      banner.dataset.pvStyleCleared = "1";
+    }
+    if (banner.dataset.pvTextPolished === "1") return;
+    const span = banner.querySelector("span");
+    if (!span) return; // wait until magic-extras fills content
+    if (/solo su questo dispositivo/i.test(span.textContent || "")) {
+      span.innerHTML =
+        "Salvato solo qui. <strong>Condividi viaggio</strong> per il gruppo.";
+    }
+    banner.dataset.pvTextPolished = "1";
+    banner.dataset.pvCompact = "1";
+  }
+
   function enhanceRecentTripsDelete() {
     const host = document.querySelector(".recent-trips");
     if (!host) return;
+
+    enhanceHomeTripCards();
+    polishLocalOnlyBanner();
 
     // Native React rows already include .pv-recent-trash — nothing else needed.
     if (host.querySelector(".pv-recent-trash")) return;
 
     // Inject a trash icon beside each trip card (sibling, not inside the <a>).
-    const cards = [...host.querySelectorAll("a.booking-card")].filter(
-      (a) => !a.classList.contains("pv-recent-trip-open")
+    const cards = [...host.querySelectorAll("a.booking-card, a.pv-trip-card")].filter(
+      (a) => !a.classList.contains("pv-recent-trip-open") || a.classList.contains("pv-trip-card")
     );
     for (const card of cards) {
-      if (card.closest(".pv-recent-row")?.querySelector(".pv-delete-trip")) continue;
+      if (card.closest(".pv-recent-row")?.querySelector(".pv-delete-trip, .pv-recent-trash")) continue;
       if (card.querySelector(".pv-delete-trip")) {
         card.querySelector(".pv-delete-trip")?.remove();
       }
@@ -617,7 +764,7 @@
       let row = card.closest(".pv-recent-row");
       if (!row) {
         row = document.createElement("div");
-        row.className = "pv-recent-row";
+        row.className = "pv-recent-row pv-card-wrap";
         card.parentNode?.insertBefore(row, card);
         row.appendChild(card);
       }
@@ -1597,7 +1744,7 @@
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261104i" });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261104j" });
             closeModal();
             if (!tripAuth()) {
               const createBtn = [...document.querySelectorAll("button, a")].find((el) =>
@@ -1675,17 +1822,26 @@
   }
 
   function tick() {
-    ensureStyles();
-    ensureItineraryLayoutPolish();
-    cleanupLegacyChrome();
-    document.body.classList.toggle("pv-trip-open", Boolean(tripAuth()));
-    injectEmptyStates();
-    injectMemberRoles();
-    injectOfflineChip();
-    enhanceRecentTripsDelete();
-    injectTripDeleteButton();
-    injectHomeDeleteEntry();
-    syncPrimaryNavState();
+    const run = (fn) => {
+      try {
+        fn();
+      } catch {
+        /* keep suite alive */
+      }
+    };
+    run(ensureStyles);
+    run(ensureItineraryLayoutPolish);
+    run(cleanupLegacyChrome);
+    run(() => document.body.classList.toggle("pv-trip-open", Boolean(tripAuth())));
+    run(injectEmptyStates);
+    run(injectMemberRoles);
+    run(injectOfflineChip);
+    run(enhanceHomeTripCards);
+    run(enhanceRecentTripsDelete);
+    run(injectTripDeleteButton);
+    run(injectHomeDeleteEntry);
+    run(polishLocalOnlyBanner);
+    run(syncPrimaryNavState);
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {
@@ -1705,6 +1861,15 @@
     }, 200);
   });
   setTimeout(tick, 500);
+  // Backup: SPA mutation storms can starve the debounced observer tick.
+  setInterval(() => {
+    try {
+      polishLocalOnlyBanner();
+      enhanceHomeTripCards();
+    } catch {
+      /* ignore */
+    }
+  }, 1200);
   setTimeout(() => {
     void redeemInviteFromHash();
     maybeOnboarding();

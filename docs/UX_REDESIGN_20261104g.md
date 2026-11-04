@@ -154,3 +154,9 @@ Brand teal Pronti? VIA! mantenuto; accenti soft su HUB/IA solo per stato attivo.
 - Hub copy umana + Prossimi passi
 - Onboarding 5 tab; Profilo ripulito; viaggi senza ID criptici
 - Safe-area e stack FAB/Preventivo
+
+## 10. Polish 20261104j
+
+- Hub: segment **Collabora / Organizza** — meno tab contemporanee, stesso set funzionale
+- Banner locale: chip compatto (non slab giallo full-width)
+- Card Home/Recent stile mockup (thumb + meta + filtri Tutti/In arrivo/Passati) via `ux-suite` sidecar
