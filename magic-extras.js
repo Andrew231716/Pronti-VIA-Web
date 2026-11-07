@@ -2557,6 +2557,14 @@ Regole pv-places:
     if (submitBtn) submitBtn.disabled = true;
     appendBubble(log, "user", text);
     chatHistory.push({ role: "user", content: text });
+    function addRetry() {
+      const retry = document.createElement("button");
+      retry.type = "button";
+      retry.className = "ghost";
+      retry.textContent = "Riprova";
+      retry.onclick = () => { retry.remove(); void handleChatAsk(panel, text); };
+      results.append(retry);
+    }
     const thinking = appendBubble(log, "bot", "Sto pensando…");
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
@@ -2693,15 +2701,17 @@ Regole pv-places:
         results.innerHTML = "";
       }
       status.textContent = combined.some((c) => !c.webOnly)
-        ? `${combined.filter((c) => !c.webOnly).length} posti con foto · tocca «Aggiungi all’itinerario»`
+        ? `${combined.filter((c) => !c.webOnly).length} luoghi trovati su mappe e guide · verifica orari e disponibilità`
         : aiText
-          ? "Risposta AI"
+          ? "Suggerimento IA · verifica orari e disponibilità"
           : usedLocal
-            ? "Risposta locale"
+            ? "Suggerimento generico · dati dal viaggio o stima locale"
             : "Prova un chip o riformula la domanda";
+      if (needPlaces && !combined.some(c => !c.webOnly)) addRetry();
     } catch (err) {
       thinking.textContent = err instanceof Error ? err.message : "Qualcosa è andato storto.";
       status.textContent = "";
+      addRetry();
     } finally {
       chatAskBusy = false;
       if (input) {
@@ -3143,12 +3153,21 @@ Regole pv-places:
       sitHost.appendChild(btn);
     }
 
-    try {
-      phrases = await buildLocalPhrasebook(lang);
-      renderPhrases();
-    } catch (err) {
-      phraseHost.innerHTML = `<p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Frasario non disponibile")}</p>`;
+    async function loadPhrases() {
+      phraseHost.textContent = "Caricamento frasi…";
+      try {
+        phrases = await buildLocalPhrasebook(lang);
+        renderPhrases();
+      } catch (err) {
+        phraseHost.innerHTML = `<p class="pv-status">${escapeHtml(err instanceof Error ? err.message : "Frasario non disponibile")}</p>`;
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.textContent = "Riprova";
+        retry.onclick = () => void loadPhrases();
+        phraseHost.append(retry);
+      }
     }
+    void loadPhrases();
 
     panel.querySelector("#pv-lang-say").addEventListener("submit", async (ev) => {
       ev.preventDefault();
@@ -3390,12 +3409,13 @@ Regole pv-places:
         host.insertBefore(tip, host.firstChild);
         return;
       }
-      const byCat = {};
+      const byCat = Object.create(null);
       let total = 0;
       for (const e of expenses) {
         const cat = e.category || "Altro";
-        byCat[cat] = (byCat[cat] || 0) + (e.amount || 0);
-        total += e.amount || 0;
+        const cents = window.ProntiPlatform.expenseAmountCents(e);
+        byCat[cat] = (byCat[cat] || 0) + cents;
+        total += cents;
       }
       const box = document.createElement("div");
       box.className = "pv-chart-box";

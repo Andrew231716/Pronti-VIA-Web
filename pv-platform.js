@@ -1,10 +1,10 @@
 /**
  * Pronti? VIA! — platform hub (dashboard, polls, stats, backup, theme, reminders).
  * Sidecar: does not replace React SPA; stores additive data under trip.meta + localStorage.
- * Stamp: 20261104j — Hub tab groups + quieter local banner + home cards
+ * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261107c";
+  const VER = "20261107g";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -108,18 +108,12 @@
     if (Number.isNaN(+x) || Number.isNaN(+y)) return 0;
     return Math.max(0, Math.round((y - x) / 86400000) + 1);
   }
+  function expenseAmountCents(expense) {
+    if (Number.isFinite(expense.amountCents)) return Math.trunc(expense.amountCents);
+    return Number.isFinite(expense.amount) ? Math.round(expense.amount) : 0;
+  }
   function expenseCents(expenses) {
-    let sum = 0;
-    for (const e of expenses || []) {
-      if (Number.isFinite(e.amountCents)) sum += Math.trunc(e.amountCents);
-      else {
-        const n = Number(e.amount) || 0;
-        sum += Number.isInteger(n) && Math.abs(n) >= 100 && !String(e.amount).includes(".")
-          ? n
-          : Math.round(n * 100);
-      }
-    }
-    return sum;
+    return (expenses || []).reduce((sum, expense) => sum + expenseAmountCents(expense), 0);
   }
   function splitEqualCents(total, n) {
     const count = Math.max(0, Math.floor(n));
@@ -260,6 +254,7 @@
     }
     const errors = [];
     if (data?.kind !== "pronti-via-backup") errors.push("kind non valido");
+    const trips = Array.isArray(data?.trips) ? data.trips : [];
     if (!Array.isArray(data?.trips)) errors.push("trips mancante");
     if (Number(data?.schema) > 1) errors.push("schema troppo nuovo");
     return {
@@ -267,9 +262,9 @@
       errors,
       data,
       summary: {
-        tripCount: data?.trips?.length || 0,
+        tripCount: trips.length,
         exportedAt: data?.exportedAt,
-        titles: (data?.trips || []).map((t) => t?.trip?.title || t?.title || "?").slice(0, 8),
+        titles: trips.map((t) => t?.trip?.title || t?.title || "?").slice(0, 8),
       },
     };
   }
@@ -402,16 +397,17 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   box-shadow: 0 2px 8px rgba(16,42,48,.08);
 }
 #pv-plat-panel .pv-plat-tabs {
-  display:flex; flex-wrap:nowrap; gap:6px; margin:0 0 12px; overflow-x:auto;
-  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:2px 0 6px;
+  display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; padding:2px 0 6px;
 }
-#pv-plat-panel .pv-plat-tabs::-webkit-scrollbar { display:none; }
+#pv-plat-panel button:focus-visible { outline: 2px solid var(--pv-plat-accent); outline-offset: 2px; }
+#pv-plat-panel .pv-day-map { width:100%; min-height:280px; border:1px solid var(--pv-plat-border); border-radius:12px; }
 #pv-plat-panel .pv-plat-tabs button, .pv-plat-btn {
   border:1px solid var(--pv-plat-border); background: var(--pv-plat-card);
   color: var(--pv-plat-ink); border-radius: 999px; padding: 8px 12px;
   font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
   box-shadow: 0 1px 0 rgba(16,42,48,.04);
 }
+#pv-plat-panel .pv-plat-tabs button { min-height:44px; white-space:normal; }
 #pv-plat-panel .pv-plat-tabs button[hidden] { display:none !important; }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
@@ -745,7 +741,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       if (seq !== panelRenderSeq) return;
       body.innerHTML = `<div class="pv-plat-card"><p class="pv-plat-muted">${escapeHtml(
         err.message || "Errore"
-      )}</p></div>`;
+      )}</p><button type="button" class="pv-plat-btn" data-plat="retry-panel">Riprova</button></div>`;
+      wireBody(body);
     } finally {
       if (seq === panelRenderSeq) {
         body.classList.remove("pv-plat-body-busy");
@@ -866,9 +863,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
               (o) =>
                 `<li><button type="button" class="pv-plat-btn" data-plat="vote" data-poll="${escapeHtml(
                   p.id
-                )}" data-opt="${escapeHtml(o.id)}" ${p.status !== "open" ? "disabled" : ""}>${escapeHtml(
+                )}" data-opt="${escapeHtml(o.id)}" ${p.status !== "open" || !canEdit ? "disabled" : ""} aria-pressed="${(o.votes || []).includes(voter)}">${escapeHtml(
                   o.label
-                )} · ${(o.votes || []).length}</button></li>`
+                )} · ${(o.votes || []).length}${(o.votes || []).includes(voter) ? " · Il tuo voto" : ""}</button></li>`
             )
             .join("");
           return `<div class="pv-plat-card">
@@ -898,22 +895,29 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const { trip } = await fetchTrip();
     const prep = trip.meta?.preparation || {};
     const docs = prep.docs || [];
+    const missing = [];
+    if (!(trip.bookings || []).length) missing.push("Aggiungi le prenotazioni");
+    if (!docs.length) missing.push("Annota i documenti da portare");
     const dep = prep.departureChecklist || defaultDeparture();
+    if (dep.some(item => !item.done)) missing.push("Completa la checklist di partenza");
     const pack = ["Bagaglio principale", "Bagaglio a mano", "Documenti", "Elettronica", "Abbigliamento", "Igiene", "Farmaci"];
     const notes = trip.meta?.destinationNotes || {};
     return `
       <div class="pv-plat-card">
+        <h3>Prima di partire</h3>
+        <ul class="pv-plat-list">${missing.map(item => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Checklist completata.</li>"}</ul>
         <h3>Documenti</h3>
         <p class="pv-plat-muted">Link e note (i file restano nella tab Documenti; non finiscono nei link pubblici).</p>
         <ul class="pv-plat-list">${docs
           .map(
             (d) =>
               `<li><strong>${escapeHtml(d.title)}</strong> · ${escapeHtml(d.category || "")}
-              ${d.url ? ` · <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">apri</a>` : ""}</li>`
+              ${/^https?:\/\//i.test(d.url || "") ? ` · <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener">apri</a>` : ""}</li>`
           )
           .join("") || "<li>Nessun documento annotato.</li>"}</ul>
         <label class="pv-plat-muted">Titolo<input class="pv-plat-input" id="pv-doc-title" /></label>
         <label class="pv-plat-muted">Link<input class="pv-plat-input" id="pv-doc-url" placeholder="https://…" /></label>
+        <label class="pv-plat-muted">Giorno di utilizzo <input type="date" class="pv-plat-input" id="pv-doc-day"></label>
         <label class="pv-plat-muted">Categoria
           <select class="pv-plat-input" id="pv-doc-cat">
             <option>prenotazione</option><option>biglietto</option><option>assicurazione</option>
@@ -970,10 +974,10 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       const spent = expenseCents(trip.expenses);
       const people = Math.max(1, (trip.members || []).length);
       const days = daysBetween(trip.start, trip.end) || 1;
-      const byCat = {};
+      const byCat = Object.create(null);
       for (const e of trip.expenses || []) {
         const cat = e.category || e.type || "altro";
-        byCat[cat] = (byCat[cat] || 0) + Math.round((Number(e.amount) || 0) * 100);
+        byCat[cat] = (byCat[cat] || 0) + expenseAmountCents(e);
       }
       const max = Math.max(1, ...Object.values(byCat), 1);
       const bars = Object.entries(byCat)
@@ -1023,11 +1027,12 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           .map((b) => `<li>${escapeHtml(b.title || "Prenotazione")} · ${escapeHtml(b.date || b.checkIn || "")}</li>`)
           .join("")}
       </ul>
-      <h3 style="margin-top:12px">Nuovo promemoria</h3>
+      <h3 style="margin-top:12px">Promemoria locali</h3>
+      <p class="pv-plat-muted">Le notifiche locali richiedono il permesso del browser. Per ritrovare i promemoria nel calendario, esporta il file ICS e importalo nella tua app calendario.</p>
       <input class="pv-plat-input" id="pv-rem-title" placeholder="Titolo" />
       <input class="pv-plat-input" id="pv-rem-date" type="date" />
       <button type="button" class="pv-plat-btn" data-plat="rem-add">Salva promemoria</button>
-      <button type="button" class="pv-plat-btn" data-plat="ics">Scarica ICS</button>
+      <button type="button" class="pv-plat-btn" data-plat="ics">Esporta nel calendario (.ics)</button>
       <button type="button" class="pv-plat-btn" data-plat="notify-perm">Attiva notifiche locali</button>
       <ul class="pv-plat-list">${reminders
         .map((r) => `<li>${escapeHtml(r.date)} · ${escapeHtml(r.title)}</li>`)
@@ -1046,11 +1051,14 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         <h3>Ricordi di questo viaggio</h3>
         <textarea class="pv-plat-input" id="pv-diary" rows="4" placeholder="Diario…">${escapeHtml(diary)}</textarea>
         <label class="pv-plat-muted">Nota / luogo<input class="pv-plat-input" id="pv-mem-text" /></label>
-        <button type="button" class="pv-plat-btn" data-plat="mem-add">Aggiungi ricordo</button>
+        <label>Link a una foto <input type="url" class="pv-plat-input" id="pv-mem-photo" placeholder="https://…"></label>
+        <label>Giorno del ricordo <input type="date" class="pv-plat-input" id="pv-mem-day" value="${escapeHtml(tripDay(trip))}"></label>
+        <button type="button" class="pv-plat-btn" data-plat="mem-add">Salva diario e ricordo</button>
         <button type="button" class="pv-plat-btn" data-plat="archive-trip">Archivia viaggio concluso</button>
-        <ul class="pv-plat-list">${memories
-          .map((m) => `<li>${escapeHtml(m.text)} <span class="pv-plat-muted">${escapeHtml(m.at || "")}</span></li>`)
-          .join("") || "<li>Nessun ricordo ancora.</li>"}</ul>
+        ${[...new Set(memories.map(m => m.day || String(m.at || "").slice(0, 10)))].sort().reverse().map(day =>
+          `<h4>${escapeHtml(day ? day.split("-").reverse().join("/") : "Senza data")}</h4><ul class="pv-plat-list">${memories.filter(m => (m.day || String(m.at || "").slice(0, 10)) === day)
+            .map(m => `<li>${escapeHtml(m.text)}${/^https?:\/\//i.test(m.photo || "") ? ` <a href="${escapeHtml(m.photo)}" target="_blank" rel="noopener">Apri foto</a>` : ""}</li>`).join("")}</ul>`
+        ).join("") || "<p>Nessun ricordo ancora.</p>"}
       </div>`;
     }
     return (
@@ -1068,13 +1076,23 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     );
   }
 
+  function backupChoices() {
+    const recent = readJson("viavia-recent-links-v1", []);
+    const auth = tripAuth();
+    return auth && !recent.some(r => r.id === auth.id && r.key === auth.key)
+      ? [{ ...auth, title: "Viaggio aperto" }, ...recent] : recent;
+  }
+
   async function renderBackup() {
+    const choices = backupChoices();
+    const auth = tripAuth();
     return `<div class="pv-plat-card">
       <h3>Copia di sicurezza</h3>
-      <p class="pv-plat-muted">Scarica una copia del viaggio sul tuo dispositivo. Se importi un file, vedi prima un riepilogo: niente sovrascritture a sorpresa.</p>
-      <div class="pv-plat-actions">
-        <button type="button" class="pv-plat-btn" data-plat="backup-export">Scarica copia</button>
-      </div>
+      <p class="pv-plat-muted">Scegli un viaggio da esportare. Il file contiene il suo link di accesso, quindi conservalo in un posto sicuro.</p>
+      <label>Viaggio <select class="pv-plat-input" id="pv-backup-trip">
+        ${choices.map((r, i) => `<option value="${i}" ${r.id === auth?.id && r.key === auth?.key ? "selected" : ""}>${escapeHtml(r.title || "Viaggio")}</option>`).join("")}
+      </select></label>
+      <button type="button" class="pv-plat-btn" data-plat="backup-export" ${choices.length ? "" : "disabled"}>Scarica copia del viaggio</button>
       <label class="pv-plat-muted">Ripristina da file
         <input class="pv-plat-input" id="pv-backup-file" type="file" accept="application/json,.json" />
       </label>
@@ -1096,8 +1114,14 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderToday() {
     if (!tripAuth()) return '<div class="pv-plat-card"><p>Apri un viaggio per vedere il programma della giornata.</p></div>';
-    const { auth, trip } = await fetchTrip();
-    const day = daySelections.get(auth.id) || tripDay(trip);
+    const { auth, trip, data } = await fetchTrip();
+    const buttons = [...(document.querySelectorAll?.(".day-strip button") || [])];
+    const selected = buttons.findIndex(button => button.classList.contains("selected"));
+    const first = Date.parse(`${trip.start}T12:00:00Z`);
+    const itineraryDay = selected >= 0 && Number.isFinite(first)
+      ? new Date(first + selected * 86400_000).toISOString().slice(0, 10) : "";
+    const selectedDay = itineraryDay && (!trip.end || itineraryDay <= trip.end) ? itineraryDay : "";
+    const day = daySelections.get(auth.id)?.day || selectedDay || tripDay(trip);
     const stops = (trip.stops || []).filter(stop => (stop.day || stop.date) === day)
       .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
     const bookings = (trip.bookings || []).filter(booking => {
@@ -1106,6 +1130,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       return start && start <= day && end >= day;
     });
     const transfers = (trip.transfers || []).filter(transfer => (transfer.date || transfer.day) === day);
+    const docs = data.canEdit === false ? [] : (trip.meta?.preparation?.docs || []).filter(doc => doc.day === day);
     function rows(items) {
       return items.map(item => {
         const when = item.time || item.departureTime || item.startTime;
@@ -1118,16 +1143,21 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
     return `<div class="pv-plat-card">
       <label>Giorno del viaggio
-        <input type="date" id="pv-today-date" class="pv-plat-input" value="${escapeHtml(day)}">
+        <input type="date" id="pv-today-date" class="pv-plat-input" value="${escapeHtml(day)}" min="${escapeHtml(trip.start || "")}" max="${escapeHtml(trip.end || "")}">
       </label>
+      <button type="button" class="pv-plat-btn" data-plat="map-day">Mappa del giorno</button>
       <button type="button" class="pv-plat-btn" data-plat="print-day">Stampa o salva come PDF</button>
     </div>
+    <div id="pv-day-map-host"></div>
     <article class="pv-plat-card" id="pv-day-sheet">
       <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
       <p>${escapeHtml([day.split("-").reverse().join("/"), trip.destination].filter(Boolean).join(" · "))}</p>
       <h4>Tappe</h4><ol class="pv-plat-list">${rows(stops)}</ol>
       <h4>Spostamenti</h4><ul class="pv-plat-list">${rows(transfers)}</ul>
       <h4>Prenotazioni</h4><ul class="pv-plat-list">${rows(bookings)}</ul>
+      ${docs.length ? `<h4>Documenti del giorno</h4><ul class="pv-plat-list">${docs.map(doc =>
+        `<li>${escapeHtml(doc.title)}${/^https?:\/\//i.test(doc.url || "") ? ` · <a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">Apri</a>` : ""}</li>`
+      ).join("")}</ul>` : ""}
     </article>`;
   }
 
@@ -1147,7 +1177,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const auth = tripAuth();
     if (!auth) return '<div class="pv-plat-card"><p>Apri un viaggio per gestire gli inviti personali.</p></div>';
     if (!navigator.onLine) return '<div class="pv-plat-card"><p>Per gestire gli inviti personali serve una connessione.</p></div>';
-    const { invites } = await inviteRequest(auth);
+    const { invites, revoked = [] } = await inviteRequest(auth);
     if (!Array.isArray(invites)) throw new Error("Il servizio inviti non è ancora disponibile.");
     return `<div class="pv-plat-card">
       <h3>Inviti personali</h3>
@@ -1166,6 +1196,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       </div>
       <h4>Inviti attivi</h4>
       <ul class="pv-plat-list" id="pv-invite-list">${inviteRows(invites)}</ul>
+      <h4>Inviti revocati</h4>
+      <ul class="pv-plat-list" id="pv-revoked-list">${revokedInviteRows(revoked)}</ul>
     </div>`;
   }
 
@@ -1173,6 +1205,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     return invites.map(invite => `<li><strong>${escapeHtml(invite.name)}</strong> · ${invite.role === "editor" ? "Modifica" : "Solo lettura"}
       <button type="button" class="pv-plat-btn" data-revoke-invite="${escapeHtml(invite.id)}">Revoca</button></li>`).join("") ||
       "<li>Nessun invito attivo.</li>";
+  }
+
+  function revokedInviteRows(invites) {
+    return invites.map(invite => `<li><strong>${escapeHtml(invite.name)}</strong> · ${invite.role === "editor" ? "Modifica" : "Solo lettura"} · ${escapeHtml(String(invite.revokedAt || "").slice(0, 10).split("-").reverse().join("/"))}</li>`).join("") ||
+      "<li>Nessuna revoca registrata.</li>";
   }
 
   const CONFLICT_FIELDS = {
@@ -1275,11 +1312,46 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   function wireBody(body) {
-    body.querySelector("#pv-today-date")?.addEventListener("change", (event) => {
+    body.querySelector("[data-plat=retry-panel]")?.addEventListener("click", () => void renderPanel());
+    body.querySelector("#pv-today-date")?.addEventListener("change", async event => {
       const auth = tripAuth();
-      if (!auth || !event.target.value) return;
-      daySelections.set(auth.id, event.target.value);
+      if (!auth || !event.target.value || !event.target.validity.valid) return;
+      const day = event.target.value;
+      const { trip } = await fetchTrip().catch(() => ({}));
+      const index = trip?.start ? (Date.parse(day) - Date.parse(trip.start)) / 86400_000 : -1;
+      daySelections.set(auth.id, { day, index });
+      applyDaySelection();
       void renderPanel();
+    });
+    body.querySelector("[data-plat=map-day]")?.addEventListener("click", async event => {
+      const button = event.currentTarget;
+      const host = body.querySelector("#pv-day-map-host");
+      if (host.childElementCount) { host.replaceChildren(); button.textContent = "Mappa del giorno"; return; }
+      button.disabled = true;
+      try {
+        const day = body.querySelector("#pv-today-date").value;
+        const { trip } = await fetchTrip();
+        const points = (trip.stops || []).filter(stop => (stop.day || stop.date) === day
+          && Number.isFinite(stop.lat) && Number.isFinite(stop.lng));
+        if (!points.length) throw new Error("Non ci sono tappe geolocalizzate per questa data.");
+        const frame = document.createElement("iframe");
+        frame.title = "Mappa delle tappe del giorno";
+        frame.className = "pv-day-map";
+        frame.src = "./map.html";
+        const sendPoints = event => {
+          if (event.origin !== location.origin || event.source !== frame.contentWindow || event.data?.type !== "viavia-ready") return;
+          window.removeEventListener("message", sendPoints);
+          frame.contentWindow?.postMessage({ type: "viavia-map", points }, location.origin);
+        };
+        window.addEventListener("message", sendPoints);
+        setTimeout(() => window.removeEventListener("message", sendPoints), 15_000);
+        host.append(frame);
+        button.textContent = "Chiudi mappa";
+      } catch (err) {
+        showStatus(err.message, "error");
+      } finally {
+        button.disabled = false;
+      }
     });
     body.querySelector("[data-plat=print-day]")?.addEventListener("click", () => {
       const sheet = body.querySelector("#pv-day-sheet");
@@ -1298,8 +1370,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       const result = body.querySelector("#pv-invite-result");
       const urlField = body.querySelector("#pv-invite-url");
       const refresh = async () => {
-        const { invites } = await inviteRequest(auth);
+        const { invites, revoked = [] } = await inviteRequest(auth);
         inviteList.innerHTML = inviteRows(invites);
+        body.querySelector("#pv-revoked-list").innerHTML = revokedInviteRows(revoked);
       };
       inviteForm.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -1476,7 +1549,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       const title = body.querySelector("#pv-doc-title")?.value?.trim();
       const url = body.querySelector("#pv-doc-url")?.value?.trim();
       const category = body.querySelector("#pv-doc-cat")?.value;
+      const day = body.querySelector("#pv-doc-day")?.value;
       if (!title) return showStatus("Titolo documento obbligatorio", "error");
+      if (url && !/^https?:\/\//i.test(url)) return showStatus("Inserisci un link http o https.", "error");
       try {
         await saveTripMeta((trip) => {
           trip.meta.preparation = trip.meta.preparation || {};
@@ -1486,6 +1561,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
             title,
             url,
             category,
+            ...(day ? { day } : {}),
             private: true,
           });
         });
@@ -1552,9 +1628,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     });
     body.querySelector("[data-plat=export-csv]")?.addEventListener("click", async () => {
       const { trip } = await fetchTrip();
-      const rows = [["id", "title", "category", "amount", "paidBy"]];
+      const rows = [["id", "title", "category", "amount_eur", "paidBy"]];
       for (const e of trip.expenses || []) {
-        rows.push([e.id || "", e.title || e.note || "", e.category || "", e.amount || "", e.paidBy || ""]);
+        rows.push([e.id || "", e.title || e.note || "", e.category || "", (expenseAmountCents(e) / 100).toFixed(2), e.paidBy || e.payer || ""]);
       }
       download(
         "spese.csv",
@@ -1589,14 +1665,17 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     body.querySelector("[data-plat=mem-add]")?.addEventListener("click", async () => {
       const text = body.querySelector("#pv-mem-text")?.value?.trim();
       const diary = body.querySelector("#pv-diary")?.value || "";
-      if (!text && !diary) return;
+      const day = body.querySelector("#pv-mem-day")?.value;
+      const photo = body.querySelector("#pv-mem-photo")?.value?.trim();
+      if (photo && !/^https?:\/\//i.test(photo)) return showStatus("Inserisci un link http o https.", "error");
+      if (!text && !diary && !photo) return;
       try {
         await saveTripMeta((trip) => {
           trip.meta.archive = trip.meta.archive || { memories: [], diary: "" };
           trip.meta.archive.diary = diary.slice(0, 20000);
-          if (text) {
+          if (text || photo) {
             trip.meta.archive.memories = trip.meta.archive.memories || [];
-            trip.meta.archive.memories.unshift({ text, at: new Date().toISOString() });
+            trip.meta.archive.memories.unshift({ text, ...(photo ? { photo } : {}), ...(day ? { day } : {}), at: new Date().toISOString() });
           }
         });
         void renderPanel();
@@ -1629,26 +1708,32 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         showStatus(e.message, "error");
       }
     });
-    body.querySelector("[data-plat=backup-export]")?.addEventListener("click", () => {
-      const tripsDb = readJson("viavia-local-trips-v1", {});
-      const trips = Object.values(tripsDb);
-      const account = readJson("viavia-account-v1", null);
-      const backup = {
-        kind: "pronti-via-backup",
-        schema: 1,
-        exportedAt: new Date().toISOString(),
-        app: "Pronti? VIA!",
-        account: account?.user
-          ? { username: account.user.username, displayName: account.user.displayName }
-          : null,
-        preferences: { theme: readJson(THEME_KEY, { mode: "system" }) },
-        trips,
-        localStores: {
-          recent: readJson("viavia-recent-links-v1", []),
-          archive: readJson(ARCHIVE_KEY, []),
-        },
-      };
-      download(`pronti-via-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(backup, null, 2));
+    const exportChoices = body.querySelector("#pv-backup-trip") ? backupChoices() : [];
+    body.querySelector("[data-plat=backup-export]")?.addEventListener("click", async event => {
+      const button = event.currentTarget;
+      const selected = exportChoices[Number(body.querySelector("#pv-backup-trip")?.value)];
+      if (!selected) return;
+      button.disabled = true;
+      try {
+        const recent = backupChoices().find(r => r.id === selected.id && r.key === selected.key);
+        if (!recent) throw new Error("Il viaggio non è più nella lista. Riapri il backup.");
+        const res = await fetch(`/api/trips/${encodeURIComponent(recent.id)}`, {
+          headers: { Authorization: `Bearer ${recent.key}` }, cache: "no-store",
+        });
+        const data = await res.json();
+        if (!res.ok || !data.trip) throw new Error(data.error || "Apri il viaggio prima di esportarlo.");
+        const { id, key, title } = recent;
+        const backup = {
+          kind: "pronti-via-backup", schema: 1, exportedAt: new Date().toISOString(), app: "Pronti? VIA!",
+          trips: [{ id, key, revision: data.revision, trip: data.trip, viewToken: data.viewToken, canEdit: data.canEdit }],
+          localStores: { recent: [{ id, key, title: title || data.trip.title }] },
+        };
+        download(`pronti-via-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(backup, null, 2));
+      } catch (err) {
+        showStatus(err.message, "error");
+      } finally {
+        button.disabled = false;
+      }
     });
     const fileInput = body.querySelector("#pv-backup-file");
     fileInput?.addEventListener("change", async () => {
@@ -1743,6 +1828,16 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
   }
 
+  function applyDaySelection() {
+    const selection = daySelections.get(tripAuth()?.id);
+    if (!selection || !Number.isInteger(selection.index) || selection.index < 0) return;
+    const button = document.querySelectorAll(".day-strip button")[selection.index];
+    if (button && selection.button !== button && !button.disabled && !button.classList.contains("selected")) {
+      selection.button = button;
+      button.click();
+    }
+  }
+
   function boot() {
     injectCss();
     applyTheme();
@@ -1750,6 +1845,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     // Chip may mount after platform boot — rebind when account becomes ready.
     const mo = new MutationObserver(() => {
       if (document.getElementById("pv-hub-nav")) ensureFab();
+      applyDaySelection();
     });
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));
@@ -1766,11 +1862,15 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     if (window.matchMedia) {
       window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => applyTheme());
     }
+    document.addEventListener("click", event => {
+      if (event.isTrusted && event.target.closest?.(".day-strip button")) daySelections.delete(tripAuth()?.id);
+    });
     window.ProntiPlatform = {
       ver: VER,
       optimizeStops,
       splitEqualCents,
       expenseCents,
+      expenseAmountCents,
       validateBackup,
       roleForTrip,
       canRole,

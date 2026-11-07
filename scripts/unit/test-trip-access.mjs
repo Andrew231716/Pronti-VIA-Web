@@ -83,6 +83,10 @@ test("personal access is scoped, revocable and never returns the owner's credent
   assert.equal(list.data.invites[0].hash, undefined);
   assert.equal((await call(`${id}/access`, "DELETE", key, { id: editor.data.id })).status, 200);
   assert.equal((await call(id, "GET", editor.data.token)).status, 403);
+  const history = await call(`${id}/access`, "GET", key);
+  assert.equal(history.data.revoked.length, 1);
+  assert.equal(history.data.revoked[0].id, editor.data.id);
+  assert.equal(history.data.revoked[0].hash, undefined);
   assert.equal((await call(id, "GET", viewer.data.token)).status, 200);
   assert.equal((await call(id, "GET", key)).data.trip.title, "Firenze");
 });

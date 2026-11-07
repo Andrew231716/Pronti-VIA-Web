@@ -202,6 +202,7 @@ test("the daily sheet uses cached trips and includes only the selected day", asy
       { day: "2027-01-02", title: "Treno di ritorno" },
     ],
     bookings: [{ checkIn: "2027-01-01", checkOut: "2027-01-02", title: "Albergo", reference: "<ABC>" }],
+    meta: { preparation: { docs: [{ day: "2027-01-01", title: "Biglietto museo" }, { day: "2027-01-02", title: "Biglietto treno" }] } },
   };
   const window = {};
   const source = readFileSync(new URL("../../pv-platform.js", import.meta.url), "utf8")
@@ -218,6 +219,8 @@ test("the daily sheet uses cached trips and includes only the selected day", asy
   assert.match(html, /Stampa o salva come PDF/);
   assert.match(html, /value="2027-01-01"/);
   assert.match(html, /Via Roma/);
+  assert.match(html, /Biglietto museo/);
+  assert.doesNotMatch(html, /Biglietto treno/);
   assert.match(html, /&lt;ABC&gt;/);
   assert.doesNotMatch(html, /Treno di ritorno/);
   assert.ok(html.indexOf("Colazione") < html.indexOf("Museo"));

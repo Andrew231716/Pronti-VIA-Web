@@ -120,7 +120,8 @@ test("stats trip + portfolio + csv", () => {
     checklist: [{ done: true }, { done: false }],
   });
   assert.equal(s.days, 5);
-  assert.ok(s.spentCents > 0);
+  assert.equal(s.spentCents, 150);
+  assert.equal(Object.values(s.byCategory).reduce((sum, cents) => sum + cents, 0), s.spentCents);
   const port2 = portfolioStats([
     { destination: "Reykjavik, Islanda", start: "2026-06-01", end: "2026-06-05", expenses: [{ amount: 10 }] },
     { destination: "Roma, Italia", start: "2026-01-01", end: "2026-01-03", expenses: [] },

@@ -72,8 +72,9 @@ export async function handlePersonalAccess({ event, id, sub, token, json, reques
     }
     const stored = await readAccess(slot);
     const invites = stored?.data?.invites || [];
+    const revoked = stored?.data?.revoked || [];
     if (method === "GET") {
-      return json(200, { invites: invites.map(({ id, name, role, createdAt }) => ({ id, name, role, createdAt })) });
+      return json(200, { invites: invites.map(({ id, name, role, createdAt }) => ({ id, name, role, createdAt })), revoked });
     }
     const body = JSON.parse(event.body || "{}");
     if (method === "POST") {
@@ -82,15 +83,18 @@ export async function handlePersonalAccess({ event, id, sub, token, json, reques
       if (invites.length >= 50) return failure(json, 409, "Revoca un invito prima di aggiungerne un altro.");
       const inviteToken = `pv-personal-${secret()}`;
       const invite = { id: randomBytes(16).toString("hex"), name, role: body.role, hash: digest(inviteToken), createdAt: new Date().toISOString() };
-      if (!await writeAccess(slot, { ownerKey: token, invites: [...invites, invite] }, stored)) {
+      if (!await writeAccess(slot, { ownerKey: token, invites: [...invites, invite], revoked }, stored)) {
         return failure(json, 409, "Gli inviti sono cambiati. Riprova.");
       }
       return json(201, { id: invite.id, token: inviteToken });
     }
     if (method === "DELETE") {
-      const remaining = invites.filter(invite => invite.id !== body.id);
-      if (remaining.length === invites.length) return failure(json, 404, "Invito non trovato.");
-      if (!await writeAccess(slot, { ownerKey: remaining.length ? token : "", invites: remaining }, stored)) {
+      const removed = invites.find(invite => invite.id === body.id);
+      if (!removed) return failure(json, 404, "Invito non trovato.");
+      const remaining = invites.filter(invite => invite !== removed);
+      const { id: revokedId, name, role } = removed;
+      const history = [{ id: revokedId, name, role, revokedAt: new Date().toISOString() }, ...revoked].slice(0, 50);
+      if (!await writeAccess(slot, { ownerKey: remaining.length ? token : "", invites: remaining, revoked: history }, stored)) {
         return failure(json, 409, "Gli inviti sono cambiati. Riprova.");
       }
       return json(200, { ok: true });

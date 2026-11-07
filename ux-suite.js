@@ -210,11 +210,11 @@
         display:grid;gap:12px;margin-top:8px
       }
       .recent-trips .pv-home-seg{
-        display:inline-flex;gap:4px;padding:4px;margin:0 0 10px;border-radius:999px;
+        display:flex;flex-wrap:wrap;gap:4px;padding:4px;margin:0 0 10px;border-radius:999px;
         background:#e8f1f1;max-width:100%
       }
       .recent-trips .pv-home-seg button{
-        appearance:none;border:0;border-radius:999px;padding:8px 14px;min-height:36px;
+        appearance:none;border:0;border-radius:999px;padding:8px 12px;min-height:44px;
         font:700 12px/1 inherit;cursor:pointer;background:transparent;color:#5b7380
       }
       .recent-trips .pv-home-seg button.on{background:#fff;color:#007d82;box-shadow:0 1px 4px rgba(0,80,90,.1)}
@@ -234,6 +234,8 @@
       }
       .recent-trips .pv-trip-card strong{font-size:1rem;line-height:1.25}
       .recent-trips .pv-trip-card .pv-trip-meta{font-size:.78rem;color:#5b7380}
+      .recent-trips .pv-recent-row[hidden]{display:none!important}
+      .recent-trips .pv-trip-sync{font-weight:700}
       .recent-trips .pv-recent-row.pv-card-wrap{margin:0;align-items:stretch}
       .recent-trips .pv-recent-row.pv-card-wrap > .pv-delete-trip{
         align-self:center;margin-right:8px
@@ -620,42 +622,29 @@
     });
   }
 
-  function parseTripCardWhen(text) {
-    // Best-effort: ISO-like or IT short dates in card text.
-    const m = String(text || "").match(/(\d{4}-\d{2}-\d{2})|(\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4})/);
-    if (!m) return null;
-    const raw = m[1] || m[2];
-    const d = Date.parse(raw.includes("-") && raw.length >= 10 ? raw : raw.split(/[\/.]/).reverse().join("-"));
-    return Number.isFinite(d) ? d : null;
-  }
-
   function enhanceHomeTripCards() {
     const host = document.querySelector(".recent-trips");
     if (!host || tripAuth()) return;
     host.classList.add("pv-home-cards");
 
-    // Segment: Recenti / In arrivo
     if (!host.querySelector(".pv-home-seg")) {
       const seg = document.createElement("div");
       seg.className = "pv-home-seg";
+      seg.setAttribute("aria-label", "Filtra viaggi");
       seg.innerHTML = `
-        <button type="button" data-seg="all" class="on">Tutti</button>
-        <button type="button" data-seg="upcoming">In arrivo</button>
-        <button type="button" data-seg="past">Passati</button>`;
+        <button type="button" data-seg="all" aria-pressed="true" class="on">Tutti</button>
+        <button type="button" data-seg="active" aria-pressed="false">In corso</button>
+        <button type="button" data-seg="upcoming" aria-pressed="false">Futuri</button>
+        <button type="button" data-seg="past" aria-pressed="false">Conclusi</button>`;
       host.prepend(seg);
-      seg.querySelectorAll("button").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b === btn));
-          const mode = btn.dataset.seg;
-          const now = Date.now();
-          host.querySelectorAll(".pv-recent-row, a.booking-card.pv-trip-card").forEach((row) => {
-            const when = Number(row.dataset.pvWhen || 0) || null;
-            let show = true;
-            if (mode === "upcoming") show = when != null && when >= now - 86400000;
-            if (mode === "past") show = when != null && when < now - 86400000;
-            row.hidden = !show;
-          });
+      seg.addEventListener("click", event => {
+        const selected = event.target.closest("button[data-seg]");
+        if (!selected) return;
+        seg.querySelectorAll("button").forEach(button => {
+          button.classList.toggle("on", button === selected);
+          button.setAttribute("aria-pressed", String(button === selected));
         });
+        enhanceHomeTripCards();
       });
     }
 
@@ -666,11 +655,6 @@
       card.classList.add("pv-trip-card");
       const title = (card.querySelector("strong")?.textContent || card.textContent || "Viaggio").trim();
       const metaText = (card.innerText || "").replace(title, "").replace(/\s+/g, " ").trim();
-      const when = parseTripCardWhen(card.innerText || "");
-      if (when) {
-        const row = card.closest(".pv-recent-row") || card;
-        row.dataset.pvWhen = String(when);
-      }
       if (!card.querySelector(".pv-trip-thumb")) {
         const thumb = document.createElement("div");
         thumb.className = "pv-trip-thumb";
@@ -698,6 +682,26 @@
       } else {
         row.classList.add("pv-card-wrap");
       }
+    }
+    const mode = host.querySelector(".pv-home-seg .on")?.dataset.seg || "all";
+    const today = new Date().toLocaleDateString("sv-SE");
+    for (const card of links) {
+      const id = new URLSearchParams(new URL(card.href, location.href).hash.slice(1)).get("trip");
+      if (!id) continue;
+      const meta = readJson(`viavia-trip-card-meta:${id}`, null);
+      const when = meta?.start > today ? "upcoming" : meta?.end && meta.end < today ? "past" : meta?.start && meta?.end ? "active" : "";
+      const row = card.closest(".pv-recent-row") || card;
+      row.hidden = mode !== "all" && mode !== when;
+      const local = window.__pvIsTripLocalOnly?.(id) || meta?.local;
+      const offlinePending = (readJson("viavia-platform-outbox-v1", []) || []).some(item => item.tripId === id);
+      const label = offlinePending ? "In attesa di sincronizzazione" : local ? "Solo sul dispositivo" : meta ? "Sincronizzato" : "Da verificare";
+      let badge = card.querySelector(".pv-trip-sync");
+      if (!badge && card.querySelector(".pv-trip-body")) {
+        badge = document.createElement("span");
+        badge.className = "pv-trip-meta pv-trip-sync";
+        card.querySelector(".pv-trip-body").append(badge);
+      }
+      if (badge && badge.textContent !== label) badge.textContent = label;
     }
   }
 
@@ -847,10 +851,22 @@
         if (ev.target?.closest?.("[data-ux-close]")) closeModal();
       });
       document.addEventListener("keydown", (ev) => {
-        if (ev.key === "Escape" && !modal.hidden) closeModal();
+        if (modal.hidden) return;
+        if (ev.key === "Escape") closeModal();
+        if (ev.key !== "Tab") return;
+        const controls = [...modal.querySelectorAll("button, a[href], input, select, textarea")]
+          .filter(element => !element.disabled && element.getClientRects().length);
+        const first = controls[0], last = controls.at(-1);
+        if (!first) return;
+        if (ev.shiftKey && (document.activeElement === first || !modal.contains(document.activeElement))) {
+          ev.preventDefault(); last.focus();
+        } else if (!ev.shiftKey && (document.activeElement === last || !modal.contains(document.activeElement))) {
+          ev.preventDefault(); first.focus();
+        }
       });
     }
     clearTimeout(modal._closeT);
+    if (!modal.contains(document.activeElement)) modal._opener = document.activeElement;
     modal.querySelector("#pv-ux-title").textContent = title;
     modal.querySelector("#pv-ux-body").innerHTML = bodyHtml;
     modal.hidden = false;
@@ -880,6 +896,7 @@
     modal._closeT = setTimeout(
       () => {
         modal.hidden = true;
+        if (modal._opener?.isConnected) modal._opener.focus();
       },
       reduce ? 0 : 220
     );
@@ -1158,8 +1175,8 @@
           body.querySelector("#pv-ux-search-go")?.addEventListener("click", () => {
             const q = body.querySelector("#pv-ux-search-input")?.value || "";
             const n = highlightSearch(q);
-            closeModal();
-            toast(n ? `${n} risultati evidenziati` : "Nessun risultato", n ? "ok" : "warn");
+            if (n) closeModal();
+            toast(n ? `${n} risultati evidenziati` : "Nessun risultato in questa schermata. Prova un’altra parola.", n ? "ok" : "warn");
           });
           body.querySelector("#pv-ux-search-clear")?.addEventListener("click", () => {
             highlightSearch("");
@@ -1469,10 +1486,7 @@
       const trip = data.trip || {};
       const pv = trip.meta?.preventivo || {};
       const estimate = Number(pv.totals?.groupCents) || 0;
-      const spent = (Array.isArray(trip.expenses) ? trip.expenses : []).reduce(
-        (s, e) => s + (Number(e.amount) || 0),
-        0
-      );
+      const spent = window.ProntiPlatform.expenseCents(trip.expenses);
       const pct = estimate > 0 ? Math.round((spent / estimate) * 100) : 0;
       const delta = spent - estimate;
       const fmt = (c) =>
@@ -1705,7 +1719,7 @@
         ),
         "",
         "SPESE",
-        ...(trip.expenses || []).map((e) => `- ${e.title}: ${((e.amount || 0) / 100).toFixed(2)} €`),
+        ...(trip.expenses || []).map((e) => `- ${e.title}: ${(window.ProntiPlatform.expenseAmountCents(e) / 100).toFixed(2)} €`),
         "",
         "NOTE",
         trip.notes || "—",

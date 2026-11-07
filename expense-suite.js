@@ -715,15 +715,14 @@
       for (const e of trip.expenses || []) {
         const tag = parseFxTag(e.title) || meta.expenses[e.id] || {};
         const localCode = tag.localCode || localFx?.code || "";
-        const localAmount =
-          tag.localAmount ??
-          (tag.rate && e.amount ? (e.amount / 100) * tag.rate : "");
+        const euros = window.ProntiPlatform.expenseAmountCents(e) / 100;
+        const localAmount = tag.localAmount ?? (tag.rate ? euros * tag.rate : "");
         rows.push([
           String(e.title || "").replace(/\s*\([0-9].*$/, ""),
           e.date || "",
           nameOf(e.payer),
           e.category || "",
-          ((e.amount || 0) / 100).toFixed(2),
+          euros.toFixed(2),
           localCode,
           localAmount === "" ? "" : String(localAmount),
           tag.rate || meta.expenses[e.id]?.rateLocalPerEur || "",

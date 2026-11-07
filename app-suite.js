@@ -618,7 +618,7 @@
             const data = await res.json();
             if (!res.ok) return;
             const trip = data.trip || {};
-            const spent = (trip.expenses || []).reduce((a, e) => a + (Number(e.amount) || 0), 0);
+            const spent = window.ProntiPlatform?.expenseCents(trip.expenses) ?? 0;
             writeJson(metaKey, {
               start: trip.start || "",
               end: trip.end || "",
@@ -1159,7 +1159,7 @@
     if (!el) return;
     const packed = await loadTripSafe();
     if (!packed) return;
-    const spent = (packed.trip.expenses || []).reduce((a, e) => a + (Number(e.amount) || 0), 0);
+    const spent = window.ProntiPlatform.expenseCents(packed.trip.expenses);
     const budget = Number(packed.trip.budget || 0);
     const prev = packed.trip.meta?.preventivo?.totals?.groupCents;
     const cap = prev || budget;

@@ -90,6 +90,9 @@
         return false;
       }
 
+      const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      })[char]);
       addEventListener("message", (e) => {
         if (e.source !== parent || e.origin !== location.origin) return;
         if (e.data?.type === "viavia-map-options") {
@@ -129,7 +132,7 @@
                 }),
               })
                 .addTo(layers)
-                .bindPopup(group.map((g) => g.p.title || "Tappa").join("<br>"));
+                .bindPopup(group.map((g) => escape(g.p.title || "Tappa")).join("<br>"));
             }
           }
         } else {
@@ -137,14 +140,14 @@
         }
 
         function addPin(p, i, selected) {
-          const color = p.color || fallbackColors[i % fallbackColors.length];
+          const color = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(p.color || "") ? p.color : fallbackColors[i % fallbackColors.length];
           const label =
             mapOpts.timeLabels && (p.time || p.day)
-              ? `<div class="pin-label">${p.time || p.day}</div>`
+              ? `<div class="pin-label">${escape(p.time || p.day)}</div>`
               : "";
           const content = document.createElement("div");
-          content.innerHTML = `<strong>${p.title || ""}</strong>${p.day ? `<br><small>${p.day}</small>` : ""}${
-            p.time ? `<br><small>${p.time}</small>` : ""
+          content.innerHTML = `<strong>${escape(p.title)}</strong>${p.day ? `<br><small>${escape(p.day)}</small>` : ""}${
+            p.time ? `<br><small>${escape(p.time)}</small>` : ""
           }`;
           const marker = L.marker([p.lat, p.lng], {
             icon: L.divIcon({

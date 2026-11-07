@@ -52,7 +52,7 @@ test("bacchetta still rendered by magic-extras", () => {
   assert.match(magic, /Bacchetta magica/);
   assert.match(magic, /id="pv-magic-open"/);
   assert.match(magic, /function renderFab/);
-  assert.match(index, /magic-extras-20261104e\.js/);
+  assert.match(index, /magic-extras-20261107g\.js/);
 });
 
 test("renderFab only skips spinner, not trip-error main.loading", () => {
@@ -61,9 +61,9 @@ test("renderFab only skips spinner, not trip-error main.loading", () => {
 });
 
 test("stamp shell wired (platform 20261107c + magic 20261104e)", () => {
-  assert.match(index, /pv-platform-20261107c\.js/);
-  assert.match(index, /magic-extras-20261104e\.js/);
-  assert.match(index, /ux-suite-20261104j\.js/);
+  assert.match(index, /pv-platform-20261107g\.js/);
+  assert.match(index, /magic-extras-20261107g\.js/);
+  assert.match(index, /ux-suite-20261107g\.js/);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
