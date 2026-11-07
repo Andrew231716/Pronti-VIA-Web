@@ -1,3 +1,4 @@
+import { get, put, BlobPreconditionFailedError } from "@vercel/blob";
 import { getStore } from "@netlify/blobs";
 import { createKv } from "./_store.mjs";
 
@@ -15,7 +16,17 @@ function accessStore() {
   }
 }
 
+function blobPath(key) {
+  return `trip-access/v1/${key.replace(":", "/")}.json`;
+}
+
 export async function readAccess(key) {
+  if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+    const blob = await get(blobPath(key), { access: "private", useCache: false });
+    if (!blob) return null;
+    if (blob.statusCode !== 200) throw new Error("Unexpected storage response.");
+    return { data: await new Response(blob.stream).json(), etag: blob.blob.etag };
+  }
   const store = accessStore();
   if (store) return store.getWithMetadata(key, { type: "json" });
   const data = await local.getJSON(key);
@@ -23,6 +34,22 @@ export async function readAccess(key) {
 }
 
 export async function writeAccess(key, data, previous) {
+  if (process.env.VERCEL || process.env.BLOB_READ_WRITE_TOKEN) {
+    if (previous && !previous.etag) throw new Error("Missing storage version.");
+    try {
+      await put(blobPath(key), JSON.stringify(data), {
+        access: "private",
+        contentType: "application/json",
+        addRandomSuffix: false,
+        allowOverwrite: Boolean(previous),
+        ifMatch: previous?.etag,
+      });
+      return true;
+    } catch (err) {
+      if (err instanceof BlobPreconditionFailedError) return false;
+      throw err;
+    }
+  }
   const store = accessStore();
   if (store) {
     if (previous && !previous.etag) throw new Error("Missing storage version.");

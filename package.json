@@ -5,7 +5,7 @@
   "description": "Pronti? VIA! — organizzazione viaggi individuali e di gruppo (static PWA, costo zero)",
   "scripts": {
     "test": "npm run test:syntax && npm run test:unit",
-    "test:syntax": "node --check netlify/functions/account.mjs && node --check netlify/functions/trips.mjs && node --check netlify/functions/share.mjs && node --check netlify/functions/_store.mjs && node --check netlify/functions/places.mjs && node --check netlify/functions/proxy.mjs && node --check netlify/functions/search.mjs && node --check lib/cors.mjs && node --check account.js && node --check api-shim.js && node --check pv-platform.js && node --check sw.js",
+    "test:syntax": "node --check api/trip-access.mjs && node --check netlify/functions/account.mjs && node --check netlify/functions/trips.mjs && node --check netlify/functions/share.mjs && node --check netlify/functions/_store.mjs && node --check netlify/functions/places.mjs && node --check netlify/functions/proxy.mjs && node --check netlify/functions/search.mjs && node --check lib/cors.mjs && node --check account.js && node --check api-shim.js && node --check pv-platform.js && node --check sw.js",
     "test:unit": "node scripts/unit/run-all.mjs && node scripts/unit/test-rc-20261104b.mjs && node scripts/unit/test-cors-20261104c.mjs && node scripts/unit/test-fab-layout-20261104d.mjs && node scripts/unit/test-lingua-speak-20261104e.mjs && node scripts/unit/test-hub-panel-fluid-20261104f.mjs && node --test scripts/unit/test-offline-sync.mjs scripts/unit/test-trip-access.mjs",
     "test:e2e": "node e2e/run-rc-playwright.mjs",
     "test:verify-ux": "node scripts/verify-ux-redesign-20261104g.mjs",
@@ -23,6 +23,7 @@
   },
   "homepage": "https://andrew231716.github.io/Pronti-VIA-Web/",
   "dependencies": {
-    "@netlify/blobs": "^11.1.0"
+    "@netlify/blobs": "^11.1.0",
+    "@vercel/blob": "2.8.2"
   }
 }

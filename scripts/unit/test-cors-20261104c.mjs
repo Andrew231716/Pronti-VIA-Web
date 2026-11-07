@@ -36,13 +36,11 @@ test("Netlify project authorized", () => {
   assert.equal(isAllowedOrigin("https://pronti-via-k7es.netlify.app"), true);
 });
 
-test("no hardcoded Vercel origin unless in env (none in repo)", () => {
-  assert.equal(
-    ALLOWED_ORIGINS.some((o) => o.includes("vercel.app")),
-    false,
-    "no invented vercel host in static allowlist"
-  );
-  assert.equal(isAllowedOrigin("https://pronti-via.vercel.app"), false);
+test("only the production Vercel origin is statically authorized", () => {
+  assert.deepEqual(ALLOWED_ORIGINS.filter(origin => origin.endsWith(".vercel.app")), [
+    "https://pronti-via.vercel.app",
+  ]);
+  assert.equal(isAllowedOrigin("https://pronti-via.vercel.app"), true);
 });
 
 test("localhost / 127.0.0.1 authorized for known ports", () => {

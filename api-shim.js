@@ -7,7 +7,8 @@
   const TRIPS_BASE =
     "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via";
   // Free production path: Netlify Functions + Blobs (no paid tunnel).
-  const NETLIFY_API = "https://pronti-via-k7es.netlify.app";
+  const VERCEL_API = "https://pronti-via.vercel.app";
+  const NETLIFY_API = location.origin === VERCEL_API ? location.origin : "https://pronti-via-k7es.netlify.app";
   const TRIPS_PROXIES = []; // dead trycloudflare tunnels removed
   const LOCAL_TRIPS_KEY = "viavia-local-trips-v1";
   const LOCAL_FILES_KEY = "viavia-local-trip-files-v1";
@@ -124,7 +125,7 @@
   }
 
   async function requestOutbox(suffix, init) {
-    if (sameOriginApiProxy) {
+    if (sameOriginApiProxy && !isManagedTripRequest(suffix, init)) {
       try {
         const res = await fetchTripsCandidate(`/api${suffix}`, init);
         if (res.status !== 404 && res.status !== 405) return res;
@@ -1608,17 +1609,23 @@
     }
   }
 
+  function isManagedTripRequest(suffix, init) {
+    return /^\/trips\/(?:pv-|publish-offline(?:$|\?))|^\/trips\/[^/]+\/access(?:$|\?)/.test(suffix) ||
+      (suffix.startsWith("/trips/") && isPersonalKey(bearerKey(init)));
+  }
+
   async function remoteTrips(suffix, init) {
-    // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
+    if (isManagedTripRequest(suffix, init)) {
+      const endpoint = new URL("/api/trip-access", VERCEL_API);
+      endpoint.searchParams.set("path", `/api${suffix.split("?")[0]}`);
+      return fetchTripsCandidate(endpoint.href, init);
+    }
+    // Legacy accounts, trips and sharing use the existing data service.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
-    const isSearch = String(suffix || "").startsWith("/search");
-    const managedTrip = /^\/trips\/(?:pv-|publish-offline(?:$|\?))|^\/trips\/[^/]+\/access(?:$|\?)/.test(suffix) ||
-      isPersonalKey(bearerKey(init));
-    const candidates = isSearch || managedTrip
-      ? [`${NETLIFY_API}/api${suffix}`]
-      : onGitHubPages
-        ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
-        : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
+    const isSearch = suffix.startsWith("/search");
+    const candidates = isSearch || onGitHubPages
+      ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
+      : [`${NETLIFY_API}/api${suffix}`, `${TRIPS_BASE}${suffix}`, ...proxyTargets];
     const timeoutMs = isSearch ? 55000 : PER_TRY_MS;
 
     // Try sequentially so a CORS-blocked candidate does not race-win as rejection noise.

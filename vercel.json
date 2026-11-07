@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "https://cvdlzwralgtapsigyuko.supabase.co/functions/v1/pronti-via/:path*"
+      "source": "/api/:path((?!trip-access$).*)",
+      "destination": "https://pronti-via-k7es.netlify.app/api/:path"
     },
     {
       "source": "/((?!assets/|vendor/|api/|.*\\..*).*)",

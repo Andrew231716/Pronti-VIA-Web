@@ -22,16 +22,16 @@ Nessuna carta di credito richiesta.
 
 Piano Free: sufficiente per uso personale/piccolo gruppo. Monitora quota functions.
 
-Gli inviti personali e la pubblicazione dei nuovi viaggi creati offline richiedono il deploy
-delle Functions sul progetto Netlify esistente `pronti-via-k7es`. Il deploy GitHub Pages
-aggiorna solo il frontend. La funzione `trips` usa uno store Blobs separato con letture
-consistenti e aggiornamenti condizionali. Per lo sviluppo locale senza Blobs, imposta
-`PRONTI_KV_DIR` a una directory temporanea esplicita.
-
-
 ## Vercel
 
-`vercel.json` riscrive `/api/*` verso la Supabase Edge function pubblica del progetto e fa SPA fallback. Nessuna Netlify Function su Vercel: account/share locali dipendono dal proxy Supabase o dal fallback client.
+Il progetto `pronti-via` pubblica il frontend da `main`. La funzione
+`/api/trip-access` gestisce gli inviti personali e i nuovi viaggi creati offline.
+Usa uno store Vercel Blob privato con `BLOB_READ_WRITE_TOKEN`, letture dall'origine
+e aggiornamenti condizionali. Per lo sviluppo locale senza Blob, imposta
+`PRONTI_KV_DIR` a una directory temporanea esplicita.
+
+GitHub Pages usa la stessa funzione per queste operazioni. Gli account, i viaggi
+precedenti e i link storici continuano a usare il servizio dati esistente.
 
 ## Aggiornare stamp asset
 

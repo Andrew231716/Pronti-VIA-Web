@@ -114,8 +114,8 @@ function normalizeTripBody(body) {
   return body && typeof body === "object" ? body : {};
 }
 
-async function proxySupabase(event, path) {
-  const target = `${TRIPS_BASE}${path}${event.rawQuery ? `?${event.rawQuery}` : ""}`;
+async function proxyTrip(event, path, base = TRIPS_BASE) {
+  const target = `${base}${path}${event.rawQuery ? `?${event.rawQuery}` : ""}`;
   const headers = {
     "Content-Type": event.headers?.["content-type"] || "application/json", Accept: "application/json",
   };
@@ -296,8 +296,9 @@ async function requestTrip(event, path) {
   if (isNativeTrip(path.split("/")[2])) {
     return handleNativeTrip({ event, id: path.split("/")[2], sub: path.split("/")[3], token: getBearer(event), json });
   }
+  if (event.vercelAccess) return proxyTrip(event, path, "https://pronti-via-k7es.netlify.app/api");
   try {
-    const proxied = await proxySupabase(event, path);
+    const proxied = await proxyTrip(event, path);
     if (proxied.statusCode < 500) return proxied;
   } catch {
     /* fall through */
@@ -318,6 +319,7 @@ export async function handler(event) {
           event, id, sub, token, json,
           requestTrip: (method, key, body) => requestTrip({
             httpMethod: method, headers: { authorization: `Bearer ${key}` },
+            vercelAccess: event.vercelAccess,
             body: body ? JSON.stringify(body) : undefined,
           }, `/trips/${id}`),
         });

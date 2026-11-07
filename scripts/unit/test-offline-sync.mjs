@@ -144,7 +144,9 @@ test("new offline trips retain their link and publish the latest draft once", as
   const requests = [];
   const window = {
     async fetch(target, init) {
-      if (target !== "https://pronti-via-k7es.netlify.app/api/trips/publish-offline") {
+      const endpoint = new URL(target);
+      if (endpoint.origin !== "https://pronti-via.vercel.app" || endpoint.pathname !== "/api/trip-access" ||
+          endpoint.searchParams.get("path") !== "/api/trips/publish-offline") {
         throw new Error("Not available");
       }
       const body = JSON.parse(init.body);
