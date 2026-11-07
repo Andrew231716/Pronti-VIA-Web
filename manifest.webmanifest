@@ -10,13 +10,19 @@
   "lang": "it",
   "icons": [
     {
-      "src": "./logo.png",
-      "sizes": "512x512",
+      "src": "./assets/pronti-via-icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./favicon.svg",
+      "src": "./logo.png?v=20261107e",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./favicon.svg?v=20261107e",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

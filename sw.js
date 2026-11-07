@@ -1,13 +1,16 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261107d`;
+const CACHE = `${CACHE_PREFIX}20261107e`;
 const PRECACHE = [
   "./",
   "./index.html",
   "./404.html",
-  "./favicon.svg",
+  "./favicon.svg?v=20261107e",
+  "./assets/pronti-via-icon-192.png",
+  "./assets/pronti-via-apple-180.png",
   "./logo.png",
-  "./manifest.webmanifest?v=20261104j",
+  "./logo.png?v=20261107e",
+  "./manifest.webmanifest?v=20261107e",
   "./account.css?v=20261104j",
   "./account.js?v=20261107c",
   "./ios-form-fix.js?v=20261029a",
