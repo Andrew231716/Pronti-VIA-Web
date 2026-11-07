@@ -39,7 +39,7 @@
       "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte.",
     CREATE_SERVER: "Viaggio creato e sincronizzato. Conserva il link per ritrovarlo.",
     CREATE_LOCAL:
-      "Viaggio creato su questo dispositivo. In attesa di sincronizzazione. Conserva il link.",
+      "Viaggio creato su questo dispositivo. Conserva il link.",
   };
 
   function classifyPersistence(data = {}) {
@@ -55,7 +55,8 @@
   function saveToastFromResponse(data = {}, { create = false } = {}) {
     const status = classifyPersistence(data || {});
     if (create) {
-      return status === "local" || status === "pending" ? SAVE_MSG.CREATE_LOCAL : SAVE_MSG.CREATE_SERVER;
+      if (status === "error") return SAVE_MSG.ERROR;
+      return status === "server" ? SAVE_MSG.CREATE_SERVER : SAVE_MSG.CREATE_LOCAL;
     }
     if (status === "local" || status === "pending") return SAVE_MSG.LOCAL;
     if (status === "error") return SAVE_MSG.ERROR;
@@ -78,15 +79,17 @@
     }
   }
   function enqueueOutboxItem(item) {
-    const q = readOutbox().filter(
-      (x) => !(x.tripId && item.tripId && x.tripId === item.tripId && x.type === item.type)
-    );
+    const q = readOutbox();
+    const previous = q.findIndex((x) => x.tripId === item.tripId && x.type === item.type);
+    const revision = previous < 0 ? item.revision : q[previous].revision;
+    if (previous >= 0) q.splice(previous, 1);
     q.unshift({
       id: item.id || `op-${Date.now().toString(36)}`,
       type: item.type || "trip-put",
       tripId: item.tripId || "",
       key: item.key || "",
-      revision: item.revision,
+      revision,
+      actorMemberId: item.actorMemberId,
       payload: item.payload ?? null,
       createdAt: item.createdAt || new Date().toISOString(),
       attempts: Number(item.attempts) || 0,
@@ -108,9 +111,15 @@
     }
   }
 
-  async function flushOutbox() {
+  let outboxFlush;
+  function flushOutbox() {
+    outboxFlush ||= enqueueTripWrite(sendOutbox).finally(() => { outboxFlush = undefined; });
+    return outboxFlush;
+  }
+
+  async function sendOutbox() {
     if (!navigator.onLine) return { flushed: 0, left: readOutbox().length };
-    let q = readOutbox();
+    const q = readOutbox();
     let flushed = 0;
     const left = [];
     for (const item of q) {
@@ -119,7 +128,8 @@
         continue;
       }
       try {
-        const res = await originalFetch(`/api/trips/${encodeURIComponent(item.tripId)}`, {
+        const suffix = `/trips/${encodeURIComponent(item.tripId)}`;
+        const init = {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -128,8 +138,19 @@
           body: JSON.stringify({
             trip: item.payload,
             revision: item.revision,
+            actorMemberId: item.actorMemberId,
           }),
-        });
+        };
+        let res;
+        if (sameOriginApiProxy) {
+          try {
+            res = await fetchTripsCandidate(`/api${suffix}`, init);
+            if (res.status === 404 || res.status === 405) res = undefined;
+          } catch {
+            // A static host has no API of its own.
+          }
+        }
+        res ||= await remoteTrips(suffix, init);
         const data = await res.json().catch(() => ({}));
         if (res.status === 409) {
           left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: "conflict" });
@@ -148,11 +169,12 @@
           left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: data.error || "fail" });
           continue;
         }
-        const ephemeral =
-          data.local === true || String(data.source || "").toLowerCase() === "memory";
-        if (ephemeral) {
+        if (classifyPersistence(data) !== "server") {
           left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: "still-local" });
           continue;
+        }
+        if (data.trip) {
+          cacheTripRecord(item.tripId, { ...data, key: item.key, canEdit: true, local: false });
         }
         flushed += 1;
         try {
@@ -182,23 +204,21 @@
     return { flushed, left: left.length };
   }
 
-  function noteWritePersistence(method, tripId, key, data, tripPayload, revision) {
+  function noteWritePersistence(method, tripId, key, data, tripPayload, revision, actorMemberId) {
     if (!tripId) return;
-    const ephemeral =
-      !data ||
-      data.local === true ||
-      String(data.source || "").toLowerCase() === "memory" ||
-      data.durable === false;
-    if ((method === "PUT" || method === "PATCH") && ephemeral && tripPayload) {
+    if (!data || data.ok === false) return;
+    const status = classifyPersistence(data);
+    if ((method === "PUT" || method === "PATCH") && status !== "server" && tripPayload) {
       enqueueOutboxItem({
         type: "trip-put",
         tripId,
         key: key || "",
         revision,
+        actorMemberId,
         payload: tripPayload,
       });
     }
-    if ((method === "PUT" || method === "PATCH" || method === "POST") && data && !ephemeral) {
+    if ((method === "PUT" || method === "PATCH" || method === "POST") && status === "server") {
       clearOutboxTrip(tripId, "trip-put");
     }
   }
@@ -325,6 +345,7 @@
       writeLocalTrips(db);
     }
     clearPrivateBudget(tripId);
+    clearOutboxTrip(tripId);
     removeRecentLink(tripId);
   }
 
@@ -451,30 +472,17 @@
     return src === "memory";
   }
 
-  function tripPayloadFromInit(init) {
-    try {
-      const body = typeof init?.body === "string" ? JSON.parse(init.body) : null;
-      if (body?.trip && typeof body.trip === "object") return body.trip;
-      if (body && typeof body === "object" && !Array.isArray(body)) return body;
-    } catch {
-      /* ignore */
-    }
-    return null;
-  }
-
   function trackTripWriteResult(method, tripId, init, data) {
-    const key = bearerKey(init);
-    const tripPayload = tripPayloadFromInit(init);
-    const rev = data?.revision ?? (typeof init?.body === "string"
-      ? (() => {
-          try {
-            return JSON.parse(init.body).revision;
-          } catch {
-            return undefined;
-          }
-        })()
-      : undefined);
-    noteWritePersistence(method, tripId, key, data, tripPayload, rev);
+    let body;
+    try {
+      body = typeof init?.body === "string" ? JSON.parse(init.body) : null;
+    } catch {
+      // No valid JSON to replay.
+    }
+    const payload = body && typeof body === "object" && !Array.isArray(body) ? body.trip || body : null;
+    const actorMemberId = new Headers(init?.headers).get("x-pronti-member-id") ||
+      body?.actorMemberId || body?.memberId || undefined;
+    noteWritePersistence(method, tripId, bearerKey(init), data, payload, body?.revision, actorMemberId);
   }
 
   function cacheTripRecord(id, record) {
@@ -1598,6 +1606,23 @@
         }
       }
 
+      const pending = tripIdHint && !/\/files(?:\/|$)/.test(parsed.pathname)
+        ? readOutbox().find(item => item.tripId === tripIdHint && item.key === bearerKey(writeInit))
+        : undefined;
+      // Keep the local revision chain intact until the queued edit reaches the server.
+      if (pending && (method === "GET" || method === "PUT" || method === "PATCH")) {
+        const res = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        if (res.ok) {
+          const data = await res.json();
+          if (method !== "GET") {
+            trackTripWriteResult(method, tripIdHint, writeInit, data);
+            if (navigator.onLine) void flushOutbox();
+          }
+          return jsonResponse(res.status, { ...data, local: true });
+        }
+        if (method !== "GET") return res;
+      }
+
       // Prefer same-origin reverse proxy when available (Netlify / local).
       if (sameOriginApiProxy) {
         try {
@@ -1745,25 +1770,13 @@
       } catch {
         // All remote proxies failed — durable local fallback.
         const localRes = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
-        try {
-          if (
-            method === "PUT" ||
-            method === "PATCH" ||
-            method === "POST"
-          ) {
-            const data = await localRes.clone().json();
-            trackTripWriteResult(method, data.id || tripIdHint, writeInit, {
-              ...data,
-              local: true,
-              source: data.source || "local",
-            });
-          }
-        } catch {
-          /* ignore */
+        if (localRes.ok && (method === "PUT" || method === "PATCH")) {
+          const data = await localRes.clone().json();
+          trackTripWriteResult(method, tripIdHint, writeInit, data);
         }
         return localRes;
       }
-    
+
       };
       if (
         methodEarly === "PUT" ||

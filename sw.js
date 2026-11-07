@@ -1,5 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
-const CACHE = "pv-shell-20261104j";
+const CACHE_PREFIX = "pv-shell-";
+const CACHE = `${CACHE_PREFIX}20261107a`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -14,7 +15,7 @@ const PRECACHE = [
   "./assets/index-JJ3bX5VS.css",
   // Must match account.js dynamic import (loadfix = bugfix, not loadForm).
   "./assets/index-loadfix-20261104d.js",
-  "./assets/api-shim-20261104d.js",
+  "./assets/api-shim-20261107a.js",
   "./assets/magic-extras-20261104e.js",
   "./assets/expense-suite-20261104d.js",
   "./assets/app-suite-20261104d.js",
@@ -34,7 +35,6 @@ self.addEventListener("install", (event) => {
       .open(CACHE)
       .then((cache) => cache.addAll(PRECACHE.map((u) => new Request(u, { cache: "reload" }))))
       .then(() => self.skipWaiting())
-      .catch(() => self.skipWaiting())
   );
 });
 
@@ -42,7 +42,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
@@ -51,30 +51,24 @@ self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
-  if (url.origin !== self.location.origin) return;
+  if (!url.href.startsWith(self.registration.scope)) return;
   if (url.pathname.includes("/api/")) return;
 
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
-      try {
-        const fresh = await fetch(req);
-        if (fresh && fresh.ok) {
-          cache.put(req, fresh.clone()).catch(() => {});
-        }
-        return fresh;
-      } catch {
-        const cached = await cache.match(req);
-        if (cached) return cached;
-        if (req.mode === "navigate") {
-          return (
-            (await cache.match("./index.html")) ||
-            (await cache.match("/index.html")) ||
-            Response.error()
-          );
-        }
-        return Response.error();
+      const fresh = await fetch(req).catch(() => undefined);
+      if (fresh?.ok) cache.put(req, fresh.clone()).catch(() => {});
+      if (fresh && fresh.status < 500) return fresh;
+
+      const cached = await cache.match(req);
+      if (cached) return cached;
+      if (req.mode === "navigate") {
+        const index = new URL("index.html", self.registration.scope);
+        const shell = await cache.match(index.href);
+        if (shell) return shell;
       }
+      return fresh || Response.error();
     })()
   );
 });
