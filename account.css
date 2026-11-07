@@ -493,3 +493,19 @@ body.pv-primary-nav-ready #pv-plat-fab {
     break-inside: avoid;
   }
 }
+
+#pv-account-gate [hidden] { display: none !important; }
+.pv-account-recovery-link {
+  min-height: 44px;
+  padding: 6px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+#pv-recovery-issued .pv-account-field { margin-bottom: 10px; }
+#pv-recovery-issued-code { font-family: ui-monospace, monospace; font-size: 13px; }
+#pv-account-gate { overflow-y: auto; }
+#pv-account-gate .pv-account-card { align-self: safe center; }

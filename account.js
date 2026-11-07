@@ -141,6 +141,18 @@ async function api(action, { method = "POST", body, token } = {}) {
   if (!isGet) headers["Content-Type"] = "application/json";
   const payload = isGet ? undefined : JSON.stringify({ action, ...(body || {}) });
   const query = isGet ? `?action=${encodeURIComponent(action)}` : "";
+  if (action === "reset" || String(token || "").startsWith("pvacct:") || body?.username?.endsWith("@via")) {
+    const response = await fetch(`https://pronti-via.vercel.app/api/recovery-account${query}`, {
+      method, headers, body: payload, cache: "no-store",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || (action === "me" && !data.user)) {
+      const err = new Error(data.error || "Servizio account non disponibile. Riprova.");
+      err.status = response.status;
+      throw err;
+    }
+    return data;
+  }
   // Same-origin first (Netlify / shim), then direct Netlify fallback for GitHub Pages.
   const targets = [
     `${API}${query}`,
@@ -187,7 +199,7 @@ function ensureUi() {
         <strong>Pronti? VIA!</strong>
       </div>
       <h1 id="pv-account-title">Accedi al tuo spazio</h1>
-      <p>Con un nome utente i tuoi viaggi restano salvati su questo dispositivo finché non cancelli i dati del browser.</p>
+      <p id="pv-account-intro">Accedi per ritrovare i tuoi viaggi.</p>
       <div class="pv-account-tabs" role="tablist">
         <button type="button" data-mode="login" aria-selected="true">Accedi</button>
         <button type="button" data-mode="register" aria-selected="false">Crea account</button>
@@ -201,11 +213,25 @@ function ensureUi() {
           <label for="pv-password">Password</label>
           <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="min. 8 caratteri, lettera e numero">
         </div>
+        <div class="pv-account-field" id="pv-recovery-field" hidden>
+          <label for="pv-recovery-code">Codice di recupero</label>
+          <input id="pv-recovery-code" name="recoveryCode" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="60" disabled>
+        </div>
         <div class="pv-account-error" id="pv-account-error" aria-live="polite"></div>
         <button class="pv-account-submit" type="submit">Entra</button>
       </form>
-      <div class="pv-account-note">
-        L’accesso resta attivo anche dopo aver chiuso il sito. Si resetta solo se fai Esci o cancelli cache/dati del browser.
+      <button type="button" class="pv-account-recovery-link" data-mode="reset">Password dimenticata?</button>
+      <div id="pv-recovery-issued" hidden>
+        <p>Salva il nome utente e il codice. Ti serviranno per reimpostare la password.</p>
+        <div class="pv-account-field">
+          <label for="pv-recovery-issued-user">Nome utente</label>
+          <input id="pv-recovery-issued-user" readonly>
+        </div>
+        <div class="pv-account-field">
+          <label for="pv-recovery-issued-code">Codice di recupero</label>
+          <input id="pv-recovery-issued-code" readonly autocomplete="off" spellcheck="false">
+        </div>
+        <button class="pv-account-submit" type="button" id="pv-recovery-done">Ho salvato il codice</button>
       </div>
     </div>
   `;
@@ -335,18 +361,53 @@ function ensureUi() {
 }
 
 function setMode(mode) {
-  state.mode = mode === "register" ? "register" : "login";
+  state.mode = mode;
   const gate = document.getElementById("pv-account-gate");
-  gate.querySelectorAll("[data-mode]").forEach((button) => {
-    button.setAttribute("aria-selected", String(button.dataset.mode === state.mode));
+  const reset = mode === "reset";
+  const register = mode === "register";
+  gate.querySelectorAll(".pv-account-tabs [data-mode]").forEach(button => {
+    button.setAttribute("aria-selected", String(button.dataset.mode === mode));
   });
   gate.querySelector("#pv-account-title").textContent =
-    state.mode === "register" ? "Crea il tuo account" : "Accedi al tuo spazio";
-  gate.querySelector(".pv-account-submit").textContent =
-    state.mode === "register" ? "Crea account" : "Entra";
-  gate.querySelector("#pv-password").autocomplete =
-    state.mode === "register" ? "new-password" : "current-password";
+    reset ? "Reimposta la password" : register ? "Crea il tuo account" : "Accedi al tuo spazio";
+  gate.querySelector("#pv-account-intro").textContent = reset
+    ? "Usa il codice che hai salvato. Al termine riceverai un nuovo codice."
+    : register ? "Scegli un nome. Aggiungeremo @via e ti daremo un codice di recupero."
+      : "Accedi per ritrovare i tuoi viaggi.";
+  gate.querySelector("form .pv-account-submit").textContent =
+    reset ? "Reimposta password" : register ? "Crea account" : "Entra";
+  const password = gate.querySelector("#pv-password");
+  password.autocomplete = register || reset ? "new-password" : "current-password";
+  password.labels[0].textContent = reset ? "Nuova password" : "Password";
+  password.value = "";
+  gate.querySelector("#pv-recovery-field").hidden = !reset;
+  const code = gate.querySelector("#pv-recovery-code");
+  code.disabled = !reset;
+  code.required = reset;
+  code.value = "";
+  gate.querySelector("[data-mode=reset]").hidden = reset;
   gate.querySelector("#pv-account-error").textContent = "";
+}
+
+async function showRecoveryCode(data) {
+  const gate = document.getElementById("pv-account-gate");
+  const panel = gate.querySelector("#pv-recovery-issued");
+  const code = panel.querySelector("#pv-recovery-issued-code");
+  gate.querySelector("#pv-account-title").textContent = "Salva il codice di recupero";
+  const temporarilyHidden = gate.querySelectorAll("#pv-account-intro, .pv-account-tabs, #pv-account-form, [data-mode=reset]");
+  temporarilyHidden.forEach(element => { element.hidden = true; });
+  panel.querySelector("#pv-recovery-issued-user").value = data.user.username;
+  code.value = data.recoveryCode.match(/.{1,8}/g).join("-");
+  panel.hidden = false;
+  code.focus();
+  await new Promise(resolve => {
+    panel.querySelector("#pv-recovery-done").addEventListener("click", resolve, { once: true });
+  });
+  code.value = "";
+  gate.querySelector("#pv-account-form").reset();
+  panel.hidden = true;
+  temporarilyHidden.forEach(element => { element.hidden = false; });
+  setMode("login");
 }
 
 function showGate(message = "") {
@@ -407,18 +468,6 @@ async function upsertLocalUser(usernameRaw, password, displayName) {
   return users[username];
 }
 
-async function registerLocal(usernameRaw, password) {
-  const username = normalizeUsername(usernameRaw);
-  const users = readUsers();
-  if (users[username]) throw new Error("Questo nome utente è già in uso su questo dispositivo.");
-  const saved = await upsertLocalUser(usernameRaw, password, usernameRaw);
-  return {
-    token: `local:${username}`,
-    user: { username, displayName: saved.displayName },
-    trips: readLocalTrips(),
-  };
-}
-
 async function loginLocal(usernameRaw, password) {
   const username = normalizeUsername(usernameRaw);
   const users = readUsers();
@@ -444,54 +493,25 @@ async function onSubmit(event) {
   submit.disabled = true;
   error.textContent = "";
   try {
-    let data;
-    let localError;
-    try {
-      data = mode === "register"
-        ? await registerLocal(username, password)
-        : await loginLocal(username, password);
-    } catch (err) {
-      if (mode === "register") throw err;
-      localError = err;
+    const normalized = normalizeUsername(username);
+    if (mode === "register" || mode === "reset" || normalized.endsWith("@via")) {
+      const managedName = mode === "register" && !normalized.endsWith("@via") ? `${normalized}@via` : normalized;
+      const data = await api(mode, { body: { username: managedName, password, code: form.recoveryCode.value } });
+      if (!data.token || !data.user?.username || (mode !== "login" && !data.recoveryCode))
+        throw new Error("Servizio account non disponibile. Riprova.");
+      if (data.recoveryCode) await showRecoveryCode(data);
+      await activateSession(data);
+      return;
     }
-
-    if (!data) {
-      try {
-        const cloud = await api("login", {
-          body: { username, password, displayName: username },
-        });
-        if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
-        data = { token: cloud.token, user: cloud.user, trips: cloud.trips || [] };
-        // Cache credentials locally so next login works offline too.
-        try {
-          await upsertLocalUser(username, password, data.user?.displayName || username);
-        } catch {
-          /* local write failed — ignore */
-        }
-      } catch (cloudErr) {
-        throw localError || cloudErr || new Error("Nome utente o password non corretti.");
-      }
-    } else {
-      // Mirror local accounts when cloud storage is available.
-      try {
-        const action = mode === "register" ? "register" : "login";
-        const cloud = await api(action, {
-          body: { username, password, displayName: username },
-        });
-        if (cloud?.token && cloud?.user?.username) {
-          data.token = cloud.token;
-          data.user = cloud.user;
-          data.trips = mergeTrips(cloud.trips || [], data.trips || []);
-        }
-      } catch (err) {
-        if (mode === "register" && err.status === 409) {
-          const users = readUsers();
-          delete users[normalizeUsername(username)];
-          writeUsers(users);
-          throw new Error("Questo account esiste già online. Accedi oppure scegli un altro nome utente.");
-        }
-        /* keep local session */
-      }
+    let data;
+    try {
+      const cloud = await api("login", { body: { username, password } });
+      if (!cloud?.token || !cloud?.user?.username) throw new Error("Risposta account incompleta.");
+      data = cloud;
+      try { await upsertLocalUser(username, password, data.user.displayName || username); } catch { /* storage unavailable */ }
+    } catch (err) {
+      // Existing accounts created locally still use the device's credential cache.
+      data = await loginLocal(username, password).catch(() => { throw err; });
     }
 
     await activateSession(data);
@@ -593,6 +613,14 @@ async function activateSession(data, { bootApp = true } = {}) {
     expiresAt,
   });
 
+  const ownerKey = "viavia-recent-owner-v1";
+  const previousOwner = readJson(ownerKey, "");
+  const nextOwner = String(data.token || "").startsWith("pvacct:") ? data.user.username : "";
+  if (previousOwner !== nextOwner) {
+    writeJson(`viavia-recent-owner:${previousOwner}`, readLocalTrips());
+    writeLocalTrips(readJson(`viavia-recent-owner:${nextOwner}`, []));
+    writeJson(ownerKey, nextOwner);
+  }
   const merged = mergeTrips(data.trips || [], readLocalTrips());
   writeLocalTrips(merged);
 
@@ -816,6 +844,21 @@ async function boot() {
   if (session.guest && !hashHasSharedTrip()) {
     clearGuestSession();
     showGate();
+    return;
+  }
+
+  if (String(session.token || "").startsWith("pvacct:")) {
+    try {
+      const data = await api("me", { method: "GET", token: session.token });
+      await activateSession({ ...data, token: session.token });
+    } catch (err) {
+      if (err.status === 401) {
+        writeSession(null);
+        showGate("Sessione scaduta. Accedi di nuovo.");
+      } else {
+        await activateSession({ ...session, trips: [] });
+      }
+    }
     return;
   }
 

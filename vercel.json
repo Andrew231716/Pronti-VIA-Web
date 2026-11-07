@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path((?!trip-access$).*)",
+      "source": "/api/:path((?!trip-access$|recovery-account$).*)",
       "destination": "https://pronti-via-k7es.netlify.app/api/:path"
     },
     {
