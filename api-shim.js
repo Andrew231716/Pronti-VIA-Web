@@ -31,6 +31,7 @@
 
   /* ---- Shared persistence honesty (mirrors lib/sync-state.mjs) ---- */
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
+  const replayedRevisions = new Map();
   const SAVE_MSG = {
     SERVER: "Salvato e sincronizzato",
     LOCAL: "Salvato su questo dispositivo. In attesa di sincronizzazione",
@@ -174,6 +175,12 @@
           continue;
         }
         if (data.trip) {
+          const localRevision = readLocalTrips()[item.tripId]?.revision;
+          if (Number.isInteger(localRevision) && Number.isInteger(data.revision) && localRevision !== data.revision) {
+            replayedRevisions.set(item.tripId, {
+              key: item.key, localRevision, serverRevision: data.revision,
+            });
+          }
           cacheTripRecord(item.tripId, { ...data, key: item.key, canEdit: true, local: false });
         }
         flushed += 1;
@@ -219,6 +226,7 @@
       });
     }
     if ((method === "PUT" || method === "PATCH" || method === "POST") && status === "server") {
+      replayedRevisions.delete(tripId);
       clearOutboxTrip(tripId, "trip-put");
     }
   }
@@ -345,6 +353,7 @@
       writeLocalTrips(db);
     }
     clearPrivateBudget(tripId);
+    replayedRevisions.delete(tripId);
     clearOutboxTrip(tripId);
     removeRecentLink(tripId);
   }
@@ -412,6 +421,12 @@
     if (body?.trip) {
       const id = idFromPath || body.id || "";
       const trip = takeBudgetPrivate(id, body.trip);
+      const replayed = replayedRevisions.get(id);
+      // An open editor can still hold the last local revision after replay.
+      if (replayed && replayed.key === bearerKey(init) && body.revision === replayed.localRevision &&
+          readLocalTrips()[id]?.revision === replayed.serverRevision) {
+        body = { ...body, revision: replayed.serverRevision };
+      }
       return { ...init, body: JSON.stringify({ ...body, trip }) };
     }
     return init;

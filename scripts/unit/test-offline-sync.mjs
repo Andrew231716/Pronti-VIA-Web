@@ -27,7 +27,7 @@ test("Pages retries the newest offline edit with its original server revision", 
       if (target !== `https://pronti-via-k7es.netlify.app${url}`) throw new Error("Unexpected route");
       const { trip, revision, actorMemberId } = JSON.parse(init.body);
       uploads.push({ trip, revision, actorMemberId });
-      return Response.json({ trip, revision: 4, durable, local: !durable }, { status: serverStatus });
+      return Response.json({ trip, revision: revision + 1, durable, local: !durable }, { status: serverStatus });
     },
     addEventListener() {},
     dispatchEvent(event) { events.push(event); },
@@ -77,6 +77,14 @@ test("Pages retries the newest offline edit with its original server revision", 
   assert.equal(window.__pvReadOutbox().length, 0);
   assert.equal(JSON.parse(storage.get(localKey))[id].revision, 4);
   assert.equal(events.some(event => event.detail.local === false), true);
+
+  const nextEdit = await window.fetch(url, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ trip: { title: "Edit after reconnecting" }, revision: pending.revision }),
+  });
+  assert.equal(uploads.at(-1).revision, 4);
+  assert.equal((await nextEdit.json()).revision, 5);
 });
 
 test("service worker keeps other apps' caches and falls back to its scoped page", async () => {
