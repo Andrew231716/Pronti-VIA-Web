@@ -641,7 +641,7 @@ async function ensureCurrentUserOnTrip() {
   const params = new URLSearchParams(location.hash.replace(/^#/, ""));
   const tripId = params.get("trip");
   const key = params.get("key");
-  if (!tripId || !key) return;
+  if (!tripId || !key || key.startsWith("pv-personal-")) return;
 
   const joinKey = `${tripId}:${name.toLowerCase()}`;
   if (joinedTrips.has(joinKey) || joinInFlight === joinKey) return;

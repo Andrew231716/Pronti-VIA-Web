@@ -4,7 +4,7 @@
  * Stamp: 20261104j — Hub tab groups + quieter local banner + home cards
  */
 (() => {
-  const VER = "20261104j";
+  const VER = "20261107c";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -419,6 +419,15 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   border-radius: 18px; padding: 14px 16px; margin-bottom: 12px;
   box-shadow: 0 6px 18px rgba(16,42,48,.05);
 }
+#pv-print-day { display: none; }
+.pv-plat-conflict-choice { display: block; padding: 8px 0; }
+.pv-plat-conflict-choice span, .pv-plat-conflict-details { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media print {
+  body:has(> #pv-print-day) > :not(#pv-print-day) { display: none !important; }
+  body:has(> #pv-print-day) { background: white !important; }
+  body > #pv-print-day { display: block; color: #111; background: white; border: 0; }
+  #pv-print-day li { break-inside: avoid; }
+}
 .pv-plat-card h3 { margin:0 0 6px; font:700 14px/1.3 system-ui,sans-serif; }
 .pv-plat-muted { color: var(--pv-plat-muted); font: 400 12px/1.45 system-ui,sans-serif; }
 .pv-plat-grid { display:grid; grid-template-columns: repeat(auto-fit,minmax(140px,1fr)); gap:8px; }
@@ -502,7 +511,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   async function saveTripMeta(mutator, { permission = "edit" } = {}) {
     const { auth, data, trip } = await fetchTrip();
     if (data.canEdit === false) throw new Error("Solo lettura: non puoi modificare.");
-    const role = roleForTrip(trip);
+    const role = data.personalRole === "editor" ? "member" : roleForTrip(trip);
     if (!canRole(role, permission)) {
       throw new Error(`Operazione non consentita per il ruolo «${role}».`);
     }
@@ -539,9 +548,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       showStatus(msg, out.local || out.source === "memory" ? "local" : "server");
       return out;
     };
-    if (typeof window.__pvEnqueueTripWrite === "function") {
-      return window.__pvEnqueueTripWrite(run);
-    }
     return run();
   }
 
@@ -597,6 +603,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       tabs: [
         ["dash", "Panoramica"],
         ["polls", "Votazioni"],
+        ["access", "Inviti personali"],
         ["prep", "Preparazione"],
         ["stats", "Numeri"],
       ],
@@ -604,6 +611,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     trip: {
       label: "Organizza",
       tabs: [
+        ["today", "Oggi"],
         ["cal", "Calendario"],
         ["archive", "Ricordi"],
         ["backup", "Backup"],
@@ -710,6 +718,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     if (tab === "polls") return renderPolls();
     if (tab === "prep") return renderPrep();
     if (tab === "stats") return renderStats();
+    if (tab === "today") return renderToday();
+    if (tab === "access") return renderAccess();
     if (tab === "cal") return renderCal();
     if (tab === "archive") return renderArchive();
     if (tab === "backup") return renderBackup();
@@ -815,6 +825,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>
         <div class="pv-plat-actions">
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="today">Oggi</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">Preparazione</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">Votazioni</button>
           <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">Mappa</a>
@@ -1072,11 +1083,151 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     </div>`;
   }
 
+  function tripDay(trip) {
+    const now = new Date();
+    const today = [now.getFullYear(), now.getMonth() + 1, now.getDate()]
+      .map(value => String(value).padStart(2, "0")).join("-");
+    if (trip.start && today < trip.start) return trip.start;
+    if (trip.end && today > trip.end) return trip.end;
+    return today;
+  }
+
+  const daySelections = new Map();
+
+  async function renderToday() {
+    if (!tripAuth()) return '<div class="pv-plat-card"><p>Apri un viaggio per vedere il programma della giornata.</p></div>';
+    const { auth, trip } = await fetchTrip();
+    const day = daySelections.get(auth.id) || tripDay(trip);
+    const stops = (trip.stops || []).filter(stop => (stop.day || stop.date) === day)
+      .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
+    const bookings = (trip.bookings || []).filter(booking => {
+      const start = booking.checkIn || booking.date || booking.start;
+      const end = booking.checkOut || booking.end || start;
+      return start && start <= day && end >= day;
+    });
+    const transfers = (trip.transfers || []).filter(transfer => (transfer.date || transfer.day) === day);
+    function rows(items) {
+      return items.map(item => {
+        const when = item.time || item.departureTime || item.startTime;
+        const route = [item.from, item.to].filter(Boolean).join(" → ");
+        const title = item.title || item.name || route || item.type || "Tappa";
+        return `<li><strong>${escapeHtml(when ? `${when} · ${title}` : title)}</strong>
+          ${[item.address || item.location, item.reference || item.confirmation, item.notes]
+            .filter(Boolean).map(value => `<div>${escapeHtml(value)}</div>`).join("")}</li>`;
+      }).join("") || "<li>Nessuna voce per questa data.</li>";
+    }
+    return `<div class="pv-plat-card">
+      <label>Giorno del viaggio
+        <input type="date" id="pv-today-date" class="pv-plat-input" value="${escapeHtml(day)}">
+      </label>
+      <button type="button" class="pv-plat-btn" data-plat="print-day">Stampa o salva come PDF</button>
+    </div>
+    <article class="pv-plat-card" id="pv-day-sheet">
+      <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
+      <p>${escapeHtml([day.split("-").reverse().join("/"), trip.destination].filter(Boolean).join(" · "))}</p>
+      <h4>Tappe</h4><ol class="pv-plat-list">${rows(stops)}</ol>
+      <h4>Spostamenti</h4><ul class="pv-plat-list">${rows(transfers)}</ul>
+      <h4>Prenotazioni</h4><ul class="pv-plat-list">${rows(bookings)}</ul>
+    </article>`;
+  }
+
+  async function inviteRequest(auth, method = "GET", body) {
+    const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}/access`, {
+      method, cache: "no-store",
+      headers: { Authorization: `Bearer ${auth.key}`, "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 404) throw new Error("Il servizio degli inviti personali non è disponibile su questo server.");
+    if (!res.ok) throw new Error(data.error || "Inviti personali non disponibili.");
+    return data;
+  }
+
+  async function renderAccess() {
+    const auth = tripAuth();
+    if (!auth) return '<div class="pv-plat-card"><p>Apri un viaggio per gestire gli inviti personali.</p></div>';
+    if (!navigator.onLine) return '<div class="pv-plat-card"><p>Per gestire gli inviti personali serve una connessione.</p></div>';
+    const { invites } = await inviteRequest(auth);
+    if (!Array.isArray(invites)) throw new Error("Il servizio inviti non è ancora disponibile.");
+    return `<div class="pv-plat-card">
+      <h3>Inviti personali</h3>
+      <p class="pv-plat-muted">Crea un link distinto per ogni persona. Chi lo riceve può usarlo fino a quando lo revochi. Condividilo direttamente con la persona indicata.</p>
+      <form id="pv-invite-form">
+        <label>Nome <input id="pv-invite-name" class="pv-plat-input" maxlength="80" required></label>
+        <label>Permesso <select id="pv-invite-role" class="pv-plat-input">
+          <option value="viewer">Solo lettura</option>
+          <option value="editor">Modifica programma e spese</option>
+        </select></label>
+        <button type="submit" class="pv-plat-btn">Crea link personale</button>
+      </form>
+      <div id="pv-invite-result" hidden>
+        <label>Link personale <input id="pv-invite-url" class="pv-plat-input" readonly></label>
+        <button type="button" class="pv-plat-btn" data-plat="invite-copy">Copia link</button>
+      </div>
+      <h4>Inviti attivi</h4>
+      <ul class="pv-plat-list" id="pv-invite-list">${inviteRows(invites)}</ul>
+    </div>`;
+  }
+
+  function inviteRows(invites) {
+    return invites.map(invite => `<li><strong>${escapeHtml(invite.name)}</strong> · ${invite.role === "editor" ? "Modifica" : "Solo lettura"}
+      <button type="button" class="pv-plat-btn" data-revoke-invite="${escapeHtml(invite.id)}">Revoca</button></li>`).join("") ||
+      "<li>Nessun invito attivo.</li>";
+  }
+
+  const CONFLICT_FIELDS = {
+    title: "Nome", destination: "Destinazione", start: "Partenza", end: "Rientro",
+    stops: "Tappe", bookings: "Prenotazioni", expenses: "Spese", transfers: "Spostamenti",
+    checklist: "Lista di controllo", members: "Partecipanti", notes: "Note", meta: "Dettagli aggiuntivi",
+  };
+
+  function conflictValue(value) {
+    if (value === undefined || value === null || value === "") return "Vuoto";
+    if (Array.isArray(value)) {
+      return value.map(item => {
+        if (typeof item !== "object" || !item) return escapeHtml(item);
+        const headline = item.title || item.name || item.text || item.label || item.id;
+        const detail = [item.date || item.day, item.time, item.address, item.reference, item.notes].filter(Boolean);
+        return escapeHtml([headline, ...detail].filter(Boolean).join(" · "));
+      }).join("<br>") || "Nessuna voce";
+    }
+    return escapeHtml(typeof value === "object" ? JSON.stringify(value, null, 2) : value);
+  }
+
+  function conflictFields(review) {
+    const keys = new Set([...Object.keys(review.server), ...Object.keys(review.local)]);
+    keys.delete("budget");
+    return [...keys].filter(field => JSON.stringify(review.server[field]) !== JSON.stringify(review.local[field]));
+  }
+
+  function renderConflict(review) {
+    return conflictFields(review).map(field => `<fieldset class="pv-plat-card">
+      <legend>${escapeHtml(CONFLICT_FIELDS[field] || field)}</legend>
+      ${[["server", "Versione online"], ["local", "Versione sul dispositivo"]].map(([side, label]) => `
+        <label class="pv-plat-conflict-choice">
+          <input type="radio" name="conflict-${escapeHtml(field)}" data-conflict-field="${escapeHtml(field)}" value="${side}" ${side === "server" ? "checked" : ""}>
+          <strong>${label}</strong><span>${conflictValue(review[side][field])}</span>
+        </label>
+        ${Array.isArray(review[side][field]) && review[side][field].length
+          ? `<details><summary>Dettagli</summary><div class="pv-plat-conflict-details">${escapeHtml(JSON.stringify(review[side][field], null, 2))}</div></details>`
+          : ""}`).join("")}
+      </fieldset>`).join("") || "<p>Le due versioni hanno gli stessi dati.</p>";
+  }
+
   function renderSettings() {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
     const pending = Array.isArray(outbox) ? outbox.length : 0;
+    const auth = tripAuth();
+    const conflict = auth && window.__pvHasTripConflict?.(auth.id, auth.key);
+    const conflicts = Array.isArray(outbox) ? outbox.filter(item => item.lastError === "conflict") : [];
+    const recent = readJson("viavia-recent-links-v1", []);
+    const links = conflicts.filter(item => item.tripId !== auth?.id).map(item => {
+      const match = recent.find(trip => trip.id === item.tripId && trip.key === item.key);
+      if (!match) return "";
+      return `<li><a data-plat="open-conflict-trip" href="#trip=${encodeURIComponent(match.id)}&key=${encodeURIComponent(match.key)}">${escapeHtml(match.title || "Viaggio")}</a></li>`;
+    }).filter(Boolean);
     return `<div class="pv-plat-card">
       <h3>Aspetto</h3>
       <label class="pv-plat-muted">Tema
@@ -1096,6 +1247,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           : "Offline — le modifiche restano su questo dispositivo finché torni online."
       }</p>
       <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova ora</button>
+      ${links.length ? `<p>Viaggi con modifiche da confrontare</p><ul>${links.join("")}</ul>` : ""}
+      ${conflict ? `
+        <p>Questo viaggio ha modifiche diverse sul dispositivo e online.</p>
+        <button type="button" class="pv-plat-btn" data-plat="compare-conflict">Confronta versioni</button>
+        <form id="pv-conflict-form" hidden></form>` : ""}
       <details style="margin-top:14px">
         <summary class="pv-plat-muted" style="cursor:pointer">Chi può fare cosa</summary>
         <p class="pv-plat-muted" style="margin-top:8px">
@@ -1119,6 +1275,120 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   function wireBody(body) {
+    body.querySelector("#pv-today-date")?.addEventListener("change", (event) => {
+      const auth = tripAuth();
+      if (!auth || !event.target.value) return;
+      daySelections.set(auth.id, event.target.value);
+      void renderPanel();
+    });
+    body.querySelector("[data-plat=print-day]")?.addEventListener("click", () => {
+      const sheet = body.querySelector("#pv-day-sheet");
+      if (!sheet) return;
+      document.getElementById("pv-print-day")?.remove();
+      const copy = sheet.cloneNode(true);
+      copy.id = "pv-print-day";
+      document.body.append(copy);
+      window.addEventListener("afterprint", () => copy.remove(), { once: true });
+      window.print();
+    });
+    const inviteList = body.querySelector("#pv-invite-list");
+    const inviteForm = body.querySelector("#pv-invite-form");
+    if (inviteForm && inviteList) {
+      const auth = tripAuth();
+      const result = body.querySelector("#pv-invite-result");
+      const urlField = body.querySelector("#pv-invite-url");
+      const refresh = async () => {
+        const { invites } = await inviteRequest(auth);
+        inviteList.innerHTML = inviteRows(invites);
+      };
+      inviteForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = inviteForm.querySelector("button");
+        button.disabled = true;
+        try {
+          const name = body.querySelector("#pv-invite-name").value;
+          const role = body.querySelector("#pv-invite-role").value;
+          const created = await inviteRequest(auth, "POST", { name, role });
+          if (!/^pv-personal-[a-f0-9]{64}$/.test(created.token)) throw new Error("Il server non ha confermato la creazione.");
+          const url = new URL(location.href);
+          url.hash = new URLSearchParams({ trip: auth.id, key: created.token }).toString();
+          urlField.value = url.toString();
+          result.hidden = false;
+          inviteForm.reset();
+          await refresh();
+        } catch (err) {
+          showStatus(err.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+      body.querySelector("[data-plat=invite-copy]")?.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(urlField.value);
+          showStatus("Link personale copiato", "server");
+        } catch {
+          urlField.select();
+        }
+      });
+      inviteList.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-revoke-invite]");
+        if (!button || !window.confirm("Revocare questo link personale?")) return;
+        button.disabled = true;
+        try {
+          await inviteRequest(auth, "DELETE", { id: button.dataset.revokeInvite });
+          result.hidden = true;
+          urlField.value = "";
+          await refresh();
+          showStatus("Invito revocato", "server");
+        } catch (err) {
+          showStatus(err.message, "error");
+          button.disabled = false;
+        }
+      });
+    }
+    body.querySelectorAll("[data-plat=open-conflict-trip]").forEach(link => {
+      link.addEventListener("click", () => togglePanel(false));
+    });
+    const conflictForm = body.querySelector("#pv-conflict-form");
+    if (conflictForm) {
+      const auth = tripAuth();
+      let review;
+      body.querySelector("[data-plat=compare-conflict]").addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          review = await window.__pvCompareTripConflict(auth.id, auth.key);
+          if (!review) return void renderPanel();
+          conflictForm.innerHTML = renderConflict(review) +
+            '<button type="submit" class="pv-plat-btn">Salva le scelte</button>';
+          conflictForm.hidden = false;
+        } catch (err) {
+          showStatus(err.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+      conflictForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        if (!review) return;
+        const selected = { ...review.server };
+        conflictForm.querySelectorAll('input[value="local"]:checked').forEach(input => {
+          const field = input.dataset.conflictField;
+          Object.defineProperty(selected, field, { value: review.local[field], enumerable: true, configurable: true });
+        });
+        const button = conflictForm.querySelector("button");
+        button.disabled = true;
+        try {
+          await window.__pvResolveTripConflict(auth.id, auth.key, review, selected);
+          showStatus("Versione aggiornata", "server");
+          void renderPanel();
+        } catch (err) {
+          showStatus(err.message, "error");
+        } finally {
+          button.disabled = false;
+        }
+      });
+    }
     body.querySelector("[data-plat=goto-new]")?.addEventListener("click", () => {
       togglePanel(false);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1487,7 +1757,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       /* badge refresh when settings open */
     });
     window.addEventListener("online", () => {
-      showStatus("Di nuovo online — sincronizzazione…", "server");
+      showStatus("Di nuovo online — sincronizzazione…", "pending");
       if (typeof window.__pvFlushOutbox === "function") void window.__pvFlushOutbox();
     });
     window.addEventListener("offline", () =>

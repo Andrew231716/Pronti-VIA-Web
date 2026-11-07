@@ -20,7 +20,9 @@
   // Serialize trip writes so join / preventivo / React saves do not clobber each other.
   let tripWriteChain = Promise.resolve();
   function enqueueTripWrite(task) {
-    const run = tripWriteChain.then(task, task);
+    const run = tripWriteChain.then(() =>
+      navigator.locks ? navigator.locks.request("pronti-via-trip-write", task) : task()
+    );
     tripWriteChain = run.then(
       () => undefined,
       () => undefined
@@ -36,11 +38,10 @@
     SERVER: "Salvato e sincronizzato",
     LOCAL: "Salvato su questo dispositivo. In attesa di sincronizzazione",
     ERROR: "Salvataggio non riuscito",
-    CONFLICT:
-      "Versione non aggiornata. Ricarica e riprova: le modifiche più recenti non sono state sovrascritte.",
+    CONFLICT: "Versione non aggiornata. Confronta le versioni in Hub, Impostazioni.",
     CREATE_SERVER: "Viaggio creato e sincronizzato. Conserva il link per ritrovarlo.",
-    CREATE_LOCAL:
-      "Viaggio creato su questo dispositivo. Conserva il link.",
+    CREATE_LOCAL: "Viaggio creato su questo dispositivo. Conserva il link.",
+    CREATE_PENDING: "Viaggio creato su questo dispositivo. Pubblicazione in attesa.",
   };
 
   function classifyPersistence(data = {}) {
@@ -57,7 +58,8 @@
     const status = classifyPersistence(data || {});
     if (create) {
       if (status === "error") return SAVE_MSG.ERROR;
-      return status === "server" ? SAVE_MSG.CREATE_SERVER : SAVE_MSG.CREATE_LOCAL;
+      if (status === "server") return SAVE_MSG.CREATE_SERVER;
+      return data.id?.startsWith("pv-") ? SAVE_MSG.CREATE_PENDING : SAVE_MSG.CREATE_LOCAL;
     }
     if (status === "local" || status === "pending") return SAVE_MSG.LOCAL;
     if (status === "error") return SAVE_MSG.ERROR;
@@ -81,9 +83,10 @@
   }
   function enqueueOutboxItem(item) {
     const q = readOutbox();
-    const previous = q.findIndex((x) => x.tripId === item.tripId && x.type === item.type);
-    const revision = previous < 0 ? item.revision : q[previous].revision;
-    if (previous >= 0) q.splice(previous, 1);
+    const previous = q.findIndex((x) => x.tripId === item.tripId && x.type === item.type && x.key === item.key);
+    const prior = q[previous];
+    const revision = prior ? prior.revision : item.revision;
+    if (prior) q.splice(previous, 1);
     q.unshift({
       id: item.id || `op-${Date.now().toString(36)}`,
       type: item.type || "trip-put",
@@ -91,9 +94,11 @@
       key: item.key || "",
       revision,
       actorMemberId: item.actorMemberId,
+      viewToken: item.viewToken,
       payload: item.payload ?? null,
       createdAt: item.createdAt || new Date().toISOString(),
       attempts: Number(item.attempts) || 0,
+      lastError: item.lastError || (prior?.lastError === "conflict" ? "conflict" : undefined),
     });
     writeOutbox(q);
     try {
@@ -102,8 +107,8 @@
       /* ignore */
     }
   }
-  function clearOutboxTrip(tripId, type = "trip-put") {
-    const q = readOutbox().filter((x) => !(x.tripId === tripId && x.type === type));
+  function clearOutboxTrip(tripId, type, key) {
+    const q = readOutbox().filter((x) => !(x.tripId === tripId && (!type || x.type === type) && (!key || x.key === key)));
     writeOutbox(q);
     try {
       window.dispatchEvent(new CustomEvent("pv-outbox-changed", { detail: { count: q.length } }));
@@ -118,41 +123,72 @@
     return outboxFlush;
   }
 
+  async function requestOutbox(suffix, init) {
+    if (sameOriginApiProxy) {
+      try {
+        const res = await fetchTripsCandidate(`/api${suffix}`, init);
+        if (res.status !== 404 && res.status !== 405) return res;
+      } catch {
+        // A static host has no API of its own.
+      }
+    }
+    return remoteTrips(suffix, init);
+  }
+
+  function outboxRequest(item, method, body) {
+    return {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${item.key}`,
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    };
+  }
+
+  function sendTripEdit(item) {
+    return requestOutbox(`/trips/${encodeURIComponent(item.tripId)}`, outboxRequest(item, "PUT", {
+      trip: item.payload, revision: item.revision, actorMemberId: item.actorMemberId,
+    }));
+  }
+
   async function sendOutbox() {
     if (!navigator.onLine) return { flushed: 0, left: readOutbox().length };
     const q = readOutbox();
     let flushed = 0;
     const left = [];
-    for (const item of q) {
-      if (item.type !== "trip-put" || !item.tripId || !item.key || !item.payload) {
+    for (let item of q) {
+      if (item.lastError === "conflict") {
+        left.push(item);
+        continue;
+      }
+      const publishing = item.type === "trip-create";
+      if ((!publishing && item.type !== "trip-put") || !item.tripId || !item.key || !item.payload) {
         left.push(item);
         continue;
       }
       try {
-        const suffix = `/trips/${encodeURIComponent(item.tripId)}`;
-        const init = {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${item.key}`,
-          },
-          body: JSON.stringify({
-            trip: item.payload,
-            revision: item.revision,
-            actorMemberId: item.actorMemberId,
-          }),
-        };
         let res;
-        if (sameOriginApiProxy) {
-          try {
-            res = await fetchTripsCandidate(`/api${suffix}`, init);
-            if (res.status === 404 || res.status === 405) res = undefined;
-          } catch {
-            // A static host has no API of its own.
+        let data;
+        if (publishing) {
+          res = await requestOutbox("/trips/publish-offline", outboxRequest(item, "POST", {
+            pvPublish: { id: item.tripId, viewToken: item.viewToken }, trip: item.payload,
+          }));
+          data = await res.json().catch(() => ({}));
+          if (res.ok && (data.id !== item.tripId || data.key !== item.key || !data.trip)) {
+            left.push({ ...item, lastError: "publish-unavailable" });
+            continue;
           }
+          // A response may have been lost after the first publication. Preserve newer local edits.
+          if (res.ok && classifyPersistence(data) === "server" && JSON.stringify(data.trip) !== JSON.stringify(item.payload)) {
+            item = { ...item, type: "trip-put", revision: 1 };
+            res = await sendTripEdit(item);
+            data = await res.json().catch(() => ({}));
+          }
+        } else {
+          res = await sendTripEdit(item);
+          data = await res.json().catch(() => ({}));
         }
-        res ||= await remoteTrips(suffix, init);
-        const data = await res.json().catch(() => ({}));
         if (res.status === 409) {
           left.push({ ...item, attempts: (item.attempts || 0) + 1, lastError: "conflict" });
           try {
@@ -175,12 +211,7 @@
           continue;
         }
         if (data.trip) {
-          const localRevision = readLocalTrips()[item.tripId]?.revision;
-          if (Number.isInteger(localRevision) && Number.isInteger(data.revision) && localRevision !== data.revision) {
-            replayedRevisions.set(item.tripId, {
-              key: item.key, localRevision, serverRevision: data.revision,
-            });
-          }
+          rememberReplayedRevision(item.tripId, item.key, data.revision);
           cacheTripRecord(item.tripId, { ...data, key: item.key, canEdit: true, local: false });
         }
         flushed += 1;
@@ -215,6 +246,11 @@
     if (!tripId) return;
     if (!data || data.ok === false) return;
     const status = classifyPersistence(data);
+    const creation = readOutbox().find(item => item.tripId === tripId && item.key === key && item.type === "trip-create");
+    if (creation && tripPayload) {
+      enqueueOutboxItem({ ...creation, payload: tripPayload });
+      return;
+    }
     if ((method === "PUT" || method === "PATCH") && status !== "server" && tripPayload) {
       enqueueOutboxItem({
         type: "trip-put",
@@ -227,9 +263,54 @@
     }
     if ((method === "PUT" || method === "PATCH" || method === "POST") && status === "server") {
       replayedRevisions.delete(tripId);
-      clearOutboxTrip(tripId, "trip-put");
+      clearOutboxTrip(tripId, "trip-put", key);
     }
   }
+
+  function rememberReplayedRevision(tripId, key, serverRevision) {
+    const localRevision = readLocalTrips()[tripId]?.revision;
+    if (Number.isInteger(localRevision) && Number.isInteger(serverRevision) && localRevision !== serverRevision) {
+      replayedRevisions.set(tripId, { key, localRevision, serverRevision });
+    }
+  }
+
+  function findConflict(tripId, key) {
+    return readOutbox().find(item => item.tripId === tripId && item.key === key && item.lastError === "conflict");
+  }
+
+  async function compareConflict(tripId, key) {
+    const item = findConflict(tripId, key);
+    if (!item) return null;
+    const res = await requestOutbox(`/trips/${encodeURIComponent(tripId)}`, outboxRequest(item, "GET"));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.trip || !Number.isInteger(data.revision) || data.canEdit === false) {
+      throw new Error(data.error || "Versione online non disponibile.");
+    }
+    return { local: item.payload, server: data.trip, revision: data.revision };
+  }
+
+  function resolveConflict(tripId, key, reviewed, trip) {
+    return enqueueTripWrite(async () => {
+      const item = findConflict(tripId, key);
+      if (!item || JSON.stringify(item.payload) !== JSON.stringify(reviewed.local)) {
+        throw new Error("Le modifiche locali sono cambiate. Confronta di nuovo le versioni.");
+      }
+      const res = await sendTripEdit({ ...item, revision: reviewed.revision, payload: { ...trip, budget: 0 } });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409) throw new Error("La versione online è cambiata. Confronta di nuovo le versioni.");
+      if (!res.ok || !data.trip || classifyPersistence(data) !== "server") {
+        throw new Error(data.error || "Il server non ha confermato il salvataggio. Le modifiche sono ancora in coda.");
+      }
+      rememberReplayedRevision(tripId, key, data.revision);
+      cacheTripRecord(tripId, { ...data, key, canEdit: true, local: false });
+      clearOutboxTrip(tripId, "trip-put", key);
+      return data;
+    });
+  }
+
+  window.__pvHasTripConflict = (tripId, key) => Boolean(findConflict(tripId, key));
+  window.__pvCompareTripConflict = compareConflict;
+  window.__pvResolveTripConflict = resolveConflict;
 
   window.__pvClassifyPersistence = classifyPersistence;
   window.__pvSaveToast = (data) => saveToastFromResponse(data, { create: false });
@@ -487,7 +568,7 @@
     return src === "memory";
   }
 
-  function trackTripWriteResult(method, tripId, init, data) {
+  function trackTripWriteResult(method, tripId, init, data, conflict = false) {
     let body;
     try {
       body = typeof init?.body === "string" ? JSON.parse(init.body) : null;
@@ -497,19 +578,27 @@
     const payload = body && typeof body === "object" && !Array.isArray(body) ? body.trip || body : null;
     const actorMemberId = new Headers(init?.headers).get("x-pronti-member-id") ||
       body?.actorMemberId || body?.memberId || undefined;
-    noteWritePersistence(method, tripId, bearerKey(init), data, payload, body?.revision, actorMemberId);
+    const key = bearerKey(init);
+    if (conflict && key && payload && tripId) {
+      enqueueOutboxItem({
+        type: "trip-put", tripId, key, revision: body?.revision, actorMemberId, payload, lastError: "conflict",
+      });
+    } else {
+      noteWritePersistence(method, tripId, key, data, payload, body?.revision, actorMemberId);
+    }
   }
 
   function cacheTripRecord(id, record) {
     if (!id || !record?.trip) return;
     const db = readLocalTrips();
+    if (isPersonalKey(record.key) && db[id]?.key && !isPersonalKey(db[id].key)) return;
     // Never persist private budget into the shared/local trip blob.
     const sharedTrip = { ...record.trip, budget: 0 };
     const ephemeral = isEphemeralPersistence(record);
     db[id] = {
       id,
       key: record.key || db[id]?.key || "",
-      viewToken: record.viewToken || db[id]?.viewToken || "",
+      viewToken: isPersonalKey(record.key) ? "" : record.viewToken || db[id]?.viewToken || "",
       trip: sharedTrip,
       revision: record.revision || 1,
       canEdit: record.canEdit !== false,
@@ -722,7 +811,7 @@
       const id = params.get("trip");
       const key = params.get("key");
       const payload = params.get("s") || params.get("payload");
-      if (!id || !payload) return;
+      if (!id || !payload || isPersonalKey(key)) return;
       const parsed = parseSharePayloadToken(payload);
       if (parsed.kind !== "inline") return; // bin needs async hydrate
       const json = decodeInlineSharePayload(parsed.value);
@@ -741,7 +830,7 @@
     const id = params.get("trip") || tripIdHint || "";
     const key = params.get("key") || "";
     const payload = params.get("s") || params.get("payload") || "";
-    if (!id || !payload) return;
+    if (!id || !payload || isPersonalKey(key)) return;
     if (tripIdHint && id !== tripIdHint) return;
 
     const existing = readLocalTrips()[id];
@@ -790,9 +879,14 @@
     }
   }
 
+  function isPersonalKey(key) {
+    return /^pv-personal-[a-f0-9]{64}$/.test(key);
+  }
+
   async function resolveShareRef(tripId, shareKey) {
+    if (isPersonalKey(shareKey)) return "";
     const rec = readLocalTrips()[tripId];
-    if (!rec?.trip) return "";
+    if (!rec?.trip || isPersonalKey(rec.key)) return "";
     const cached = getCachedShareRef(tripId, shareKey);
     if (cached) return cached;
     try {
@@ -864,6 +958,7 @@
     return getCachedShareRef(tripId, shareKey) || "";
   };
   window.__pvEncodeTripShare = function encodeTripShare(tripId, shareKey) {
+    if (isPersonalKey(shareKey)) return "";
     return getCachedShareRef(tripId, shareKey) || "";
   };
   window.__pvPrepareShare = async function prepareShare(tripId, shareKey) {
@@ -885,7 +980,7 @@
       const params = new URLSearchParams(url.hash.replace(/^#/, ""));
       const tripId = params.get("trip");
       const key = params.get("key");
-      if (!tripId || !key) return text;
+      if (!tripId || !key || isPersonalKey(key)) return text;
       const ref = getCachedShareRef(tripId, key);
       if (!ref) {
         // Kick off publish for next copy; still try inline if small.
@@ -1153,7 +1248,7 @@
       } catch {
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
-      const newId = crypto.randomUUID();
+      const newId = `pv-${crypto.randomUUID()}`;
       const editKey = randomHex(32);
       const viewToken = randomHex(32);
       if (
@@ -1182,8 +1277,9 @@
       };
       db[newId] = record;
       writeLocalTrips(db);
-      void resolveShareRef(newId, editKey);
-      void resolveShareRef(newId, viewToken);
+      enqueueOutboxItem({
+        type: "trip-create", tripId: newId, key: editKey, viewToken, payload: sharedTrip,
+      });
       return jsonResponse(200, {
         id: newId,
         key: editKey,
@@ -1216,6 +1312,7 @@
 
     // /api/trips/:id/files[/:fileId] — never fall through to trip JSON (React Documenti crashes).
     if (sub === "files") {
+      if (isPersonalKey(key)) return jsonResponse(403, { error: "Documenti non disponibili tramite invito personale." });
       return handleLocalTripFiles(id, fileId, method, init, record, canEdit, canView);
     }
 
@@ -1225,8 +1322,8 @@
         trip: applyPrivateBudgetView(id, record.trip),
         revision: record.revision || 1,
         updated: record.updated,
-        canEdit,
-        viewToken: record.viewToken || "",
+        canEdit: canEdit && !isPersonalKey(key),
+        viewToken: isPersonalKey(key) ? "" : record.viewToken || "",
         local: Boolean(record.local),
       });
     }
@@ -1515,7 +1612,9 @@
     // Prefer Netlify CORS proxy (required from GitHub Pages). Direct Supabase has no ACAO.
     const proxyTargets = TRIPS_PROXIES.map((base) => `${base}/api${suffix}`);
     const isSearch = String(suffix || "").startsWith("/search");
-    const candidates = isSearch
+    const managedTrip = /^\/trips\/(?:pv-|publish-offline(?:$|\?))|^\/trips\/[^/]+\/access(?:$|\?)/.test(suffix) ||
+      isPersonalKey(bearerKey(init));
+    const candidates = isSearch || managedTrip
       ? [`${NETLIFY_API}/api${suffix}`]
       : onGitHubPages
         ? [`${NETLIFY_API}/api${suffix}`, ...proxyTargets]
@@ -1611,9 +1710,23 @@
         parsed.pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean)[0] || ""
       );
       const writeInit = await rewriteTripWriteInit(parsed.pathname, init);
+      const key = bearerKey(writeInit);
+      const accessPath = /\/access$/.test(parsed.pathname);
+      const filesPath = /\/files(?:\/|$)/.test(parsed.pathname);
+      if (accessPath) {
+        try {
+          return await remoteTrips(suffix, writeInit);
+        } catch {
+          return jsonResponse(503, { error: "Gli inviti richiedono una connessione." });
+        }
+      }
+
+      if (!navigator.onLine && method === "POST" && !tripIdHint) {
+        return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+      }
 
       // Before opening a shared trip, hydrate snapshot from hash (inline or bytebin).
-      if (method === "GET" && tripIdHint) {
+      if (method === "GET" && tripIdHint && !isPersonalKey(key)) {
         try {
           await hydrateTripFromShare(tripIdHint);
         } catch {
@@ -1621,7 +1734,7 @@
         }
       }
 
-      const pending = tripIdHint && !/\/files(?:\/|$)/.test(parsed.pathname)
+      const pending = tripIdHint && !filesPath && !isPersonalKey(key)
         ? readOutbox().find(item => item.tripId === tripIdHint && item.key === bearerKey(writeInit))
         : undefined;
       // Keep the local revision chain intact until the queued edit reaches the server.
@@ -1629,9 +1742,12 @@
         const res = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
         if (res.ok) {
           const data = await res.json();
+          if (method === "GET" && pending.lastError === "conflict") {
+            data.trip = applyPrivateBudgetView(tripIdHint, pending.payload);
+          }
           if (method !== "GET") {
             trackTripWriteResult(method, tripIdHint, writeInit, data);
-            if (navigator.onLine) void flushOutbox();
+            if (navigator.onLine && pending.lastError !== "conflict") void flushOutbox();
           }
           return jsonResponse(res.status, { ...data, local: true });
         }
@@ -1639,7 +1755,7 @@
       }
 
       // Prefer same-origin reverse proxy when available (Netlify / local).
-      if (sameOriginApiProxy) {
+      if (sameOriginApiProxy && !isPersonalKey(key) && !tripIdHint.startsWith("pv-")) {
         try {
           const res = await Promise.race([
             originalFetch(input, writeInit),
@@ -1699,6 +1815,9 @@
             res.status === 405 ||
             ct.includes("text/html");
           if (!looksMissing && res.status < 500) {
+            if (res.status === 409 && !filesPath && ["PUT", "PATCH"].includes(method)) {
+              trackTripWriteResult(method, tripIdHint, writeInit, null, true);
+            }
             return withPrivateBudgetResponse(res, tripIdHint);
           }
         } catch {
@@ -1708,7 +1827,20 @@
 
       try {
         const res = await remoteTrips(suffix, writeInit);
-        const filesPath = /\/files(?:\/|$)/.test(parsed.pathname);
+        if (isPersonalKey(key) && (res.status === 401 || res.status === 403) && method === "GET" && !filesPath) {
+          const db = readLocalTrips();
+          if (db[tripIdHint]?.key === key) {
+            delete db[tripIdHint];
+            writeLocalTrips(db);
+          }
+          return res;
+        }
+        if (res.status === 409 && !filesPath && ["PUT", "PATCH"].includes(method)) {
+          trackTripWriteResult(method, tripIdHint, writeInit, null, true);
+        }
+        if (filesPath && tripIdHint.startsWith("pv-") && res.status === 404 && !isPersonalKey(key)) {
+          return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        }
         if (res.ok) {
           try {
             const data = await res.clone().json();
@@ -1765,12 +1897,12 @@
           }
         }
         // Cloud 404/403 for GET → try local copy before surfacing error.
-        if (!res.ok && method === "GET") {
+        if (!res.ok && method === "GET" && !isPersonalKey(key)) {
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
           if (local.status === 200) return local;
         }
         // DELETE: if cloud says missing/unsupported, still purge local copy when we hold the key.
-        if (!res.ok && method === "DELETE") {
+        if (!res.ok && method === "DELETE" && !isPersonalKey(key)) {
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
           if (local.status === 200) return local;
           // 404 on cloud still means "gone" — clear local leftovers.
@@ -1783,8 +1915,12 @@
         // that creates unshareable trips. Only fall back on transport failure.
         return withPrivateBudgetResponse(res, tripIdHint);
       } catch {
+        // Personal access must be validated before any mutation.
+        if (isPersonalKey(key) && (method !== "GET" || navigator.onLine)) {
+          return jsonResponse(503, { error: "Serve una connessione per verificare l’invito." });
+        }
         // All remote proxies failed — durable local fallback.
-        const localRes = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+          const localRes = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
         if (localRes.ok && (method === "PUT" || method === "PATCH")) {
           const data = await localRes.clone().json();
           trackTripWriteResult(method, tripIdHint, writeInit, data);
@@ -1887,4 +2023,5 @@
 
     return originalFetch(input, init);
   };
+  if (navigator.onLine && readOutbox().length) void flushOutbox();
 })();

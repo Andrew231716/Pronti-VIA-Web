@@ -25,6 +25,7 @@ test("Pages retries the newest offline edit with its original server revision", 
     async fetch(target, init) {
       if (!navigator.onLine) throw new Error("Offline");
       if (target !== `https://pronti-via-k7es.netlify.app${url}`) throw new Error("Unexpected route");
+      if (init.method === "GET") return Response.json({ trip: { title: "Online" }, revision: 3, canEdit: true });
       const { trip, revision, actorMemberId } = JSON.parse(init.body);
       uploads.push({ trip, revision, actorMemberId });
       return Response.json({ trip, revision: revision + 1, durable, local: !durable }, { status: serverStatus });
@@ -73,7 +74,11 @@ test("Pages retries the newest offline edit with its original server revision", 
 
   serverStatus = 200;
   durable = true;
-  assert.equal((await window.__pvFlushOutbox()).flushed, 1);
+  const conflict = await window.__pvCompareTripConflict(id, key);
+  assert.equal(conflict.server.title, "Online");
+  assert.equal(conflict.local.title, "Latest edit");
+  assert.equal((await window.__pvFlushOutbox()).flushed, 0);
+  await window.__pvResolveTripConflict(id, key, conflict, conflict.local);
   assert.equal(window.__pvReadOutbox().length, 0);
   assert.equal(JSON.parse(storage.get(localKey))[id].revision, 4);
   assert.equal(events.some(event => event.detail.local === false), true);
@@ -131,4 +136,87 @@ test("service worker keeps other apps' caches and falls back to its scoped page"
   assert.equal(handled, undefined);
   navigate(new URL("?v=test", location).href);
   assert.equal(await handled, shell);
+});
+
+test("new offline trips retain their link and publish the latest draft once", async () => {
+  const storage = new Map();
+  const navigator = { onLine: false };
+  const requests = [];
+  const window = {
+    async fetch(target, init) {
+      if (target !== "https://pronti-via-k7es.netlify.app/api/trips/publish-offline") {
+        throw new Error("Not available");
+      }
+      const body = JSON.parse(init.body);
+      requests.push(body);
+      return Response.json({
+        id: body.pvPublish.id, key: new Headers(init.headers).get("Authorization").slice(7),
+        trip: body.trip, revision: 1, source: "blobs", durable: true, local: false,
+      }, { status: 201 });
+    },
+    addEventListener() {},
+    dispatchEvent() {},
+  };
+  load("api-shim.js", {
+    window, location, navigator, URL, URLSearchParams, Headers, Response, AbortController, crypto,
+    setInterval() {},
+    setTimeout: (callback, delay) => setTimeout(callback, delay).unref(),
+    localStorage: {
+      getItem: (name) => storage.get(name) ?? null,
+      setItem: (name, value) => storage.set(name, value),
+    },
+  });
+  const created = await (await window.fetch("/api/trips", {
+    method: "POST",
+    body: JSON.stringify({ title: "Initial draft", budget: 80000 }),
+  })).json();
+  assert.match(created.id, /^pv-/);
+  assert.equal(created.local, true);
+  const url = `/api/trips/${created.id}`;
+  const headers = { Authorization: `Bearer ${created.key}` };
+  await window.fetch(url, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify({ trip: { title: "Latest draft" }, revision: 1 }),
+  });
+  assert.equal((await (await window.fetch(url, { headers })).json()).trip.title, "Latest draft");
+  assert.equal(window.__pvReadOutbox().length, 1);
+  assert.equal(window.__pvReadOutbox()[0].type, "trip-create");
+  navigator.onLine = true;
+  assert.equal((await window.__pvFlushOutbox()).flushed, 1);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].pvPublish.id, created.id);
+  assert.equal(requests[0].pvPublish.viewToken, created.viewToken);
+  assert.deepEqual(requests[0].trip, { title: "Latest draft", budget: 0 });
+  assert.equal(window.__pvReadOutbox().length, 0);
+});
+
+test("the daily sheet uses cached trips and includes only the selected day", async () => {
+  const trip = {
+    title: "Weekend", destination: "Roma", start: "2027-01-01", end: "2027-01-02",
+    stops: [
+      { day: "2027-01-01", title: "Museo", time: "12:00", address: "Via Roma" },
+      { day: "2027-01-01", title: "Colazione", time: "08:00" },
+      { day: "2027-01-02", title: "Treno di ritorno" },
+    ],
+    bookings: [{ checkIn: "2027-01-01", checkOut: "2027-01-02", title: "Albergo", reference: "<ABC>" }],
+  };
+  const window = {};
+  const source = readFileSync(new URL("../../pv-platform.js", import.meta.url), "utf8")
+    .replace('  if (document.readyState === "loading")', '  window.renderToday = renderToday;\n  if (document.readyState === "loading")');
+  runInNewContext(source, {
+    window, URLSearchParams,
+    location: { hash: "#trip=test&key=test" },
+    document: { readyState: "loading", addEventListener() {} },
+    navigator: { onLine: false },
+    fetch: async () => Response.json({ trip, local: true }),
+    Date: class extends Date { constructor() { super("2026-12-31T12:00:00"); } },
+  });
+  const html = await window.renderToday();
+  assert.match(html, /Stampa o salva come PDF/);
+  assert.match(html, /value="2027-01-01"/);
+  assert.match(html, /Via Roma/);
+  assert.match(html, /&lt;ABC&gt;/);
+  assert.doesNotMatch(html, /Treno di ritorno/);
+  assert.ok(html.indexOf("Colazione") < html.indexOf("Museo"));
 });

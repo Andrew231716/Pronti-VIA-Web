@@ -2,6 +2,8 @@
  * Trips API with Supabase proxy + Blobs/file KV fallback.
  * When Supabase is down, durable store keeps create/get/put working for Pages clients.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
+import { handleNativeTrip, handlePersonalAccess, isNativeTrip, isPersonalKey } from "./_trip-access.mjs";
 import { randomBytes, randomUUID } from "node:crypto";
 import { createKv } from "./_store.mjs";
 import {
@@ -30,7 +32,7 @@ function actorMemberId(event, body) {
   return String(header || fromBody || "").trim();
 }
 
-let corsHeaders = corsHeadersFor(null);
+const corsContext = new AsyncLocalStorage();
 
 function persistenceFlags(saved) {
   const backend = saved?.backend || "store";
@@ -46,15 +48,13 @@ function json(status, body) {
   return {
     statusCode: status,
     headers: {
-      ...corsHeaders,
+      ...corsContext.getStore(),
       "Content-Type": "application/json",
       "Cache-Control": "no-store",
     },
     body: JSON.stringify(body),
   };
 }
-
-const tripsKv = createKv("pronti-via-trips");
 
 function tripsPath(event) {
   const candidates = [
@@ -116,7 +116,9 @@ function normalizeTripBody(body) {
 
 async function proxySupabase(event, path) {
   const target = `${TRIPS_BASE}${path}${event.rawQuery ? `?${event.rawQuery}` : ""}`;
-  const headers = { "Content-Type": "application/json", Accept: "application/json" };
+  const headers = {
+    "Content-Type": event.headers?.["content-type"] || "application/json", Accept: "application/json",
+  };
   const auth = event.headers?.authorization || event.headers?.Authorization;
   if (auth) headers.Authorization = auth;
 
@@ -129,7 +131,7 @@ async function proxySupabase(event, path) {
   return {
     statusCode: upstream.status,
     headers: {
-      ...corsHeaders,
+      ...corsContext.getStore(),
       "Content-Type": upstream.headers.get("content-type") || "application/json",
       "Cache-Control": "no-store",
     },
@@ -138,6 +140,7 @@ async function proxySupabase(event, path) {
 }
 
 async function storeHandler(event, path) {
+  const tripsKv = createKv("pronti-via-trips");
   const method = event.httpMethod.toUpperCase();
   const parts = path.replace(/^\/trips\/?/, "").split("/").filter(Boolean);
   const id = parts[0] ? decodeURIComponent(parts[0]) : "";
@@ -289,28 +292,63 @@ async function storeHandler(event, path) {
   return json(405, { error: "Metodo non supportato." });
 }
 
-export async function handler(event) {
-  corsHeaders = corsHeadersFor(event);
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers: corsHeaders, body: "" };
+async function requestTrip(event, path) {
+  if (isNativeTrip(path.split("/")[2])) {
+    return handleNativeTrip({ event, id: path.split("/")[2], sub: path.split("/")[3], token: getBearer(event), json });
   }
-
-  const path = tripsPath(event);
-
-  // Prefer Supabase when healthy; otherwise durable Blobs fallback.
   try {
     const proxied = await proxySupabase(event, path);
     if (proxied.statusCode < 500) return proxied;
   } catch {
     /* fall through */
   }
+  return storeHandler(event, path);
+}
 
-  try {
-    return await storeHandler(event, path);
-  } catch (err) {
-    return json(502, {
-      error: "Proxy viaggi non disponibile.",
-      detail: String(err?.message || err || ""),
-    });
-  }
+export async function handler(event) {
+  const corsHeaders = corsHeadersFor(event);
+  if (event.httpMethod === "OPTIONS") return { statusCode: 204, headers: corsHeaders, body: "" };
+  return corsContext.run(corsHeaders, async () => {
+    const path = tripsPath(event);
+    const [, , id = "", sub = ""] = path.split("/");
+    const token = getBearer(event);
+    try {
+      if (id && (sub === "access" || isPersonalKey(token))) {
+        return await handlePersonalAccess({
+          event, id, sub, token, json,
+          requestTrip: (method, key, body) => requestTrip({
+            httpMethod: method, headers: { authorization: `Bearer ${key}` },
+            body: body ? JSON.stringify(body) : undefined,
+          }, `/trips/${id}`),
+        });
+      }
+      if (id === "publish-offline" && !sub && event.httpMethod === "POST") {
+        return await handleNativeTrip({ event, id: "", sub, token, json });
+      }
+      return await requestTrip(event, path);
+    } catch (err) {
+      if (err instanceof SyntaxError) return json(400, { error: "Dati non validi." });
+      return json(502, { error: "Servizio viaggi non disponibile. Riprova." });
+    }
+  });
+}
+
+// The web-standard Netlify runtime provides a strong-consistency Blob context.
+export default async function trips(request, context) {
+  const url = new URL(request.url);
+  const type = request.headers.get("content-type") || "";
+  let body;
+  if (request.body) body = type.includes("multipart/form-data") ? await request.arrayBuffer() : await request.text();
+  const result = await handler({
+    httpMethod: request.method,
+    path: url.pathname,
+    rawQuery: url.search.slice(1),
+    pathParameters: context?.params,
+    headers: Object.fromEntries(request.headers),
+    body,
+  });
+  return new Response(result.statusCode === 204 ? null : result.body, {
+    status: result.statusCode,
+    headers: result.headers,
+  });
 }
