@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102s") return;
+    if (style && style.dataset.pvReady === "20261107h") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -290,7 +290,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102s";
+    style.dataset.pvReady = "20261107h";
   }
 
   function fabNodes() {
@@ -655,7 +655,11 @@
 
   function tripDays(trip) {
     const days = [];
-    for (let t = Date.parse(trip.start); t <= Date.parse(trip.end); t += 864e5) {
+    if (!trip?.start || !trip?.end) return days;
+    const from = Date.parse(trip.start);
+    const to = Date.parse(trip.end);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return days;
+    for (let t = from; t <= to; t += 864e5) {
       days.push(new Date(t).toISOString().slice(0, 10));
     }
     return days;

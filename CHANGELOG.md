@@ -1,5 +1,13 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107h] — 2026-11-10
+
+### Fix QA — funzioni e grafica
+- Menu Profilo: rilevamento tab SPA più robusto (`#root`, fallback Itinerario); più padding sopra la nav capsule.
+- Hub: etichetta **Inviti** (meno wrap); griglia tab uniforme su mobile.
+- `tripDays` a prova di trip assente; magic CSS gate e `expense-suite` SW `ASSET_VER` allineati allo stamp corrente.
+- Test E2E/verify aggiornati a stamp `20261107h` (non più 04j/04e).
+
 ## [20261104j] — 2026-11-04
 
 ### UX polish — Hub groups, banner, home cards

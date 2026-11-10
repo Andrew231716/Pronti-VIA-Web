@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261107g";
+  const VER = "20261107h";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -397,7 +397,7 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   box-shadow: 0 2px 8px rgba(16,42,48,.08);
 }
 #pv-plat-panel .pv-plat-tabs {
-  display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; padding:2px 0 6px;
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap:6px; margin:0 0 12px; padding:2px 0 6px;
 }
 #pv-plat-panel button:focus-visible { outline: 2px solid var(--pv-plat-accent); outline-offset: 2px; }
 #pv-plat-panel .pv-day-map { width:100%; min-height:280px; border:1px solid var(--pv-plat-border); border-radius:12px; }
@@ -407,7 +407,7 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
   box-shadow: 0 1px 0 rgba(16,42,48,.04);
 }
-#pv-plat-panel .pv-plat-tabs button { min-height:44px; white-space:normal; }
+#pv-plat-panel .pv-plat-tabs button { min-height:44px; white-space:normal; width:100%; justify-self:stretch; }
 #pv-plat-panel .pv-plat-tabs button[hidden] { display:none !important; }
 #pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
 .pv-plat-card {
@@ -599,7 +599,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       tabs: [
         ["dash", "Panoramica"],
         ["polls", "Votazioni"],
-        ["access", "Inviti personali"],
+        ["access", "Inviti"],
         ["prep", "Preparazione"],
         ["stats", "Numeri"],
       ],
@@ -1175,30 +1175,51 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderAccess() {
     const auth = tripAuth();
-    if (!auth) return '<div class="pv-plat-card"><p>Apri un viaggio per gestire gli inviti personali.</p></div>';
-    if (!navigator.onLine) return '<div class="pv-plat-card"><p>Per gestire gli inviti personali serve una connessione.</p></div>';
-    const { invites, revoked = [] } = await inviteRequest(auth);
-    if (!Array.isArray(invites)) throw new Error("Il servizio inviti non è ancora disponibile.");
-    return `<div class="pv-plat-card">
-      <h3>Inviti personali</h3>
-      <p class="pv-plat-muted">Crea un link distinto per ogni persona. Chi lo riceve può usarlo fino a quando lo revochi. Condividilo direttamente con la persona indicata.</p>
-      <form id="pv-invite-form">
-        <label>Nome <input id="pv-invite-name" class="pv-plat-input" maxlength="80" required></label>
-        <label>Permesso <select id="pv-invite-role" class="pv-plat-input">
-          <option value="viewer">Solo lettura</option>
-          <option value="editor">Modifica programma e spese</option>
-        </select></label>
-        <button type="submit" class="pv-plat-btn">Crea link personale</button>
-      </form>
-      <div id="pv-invite-result" hidden>
-        <label>Link personale <input id="pv-invite-url" class="pv-plat-input" readonly></label>
-        <button type="button" class="pv-plat-btn" data-plat="invite-copy">Copia link</button>
-      </div>
-      <h4>Inviti attivi</h4>
-      <ul class="pv-plat-list" id="pv-invite-list">${inviteRows(invites)}</ul>
-      <h4>Inviti revocati</h4>
-      <ul class="pv-plat-list" id="pv-revoked-list">${revokedInviteRows(revoked)}</ul>
-    </div>`;
+    if (!auth) {
+      return `<div class="pv-plat-card">
+        <h3>Inviti personali</h3>
+        <p>Apri un viaggio per creare link distinti da condividere con ogni persona.</p>
+        <p class="pv-plat-muted">Ogni invito può essere in sola lettura o con permesso di modifica, e si può revocare in qualsiasi momento.</p>
+      </div>`;
+    }
+    if (!navigator.onLine) {
+      return `<div class="pv-plat-card">
+        <h3>Inviti personali</h3>
+        <p>Sei offline: ripristina la connessione per creare o revocare i link personali.</p>
+        <p class="pv-plat-muted">Intanto puoi usare <strong>Condividi viaggio</strong> dalla scheda del viaggio per il link di gruppo.</p>
+      </div>`;
+    }
+    try {
+      const { invites, revoked = [] } = await inviteRequest(auth);
+      if (!Array.isArray(invites)) throw new Error("Il servizio inviti non è ancora disponibile.");
+      return `<div class="pv-plat-card">
+        <h3>Inviti personali</h3>
+        <p class="pv-plat-muted">Crea un link distinto per ogni persona. Chi lo riceve può usarlo fino a quando lo revochi. Condividilo direttamente con la persona indicata.</p>
+        <form id="pv-invite-form">
+          <label>Nome <input id="pv-invite-name" class="pv-plat-input" maxlength="80" required></label>
+          <label>Permesso <select id="pv-invite-role" class="pv-plat-input">
+            <option value="viewer">Solo lettura</option>
+            <option value="editor">Modifica programma e spese</option>
+          </select></label>
+          <button type="submit" class="pv-plat-btn">Crea link personale</button>
+        </form>
+        <div id="pv-invite-result" hidden>
+          <label>Link personale <input id="pv-invite-url" class="pv-plat-input" readonly></label>
+          <button type="button" class="pv-plat-btn" data-plat="invite-copy">Copia link</button>
+        </div>
+        <h4>Inviti attivi</h4>
+        <ul class="pv-plat-list" id="pv-invite-list">${inviteRows(invites)}</ul>
+        <h4>Inviti revocati</h4>
+        <ul class="pv-plat-list" id="pv-revoked-list">${revokedInviteRows(revoked)}</ul>
+      </div>`;
+    } catch (err) {
+      return `<div class="pv-plat-card">
+        <h3>Inviti personali</h3>
+        <p>${escapeHtml(err.message || "Servizio inviti non disponibile.")}</p>
+        <p class="pv-plat-muted">Puoi comunque condividere il viaggio con il pulsante <strong>Condividi viaggio</strong> nella scheda principale. Gli inviti personali (link singoli + revoca) richiedono il backend aggiornato.</p>
+        <button type="button" class="pv-plat-btn" data-plat="retry-panel">Riprova</button>
+      </div>`;
+    }
   }
 
   function inviteRows(invites) {

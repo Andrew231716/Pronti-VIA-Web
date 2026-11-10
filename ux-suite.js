@@ -268,8 +268,8 @@
         overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
       }
       body.pv-primary-nav-ready .pv-ux-modal .pv-ux-sheet{
-        padding-bottom:calc(88px + env(safe-area-inset-bottom,0px));
-        max-height:min(82vh,840px);
+        padding-bottom:calc(108px + env(safe-area-inset-bottom,0px));
+        max-height:min(78vh,840px);
       }
       .pv-ux-modal.pv-open .pv-ux-sheet{transform:translateY(0);opacity:1}
       /* Shared dock enter/leave (app + expense portals) */
@@ -919,10 +919,15 @@
   }
 
   function activeSectionMeta() {
+    // Prefer SPA trip tabs inside #root (ignore Hub/account chrome).
     const raw = (
-      document.querySelector('[role=tab][data-state=active], [role=tab][aria-selected="true"]')?.textContent || ""
-    ).trim();
-    const label = raw || "questa sezione";
+      document.querySelector(
+        '#root [role=tab][data-state=active], #root [role=tab][aria-selected="true"], [role=tab][data-state=active], [role=tab][aria-selected="true"]'
+      )?.textContent || ""
+    )
+      .replace(/\s+/g, " ")
+      .trim();
+    const label = raw || "Itinerario";
     const key = label.toLowerCase();
     const catalog = [
       {
@@ -1758,7 +1763,7 @@
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261104j" });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261107h" });
             closeModal();
             if (!tripAuth()) {
               const createBtn = [...document.querySelectorAll("button, a")].find((el) =>

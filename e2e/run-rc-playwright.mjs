@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261104j — Playwright E2E (free, system Chrome).
+ * RC 20261107h — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -442,7 +442,16 @@ async function main() {
       const hubBtn = document.getElementById("pv-hub-nav") || document.getElementById("pv-plat-fab");
       hubBtn?.click();
     });
-    await wait(900);
+    await page
+      .waitForFunction(
+        () =>
+          document.getElementById("pv-plat-panel")?.classList.contains("open") &&
+          document.querySelectorAll("#pv-plat-panel [data-tab]").length >= 7 &&
+          document.querySelectorAll("#pv-plat-panel [data-plat-group]").length >= 2,
+        { timeout: 10000 }
+      )
+      .catch(() => {});
+    await wait(300);
     const hub = await page.evaluate(async () => {
       const nav = document.getElementById("pv-hub-nav");
       const fab = document.getElementById("pv-plat-fab");
@@ -499,11 +508,11 @@ async function main() {
     );
     ok(
       "magic-extras script present",
-      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261104e/.test(s.src || "")))
+      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261107h/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261104j present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261104j/.test(s.src || "")))
+      "pv-platform 20261107h present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261107h/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {
