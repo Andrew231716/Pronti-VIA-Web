@@ -127,9 +127,9 @@ async function openWithDest(destination, title, shot) {
 
 // Pure resolve checks (load script in node via evaluate in a blank page)
 const page0 = await browser.newPage();
-await page0.goto(`${BASE}/assets/destination-theme-20261107l.js`);
+await page0.goto(`${BASE}/assets/destination-theme-20261110a.js`);
 // instead run resolve via browser with script tag
-await page0.setContent(`<script src="${BASE}/assets/destination-theme-20261107l.js"></script>`);
+await page0.setContent(`<script src="${BASE}/assets/destination-theme-20261110a.js"></script>`);
 await page0.waitForTimeout(200);
 const resolves = await page0.evaluate(() => {
   const r = window.__pvResolveDestThemeId;
@@ -164,7 +164,7 @@ const gr = await openWithDest("Santorini, Grecia", "Egeo", "theme-03-grecia.png"
 ok("Tema Grecia applicato", gr.dest === "gr", gr.dest);
 
 const wired = readFileSync(join(ROOT, "index.html"), "utf8");
-ok("index wire destination-theme", /destination-theme-20261107l/.test(wired));
+ok("index wire destination-theme", /destination-theme-20261110a/.test(wired));
 
 await browser.close();
 server.close();
