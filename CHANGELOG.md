@@ -1,5 +1,13 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107l] — 2026-11-10
+
+### Responsive tablet + PC
+- Nav/chip più ampi su ≥768 / ≥1100 (allineati allo shell 1390).
+- Hub floating centrato su tablet (niente bottom-sheet); più largo su desktop.
+- Menu/sheet senza padding “mobile nav”; card Home 2–3 colonne; Spese side-by-side.
+- Tema destinazione: badge e canvas densità adattati allo schermo.
+
 ## [20261107k] — 2026-11-10
 
 ### Tema destinazione automatico

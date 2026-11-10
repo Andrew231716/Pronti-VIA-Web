@@ -510,7 +510,7 @@
         color: var(--pv-dest-teal-deep, #00656a);
         background: color-mix(in srgb, var(--pv-dest-wash, rgba(0,125,130,.12)) 85%, #fff);
         border:1px solid color-mix(in srgb, var(--pv-dest-teal, #007d82) 22%, transparent);
-        max-width:42vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        max-width:min(220px, 42vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         transition: opacity .25s ease, transform .25s ease;
       }
       #pv-dest-theme-badge[hidden]{ display:none!important; }
@@ -518,6 +518,19 @@
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico{
         background: var(--pv-dest-wash, rgba(0,125,130,.12));
         color: var(--pv-dest-teal, #007d82);
+      }
+      @media (min-width:768px){
+        #pv-dest-theme-badge{
+          max-width:min(280px, 36vw); font-size:.72rem; padding:4px 11px;
+        }
+        #pv-dest-atmosphere{ opacity:.42; }
+      }
+      @media (min-width:1100px){
+        #pv-dest-theme-badge{ max-width:320px; }
+        #pv-dest-atmosphere{ opacity:.36; }
+        #pv-account-chip .pv-account-chip-main{
+          gap:16px;
+        }
       }
       @media (prefers-reduced-motion: reduce){
         body.pv-account-ready{ transition:none; }
@@ -607,8 +620,11 @@
     const accent = theme.accent || theme.teal;
     const teal = theme.teal;
 
+    const wide = w >= 1100;
+    const density = wide ? 1.45 : w >= 768 ? 1.2 : 1;
+
     if (theme.motif === "aurora") {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < Math.round(5 * density); i++) {
         const g = ctx.createLinearGradient(0, h * 0.1 * i, w, h * 0.2 * (i + 1));
         g.addColorStop(0, "transparent");
         g.addColorStop(0.4, hexAlpha(teal, 0.07 + i * 0.015));
@@ -637,7 +653,8 @@
         ctx.stroke();
       }
     } else if (theme.motif === "sakura") {
-      for (let i = 0; i < 28; i++) {
+      const count = Math.round(28 * density);
+      for (let i = 0; i < count; i++) {
         const x = (i * 97) % w;
         const y = (i * 53) % (h * 0.7);
         ctx.fillStyle = hexAlpha(accent, 0.1 + (i % 5) * 0.02);
@@ -646,12 +663,13 @@
     } else if (theme.motif === "sun" || theme.motif === "pyramid") {
       const cx = w * 0.85;
       const cy = h * 0.12;
-      const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, 160);
+      const radius = wide ? 220 : w >= 768 ? 180 : 160;
+      const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, radius);
       g.addColorStop(0, hexAlpha(accent, 0.22));
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(cx, cy, 160, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
       if (theme.motif === "pyramid") {
         ctx.fillStyle = hexAlpha(accent, 0.08);

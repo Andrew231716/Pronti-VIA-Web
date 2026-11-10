@@ -1,6 +1,6 @@
 # Verifica UX redesign 20261104g
 
-Eseguita: 2026-11-10T17:53:03.976Z (UTC)
+Eseguita: 2026-11-10T18:00:50.639Z (UTC)
 
 **Esito: PASS** — 34 pass / 0 fail
 
@@ -8,7 +8,7 @@ Eseguita: 2026-11-10T17:53:03.976Z (UTC)
 |---|---|---|
 | [mobile] Hub+Menu in chrome | PASS | {"hub":true,"menu":true,"fabHidden":true} |
 | [mobile] FAB nascosto | PASS |  |
-| [mobile] Stamp 20261107k + magic | PASS | ["http://127.0.0.1:3465/assets/api-shim-20261107k.js","http://127.0.0.1:3465/assets/magic-extras-20261107k.js","http://1 |
+| [mobile] Stamp 20261107l + magic | PASS | ["http://127.0.0.1:3465/assets/api-shim-20261107l.js","http://127.0.0.1:3465/assets/magic-extras-20261107l.js","http://1 |
 | [mobile] Contenuto viaggio (non bianco) | PASS | Salvato solo qui. Condividi viaggio per il gruppo.
 ×
 Pronti?
@@ -32,7 +32,7 @@ Verifica Roma |
 | [mobile] Menu → Altri strumenti | PASS | {"clicked":true,"more":true} |
 | [desktop] Hub+Menu in chrome | PASS | {"hub":true,"menu":true,"fabHidden":true} |
 | [desktop] FAB nascosto | PASS |  |
-| [desktop] Stamp 20261107k + magic | PASS | ["http://127.0.0.1:3465/assets/api-shim-20261107k.js","http://127.0.0.1:3465/assets/magic-extras-20261107k.js","http://1 |
+| [desktop] Stamp 20261107l + magic | PASS | ["http://127.0.0.1:3465/assets/api-shim-20261107l.js","http://127.0.0.1:3465/assets/magic-extras-20261107l.js","http://1 |
 | [desktop] Contenuto viaggio (non bianco) | PASS | Salvato solo qui. Condividi viaggio per il gruppo.
 ×
 Pronti?

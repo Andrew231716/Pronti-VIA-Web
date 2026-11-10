@@ -11,7 +11,8 @@
     "test:verify-ux": "node scripts/verify-ux-redesign-20261104g.mjs",
     "test:all": "npm test && npm run test:e2e && npm run test:verify-ux",
     "test:spese-ai": "node scripts/qa-spese-ai-split.mjs",
-    "test:dest-theme": "node scripts/qa-dest-theme.mjs"
+    "test:dest-theme": "node scripts/qa-dest-theme.mjs",
+    "test:responsive": "node scripts/qa-responsive-layout.mjs"
   },
   "repository": {
     "type": "git",

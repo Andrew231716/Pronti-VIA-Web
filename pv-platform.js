@@ -363,16 +363,23 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   #pv-plat-fab, #pv-plat-panel { transition: none !important; }
   #pv-plat-panel.open.pv-plat-entering { transform: none; opacity: 1; }
 }
-@media (min-width: 900px) {
+/* Tablet+: floating centered Hub (not phone bottom-sheet) */
+@media (min-width: 768px) {
   #pv-plat-panel {
-    left: 50%; right: auto; width: min(720px, calc(100vw - 48px));
+    top: auto;
+    right: auto;
+    left: 50%;
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    width: min(640px, calc(100vw - 48px));
+    max-height: min(80vh, 860px);
     transform: translateX(-50%);
     border-radius: 24px;
-    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
-    max-height: min(78vh, 820px);
-    padding-bottom: 18px;
+    padding: 18px 18px 20px;
   }
   #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(18px); }
+  #pv-plat-panel .pv-plat-tabs {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  }
 }
 #pv-plat-body { min-height: 120px; transition: opacity .18s ease; }
 #pv-plat-body.pv-plat-body-busy { opacity: .7; }
@@ -461,13 +468,20 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   border-radius:10px; border:1px solid var(--pv-plat-border);
   background: var(--pv-plat-card); color: var(--pv-plat-ink); font:400 14px/1.3 system-ui,sans-serif;
 }
-@media (min-width: 860px) {
+/* Desktop wide: larger Hub panel, still clear of capsule nav */
+@media (min-width: 1100px) {
   #pv-plat-panel {
-    inset: 64px 24px auto auto; width: min(460px, 92vw); max-height: calc(100vh - 88px);
-    border-radius: 18px; bottom: auto; left: auto;
-    box-shadow: var(--pv-plat-shadow); border: 1px solid var(--pv-plat-border);
+    width: min(760px, calc(100vw - 64px));
+    max-height: min(82vh, 900px);
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    padding: 20px 22px 22px;
   }
-  #pv-plat-fab { bottom: 24px; left: 24px; right: auto; }
+  #pv-plat-fab { bottom: 28px; left: 28px; right: auto; }
+}
+@media (min-width: 1400px) {
+  #pv-plat-panel {
+    width: min(820px, calc(100vw - 80px));
+  }
 }
 `;
     document.head.appendChild(s);

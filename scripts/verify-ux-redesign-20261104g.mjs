@@ -183,7 +183,7 @@ async function runViewport(browser, label, viewport, isMobile) {
   });
   ok(`[${label}] Hub+Menu in chrome`, chrome.hub && chrome.menu, JSON.stringify({ hub: chrome.hub, menu: chrome.menu, fabHidden: chrome.fabHidden }));
   ok(`[${label}] FAB nascosto`, chrome.fabHidden);
-  ok(`[${label}] Stamp 20261107k + magic`, chrome.scripts.some((s) => /pv-platform-20261107k/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261107k/.test(s)), JSON.stringify(chrome.scripts));
+  ok(`[${label}] Stamp 20261107l + magic`, chrome.scripts.some((s) => /pv-platform-20261107l/.test(s)) && chrome.scripts.some((s) => /magic-extras-20261107l/.test(s)), JSON.stringify(chrome.scripts));
   ok(`[${label}] Contenuto viaggio (non bianco)`, chrome.hasColosseo || chrome.hasRoma, chrome.bodyText.slice(0, 160));
   ok(`[${label}] Nessun shares/transfers crash`, !errors.some((e) => /shares is not iterable|transfers is not iterable/i.test(e)), errors.slice(0, 3).join(" | "));
 

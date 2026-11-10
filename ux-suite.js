@@ -345,7 +345,55 @@
       .pv-ux-hit{outline:2px solid rgba(0,125,130,.45);outline-offset:2px;border-radius:8px}
       @media (min-width:720px){
         .pv-ux-modal{place-items:center;padding:24px 16px}
-        .pv-ux-modal .pv-ux-sheet{border-radius:22px}
+        .pv-ux-modal .pv-ux-sheet{
+          border-radius:22px;
+          width:min(600px,94vw);
+          max-height:min(86vh,880px);
+          padding-bottom:28px;
+        }
+        body.pv-primary-nav-ready .pv-ux-modal .pv-ux-sheet{
+          padding-bottom:28px;
+          max-height:min(86vh,880px);
+        }
+        .recent-trips.pv-home-cards{
+          grid-template-columns:1fr 1fr;gap:16px
+        }
+      }
+      @media (min-width:768px){
+        .pv-menu-grid{grid-template-columns:1fr 1fr;gap:10px}
+        .pv-menu-grid button.pv-menu-tools,
+        .pv-menu-grid button.danger{grid-column:1 / -1}
+        #pv-ux-toast{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
+        body.pv-primary-nav-ready #pv-ux-toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
+      }
+      @media (min-width:1100px){
+        .pv-ux-modal{padding:32px 24px}
+        .pv-ux-modal .pv-ux-sheet{
+          width:min(680px,92vw);border-radius:24px;padding:22px 22px 30px
+        }
+        .recent-trips.pv-home-cards{
+          grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px
+        }
+        .pv-empty-state{padding:22px 20px;max-width:720px;margin-inline:auto}
+      }
+      @media (min-width:1400px){
+        .pv-ux-modal .pv-ux-sheet{width:min(720px,90vw)}
+      }
+      /* Spese / split: side-by-side on tablet+ */
+      @media (min-width:900px){
+        .expense-columns{
+          display:grid!important;
+          grid-template-columns:minmax(0,1.25fr) minmax(280px,.9fr);
+          gap:22px;align-items:start
+        }
+        .expense-columns .split-panel{
+          position:sticky;top:calc(64px + env(safe-area-inset-top,0px))
+        }
+      }
+      @media (min-width:1100px){
+        .app-shell{
+          max-width:1390px;margin-inline:auto
+        }
       }
       .pv-ux-modal button:focus-visible,#pv-account-chip #pv-account-menu:focus-visible{
         outline:3px solid rgba(0,125,130,.45);outline-offset:2px
