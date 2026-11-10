@@ -25,7 +25,7 @@ const PRECACHE = [
   "./assets/preventivo-islanda-20261104d.js",
   "./assets/ux-suite-20261110f.js",
   "./assets/pv-platform-20261110b.js",
-  "./assets/destination-theme-20261110b.js",
+  "./assets/destination-theme-20261111a.js",
   "./map.html",
   "./coast.jpg",
   "./iceland.svg",

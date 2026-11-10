@@ -456,18 +456,68 @@
     }
   }
 
-  async function loadTripDestination() {
+  function readTripHints(id) {
+    let destination = "";
+    let title = "";
+    try {
+      const meta = JSON.parse(localStorage.getItem(`viavia-trip-card-meta:${id}`) || "null");
+      if (meta && typeof meta === "object") {
+        destination = String(meta.destination || "").trim();
+        title = String(meta.title || "").trim();
+      }
+    } catch {
+      /* ignore */
+    }
+    try {
+      const recent = JSON.parse(localStorage.getItem("viavia-recent-links-v1") || "[]");
+      if (Array.isArray(recent)) {
+        const hit = recent.find((r) => r && r.id === id);
+        if (hit) {
+          destination = destination || String(hit.destination || "").trim();
+          title = title || String(hit.title || "").trim();
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return { destination, title };
+  }
+
+  async function loadTripDestination(hintTrip) {
     const auth = tripAuth();
     if (!auth) return { destination: "", title: "" };
+
+    if (hintTrip && typeof hintTrip === "object") {
+      const destination = String(hintTrip.destination || "").trim();
+      const title = String(hintTrip.title || "").trim();
+      if (destination || title) return { destination, title };
+    }
+
     const local = readLocalTrip(auth.id);
-    if (local?.destination) return { destination: local.destination, title: local.title || "" };
+    if (local && (local.destination || local.title)) {
+      return {
+        destination: String(local.destination || "").trim(),
+        title: String(local.title || "").trim(),
+      };
+    }
+
+    const hints = readTripHints(auth.id);
+    if (hints.destination || hints.title) return hints;
+
     try {
-      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}?key=${encodeURIComponent(auth.key)}`);
-      if (!res.ok) return { destination: "", title: "" };
-      const data = await res.json();
-      return { destination: data?.trip?.destination || "", title: data?.trip?.title || "" };
+      // api-shim / Netlify expect Bearer, not ?key=
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+      });
+      if (!res.ok) return hints;
+      const data = await res.json().catch(() => ({}));
+      return {
+        destination: String(data?.trip?.destination || hints.destination || "").trim(),
+        title: String(data?.trip?.title || hints.title || "").trim(),
+      };
     } catch {
-      return { destination: "", title: "" };
+      return hints;
     }
   }
 
@@ -539,11 +589,17 @@
         transition: background .45s ease;
       }
       #pv-dest-atmosphere{
-        position:fixed; inset:0; z-index:0; pointer-events:none;
-        opacity:.62;
+        position:fixed; inset:0; z-index:1; pointer-events:none;
+        opacity:.78;
+        mix-blend-mode: multiply;
       }
-      html[data-pv-theme="dark"] #pv-dest-atmosphere{ opacity:.34; }
-      #root{ position:relative; z-index:1; }
+      html[data-pv-theme="dark"] #pv-dest-atmosphere{
+        opacity:.55;
+        mix-blend-mode: screen;
+      }
+      /* Keep React UI above atmosphere; chrome stays higher via account.css */
+      #root{ position:relative; z-index:2; background:transparent; }
+      #pv-account-chip,#pv-primary-nav,#pv-ux-modal,#pv-plat-panel,#pv-magic-root{ position:relative; }
       #pv-dest-theme-badge{
         display:inline-flex; align-items:center; gap:6px;
         margin-left:8px; padding:4px 10px; border-radius:999px;
@@ -582,7 +638,7 @@
         #pv-dest-theme-badge{
           max-width:min(300px, 36vw); font-size:.74rem; padding:5px 12px;
         }
-        #pv-dest-atmosphere{ opacity:.55; }
+        #pv-dest-atmosphere{ opacity:.72; }
         .pv-dest-floaters{
           top: calc(72px + env(safe-area-inset-top,0px));
           right: max(16px, env(safe-area-inset-right,0px));
@@ -598,7 +654,7 @@
       }
       @media (min-width:1100px){
         #pv-dest-theme-badge{ max-width:340px; }
-        #pv-dest-atmosphere{ opacity:.48; }
+        #pv-dest-atmosphere{ opacity:.68; }
         #pv-account-chip .pv-account-chip-main{ gap:16px; }
         .pv-dest-floaters{
           top: calc(78px + env(safe-area-inset-top,0px));
@@ -632,8 +688,9 @@
       }
       @media (prefers-reduced-motion: reduce){
         body.pv-account-ready{ transition:none; }
-        #pv-dest-atmosphere{ display:none; }
-        .pv-dest-floaters, .pv-dest-floaters-left{ display:none; }
+        /* Keep a static atmosphere; hide only animated floaters */
+        #pv-dest-atmosphere{ opacity:.55; }
+        .pv-dest-floaters, .pv-dest-floaters-left{ display:none!important; }
       }
     `;
   }
@@ -734,14 +791,11 @@
   }
 
   function drawAtmosphere(theme) {
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
-      const dead = document.getElementById(CANVAS_ID);
-      if (dead) dead.remove();
-      return;
-    }
+    const reduced = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
     const canvas = ensureCanvas();
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    // Still draw a static soft layer when motion is reduced (do not remove the canvas).
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -875,27 +929,29 @@
     }
 
     // Figurative sticker layer — emoji scattered like travel scrapbook
-    drawEmojiStickers(ctx, theme, w, h, density);
+    if (!reduced) drawEmojiStickers(ctx, theme, w, h, density);
   }
 
   function drawEmojiStickers(ctx, theme, w, h, density) {
     const stickers = theme.stickers || [];
     if (!stickers.length) return;
-    const count = Math.min(Math.round(12 * density), stickers.length * 3);
+    const count = Math.min(Math.round(14 * density), stickers.length * 4);
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (let i = 0; i < count; i++) {
       const emo = stickers[i % stickers.length];
-      const x = 28 + ((i * 173) % Math.max(40, w - 56));
-      const y = 70 + ((i * 97) % Math.max(80, h * 0.62));
-      // Keep main reading area clearer
-      if (x > w * 0.2 && x < w * 0.8 && y > h * 0.26 && y < h * 0.7) continue;
-      const size = 24 + (i % 4) * 7;
+      // Bias stickers to the side rails so they remain visible beside cards
+      const rail = i % 2 === 0;
+      const x = rail
+        ? 18 + ((i * 37) % Math.max(36, Math.floor(w * 0.18)))
+        : w - 18 - ((i * 41) % Math.max(36, Math.floor(w * 0.18)));
+      const y = 64 + ((i * 89) % Math.max(80, h * 0.72));
+      const size = 26 + (i % 4) * 8;
       ctx.save();
-      ctx.globalAlpha = 0.34 + (i % 5) * 0.07;
+      ctx.globalAlpha = 0.55 + (i % 5) * 0.08;
       ctx.translate(x, y);
-      ctx.rotate(((i % 7) - 3) * 0.09);
+      ctx.rotate(((i % 7) - 3) * 0.08);
       ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
       ctx.fillText(emo, 0, 0);
       ctx.restore();
@@ -941,21 +997,23 @@
     window.dispatchEvent(new CustomEvent("pv-dest-theme", { detail: window.__pvDestTheme }));
   }
 
-  async function syncTheme(force = false) {
+  async function syncTheme(force = false, hintTrip = null) {
     ensureStyle();
     const auth = tripAuth();
     if (!auth) {
       if (currentId !== DEFAULT_ID || force) applyTheme(THEMES.default);
       ensureBadge(THEMES.default);
+      ensureFloaters(null);
       return THEMES.default;
     }
-    const { destination, title } = await loadTripDestination();
+    const { destination, title } = await loadTripDestination(hintTrip);
     const key = `${auth.id}|${destination}|${title}`;
     if (!force && key === lastDestKey && currentId) return THEMES[currentId] || THEMES.default;
     lastDestKey = key;
     const id = resolveThemeId(destination, title);
     const theme = THEMES[id] || THEMES.default;
     applyTheme(theme);
+    ensureFloaters(theme.id === DEFAULT_ID ? null : theme);
     return theme;
   }
 
@@ -978,9 +1036,10 @@
     void syncTheme(true);
   });
   addEventListener("resize", onResize);
-  addEventListener("pv-trip-loaded", () => {
+  addEventListener("pv-trip-loaded", (ev) => {
     lastDestKey = "";
-    void syncTheme(true);
+    const trip = ev?.detail?.trip || null;
+    void syncTheme(true, trip);
   });
 
   // Boot + light polling so SPA trip loads are picked up without fighting React.
