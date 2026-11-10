@@ -188,6 +188,17 @@ async function storeHandler(event, path) {
   const canView = canEdit || (token && token === record.viewToken);
   if (!canView) return json(401, { error: "Link non valido o scaduto." });
 
+  const sub = parts[1] ? decodeURIComponent(parts[1]) : "";
+  // Attachments live on-device (api-shim local files DB). Never return trip JSON for /files —
+  // the Documenti tab crashes when `files` is missing (blank white page). Prefer 404 so the
+  // client falls back to device storage instead of an empty cloud list that hides local files.
+  if (sub === "files") {
+    return json(404, {
+      error: "Allegati gestiti sul dispositivo.",
+      code: "FILES_LOCAL_ONLY",
+    });
+  }
+
   if (method === "GET") {
     return json(200, {
       id: record.id,
