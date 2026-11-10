@@ -194,24 +194,26 @@ function ensureUi() {
   gate.id = "pv-account-gate";
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
-      <div class="pv-account-brand">
-        <img class="pv-account-mark" src="./logo.png" width="34" height="34" alt="">
-        <strong>Pronti? VIA!</strong>
+      <header class="pv-account-hero">
+        <div class="pv-account-brand">
+          <img class="pv-account-mark" src="./logo.png" width="40" height="40" alt="">
+          <strong>Pronti? VIA!</strong>
+        </div>
+        <h1 id="pv-account-title">Accedi al tuo spazio</h1>
+        <p id="pv-account-intro">Accedi per ritrovare i tuoi viaggi.</p>
+      </header>
+      <div class="pv-account-tabs" role="group" aria-label="Modalità accesso">
+        <button type="button" data-mode="login" aria-pressed="true">Accedi</button>
+        <button type="button" data-mode="register" aria-pressed="false">Crea account</button>
       </div>
-      <h1 id="pv-account-title">Accedi al tuo spazio</h1>
-      <p id="pv-account-intro">Accedi per ritrovare i tuoi viaggi.</p>
-      <div class="pv-account-tabs" role="tablist">
-        <button type="button" data-mode="login" aria-selected="true">Accedi</button>
-        <button type="button" data-mode="register" aria-selected="false">Crea account</button>
-      </div>
-      <form id="pv-account-form">
+      <form id="pv-account-form" class="pv-account-form">
         <div class="pv-account-field">
           <label for="pv-username">Nome utente</label>
-          <input id="pv-username" name="username" autocomplete="username" required minlength="3" maxlength="32" placeholder="es. anna">
+          <input id="pv-username" name="username" autocomplete="username" required minlength="3" maxlength="32" placeholder="es. anna" enterkeyhint="next">
         </div>
         <div class="pv-account-field">
           <label for="pv-password">Password</label>
-          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="min. 8 caratteri, lettera e numero">
+          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
         </div>
         <div class="pv-account-field" id="pv-recovery-field" hidden>
           <label for="pv-recovery-code">Codice di recupero</label>
@@ -365,8 +367,10 @@ function setMode(mode) {
   const gate = document.getElementById("pv-account-gate");
   const reset = mode === "reset";
   const register = mode === "register";
-  gate.querySelectorAll(".pv-account-tabs [data-mode]").forEach(button => {
-    button.setAttribute("aria-selected", String(button.dataset.mode === mode));
+  gate.querySelectorAll(".pv-account-tabs [data-mode]").forEach((button) => {
+    const on = button.dataset.mode === mode;
+    button.setAttribute("aria-pressed", String(on));
+    button.setAttribute("aria-selected", String(on)); // legacy attr kept harmless
   });
   gate.querySelector("#pv-account-title").textContent =
     reset ? "Reimposta la password" : register ? "Crea il tuo account" : "Accedi al tuo spazio";

@@ -79,13 +79,13 @@
       [data-radix-popper-content-wrapper],[data-radix-select-content],[role="listbox"],[data-slot="select-content"]{
         z-index:130050!important
       }
-      /* Compact + fluid mobile tabs */
+      /* Compact + fluid mobile tabs — only trip UI inside #root (never login gate) */
       @media (max-width:720px){
-        [role="tablist"]{
+        #root [role="tablist"]{
           scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
           overscroll-behavior-x:contain;
         }
-        [role="tablist"] [role="tab"]{
+        #root [role="tablist"] [role="tab"]{
           font-size:12px!important;padding-inline:10px!important;scroll-snap-align:start;
         }
       }
