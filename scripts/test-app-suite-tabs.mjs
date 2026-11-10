@@ -90,7 +90,7 @@ try {
           title: "Mercato Merkato",
           day: "Giorno 1",
           notes: "",
-          category: "Cultura",
+          category: "Visita",
           address: "Addis",
           lat: 9.03,
           lng: 38.74,

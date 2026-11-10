@@ -21,7 +21,7 @@ export function validTrip(overrides = {}) {
         title: "Colosseo",
         time: "10:00",
         notes: "Biglietto online",
-        category: "Cultura",
+        category: "Visita",
         address: "Piazza del Colosseo",
         lat: 41.8902,
         lng: 12.4922,

@@ -9,13 +9,20 @@
     "test:unit": "node scripts/unit/run-all.mjs && node scripts/unit/test-rc-20261104b.mjs && node scripts/unit/test-cors-20261104c.mjs && node scripts/unit/test-fab-layout-20261104d.mjs && node scripts/unit/test-lingua-speak-20261104e.mjs && node scripts/unit/test-hub-panel-fluid-20261104f.mjs && node --test scripts/unit/test-offline-sync.mjs scripts/unit/test-trip-access.mjs scripts/unit/test-recovery-account.mjs",
     "test:e2e": "node e2e/run-rc-playwright.mjs",
     "test:verify-ux": "node scripts/verify-ux-redesign-20261104g.mjs",
-    "test:all": "npm test && npm run test:e2e && npm run test:verify-ux"
+    "test:all": "npm test && npm run test:e2e && npm run test:verify-ux",
+    "test:spese-ai": "node scripts/qa-spese-ai-split.mjs"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Andrew231716/Pronti-VIA-Web.git"
   },
-  "keywords": ["travel", "pwa", "offline", "supabase", "netlify"],
+  "keywords": [
+    "travel",
+    "pwa",
+    "offline",
+    "supabase",
+    "netlify"
+  ],
   "author": "",
   "license": "ISC",
   "bugs": {

@@ -9,7 +9,7 @@
   const NOTIFY_KEY = "viavia-expense-notify-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261107i";
+  const ASSET_VER = "20261107j";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -1375,7 +1375,43 @@
     }
   }
 
-  // Bind submit capture for meta + transfer FX
+  /** Parse it-IT currency / decimal into cents. */
+  function parseMoneyToCents(raw) {
+    const t = String(raw || "")
+      .replace(/[^\d,.-]/g, "")
+      .replace(/\.(?=.*,)/g, "")
+      .replace(",", ".");
+    const n = Number(t);
+    if (!Number.isFinite(n)) return null;
+    return Math.round(n * 100);
+  }
+
+  /**
+   * Splitpay guard: in «Importi personalizzati» le quote devono sommare il totale.
+   * Lo schema Zod già rifiuta, ma mostriamo un toast chiaro prima del submit.
+   */
+  function validateCustomSplitOrBlock(ev) {
+    const rem = [...document.querySelectorAll(".split-remaining")].find((el) =>
+      /Da assegnare/i.test(el.textContent || "")
+    );
+    if (!rem || rem.offsetParent === null) return true;
+    const cents = parseMoneyToCents(rem.querySelector("b")?.textContent || rem.textContent);
+    if (cents == null || cents === 0) return true;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const msg =
+      cents > 0
+        ? `Mancano ${(cents / 100).toFixed(2).replace(".", ",")} € da assegnare nelle quote.`
+        : `Hai assegnato ${Math.abs(cents / 100)
+            .toFixed(2)
+            .replace(".", ",")} € in più rispetto al totale.`;
+    if (typeof window.__pvToast === "function") window.__pvToast(msg, "warn");
+    else if (typeof window.__pvSaveToast === "function") window.__pvSaveToast(msg);
+    else alert(msg);
+    return false;
+  }
+
+  // Bind submit capture for meta + transfer FX + custom-split guard
   if (!window.__pvExpenseSuiteBound) {
     window.__pvExpenseSuiteBound = true;
     document.addEventListener(
@@ -1383,6 +1419,7 @@
       (ev) => {
         const btn = ev.target?.closest?.("button[type='submit']");
         if (!btn) return;
+        if (!validateCustomSplitOrBlock(ev)) return;
         if (document.querySelector(".pv-expense-fx #pv-expense-local")) {
           // after magic-extras converts, capture meta
           setTimeout(capturePendingExpenseMeta, 0);
@@ -1395,7 +1432,8 @@
     );
     document.addEventListener(
       "submit",
-      () => {
+      (ev) => {
+        if (!validateCustomSplitOrBlock(ev)) return;
         if (document.querySelector(".pv-expense-fx #pv-expense-local")) {
           setTimeout(capturePendingExpenseMeta, 0);
         }

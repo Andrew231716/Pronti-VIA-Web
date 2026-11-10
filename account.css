@@ -399,6 +399,37 @@ body.pv-primary-nav-ready {
 }
 
 /*
+  Dialog / Select Radix: la capsule (z≈99995) stava SOPRA i dialog Tailwind z-50,
+  rubando tap su Salva / Come dividiamo / quote. Portiamo overlay+dialog+select sopra la nav.
+*/
+body:has([role="dialog"][data-state="open"]) #pv-primary-nav,
+body:has([data-radix-select-content][data-state="open"]) #pv-primary-nav,
+body:has([role="listbox"]) #pv-primary-nav,
+body:has(.pv-ux-modal.pv-open) #pv-primary-nav,
+body.pv-magic-open #pv-primary-nav,
+body.pv-plat-open #pv-primary-nav {
+  pointer-events: none;
+}
+
+[data-slot="dialog-overlay"],
+[data-radix-dialog-overlay] {
+  z-index: 120180 !important;
+}
+
+[role="dialog"][data-slot="dialog-content"],
+[role="dialog"][data-state="open"],
+[data-radix-dialog-content] {
+  z-index: 120200 !important;
+}
+
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[role="listbox"],
+[data-slot="select-content"] {
+  z-index: 130050 !important;
+}
+
+/*
   Con la nav primaria:
   - Hub FAB già nascosto (pv-hub-nav-ready)
   - Bacchetta nascosta: IA è nella capsule (resta fallback se nav assente)

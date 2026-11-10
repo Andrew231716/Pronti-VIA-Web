@@ -1908,6 +1908,26 @@
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
           if (local.status === 200) return local;
         }
+        // PUT/PATCH on static hosts: cloud often 404s for trips that exist only locally.
+        // Without this fallback, Splitpay expense edits fail with «Viaggio non trovato».
+        if (
+          !res.ok &&
+          (res.status === 404 || res.status === 405) &&
+          (method === "PUT" || method === "PATCH") &&
+          !isPersonalKey(key) &&
+          !filesPath
+        ) {
+          const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+          if (local.status === 200) {
+            try {
+              const data = await local.clone().json();
+              trackTripWriteResult(method, tripIdHint, writeInit, data);
+              return jsonResponse(200, { ...data, local: true });
+            } catch {
+              return local;
+            }
+          }
+        }
         // DELETE: if cloud says missing/unsupported, still purge local copy when we hold the key.
         if (!res.ok && method === "DELETE" && !isPersonalKey(key)) {
           const local = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);

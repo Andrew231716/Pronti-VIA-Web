@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * RC 20261107i — Playwright E2E (free, system Chrome).
+ * RC 20261107j — Playwright E2E (free, system Chrome).
  * Run: npm run test:e2e
  *
  * Covers: login, trip create/edit/save/reload, offline/online sync honesty,
@@ -508,11 +508,11 @@ async function main() {
     );
     ok(
       "magic-extras script present",
-      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261107i/.test(s.src || "")))
+      await page.evaluate(() => [...document.scripts].some((s) => /magic-extras-20261107j/.test(s.src || "")))
     );
     ok(
-      "pv-platform 20261107i present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261107i/.test(s.src || "")))
+      "pv-platform 20261107j present",
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261107j/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {

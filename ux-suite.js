@@ -67,6 +67,18 @@
       button:active:not(:disabled),.button:active:not(:disabled),[role="tab"]:active{
         transform:scale(.97);
       }
+      /* Capsule sotto dialog/select: non intercetta i tap (split spese, menu Radix) */
+      body:has([role="dialog"][data-state="open"]) #pv-primary-nav,
+      body:has([data-radix-select-content][data-state="open"]) #pv-primary-nav,
+      body:has([role="listbox"]) #pv-primary-nav,
+      body:has(.pv-ux-modal.pv-open) #pv-primary-nav,
+      body.pv-magic-open #pv-primary-nav,
+      body.pv-plat-open #pv-primary-nav{pointer-events:none}
+      [data-slot="dialog-overlay"],[data-radix-dialog-overlay]{z-index:120180!important}
+      [role="dialog"][data-slot="dialog-content"],[role="dialog"][data-state="open"],[data-radix-dialog-content]{z-index:120200!important}
+      [data-radix-popper-content-wrapper],[data-radix-select-content],[role="listbox"],[data-slot="select-content"]{
+        z-index:130050!important
+      }
       /* Compact + fluid mobile tabs */
       @media (max-width:720px){
         [role="tablist"]{
@@ -1787,7 +1799,7 @@
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261107i" });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261107j" });
             closeModal();
             if (!tripAuth()) {
               const createBtn = [...document.querySelectorAll("button, a")].find((el) =>
@@ -1864,6 +1876,93 @@
     window.__pvSetPrimaryNav(tripAuth() ? "trips" : "home");
   }
 
+  /**
+   * Legacy trips may carry stop.category values (e.g. «Cultura») that the current
+   * Zod enum rejects — that blocked Splitpay expense saves with a cryptic toast.
+   */
+  const STOP_CAT_OK = new Set([
+    "Visita",
+    "Spiaggia",
+    "Cibo",
+    "Trasporto",
+    "Alloggio",
+    "Altro",
+    "Cultura",
+    "Natura",
+    "Attività",
+    "Shopping",
+  ]);
+  const STOP_CAT_MAP = {
+    Cultura: "Visita",
+    Natura: "Spiaggia",
+    Nature: "Spiaggia",
+    Museum: "Visita",
+    Attraction: "Visita",
+    Restaurant: "Cibo",
+    Hotel: "Alloggio",
+    Transport: "Trasporto",
+  };
+
+  function normalizeStopCategory(raw) {
+    const c = String(raw || "").trim();
+    if (STOP_CAT_OK.has(c)) return c;
+    if (STOP_CAT_MAP[c]) return STOP_CAT_MAP[c];
+    return "Altro";
+  }
+
+  function sanitizeTripCategories(trip) {
+    if (!trip || !Array.isArray(trip.stops)) return trip;
+    let changed = false;
+    for (const stop of trip.stops) {
+      const next = normalizeStopCategory(stop.category);
+      if (stop.category !== next) {
+        stop.category = next;
+        changed = true;
+      }
+    }
+    return changed ? trip : trip;
+  }
+
+  function sanitizeStoredTrips() {
+    try {
+      const raw = localStorage.getItem("viavia-local-trips-v1");
+      if (!raw) return;
+      const db = JSON.parse(raw);
+      let dirty = false;
+      for (const row of Object.values(db || {})) {
+        if (!row?.trip?.stops) continue;
+        const before = JSON.stringify(row.trip.stops.map((s) => s.category));
+        sanitizeTripCategories(row.trip);
+        const after = JSON.stringify(row.trip.stops.map((s) => s.category));
+        if (before !== after) dirty = true;
+      }
+      if (dirty) localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function hookTripSanitizeFetch() {
+    if (window.__pvTripCatSanitize) return;
+    window.__pvTripCatSanitize = true;
+    const orig = window.fetch;
+    if (typeof orig !== "function") return;
+    window.fetch = async function pvFetchSanitize(input, init) {
+      try {
+        // Only rewrite plain string URL + string body (don't break Request objects / api-shim).
+        if (typeof input === "string" && /\/api\/trips/i.test(input) && typeof init?.body === "string") {
+          const payload = JSON.parse(init.body);
+          if (payload?.trip) sanitizeTripCategories(payload.trip);
+          else if (Array.isArray(payload?.stops)) sanitizeTripCategories(payload);
+          return orig.call(this, input, { ...init, body: JSON.stringify(payload) });
+        }
+      } catch {
+        /* pass through */
+      }
+      return orig.apply(this, arguments);
+    };
+  }
+
   function tick() {
     const run = (fn) => {
       try {
@@ -1885,6 +1984,7 @@
     run(injectHomeDeleteEntry);
     run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);
+    run(sanitizeStoredTrips);
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {
@@ -1892,6 +1992,8 @@
   });
 
   hookSaveToastsAndRevisions();
+  hookTripSanitizeFetch();
+  sanitizeStoredTrips();
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
     tick._t = setTimeout(tick, 220);

@@ -1,5 +1,15 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107j] — 2026-11-10
+
+### Spese Splitpay + IA
+- **Fix critico:** su host statici il PUT spese andava sul cloud (404 «Viaggio non trovato») senza fallback locale — ora salva in locale se il viaggio è sul dispositivo.
+- Categorie tappa legacy (`Cultura`, …) accettate / normalizzate così non bloccano lo Splitpay.
+- Fix: capsule nav non intercetta più i tap sul select «Come dividiamo?» (Importi personalizzati).
+- Guard toast se le quote personalizzate non sommano il totale.
+- IA: contesto spese del viaggio + guida a split/rimborsi.
+- QA script `scripts/qa-spese-ai-split.mjs`.
+
 ## [20261107i] — 2026-11-10
 
 ### Visual polish — più fluida, stessa UX
