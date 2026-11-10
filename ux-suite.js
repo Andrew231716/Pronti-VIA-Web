@@ -1985,6 +1985,9 @@
     run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);
     run(sanitizeStoredTrips);
+    run(() => {
+      if (typeof window.__pvApplyDestTheme === "function") void window.__pvApplyDestTheme(false);
+    });
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {

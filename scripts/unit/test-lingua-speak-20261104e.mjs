@@ -23,7 +23,7 @@ const magic = readFileSync("magic-extras.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
 test("Lingua stamp wired", () => {
-  assert.match(index, /magic-extras-20261107j\.js/);
+  assert.match(index, /magic-extras-20261107k\.js/);
 });
 
 test("Lingua UI is speak-on-the-ground oriented", () => {

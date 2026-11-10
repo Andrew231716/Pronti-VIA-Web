@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Deep functional + visual QA for current shell (20261107j).
+ * Deep functional + visual QA for current shell (20261107k).
  * Captures issues + screenshots under /opt/cursor/artifacts/screenshots.
  */
 import { createServer } from "node:http";
@@ -177,12 +177,12 @@ async function auditViewport(browser, label, viewport, isMobile) {
   const scripts = await page.evaluate(() =>
     [...document.scripts].map((s) => s.src).filter((s) => /2026110/.test(s))
   );
-  if (!scripts.some((s) => /pv-platform-20261107j/.test(s))) {
-    issue("high", label, "pv-platform stamp non 20261107j", JSON.stringify(scripts));
-  } else ok(label, "stamp platform 20261107j");
-  if (!scripts.some((s) => /magic-extras-20261107j/.test(s))) {
-    issue("high", label, "magic stamp non 20261107j", JSON.stringify(scripts));
-  } else ok(label, "stamp magic 20261107j");
+  if (!scripts.some((s) => /pv-platform-20261107k/.test(s))) {
+    issue("high", label, "pv-platform stamp non 20261107k", JSON.stringify(scripts));
+  } else ok(label, "stamp platform 20261107k");
+  if (!scripts.some((s) => /magic-extras-20261107k/.test(s))) {
+    issue("high", label, "magic stamp non 20261107k", JSON.stringify(scripts));
+  } else ok(label, "stamp magic 20261107k");
 
   // Primary nav
   const nav = await page.evaluate(() => {

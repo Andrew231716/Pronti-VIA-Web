@@ -1,5 +1,12 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107k] — 2026-11-10
+
+### Tema destinazione automatico
+- Nuovo `destination-theme.js`: palette, icone nav e canvas atmosfera dal paese di viaggio.
+- Badge «Tema · Paese» nel chip; CSS vars allineate a nav/Hub/suite.
+- QA `scripts/qa-dest-theme.mjs`.
+
 ## [20261107j] — 2026-11-10
 
 ### Spese Splitpay + IA
