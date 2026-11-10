@@ -1,5 +1,12 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107i] — 2026-11-10
+
+### Visual polish — più fluida, stessa UX
+- Atmosfera soft sul body, chip e capsule nav più glass, stati attivi Hub/IA in famiglia teal.
+- Menu/sheet/toast con motion più morbida; card Home e Hub più leggibili.
+- Nessuna funzionalità cambiata. Stamp `20261107i`.
+
 ## [20261107h] — 2026-11-10
 
 ### Fix QA — funzioni e grafica

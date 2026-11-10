@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261107h") return;
+    if (style && style.dataset.pvReady === "20261107i") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -290,7 +290,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261107h";
+    style.dataset.pvReady = "20261107i";
   }
 
   function fabNodes() {

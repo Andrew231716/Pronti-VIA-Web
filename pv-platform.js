@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261107h";
+  const VER = "20261107i";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -337,22 +337,27 @@ body.pv-magic-open #pv-hub-nav {
 #pv-plat-panel {
   position: fixed; z-index: 120150; inset: auto 0 0 0;
   max-height: min(90vh, 940px);
-  background: #eef3f5; color: var(--pv-plat-ink);
-  border-radius: 26px 26px 0 0; box-shadow: 0 -12px 48px rgba(12,40,48,.16);
-  border-top: 1px solid var(--pv-plat-border);
-  padding: 14px 14px calc(88px + env(safe-area-inset-bottom));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.72), rgba(238,245,247,.96) 28%, #eaf2f4);
+  color: var(--pv-plat-ink);
+  border-radius: 28px 28px 0 0;
+  box-shadow: 0 -16px 52px rgba(12,40,48,.18);
+  border-top: 1px solid rgba(255,255,255,.65);
+  padding: 16px 14px calc(90px + env(safe-area-inset-bottom));
   overflow: auto; display: none;
   transform: translateY(0); opacity: 1;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
 body:not(.pv-primary-nav-ready) #pv-plat-panel {
   padding-bottom: calc(16px + env(safe-area-inset-bottom));
 }
 #pv-plat-panel.open { display: block; }
 #pv-plat-panel.open.pv-plat-entering {
-  transform: translateY(14px); opacity: 0;
+  transform: translateY(18px); opacity: 0;
 }
 #pv-plat-panel.open.pv-plat-anim {
-  transition: transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease;
+  transition: transform .28s cubic-bezier(.16,1,.3,1), opacity .22s ease;
 }
 @media (prefers-reduced-motion: reduce) {
   #pv-plat-fab, #pv-plat-panel { transition: none !important; }
@@ -362,58 +367,64 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   #pv-plat-panel {
     left: 50%; right: auto; width: min(720px, calc(100vw - 48px));
     transform: translateX(-50%);
-    border-radius: 22px;
+    border-radius: 24px;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
     max-height: min(78vh, 820px);
     padding-bottom: 18px;
   }
-  #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(14px); }
+  #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(18px); }
 }
-#pv-plat-body { min-height: 120px; }
-#pv-plat-body.pv-plat-body-busy { opacity: .72; }
+#pv-plat-body { min-height: 120px; transition: opacity .18s ease; }
+#pv-plat-body.pv-plat-body-busy { opacity: .7; }
 #pv-plat-panel .pv-plat-head {
-  display:flex; align-items:flex-start; gap:12px; margin-bottom:12px;
-  padding: 4px 2px 10px; border-bottom: 1px solid rgba(20,52,58,.08);
+  display:flex; align-items:flex-start; gap:12px; margin-bottom:14px;
+  padding: 2px 2px 12px; border-bottom: 1px solid rgba(20,52,58,.07);
 }
 #pv-plat-panel .pv-plat-head > div { flex:1; min-width:0; }
 #pv-plat-panel .pv-plat-head strong {
-  display:block; font:700 1.2rem/1.25 system-ui,sans-serif; color: var(--pv-plat-ink);
-  letter-spacing: -0.01em;
+  display:block; font:700 1.22rem/1.25 system-ui,sans-serif; color: var(--pv-plat-ink);
+  letter-spacing: -0.02em;
 }
 #pv-plat-panel .pv-plat-head .pv-plat-lead {
-  margin:4px 0 0; font:400 0.84rem/1.45 system-ui,sans-serif; color: var(--pv-plat-muted);
+  margin:6px 0 0; font:400 0.84rem/1.45 system-ui,sans-serif; color: var(--pv-plat-muted);
 }
 #pv-plat-panel .pv-plat-tab-groups {
-  display:grid; grid-template-columns:1fr 1fr; gap:6px; margin:0 0 10px;
-  padding:4px; border-radius:14px; background: rgba(20,52,58,.06);
+  display:grid; grid-template-columns:1fr 1fr; gap:4px; margin:0 0 12px;
+  padding:5px; border-radius:16px; background: rgba(20,52,58,.07);
 }
 #pv-plat-panel .pv-plat-tab-groups button {
   border:0; background:transparent; color: var(--pv-plat-muted);
-  border-radius: 11px; padding: 10px 12px; min-height:40px;
+  border-radius: 12px; padding: 11px 12px; min-height:42px;
   font: 700 13px/1.2 system-ui,sans-serif; cursor:pointer;
+  transition: background .2s ease, color .2s ease, box-shadow .2s ease, transform .16s ease;
 }
 #pv-plat-panel .pv-plat-tab-groups button.on {
   background: #fff; color: var(--pv-plat-accent);
-  box-shadow: 0 2px 8px rgba(16,42,48,.08);
+  box-shadow: 0 3px 10px rgba(16,42,48,.1);
 }
 #pv-plat-panel .pv-plat-tabs {
-  display:grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap:6px; margin:0 0 12px; padding:2px 0 6px;
+  display:grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap:7px; margin:0 0 14px; padding:2px 0 6px;
 }
 #pv-plat-panel button:focus-visible { outline: 2px solid var(--pv-plat-accent); outline-offset: 2px; }
-#pv-plat-panel .pv-day-map { width:100%; min-height:280px; border:1px solid var(--pv-plat-border); border-radius:12px; }
+#pv-plat-panel .pv-day-map { width:100%; min-height:280px; border:1px solid var(--pv-plat-border); border-radius:14px; }
 #pv-plat-panel .pv-plat-tabs button, .pv-plat-btn {
-  border:1px solid var(--pv-plat-border); background: var(--pv-plat-card);
-  color: var(--pv-plat-ink); border-radius: 999px; padding: 8px 12px;
+  border:1px solid rgba(20,52,58,.1); background: var(--pv-plat-card);
+  color: var(--pv-plat-ink); border-radius: 999px; padding: 9px 12px;
   font: 600 12px/1.2 system-ui,sans-serif; cursor:pointer; min-height:40px; flex:0 0 auto;
-  box-shadow: 0 1px 0 rgba(16,42,48,.04);
+  box-shadow: 0 2px 8px rgba(16,42,48,.04);
+  transition: background .2s ease, color .2s ease, border-color .2s ease, transform .16s ease, box-shadow .2s ease;
 }
 #pv-plat-panel .pv-plat-tabs button { min-height:44px; white-space:normal; width:100%; justify-self:stretch; }
 #pv-plat-panel .pv-plat-tabs button[hidden] { display:none !important; }
-#pv-plat-panel .pv-plat-tabs button.on { background: var(--pv-plat-accent); color:#fff; border-color: transparent; }
+#pv-plat-panel .pv-plat-tabs button.on {
+  background: var(--pv-plat-accent); color:#fff; border-color: transparent;
+  box-shadow: 0 6px 16px rgba(0,125,130,.22);
+}
+#pv-plat-panel .pv-plat-tabs button:active, .pv-plat-btn:active { transform: scale(.97); }
 .pv-plat-card {
-  background: var(--pv-plat-card); border:1px solid var(--pv-plat-border);
-  border-radius: 18px; padding: 14px 16px; margin-bottom: 12px;
-  box-shadow: 0 6px 18px rgba(16,42,48,.05);
+  background: rgba(255,255,255,.94); border:1px solid rgba(20,52,58,.08);
+  border-radius: 20px; padding: 15px 16px; margin-bottom: 12px;
+  box-shadow: 0 8px 22px rgba(16,42,48,.06);
 }
 #pv-print-day { display: none; }
 .pv-plat-conflict-choice { display: block; padding: 8px 0; }

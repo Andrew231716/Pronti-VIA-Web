@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261107h`;
+const CACHE = `${CACHE_PREFIX}20261107i`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -11,20 +11,20 @@ const PRECACHE = [
   "./logo.png",
   "./logo.png?v=20261107e",
   "./manifest.webmanifest?v=20261107e",
-  "./account.css?v=20261107f",
-  "./account.js?v=20261107f",
+  "./account.css?v=20261107i",
+  "./account.js?v=20261107i",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261104d",
   "./assets/index-JJ3bX5VS.css",
   // Must match account.js dynamic import (loadfix = bugfix, not loadForm).
   "./assets/index-loadfix-20261104d.js",
   "./assets/api-shim-20261107d.js",
-  "./assets/magic-extras-20261107h.js",
-  "./assets/expense-suite-20261107h.js",
-  "./assets/app-suite-20261107h.js",
+  "./assets/magic-extras-20261107i.js",
+  "./assets/expense-suite-20261107i.js",
+  "./assets/app-suite-20261107i.js",
   "./assets/preventivo-islanda-20261104d.js",
-  "./assets/ux-suite-20261107h.js",
-  "./assets/pv-platform-20261107h.js",
+  "./assets/ux-suite-20261107i.js",
+  "./assets/pv-platform-20261107i.js",
   "./map.html",
   "./coast.jpg",
   "./iceland.svg",
