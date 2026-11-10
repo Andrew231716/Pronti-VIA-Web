@@ -798,7 +798,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const openPolls = polls.filter((p) => p.status === "open").length;
     const prep = trip.meta?.preparation || {};
     const todos = [];
-    if (openChecks) todos.push(`${openChecks} voci checklist aperte`);
+    if (openChecks) {
+      todos.push(
+        openChecks === 1 ? "1 voce checklist aperta" : `${openChecks} voci checklist aperte`
+      );
+    }
     if (!bookings.length) todos.push("Nessuna prenotazione registrata");
     if (openPolls) todos.push(`${openPolls} votazioni aperte`);
     if (!(prep.departureChecklist || []).some((x) => x.done)) todos.push("Checklist partenza da completare");
