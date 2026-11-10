@@ -152,11 +152,40 @@
         border-radius:14px;padding:12px;font:500 13px/1.45 inherit;color:var(--pv-ink);background:#fff;resize:vertical
       }
       .pv-import-file{
-        display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 14px;padding:12px;
+        display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 8px;padding:12px;
         border:1px dashed rgba(0,125,130,.35);border-radius:14px;background:#f7fbfb
       }
       .pv-import-file input[type=file]{font-size:.85rem;max-width:100%}
-      .pv-import-items{display:grid;gap:8px;margin:10px 0 12px;max-height:min(48vh,420px);overflow:auto}
+      .pv-import-file-list{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+      .pv-import-file-chip{
+        display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+        background:#fff;border:1px solid var(--pv-line);font:650 12px/1 inherit;color:var(--pv-ink)
+      }
+      .pv-import-file-chip button{
+        appearance:none;border:0;background:transparent;cursor:pointer;color:#7a2e28;font:800 12px/1 inherit;padding:0
+      }
+      .pv-import-map{
+        display:grid;gap:6px;margin:0 0 12px;padding:10px 12px;border-radius:14px;
+        background:#f7fbfb;border:1px solid rgba(0,125,130,.12);font-size:.82rem;color:#3f5860
+      }
+      .pv-import-map strong{color:#0f5a5e}
+      .pv-import-group{margin:0 0 12px}
+      .pv-import-group h4{
+        margin:0 0 8px;font:800 .72rem/1.2 inherit;letter-spacing:.05em;text-transform:uppercase;color:#3f5860
+      }
+      .pv-import-items{display:grid;gap:8px;margin:0;max-height:min(42vh,380px);overflow:auto}
+      .pv-event-rail{
+        margin:12px 14px 8px;padding:14px 16px;border-radius:18px;
+        background:linear-gradient(160deg,#eef7f7,#e8f3f4);border:1px solid rgba(0,125,130,.16);
+        box-shadow:0 8px 22px rgba(16,42,48,.05);color:#12343c
+      }
+      .pv-event-rail h3{margin:0 0 4px;font:800 1rem/1.25 inherit}
+      .pv-event-rail p{margin:0 0 10px;font-size:.86rem;color:#3f5860;line-height:1.4}
+      .pv-event-rail .pv-ux-actions{margin:0}
+      @media (min-width:768px){
+        .pv-event-rail{max-width:920px;margin-inline:auto}
+        .pv-import-items{max-height:min(50vh,460px)}
+      }
       .pv-import-item{
         display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;
         padding:11px 12px;border-radius:14px;border:1px solid var(--pv-line);background:#fff
@@ -967,10 +996,10 @@
     btn.id = "pv-home-import-btn";
     btn.className = "pv-ux-ghost";
     btn.style.cssText = "margin:8px 0 0;font:700 12px inherit";
-    btn.textContent = "📥 Importa evento / congresso";
+    btn.textContent = "📥 Crea viaggio da evento (testo / più file)";
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
-      void openEventImportWizard();
+      void openEventImportWizard({ mode: "create" });
     });
     if (anchor.parentElement) {
       const wrap = document.getElementById("pv-home-trash-wrap") || anchor.parentElement;
@@ -1202,7 +1231,7 @@
                 <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
                 <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
                 <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Incolla testo o carica un file dal sito evento</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
@@ -1222,7 +1251,7 @@
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Scegli un viaggio, poi incolla testo o carica file</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
                 <button type="button" data-ux="home-hint"><strong><span class="pv-menu-emo" aria-hidden="true">🏠</span>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
               </div>
             </div>
@@ -1381,7 +1410,7 @@
     openModal(
       "Altri strumenti",
       `<div class="pv-menu-grid">
-         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Incolla testo o carica file (.txt, .md, .csv, .json, .ics)</span></button>
+         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Crea o aggiorna · testo + più file (.txt .json .ics…)</span></button>
          <button type="button" data-ux="activity"><strong>Attività recente</strong><span>Cose fatte su questo dispositivo</span></button>
          <button type="button" data-ux="templates"><strong>Template viaggio</strong><span>Parti da uno schema pronto</span></button>
          <button type="button" data-ux="revisions"><strong>Versioni locali</strong><span>Ripristina una copia salvata qui</span></button>
@@ -2396,7 +2425,7 @@
     return { auth, data };
   }
 
-  function applyImportItemsToTrip(trip, selectedItems) {
+  function applyImportItemsToTrip(trip, selectedItems, { replaceMeta = false } = {}) {
     const next = JSON.parse(JSON.stringify(trip || {}));
     next.stops = Array.isArray(next.stops) ? next.stops : [];
     next.bookings = Array.isArray(next.bookings) ? next.bookings : [];
@@ -2408,25 +2437,52 @@
       ? next.meta.preparation.departureChecklist
       : [];
     const notesExtra = [];
-    let counts = { stop: 0, booking: 0, checklist: 0, doc: 0, note: 0 };
+    const counts = { stop: 0, booking: 0, checklist: 0, doc: 0, note: 0, skipped: 0 };
+    const stopKeys = new Set(next.stops.map((s) => String(s.title || "").trim().toLowerCase()));
+    const bookKeys = new Set(next.bookings.map((b) => String(b.title || "").trim().toLowerCase()));
+    const checkKeys = new Set(next.checklist.map((c) => String(c.title || c.text || c.label || "").trim().toLowerCase()));
+    const docKeys = new Set(next.meta.preparation.docs.map((d) => `${d.title}|${d.url}`.toLowerCase()));
+
     for (const item of selectedItems) {
       if (item.kind === "stop" && item.payload?.stop) {
+        const key = String(item.payload.stop.title || "").trim().toLowerCase();
+        if (key && stopKeys.has(key)) {
+          counts.skipped += 1;
+          continue;
+        }
         next.stops.push(item.payload.stop);
+        if (key) stopKeys.add(key);
         counts.stop += 1;
       } else if (item.kind === "booking" && item.payload?.booking) {
+        const key = String(item.payload.booking.title || "").trim().toLowerCase();
+        if (key && bookKeys.has(key)) {
+          counts.skipped += 1;
+          continue;
+        }
         next.bookings.push(item.payload.booking);
+        if (key) bookKeys.add(key);
         counts.booking += 1;
       } else if (item.kind === "checklist" && item.payload?.checklist) {
         const title = item.payload.checklist.title;
-        if (!next.checklist.some((c) => String(c.title || c.text || c.label || "").toLowerCase() === title.toLowerCase())) {
-          next.checklist.push(item.payload.checklist);
-          counts.checklist += 1;
+        const key = String(title || "").trim().toLowerCase();
+        if (key && checkKeys.has(key)) {
+          counts.skipped += 1;
+          continue;
         }
-        if (!next.meta.preparation.departureChecklist.some((c) => String(c.label || "").toLowerCase() === title.toLowerCase())) {
+        next.checklist.push(item.payload.checklist);
+        if (key) checkKeys.add(key);
+        counts.checklist += 1;
+        if (!next.meta.preparation.departureChecklist.some((c) => String(c.label || "").toLowerCase() === key)) {
           next.meta.preparation.departureChecklist.push({ id: newImportId("dep"), label: title, done: false });
         }
       } else if (item.kind === "doc" && item.payload?.doc) {
+        const key = `${item.payload.doc.title}|${item.payload.doc.url}`.toLowerCase();
+        if (docKeys.has(key)) {
+          counts.skipped += 1;
+          continue;
+        }
         next.meta.preparation.docs.unshift(item.payload.doc);
+        docKeys.add(key);
         counts.doc += 1;
       } else if (item.kind === "note" && item.payload?.note) {
         notesExtra.push(item.payload.note);
@@ -2437,10 +2493,22 @@
       const block = ["", "— Import evento —", ...notesExtra].join("\n").trim();
       next.notes = next.notes ? `${String(next.notes).trim()}\n\n${block}` : block;
     }
+
+    // Sort stops by day/time when possible so Itinerario is immediately usable
+    next.stops.sort((a, b) => {
+      const da = `${a.day || "9999-99-99"}T${a.time || "99:99"}`;
+      const db = `${b.day || "9999-99-99"}T${b.time || "99:99"}`;
+      return da.localeCompare(db);
+    });
+
+    const history = Array.isArray(next.meta.eventImportHistory) ? next.meta.eventImportHistory : [];
+    history.unshift({ at: new Date().toISOString(), counts, added: selectedItems.length });
+    next.meta.eventImportHistory = history.slice(0, 12);
     next.meta.eventImport = {
       at: new Date().toISOString(),
       counts,
-      source: "paste-or-file",
+      source: "paste-or-files",
+      ...(replaceMeta ? { createdWithImport: true } : {}),
     };
     sanitizeTripCategories(next);
     next.stops = next.stops.slice(0, 400);
@@ -2450,146 +2518,324 @@
     return { trip: next, counts };
   }
 
+  function inferTripSeedFromItems(items) {
+    const dates = [];
+    let destination = "";
+    let title = "";
+    for (const it of items) {
+      const day = it.payload?.stop?.day || it.payload?.booking?.date || extractIsoDate(`${it.title} ${it.detail || ""}`);
+      if (day) dates.push(day);
+      if (!destination) {
+        const blob = `${it.title} ${it.detail || ""} ${it.payload?.stop?.address || ""}`;
+        const m = blob.match(/\b(?:a|in|presso)\s+([A-ZÀ-Ü][\wÀ-ü'’\- ]{2,40})/);
+        if (m) destination = m[1].trim();
+        else if (/roma|milano|parigi|madrid|lisbona|vienna|berlino|londra|tokyo|oslo|reykjav/i.test(blob)) {
+          destination = blob.match(/roma|milano|parigi|madrid|lisbona|vienna|berlino|londra|tokyo|oslo|reykjavik?/i)?.[0] || "";
+          if (destination) destination = destination[0].toUpperCase() + destination.slice(1).toLowerCase();
+        }
+      }
+      if (!title && it.kind === "stop" && /congresso|convention|assemblea|evento/i.test(it.title)) {
+        title = it.title.slice(0, 80);
+      }
+    }
+    dates.sort();
+    const start = dates[0] || "";
+    const end = dates.length > 1 ? dates[dates.length - 1] : start;
+    return {
+      title: title || (destination ? `Congresso · ${destination}` : "Congresso / evento"),
+      destination: destination || "Da definire",
+      start: start || new Date().toISOString().slice(0, 10),
+      end: end || start || new Date().toISOString().slice(0, 10),
+      budget: 0,
+      members: [],
+      stops: [],
+      bookings: [],
+      expenses: [],
+      transfers: [],
+      checklist: [],
+      notes: "Creato con import evento.",
+    };
+  }
+
+  async function createTripForImport(seed) {
+    const account = (() => {
+      try {
+        const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+        const name = String(a?.user?.displayName || a?.user?.username || "").trim();
+        return name ? [{ id: newImportId("m"), name }] : [{ id: newImportId("m"), name: "Viaggiatore" }];
+      } catch {
+        return [{ id: newImportId("m"), name: "Viaggiatore" }];
+      }
+    })();
+    const body = { ...seed, members: seed.members?.length ? seed.members : account };
+    const res = await fetch("/api/trips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Creazione viaggio non riuscita");
+    const auth = { id: data.id, key: data.key };
+    if (!auth.id || !auth.key) throw new Error("Risposta creazione incompleta");
+    // Keep recent links in sync for chooser / home cards
+    const recent = readRecentLinks();
+    recent.unshift({
+      id: auth.id,
+      key: auth.key,
+      title: data.trip?.title || body.title,
+      destination: data.trip?.destination || body.destination,
+      start: data.trip?.start || body.start,
+      end: data.trip?.end || body.end,
+    });
+    writeRecentLinks(recent);
+    writeJson(`viavia-trip-card-meta:${auth.id}`, {
+      title: data.trip?.title || body.title,
+      destination: data.trip?.destination || body.destination,
+      start: data.trip?.start || body.start,
+      end: data.trip?.end || body.end,
+      local: Boolean(data.local),
+    });
+    return { auth, data };
+  }
+
   function kindLabel(kind) {
-    if (kind === "stop") return "📍 Tappa";
-    if (kind === "booking") return "🎫 Prenotazione";
-    if (kind === "checklist") return "✅ Checklist";
-    if (kind === "doc") return "🔗 Documento";
-    if (kind === "note") return "📝 Nota";
+    if (kind === "stop") return "📍 Tappa → Itinerario";
+    if (kind === "booking") return "🎫 Prenotazione → Prenotazioni";
+    if (kind === "checklist") return "✅ Checklist → Lista / Preparazione";
+    if (kind === "doc") return "🔗 Documento → HUB Preparazione";
+    if (kind === "note") return "📝 Nota → Note viaggio";
     return kind;
+  }
+
+  function sectionForKind(kind) {
+    if (kind === "stop") return { id: "stop", title: "Itinerario (tappe)", hint: "Visibili nella tab Itinerario" };
+    if (kind === "booking") return { id: "booking", title: "Prenotazioni", hint: "Hotel, voli, transfer…" };
+    if (kind === "checklist") return { id: "checklist", title: "Checklist", hint: "Anche in HUB · Preparazione" };
+    if (kind === "doc") return { id: "doc", title: "Documenti e link", hint: "HUB · Preparazione" };
+    if (kind === "note") return { id: "note", title: "Note", hint: "Note del viaggio" };
+    return { id: kind, title: kind, hint: "" };
   }
 
   function renderImportItems(items) {
     if (!items.length) {
-      return `<p class="pv-import-count">Nessuna voce riconosciuta. Prova a incollare più testo o un altro file.</p>`;
+      return `<p class="pv-import-count">Nessuna voce riconosciuta. Aggiungi altro testo o altri file, poi analizza di nuovo.</p>`;
     }
-    return `<p class="pv-import-count">${items.length} voci trovate — spunta quelle da inserire</p>
+    const order = ["stop", "booking", "checklist", "doc", "note"];
+    const groups = order
+      .map((kind) => ({ kind, items: items.filter((i) => i.kind === kind) }))
+      .filter((g) => g.items.length);
+    return `<p class="pv-import-count">${items.length} voci trovate — spunta cosa inserire. L’app le mette già nelle sezioni giuste.</p>
+      <div class="pv-import-map">
+        <div><strong>📍 Tappe</strong> → Itinerario</div>
+        <div><strong>🎫 Prenotazioni</strong> → Prenotazioni</div>
+        <div><strong>✅ Checklist</strong> → Checklist + HUB Preparazione</div>
+        <div><strong>🔗 Documenti</strong> → HUB · Preparazione</div>
+        <div><strong>📝 Note</strong> → Note del viaggio</div>
+      </div>
       <div class="pv-import-toolbar">
         <button type="button" class="pv-ux-ghost" data-imp-all>Seleziona tutte</button>
         <button type="button" class="pv-ux-ghost" data-imp-none>Deseleziona</button>
       </div>
-      <div class="pv-import-items">${items
-        .map(
-          (it) => `<label class="pv-import-item">
-            <input type="checkbox" data-imp-id="${escapeHtml(it.id)}" checked />
-            <div>
-              <div class="kind ${escapeHtml(it.kind)}">${escapeHtml(kindLabel(it.kind))}</div>
-              <div class="title">${escapeHtml(it.title)}</div>
-              ${it.detail ? `<div class="detail">${escapeHtml(it.detail)}</div>` : ""}
-            </div>
-          </label>`
-        )
-        .join("")}</div>`;
+      ${groups
+        .map((g) => {
+          const sec = sectionForKind(g.kind);
+          return `<div class="pv-import-group" data-kind="${escapeHtml(g.kind)}">
+            <h4>${escapeHtml(sec.title)} · ${g.items.length} <span style="font-weight:500;text-transform:none;letter-spacing:0">— ${escapeHtml(sec.hint)}</span></h4>
+            <div class="pv-import-items">${g.items
+              .map(
+                (it) => `<label class="pv-import-item">
+                  <input type="checkbox" data-imp-id="${escapeHtml(it.id)}" checked />
+                  <div>
+                    <div class="kind ${escapeHtml(it.kind)}">${escapeHtml(kindLabel(it.kind))}</div>
+                    <div class="title">${escapeHtml(it.title)}</div>
+                    ${it.detail ? `<div class="detail">${escapeHtml(it.detail)}</div>` : ""}
+                    ${it.source ? `<div class="detail">da ${escapeHtml(it.source)}</div>` : ""}
+                  </div>
+                </label>`
+              )
+              .join("")}</div>
+          </div>`;
+        })
+        .join("")}`;
   }
 
-  async function openEventImportWizard() {
+  function mergeImportItems(list) {
+    const merged = [];
+    const seen = new Set();
+    for (const it of list) {
+      const key = `${it.kind}|${String(it.title || "").trim().toLowerCase()}|${it.detail || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(it);
+    }
+    return merged.slice(0, 200);
+  }
+
+  function showImportDoneSummary(counts, auth) {
+    const rows = [
+      counts.stop && `📍 <strong>${counts.stop}</strong> tappe in Itinerario`,
+      counts.booking && `🎫 <strong>${counts.booking}</strong> prenotazioni`,
+      counts.checklist && `✅ <strong>${counts.checklist}</strong> voci checklist`,
+      counts.doc && `🔗 <strong>${counts.doc}</strong> documenti in HUB Preparazione`,
+      counts.note && `📝 <strong>${counts.note}</strong> note`,
+      counts.skipped && `↷ ${counts.skipped} già presenti (saltate)`,
+    ].filter(Boolean);
+    openModal(
+      "Import completato",
+      `<div class="pv-import-hint"><strong>Pronto da consultare</strong>Apri le sezioni dell’app: i contenuti sono già al posto giusto.</div>
+       <ul class="pv-ux-list">${rows.map((r) => `<li>${r}</li>`).join("") || "<li>Nessuna nuova voce.</li>"}</ul>
+       <div class="pv-ux-actions">
+         <button type="button" class="pv-ux-primary" data-imp-open-trip>Apri viaggio</button>
+         <button type="button" class="pv-ux-ghost" data-imp-more>Aggiungi altro</button>
+         <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
+       </div>`,
+      {
+        onMount: (body) => {
+          body.querySelector("[data-imp-open-trip]")?.addEventListener("click", () => {
+            closeModal();
+            location.hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
+            window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id } }));
+          });
+          body.querySelector("[data-imp-more]")?.addEventListener("click", () => {
+            closeModal();
+            void openEventImportWizard({ mode: "add", auth });
+          });
+        },
+      }
+    );
+  }
+
+  async function openEventImportWizard(opts = {}) {
     const current = tripAuth();
     const recent = readRecentLinks();
+    const preferAdd = opts.mode === "add" || Boolean(opts.auth || current);
     const state = {
-      auth: current,
+      auth: opts.auth || current,
       items: [],
-      tripTitle: current ? "Viaggio aperto" : "",
+      files: [], // { name, items[] }
+      pastes: [],
     };
-    if (current) {
+    let tripTitle = "Viaggio aperto";
+    if (state.auth) {
       try {
-        const meta = readJson(`viavia-trip-card-meta:${current.id}`, null);
-        const link = recent.find((r) => r.id === current.id);
-        state.tripTitle = link?.title || meta?.title || "Viaggio aperto";
+        const meta = readJson(`viavia-trip-card-meta:${state.auth.id}`, null);
+        const link = recent.find((r) => r.id === state.auth.id);
+        tripTitle = link?.title || meta?.title || tripTitle;
       } catch {
         /* ignore */
       }
     }
 
     const tripChoices = [];
-    if (current) {
-      tripChoices.push({ id: current.id, key: current.key, title: state.tripTitle || "Viaggio aperto", current: true });
+    if (state.auth) {
+      tripChoices.push({ id: state.auth.id, key: state.auth.key, title: tripTitle, current: true });
     }
     for (const r of recent) {
-      if (current && r.id === current.id) continue;
+      if (state.auth && r.id === state.auth.id) continue;
       tripChoices.push({ id: r.id, key: r.key, title: r.title || "Viaggio", current: false });
     }
 
     openModal(
-      "📥 Importa evento / congresso",
+      preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
       `<div class="pv-import-hint">
-         <strong>Solo per i viaggi che scegli tu</strong>
-         Copia le sezioni da JW Hub (o altro sito evento) e incollale qui, oppure carica un file esportato (.txt, .md, .csv, .json, .ics, .html).
-         Poi seleziona le voci da inserire nel viaggio.
+         <strong>${preferAdd ? "Aggiunte al viaggio" : "Crea o arricchisci un viaggio"}</strong>
+         Incolla più volte e/o carica <em>più file</em> (.txt, .md, .csv, .json, .ics, .html).
+         Poi scegli le voci: l’app le mette in Itinerario, Prenotazioni, Checklist, HUB Preparazione e Note.
        </div>
-       <h3 style="margin:0 0 8px;font-size:.95rem">1. Scegli il viaggio</h3>
-       ${
-         tripChoices.length
-           ? `<div class="pv-import-trip-list" id="pv-imp-trips">${tripChoices
-               .map(
-                 (t, i) => `<label class="${i === 0 ? "on" : ""}">
-                   <input type="radio" name="pv-imp-trip" value="${escapeHtml(t.id)}" data-key="${escapeHtml(t.key)}" ${i === 0 ? "checked" : ""} />
-                   <div><strong>${escapeHtml(t.title)}</strong><span>${t.current ? "Viaggio attualmente aperto" : "Dai viaggi recenti"}</span></div>
-                 </label>`
-               )
-               .join("")}</div>`
-           : `<p class="pv-import-count">Nessun viaggio trovato. Crea prima un viaggio (anche col template «Congresso / evento»), poi torna qui.</p>
-              <div class="pv-ux-actions"><button type="button" class="pv-ux-primary" data-imp-create>Vai a Nuovo viaggio</button></div>`
-       }
-       <h3 style="margin:14px 0 8px;font-size:.95rem">2. Incolla testo e/o carica file</h3>
-       <textarea id="pv-imp-paste" class="pv-import-paste" placeholder="Incolla qui programma, hotel, transfer, checklist, link…"></textarea>
+       <h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
+       <div class="pv-import-trip-list" id="pv-imp-trips">
+         <label class="${preferAdd && state.auth ? "" : "on"}">
+           <input type="radio" name="pv-imp-trip" value="__new__" data-key="" ${preferAdd && state.auth ? "" : "checked"} />
+           <div><strong>✨ Crea un nuovo viaggio</strong><span>Usa titolo/date/destinazione ricavati dall’import</span></div>
+         </label>
+         ${tripChoices
+           .map(
+             (t, i) => `<label class="${preferAdd && state.auth && i === 0 ? "on" : ""}">
+               <input type="radio" name="pv-imp-trip" value="${escapeHtml(t.id)}" data-key="${escapeHtml(t.key)}" ${
+               preferAdd && state.auth && i === 0 ? "checked" : ""
+             } />
+               <div><strong>${escapeHtml(t.title)}</strong><span>${t.current ? "Viaggio aperto — aggiunte" : "Viaggio esistente — aggiunte"}</span></div>
+             </label>`
+           )
+           .join("")}
+       </div>
+       <h3 style="margin:14px 0 8px;font-size:.95rem">2. Incolla testo (anche più volte)</h3>
+       <textarea id="pv-imp-paste" class="pv-import-paste" placeholder="Incolla programma, hotel, transfer, checklist, link… poi «Aggiungi testo»"></textarea>
+       <div class="pv-ux-actions" style="margin-top:8px">
+         <button type="button" class="pv-ux-ghost" id="pv-imp-add-paste">➕ Aggiungi testo</button>
+       </div>
+       <h3 style="margin:14px 0 8px;font-size:.95rem">3. Carica uno o più file</h3>
        <div class="pv-import-file">
-         <input id="pv-imp-file" type="file" accept=".txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
-         <span style="font-size:.8rem;color:#3f5860">Puoi usare entrambi: testo + uno o più file</span>
+         <input id="pv-imp-file" type="file" multiple accept=".txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
+         <span style="font-size:.8rem;color:#3f5860">Puoi selezionare più file insieme e aggiungerne altri dopo</span>
        </div>
+       <div class="pv-import-file-list" id="pv-imp-file-list"></div>
        <div class="pv-ux-actions">
-         <button type="button" class="pv-ux-primary" id="pv-imp-analyze" ${tripChoices.length ? "" : "disabled"}>Analizza voci</button>
+         <button type="button" class="pv-ux-primary" id="pv-imp-analyze">Analizza tutto</button>
          <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
        </div>
        <div id="pv-imp-results" style="margin-top:12px"></div>
        <div class="pv-ux-actions" id="pv-imp-apply-wrap" hidden>
-         <button type="button" class="pv-ux-primary" id="pv-imp-apply">Inserisci selezionate</button>
+         <button type="button" class="pv-ux-primary" id="pv-imp-apply">Inserisci selezionate nelle sezioni</button>
        </div>`,
       {
         onMount: (body) => {
-          const fileBag = [];
           const syncTripHighlight = () => {
             body.querySelectorAll("#pv-imp-trips label").forEach((lab) => {
               lab.classList.toggle("on", Boolean(lab.querySelector("input:checked")));
             });
           };
-          body.querySelectorAll("#pv-imp-trips input").forEach((inp) => {
-            inp.addEventListener("change", syncTripHighlight);
+          body.querySelectorAll("#pv-imp-trips input").forEach((inp) => inp.addEventListener("change", syncTripHighlight));
+
+          const renderFiles = () => {
+            const host = body.querySelector("#pv-imp-file-list");
+            if (!host) return;
+            host.innerHTML = state.files
+              .map(
+                (f, idx) => `<span class="pv-import-file-chip">${escapeHtml(f.name)} · ${f.items.length}
+                  <button type="button" data-rm-file="${idx}" aria-label="Rimuovi ${escapeHtml(f.name)}">×</button></span>`
+              )
+              .join("");
+            host.querySelectorAll("[data-rm-file]").forEach((btn) => {
+              btn.addEventListener("click", () => {
+                state.files.splice(Number(btn.getAttribute("data-rm-file")), 1);
+                renderFiles();
+              });
+            });
+          };
+
+          body.querySelector("#pv-imp-add-paste")?.addEventListener("click", () => {
+            const ta = body.querySelector("#pv-imp-paste");
+            const text = ta?.value || "";
+            if (!String(text).trim()) {
+              toast("Incolla del testo prima", "warn");
+              return;
+            }
+            const items = parseEventImportText(text, { sourceName: `Incolla ${state.pastes.length + 1}` }).map((it) => ({
+              ...it,
+              source: `Incolla ${state.pastes.length + 1}`,
+            }));
+            state.pastes.push({ text, items });
+            if (ta) ta.value = "";
+            toast(`Testo aggiunto (${items.length} voci)`, items.length ? "ok" : "warn");
           });
-          body.querySelector("[data-imp-create]")?.addEventListener("click", () => {
-            closeModal();
-            if (typeof window.__pvNavHome === "function") window.__pvNavHome();
-            toast("Crea il viaggio, poi riapri «Importa evento / congresso»", "ok");
-          });
+
           body.querySelector("#pv-imp-file")?.addEventListener("change", async (ev) => {
             const files = [...(ev.target.files || [])];
-            fileBag.length = 0;
             for (const f of files) {
               try {
-                const parsed = await readImportFile(f);
-                fileBag.push(...parsed);
+                const parsed = (await readImportFile(f)).map((it) => ({ ...it, source: f.name }));
+                state.files.push({ name: f.name, items: parsed });
                 toast(`${f.name}: ${parsed.length} voci`, parsed.length ? "ok" : "warn");
               } catch (err) {
                 toast(err.message || `Lettura fallita: ${f.name}`, "err");
               }
             }
+            ev.target.value = "";
+            renderFiles();
           });
-          const analyze = () => {
-            const paste = body.querySelector("#pv-imp-paste")?.value || "";
-            const fromPaste = parseEventImportText(paste, { sourceName: "Testo incollato" });
-            // merge unique
-            const merged = [];
-            const seen = new Set();
-            for (const it of [...fromPaste, ...fileBag]) {
-              const key = `${it.kind}|${it.title}|${it.detail || ""}`;
-              if (seen.has(key)) continue;
-              seen.add(key);
-              merged.push(it);
-            }
-            state.items = merged;
-            const results = body.querySelector("#pv-imp-results");
-            const applyWrap = body.querySelector("#pv-imp-apply-wrap");
-            if (results) results.innerHTML = renderImportItems(merged);
-            if (applyWrap) applyWrap.hidden = !merged.length;
+
+          const wireResults = (results) => {
             results?.querySelector("[data-imp-all]")?.addEventListener("click", () => {
               results.querySelectorAll("input[data-imp-id]").forEach((c) => {
                 c.checked = true;
@@ -2600,19 +2846,36 @@
                 c.checked = false;
               });
             });
+          };
+
+          const analyze = () => {
+            // Include current textarea even if user forgot "Aggiungi testo"
+            const livePaste = body.querySelector("#pv-imp-paste")?.value || "";
+            const liveItems = livePaste.trim()
+              ? parseEventImportText(livePaste, { sourceName: "Incolla corrente" }).map((it) => ({
+                  ...it,
+                  source: "Incolla corrente",
+                }))
+              : [];
+            const all = [
+              ...state.pastes.flatMap((p) => p.items),
+              ...state.files.flatMap((f) => f.items),
+              ...liveItems,
+            ];
+            const merged = mergeImportItems(all);
+            state.items = merged;
+            const results = body.querySelector("#pv-imp-results");
+            const applyWrap = body.querySelector("#pv-imp-apply-wrap");
+            if (results) results.innerHTML = renderImportItems(merged);
+            if (applyWrap) applyWrap.hidden = !merged.length;
+            wireResults(results);
             if (!merged.length) toast("Nessuna voce riconosciuta", "warn");
-            else toast(`${merged.length} voci pronte da selezionare`, "ok");
+            else toast(`${merged.length} voci da ${state.files.length} file + testi`, "ok");
           };
           body.querySelector("#pv-imp-analyze")?.addEventListener("click", analyze);
+
           body.querySelector("#pv-imp-apply")?.addEventListener("click", async () => {
-            const picked = body.querySelector("#pv-imp-trips input:checked") || body.querySelector("input[name=pv-imp-trip]:checked");
-            const auth = picked
-              ? { id: picked.value, key: picked.getAttribute("data-key") }
-              : state.auth;
-            if (!auth?.id || !auth?.key) {
-              toast("Seleziona un viaggio", "warn");
-              return;
-            }
+            const picked = body.querySelector("#pv-imp-trips input:checked");
             const selectedIds = new Set(
               [...body.querySelectorAll("input[data-imp-id]:checked")].map((c) => c.getAttribute("data-imp-id"))
             );
@@ -2622,11 +2885,24 @@
               return;
             }
             try {
-              const { data } = await loadTripByAuth(auth);
+              let auth;
+              let data;
+              let created = false;
+              if (!picked || picked.value === "__new__") {
+                const seed = inferTripSeedFromItems(selected);
+                const createdRes = await createTripForImport(seed);
+                auth = createdRes.auth;
+                data = createdRes.data;
+                created = true;
+              } else {
+                auth = { id: picked.value, key: picked.getAttribute("data-key") };
+                ({ data } = await loadTripByAuth(auth));
+              }
               if (data.canEdit === false) throw new Error("Questo viaggio è in sola lettura");
-              const { trip, counts } = applyImportItemsToTrip(data.trip || {}, selected);
-              await saveTrip(auth, trip, data.revision);
-              logActivity(auth.id, `Import evento: ${selected.length} voci`);
+              const { trip, counts } = applyImportItemsToTrip(data.trip || {}, selected, { replaceMeta: created });
+              // If created empty then imported, revision is 1
+              const saved = await saveTrip(auth, trip, data.revision);
+              logActivity(auth.id, created ? `Viaggio creato da import (${selected.length})` : `Aggiunte da import (${selected.length})`);
               closeModal();
               const summary = [
                 counts.stop && `${counts.stop} tappe`,
@@ -2637,14 +2913,10 @@
               ]
                 .filter(Boolean)
                 .join(", ");
-              toast(`Importato: ${summary || selected.length + " voci"}`, "ok");
-              const cur = tripAuth();
-              if (!cur || cur.id !== auth.id) {
-                location.hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
-              } else {
-                // Soft refresh cue for React views
-                window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id } }));
-              }
+              toast(created ? `Viaggio creato · ${summary}` : `Aggiunto · ${summary}`, "ok");
+              location.hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
+              window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: saved.trip || trip } }));
+              setTimeout(() => showImportDoneSummary(counts, auth), 350);
             } catch (err) {
               toast(err.message || "Import non riuscito", "err");
             }
@@ -2652,6 +2924,38 @@
         },
       }
     );
+  }
+
+  function injectEventImportRail() {
+    const existing = document.getElementById("pv-event-import-rail");
+    if (!tripAuth()) {
+      existing?.remove();
+      return;
+    }
+    // Prefer under trip workspace / recent area
+    const mount =
+      document.querySelector(".workspace") ||
+      document.querySelector(".trip-hero")?.parentElement ||
+      document.querySelector("#root main") ||
+      document.getElementById("root");
+    if (!mount) return;
+    if (existing) return;
+    const rail = document.createElement("section");
+    rail.id = "pv-event-import-rail";
+    rail.className = "pv-event-rail";
+    rail.innerHTML = `
+      <h3>📥 Materiali evento / congresso</h3>
+      <p>Incolla testo o importa più file anche dopo: le voci finiscono subito in Itinerario, Prenotazioni, Checklist, Documenti e Note.</p>
+      <div class="pv-ux-actions">
+        <button type="button" class="pv-ux-primary" data-pv-event-add>Aggiungi da evento</button>
+      </div>`;
+    rail.querySelector("[data-pv-event-add]")?.addEventListener("click", () => {
+      void openEventImportWizard({ mode: "add" });
+    });
+    // Place after hero if possible
+    const hero = mount.querySelector?.(".trip-hero");
+    if (hero?.nextSibling) mount.insertBefore(rail, hero.nextSibling);
+    else mount.prepend(rail);
   }
 
   window.__pvParseEventImport = parseEventImportText;
@@ -2803,6 +3107,7 @@
     run(injectTripDeleteButton);
     run(injectHomeDeleteEntry);
     run(injectHomeImportEntry);
+    run(injectEventImportRail);
     run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);
     run(sanitizeStoredTrips);
