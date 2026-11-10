@@ -1125,6 +1125,23 @@
     }));
   }
 
+  /**
+   * Documenti React tab does `files.length` — trip JSON (no `files`) whitescreens the app.
+   * Treat upload/delete payloads similarly so we can fall back to device storage.
+   */
+  function isUsableTripFilesPayload(method, filesParts, data) {
+    const fileId = filesParts?.[2];
+    if (method === "GET" && !fileId) return Array.isArray(data?.files);
+    if (method === "POST" && !fileId) {
+      return Boolean(data?.file || data?.ok || Array.isArray(data?.files));
+    }
+    if (method === "DELETE" && fileId) {
+      return Boolean(data?.ok || data?.deleted || data?.id);
+    }
+    // Binary download GET /files/:id — leave to caller content-type checks.
+    return true;
+  }
+
   async function blobToDataUrl(blob) {
     return await new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -1769,53 +1786,68 @@
             wallTimeout(PER_TRY_MS, "local-proxy-timeout"),
           ]);
           if (res.ok) {
+            let filesPayloadUnusable = false;
             try {
               const data = await res.clone().json();
-              const id = data.id || tripIdHint;
-              if (method === "GET" && id && data?.trip) {
-                cacheTripRecord(id, {
-                  trip: data.trip,
-                  revision: data.revision,
-                  viewToken: data.viewToken,
-                  canEdit: data.canEdit,
-                  key: bearerKey(writeInit),
-                  updated: data.updated,
-                  source: data.source,
-                  durable: data.durable,
-                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
-                });
-              }
-              if (method === "POST" && data?.id && data?.trip) {
-                cacheTripRecord(data.id, {
-                  ...data,
-                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
-                });
-                trackTripWriteResult(method, data.id, writeInit, data);
-              }
-              if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
-                cacheTripRecord(id, {
-                  trip: data.trip,
-                  revision: data.revision,
-                  viewToken: data.viewToken,
-                  canEdit: true,
-                  key: bearerKey(writeInit),
-                  updated: data.updated,
-                  source: data.source,
-                  durable: data.durable,
-                  local: isEphemeralPersistence(data) ? true : Boolean(data.local),
-                });
-                trackTripWriteResult(method, id, writeInit, data);
-              }
-              if (method === "DELETE" && (data?.deleted || data?.ok)) {
-                purgeLocalTrip(id || tripIdHint);
+              const filesParts = parsed.pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean);
+              // Documenti UI requires `{ files: [] }` — trip JSON here crashes React (n.length).
+              if (filesPath && !isUsableTripFilesPayload(method, filesParts, data)) {
+                filesPayloadUnusable = true;
+              } else {
+                const id = data.id || tripIdHint;
+                if (method === "GET" && !filesPath && id && data?.trip) {
+                  cacheTripRecord(id, {
+                    trip: data.trip,
+                    revision: data.revision,
+                    viewToken: data.viewToken,
+                    canEdit: data.canEdit,
+                    key: bearerKey(writeInit),
+                    updated: data.updated,
+                    source: data.source,
+                    durable: data.durable,
+                    local: isEphemeralPersistence(data) ? true : Boolean(data.local),
+                  });
+                }
+                if (method === "POST" && !filesPath && data?.id && data?.trip) {
+                  cacheTripRecord(data.id, {
+                    ...data,
+                    local: isEphemeralPersistence(data) ? true : Boolean(data.local),
+                  });
+                  trackTripWriteResult(method, data.id, writeInit, data);
+                }
+                if ((method === "PUT" || method === "PATCH") && id && data?.trip) {
+                  cacheTripRecord(id, {
+                    trip: data.trip,
+                    revision: data.revision,
+                    viewToken: data.viewToken,
+                    canEdit: true,
+                    key: bearerKey(writeInit),
+                    updated: data.updated,
+                    source: data.source,
+                    durable: data.durable,
+                    local: isEphemeralPersistence(data) ? true : Boolean(data.local),
+                  });
+                  trackTripWriteResult(method, id, writeInit, data);
+                }
+                if (method === "DELETE" && !filesPath && (data?.deleted || data?.ok)) {
+                  purgeLocalTrip(id || tripIdHint);
+                }
               }
             } catch {
               /* ignore cache errors */
             }
-            return withPrivateBudgetResponse(res, tripIdHint);
+            if (!filesPayloadUnusable) {
+              return withPrivateBudgetResponse(res, tripIdHint);
+            }
+            // Fall through to remote/local files handlers.
           }
           // Static hosts (GitHub Pages / python -m http.server) return 404 HTML for /api/*.
           // Fall through to remote cloud API instead of forcing local-only trips.
+          // Documenti: cloud may answer FILES_LOCAL_ONLY (404) — use device storage next.
+          if (filesPath && (res.status === 404 || res.status === 405 || res.status === 501)) {
+            const localFiles = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+            if (localFiles.status === 200 || method !== "GET") return localFiles;
+          }
           const ct = String(res.headers.get("content-type") || "").toLowerCase();
           const looksMissing =
             res.status === 404 ||
@@ -1851,9 +1883,9 @@
         if (res.ok) {
           try {
             const data = await res.clone().json();
-            // Documenti UI requires `files` array; never pass trip JSON through.
+            // Documenti UI requires `{ files: [] }`; never pass trip JSON through.
             const filesParts = parsed.pathname.replace(/^\/api\/trips\/?/, "").split("/").filter(Boolean);
-            if (filesPath && method === "GET" && !filesParts[2] && !Array.isArray(data?.files)) {
+            if (filesPath && !isUsableTripFilesPayload(method, filesParts, data)) {
               return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
             }
             if (method === "POST" && data?.id) {

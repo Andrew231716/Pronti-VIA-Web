@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261110i`;
+const CACHE = `${CACHE_PREFIX}20261111a`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -18,7 +18,7 @@ const PRECACHE = [
   "./assets/index-JJ3bX5VS.css",
   // Must match account.js dynamic import (loadfix = bugfix, not loadForm).
   "./assets/index-loadfix-20261104d.js",
-  "./assets/api-shim-20261107l.js",
+  "./assets/api-shim-20261111a.js",
   "./assets/magic-extras-20261107l.js",
   "./assets/expense-suite-20261107l.js",
   "./assets/app-suite-20261107l.js",
