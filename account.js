@@ -639,14 +639,108 @@ async function activateSession(data, { bootApp = true } = {}) {
   hideGate();
   showChip();
   startTripSync();
-  if (bootApp) await loadApp();
+  if (bootApp) {
+    try {
+      await loadApp();
+    } catch {
+      // Session is already active — don't bounce back to the login form.
+      showAppBootFallback(
+        "Accesso ok, ma la home non si è aperta. Tocca Riprova oppure aggiorna la pagina."
+      );
+    }
+  }
 }
 
 let appLoaded = false;
-async function loadApp() {
-  if (appLoaded) return;
-  appLoaded = true;
-  await import("/assets/index-loadfix-20261104d.js");
+let appLoadPromise = null;
+const APP_MODULE = "/assets/index-loadfix-20261104d.js";
+
+function rootHasApp() {
+  const root = document.getElementById("root");
+  if (!root) return false;
+  // React mounts topbar / workspace; ignore empty notification portals only.
+  return Boolean(
+    root.querySelector(".topbar, .app-shell, .workspace, .recent-trips, main, [data-pv-app]")
+  );
+}
+
+function showAppBootFallback(message) {
+  const root = document.getElementById("root");
+  if (!root || rootHasApp()) return;
+  if (root.querySelector("[data-pv-boot-fallback]")) {
+    const msg = root.querySelector("[data-pv-boot-fallback] .pv-boot-msg");
+    if (msg) msg.textContent = message;
+    return;
+  }
+  const box = document.createElement("section");
+  box.dataset.pvBootFallback = "1";
+  box.style.cssText =
+    "margin:24px 16px;padding:18px 16px;border-radius:18px;background:#fff;border:1px solid #d5e3e6;color:#12343c;font:500 14px/1.45 system-ui,sans-serif";
+  box.innerHTML = `<p class="pv-boot-msg" style="margin:0 0 12px">${message}</p>
+    <button type="button" data-pv-boot-retry style="appearance:none;border:0;border-radius:999px;padding:10px 14px;background:#007d82;color:#fff;font:700 13px inherit;cursor:pointer">Riprova a caricare</button>`;
+  box.querySelector("[data-pv-boot-retry]")?.addEventListener("click", () => {
+    void loadApp({ force: true });
+  });
+  root.prepend(box);
+}
+
+async function loadApp({ force = false } = {}) {
+  if (appLoaded && rootHasApp() && !force) return;
+  if (appLoadPromise && !force) return appLoadPromise;
+
+  appLoadPromise = (async () => {
+    try {
+      if (force) appLoaded = false;
+      // Bust sticky module failures after a partial deploy / SW glitch.
+      const url = force ? `${APP_MODULE}?t=${Date.now()}` : APP_MODULE;
+      await import(url);
+      appLoaded = true;
+      // Give React a tick to mount before declaring success.
+      await new Promise((r) => setTimeout(r, 80));
+      if (!rootHasApp()) {
+        // Second attempt with cache bust
+        await import(`${APP_MODULE}?t=${Date.now()}`);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+      if (!rootHasApp()) {
+        throw new Error("L’app non è comparsa dopo il login.");
+      }
+      document.querySelector("[data-pv-boot-fallback]")?.remove();
+    } catch (err) {
+      appLoaded = false;
+      console.error("[pv] loadApp failed", err);
+      showAppBootFallback(
+        "Qualcosa non ha caricato la home. Tocca Riprova, oppure chiudi e riapri l’app (senza cache)."
+      );
+      throw err;
+    } finally {
+      appLoadPromise = null;
+    }
+  })();
+
+  return appLoadPromise;
+}
+
+window.__pvLoadApp = loadApp;
+
+function watchAppMount() {
+  let tries = 0;
+  const tick = () => {
+    if (!document.body.classList.contains("pv-account-ready")) return;
+    if (rootHasApp()) {
+      document.querySelector("[data-pv-boot-fallback]")?.remove();
+      return;
+    }
+    tries += 1;
+    if (tries === 1 || tries === 3) void loadApp({ force: tries > 1 });
+    if (tries >= 2) {
+      showAppBootFallback(
+        "La home non si è caricata. Tocca Riprova oppure riapri il sito dopo aver aggiornato la pagina."
+      );
+    }
+    if (tries < 6) setTimeout(tick, 1200);
+  };
+  setTimeout(tick, 1500);
 }
 
 let syncTimer = null;
@@ -898,4 +992,6 @@ async function boot() {
   }
 }
 
-boot();
+boot().finally(() => {
+  watchAppMount();
+});
