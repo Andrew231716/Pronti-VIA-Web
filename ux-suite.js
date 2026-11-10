@@ -256,6 +256,35 @@
       }
       .pv-menu-grid button.pv-menu-tools strong{color:var(--pv-teal-deep)}
       .pv-menu-grid button.danger{border-color:#efcdc8;background:#fdf4f2;color:#7a2e28;box-shadow:none}
+      .pv-account-card{
+        display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:center;
+        margin:0 0 10px;padding:14px 16px;border-radius:16px;
+        background:linear-gradient(160deg,#eef7f7,#e6f2f2);
+        border:1px solid rgba(0,125,130,.14);color:#12343c
+      }
+      .pv-account-card .av{
+        width:48px;height:48px;border-radius:14px;display:grid;place-items:center;
+        background:#fff;border:1px solid rgba(0,125,130,.16);font:800 1.15rem/1 inherit;color:var(--pv-teal-deep)
+      }
+      .pv-account-card .name{font:800 1.05rem/1.25 inherit;letter-spacing:-.01em;margin:0}
+      .pv-account-card .user{margin:2px 0 0;font:650 .88rem/1.3 inherit;color:#0f5a5e}
+      .pv-account-card .meta{margin:6px 0 0;font:500 .78rem/1.35 inherit;color:#3f5860}
+      .pv-account-card .pill{
+        display:inline-flex;align-items:center;margin-top:8px;padding:4px 9px;border-radius:999px;
+        font:750 .68rem/1 inherit;letter-spacing:.04em;text-transform:uppercase;
+        background:#fff;border:1px solid rgba(0,125,130,.16);color:#0f5a5e
+      }
+      .pv-account-fields{display:grid;gap:8px;margin:0 0 10px}
+      .pv-account-field{
+        display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;
+        padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--pv-line)
+      }
+      .pv-account-field dt{margin:0;font:650 .72rem/1.2 inherit;letter-spacing:.04em;text-transform:uppercase;color:#5b7380}
+      .pv-account-field dd{margin:0;font:750 .92rem/1.3 inherit;color:var(--pv-ink);word-break:break-word}
+      .pv-account-field button{
+        appearance:none;border:0;background:transparent;color:var(--pv-teal-deep);
+        font:750 .75rem/1 inherit;cursor:pointer;padding:0
+      }
       .pv-trip-manage-list{display:grid;gap:10px;margin:4px 0 12px}
       .pv-trip-manage-row{
         display:flex;align-items:center;gap:10px;padding:12px;
@@ -1232,6 +1261,102 @@
     };
   }
 
+  function readAccountSession() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      if (!raw || typeof raw !== "object") return null;
+      return raw;
+    } catch {
+      return null;
+    }
+  }
+
+  function readAccountExtra() {
+    try {
+      const raw = JSON.parse(localStorage.getItem("viavia-account-extra-v1") || "null");
+      return raw && typeof raw === "object" ? raw : { avatar: "", devices: [] };
+    } catch {
+      return { avatar: "", devices: [] };
+    }
+  }
+
+  function accountKindLabel(session) {
+    if (!session) return "Non collegato";
+    if (session.guest) return "Ospite";
+    const token = String(session.token || "");
+    if (token.startsWith("local:")) return "Account locale";
+    if (token.startsWith("pvacct:")) return "Account gestito";
+    if (token) return "Account cloud";
+    return "Account";
+  }
+
+  function formatAccountWhen(isoOrMs) {
+    if (isoOrMs == null || isoOrMs === "") return "";
+    try {
+      const d = typeof isoOrMs === "number" ? new Date(isoOrMs) : new Date(String(isoOrMs));
+      if (!Number.isFinite(d.getTime())) return "";
+      return d.toLocaleString("it-IT", { dateStyle: "medium", timeStyle: "short" });
+    } catch {
+      return "";
+    }
+  }
+
+  function renderAccountInfoBlock() {
+    const session = readAccountSession();
+    const extra = readAccountExtra();
+    const username = String(session?.user?.username || "").trim();
+    const displayName = String(session?.user?.displayName || username || "Account").trim();
+    const kind = accountKindLabel(session);
+    const initial = String(extra.avatar || displayName).trim().charAt(0).toUpperCase() || "?";
+    const avatar = String(extra.avatar || "").trim() || initial;
+    const savedAt = formatAccountWhen(session?.savedAt);
+    const expiresAt = formatAccountWhen(session?.expiresAt);
+    if (!session?.user) {
+      return `<div class="pv-account-card">
+        <div class="av" aria-hidden="true">?</div>
+        <div>
+          <p class="name">Nessun account attivo</p>
+          <p class="meta">Accedi o crea un account per vedere nome utente e dettagli.</p>
+        </div>
+      </div>`;
+    }
+    return `<div class="pv-account-card">
+        <div class="av" aria-hidden="true">${escapeHtml(avatar)}</div>
+        <div>
+          <p class="name">${escapeHtml(displayName)}</p>
+          ${username ? `<p class="user">@${escapeHtml(username)}</p>` : ""}
+          <span class="pill">${escapeHtml(kind)}</span>
+        </div>
+      </div>
+      <dl class="pv-account-fields">
+        <div class="pv-account-field">
+          <dt>Nome visualizzato</dt>
+          <dd>${escapeHtml(displayName)}</dd>
+        </div>
+        <div class="pv-account-field">
+          <dt>Nome utente</dt>
+          <dd>
+            ${username ? escapeHtml(username) : "—"}
+            ${username ? `<button type="button" data-ux-copy-user data-user="${escapeHtml(username)}">Copia</button>` : ""}
+          </dd>
+        </div>
+        <div class="pv-account-field">
+          <dt>Tipo account</dt>
+          <dd>${escapeHtml(kind)}</dd>
+        </div>
+        ${
+          savedAt
+            ? `<div class="pv-account-field"><dt>Ultimo accesso salvato</dt><dd>${escapeHtml(savedAt)}</dd></div>`
+            : ""
+        }
+        ${
+          expiresAt
+            ? `<div class="pv-account-field"><dt>Sessione valida fino al</dt><dd>${escapeHtml(expiresAt)}</dd></div>`
+            : ""
+        }
+      </dl>`;
+  }
+
   function openAccountMenu() {
     const inTrip = Boolean(tripAuth());
     const menuBtn = document.getElementById("pv-account-menu");
@@ -1280,6 +1405,13 @@
               </div>
             </div>`
           : `<div class="pv-menu-section">
+              <h3>Il tuo account</h3>
+              ${renderAccountInfoBlock()}
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
+              </div>
+            </div>
+            <div class="pv-menu-section">
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
@@ -1294,12 +1426,17 @@
               </div>
             </div>`
       }
-       <div class="pv-menu-section">
+       ${
+         inTrip
+           ? `<div class="pv-menu-section">
          <h3>Il tuo account</h3>
+         ${renderAccountInfoBlock()}
          <div class="pv-menu-grid">
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
          </div>
-       </div>
+       </div>`
+           : ""
+       }
        <div class="pv-menu-section">
          <h3>Zona pericolosa</h3>
          <div class="pv-menu-grid">
@@ -1313,6 +1450,18 @@
        </div>`,
       {
         onMount: (body) => {
+          body.querySelector("[data-ux-copy-user]")?.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const user = body.querySelector("[data-ux-copy-user]")?.getAttribute("data-user") || "";
+            if (!user) return;
+            try {
+              await navigator.clipboard.writeText(user);
+              toast("Nome utente copiato", "ok");
+            } catch {
+              toast(user, "ok");
+            }
+          });
           body.querySelectorAll("button[data-ux]").forEach((b) => {
             b.addEventListener("click", () => {
               const act = b.getAttribute("data-ux");
