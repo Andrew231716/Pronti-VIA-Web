@@ -82,7 +82,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261102s") return;
+    if (style && style.dataset.pvReady === "20261107j") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -290,7 +290,7 @@
         #${ROOT_ID} .pv-magic-btn,.pv-prev-launch{animation:none !important}
       }
     `;
-    style.dataset.pvReady = "20261102s";
+    style.dataset.pvReady = "20261107j";
   }
 
   function fabNodes() {
@@ -655,7 +655,11 @@
 
   function tripDays(trip) {
     const days = [];
-    for (let t = Date.parse(trip.start); t <= Date.parse(trip.end); t += 864e5) {
+    if (!trip?.start || !trip?.end) return days;
+    const from = Date.parse(trip.start);
+    const to = Date.parse(trip.end);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return days;
+    for (let t = from; t <= to; t += 864e5) {
       days.push(new Date(t).toISOString().slice(0, 10));
     }
     return days;
@@ -2135,6 +2139,7 @@
     const phase = tripAuth()
       ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
       : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
+    const expenseSummary = summarizeTripExpenses(safeTrip);
     return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — companion AI per GESTIRE il viaggio (non solo chiacchiere).
 Rispondi SEMPRE in italiano: tono cordiale, concreto, actionable. 2–6 frasi + elenco breve se serve. Niente markdown pesante.
 ${phase}
@@ -2145,9 +2150,11 @@ Contesto viaggio:
 - Date: ${safeTrip.start || "?"} → ${safeTrip.end || "?"}
 - Compagni: ${members}
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
+- Spese di gruppo (Splitpay): ${expenseSummary}
 
 Compiti:
-1) Aiuta a pianificare e gestire: posti, cibo, natura, itinerari giorno-per-giorno, budget, bagagli, trasporti, lingua.
+1) Aiuta a pianificare e gestire: posti, cibo, natura, itinerari giorno-per-giorno, budget, bagagli, trasporti, lingua, spese condivise.
+1b) Se chiedono delle spese già registrate, usa i totali/categorie del contesto; per modificare quote o rimborsi indica la tab Spese (Importi personalizzati / Registra rimborso).
 2) Quando proponi cose da fare/vedere/mangiare, dai nomi REALI e specifici della zona.
 3) Se la domanda riguarda posti, itinerario, cosa vedere/fare/mangiare, natura o tappe, DEVI chiudere con questo blocco (obbligatorio):
 
@@ -2315,6 +2322,25 @@ Regole pv-places:
     return 7;
   }
 
+  function summarizeTripExpenses(trip) {
+    const expenses = Array.isArray(trip?.expenses) ? trip.expenses : [];
+    if (!expenses.length) return "nessuna spesa registrata ancora";
+    const total = expenses.reduce((a, e) => a + (Number(e.amount) || 0), 0);
+    const byCat = {};
+    for (const e of expenses) {
+      const cat = String(e.category || "Altro");
+      byCat[cat] = (byCat[cat] || 0) + (Number(e.amount) || 0);
+    }
+    const fmt = (cents) =>
+      (cents / 100).toLocaleString("it-IT", { style: "currency", currency: "EUR" });
+    const top = Object.entries(byCat)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([k, v]) => `${k} ${fmt(v)}`)
+      .join(", ");
+    return `${expenses.length} voci · totale ${fmt(total)}${top ? ` · ${top}` : ""}`;
+  }
+
   function localBudgetAdvice(trip, text) {
     const days = parseTripDaysFromText(text, trip);
     const euros = parseEuroMentions(text);
@@ -2344,6 +2370,12 @@ Regole pv-places:
     reply += `\nTotale orientativo: ${fmt(totalLo)}–${fmt(totalHi)}`;
     if (excludeHousing) reply += ` (senza casa/hotel)`;
     reply += `.\n\n${band.note} È una stima: se noleggi auto o fai tour lunghi, punta verso il massimo.`;
+    const recorded = summarizeTripExpenses(trip);
+    if (recorded && !/nessuna spesa/i.test(recorded)) {
+      reply += `\n\nNel viaggio avete già registrato: ${recorded}. Per cambiare le quote di qualcuno apri Spese → Modifica spesa → Importi personalizzati.`;
+    } else {
+      reply += `\n\nPer dividere i costi come Splitpay usa la tab Spese: parti uguali, percentuali o importi personalizzati per persona, poi «Come pareggiare i conti».`;
+    }
     return reply;
   }
 
@@ -2351,6 +2383,10 @@ Regole pv-places:
     const q = String(text || "").trim();
     if (!q) return "";
     const where = formatDestGreeting(trip.destination, trip.title);
+    if (/split|divid|quota|rimbors|pareggi|saldo|chi deve|chi ha pagato/i.test(q)) {
+      const recorded = summarizeTripExpenses(trip);
+      return `Sulle spese condivise ${where}: in tab Spese puoi scegliere Come dividiamo? (parti uguali, %, quote o importi personalizzati) e modificare ogni persona con «Modifica spesa». I saldi e i rimborsi suggeriti sono in «Come pareggiare i conti».\n\nStato attuale: ${recorded}.`;
+    }
     if (/spesa|budget|cost|quanto\b|euro|€|prezzi|econom/i.test(q)) {
       return localBudgetAdvice(trip, q);
     }

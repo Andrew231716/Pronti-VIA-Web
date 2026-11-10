@@ -1,5 +1,45 @@
 # CHANGELOG — Pronti? VIA!
 
+## [20261107l] — 2026-11-10
+
+### Responsive tablet + PC
+- Nav/chip più ampi su ≥768 / ≥1100 (allineati allo shell 1390).
+- Hub floating centrato su tablet (niente bottom-sheet); più largo su desktop.
+- Menu/sheet senza padding “mobile nav”; card Home 2–3 colonne; Spese side-by-side.
+- Tema destinazione: badge e canvas densità adattati allo schermo.
+
+## [20261107k] — 2026-11-10
+
+### Tema destinazione automatico
+- Nuovo `destination-theme.js`: palette, icone nav e canvas atmosfera dal paese di viaggio.
+- Badge «Tema · Paese» nel chip; CSS vars allineate a nav/Hub/suite.
+- QA `scripts/qa-dest-theme.mjs`.
+
+## [20261107j] — 2026-11-10
+
+### Spese Splitpay + IA
+- **Fix critico:** su host statici il PUT spese andava sul cloud (404 «Viaggio non trovato») senza fallback locale — ora salva in locale se il viaggio è sul dispositivo.
+- Categorie tappa legacy (`Cultura`, …) accettate / normalizzate così non bloccano lo Splitpay.
+- Fix: capsule nav non intercetta più i tap sul select «Come dividiamo?» (Importi personalizzati).
+- Guard toast se le quote personalizzate non sommano il totale.
+- IA: contesto spese del viaggio + guida a split/rimborsi.
+- QA script `scripts/qa-spese-ai-split.mjs`.
+
+## [20261107i] — 2026-11-10
+
+### Visual polish — più fluida, stessa UX
+- Atmosfera soft sul body, chip e capsule nav più glass, stati attivi Hub/IA in famiglia teal.
+- Menu/sheet/toast con motion più morbida; card Home e Hub più leggibili.
+- Nessuna funzionalità cambiata. Stamp `20261107i`.
+
+## [20261107h] — 2026-11-10
+
+### Fix QA — funzioni e grafica
+- Menu Profilo: rilevamento tab SPA più robusto (`#root`, fallback Itinerario); più padding sopra la nav capsule.
+- Hub: etichetta **Inviti** (meno wrap); griglia tab uniforme su mobile.
+- `tripDays` a prova di trip assente; magic CSS gate e `expense-suite` SW `ASSET_VER` allineati allo stamp corrente.
+- Test E2E/verify aggiornati a stamp `20261107h` (non più 04j/04e).
+
 ## [20261104j] — 2026-11-04
 
 ### UX polish — Hub groups, banner, home cards
