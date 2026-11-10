@@ -213,7 +213,7 @@ function ensureUi() {
         </div>
         <div class="pv-account-field">
           <label for="pv-password">Password</label>
-          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="min. 8 caratteri · lettera e numero" enterkeyhint="go">
+          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
         </div>
         <div class="pv-account-field" id="pv-recovery-field" hidden>
           <label for="pv-recovery-code">Codice di recupero</label>
