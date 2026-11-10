@@ -22,8 +22,8 @@ const plat = readFileSync("pv-platform.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
 
-test("stamp pv-platform-20261107l wired", () => {
-  assert.match(index, /pv-platform-20261107l\.js/);
+test("stamp pv-platform-20261110b wired", () => {
+  assert.match(index, /pv-platform-20261110b\.js/);
 });
 
 test("enter animation is opt-in (pv-plat-entering)", () => {
@@ -45,8 +45,8 @@ test("same-tab click is ignored", () => {
 });
 
 test("Hub labels are speakable (Collaborazione / Panoramica)", () => {
-  assert.match(plat, /HUB · Collaborazione|Hub · Collabora/);
-  assert.match(plat, /\["dash", "Panoramica"\]/);
+  assert.match(plat, /Collaborazione di gruppo|HUB · Collaborazione|Hub · Collabora/);
+  assert.match(plat, /\["dash", "Panoramica"(?:,\s*"[^"]+")?\]/);
   assert.match(ux, /data-ux="hub"/);
   assert.match(ux, /Funzioni di gruppo \(HUB\)|Apri Hub/);
   assert.match(ux, /__pvNavHome|__pvNavTrips|__pvNavAi/);
@@ -54,8 +54,8 @@ test("Hub labels are speakable (Collaborazione / Panoramica)", () => {
 
 test("Hub tabs grouped Collabora / Organizza", () => {
   assert.match(plat, /HUB_GROUPS/);
-  assert.match(plat, /label:\s*"Collabora"/);
-  assert.match(plat, /label:\s*"Organizza"/);
+  assert.match(plat, /label:\s*"[^"]*Collabora"/);
+  assert.match(plat, /label:\s*"[^"]*Organizza"/);
   assert.match(plat, /pv-plat-tab-groups/);
   assert.match(plat, /data-plat-group/);
   assert.match(plat, /syncTabButtons/);

@@ -131,11 +131,12 @@
       #pv-ux-toast.warn{background:rgba(122,75,0,.95)}
       #pv-ux-toast.err{background:rgba(122,31,31,.95)}
       .pv-empty-state{
-        margin:12px 0 18px;padding:18px 16px;border:1px dashed var(--pv-line);
-        border-radius:16px;background:#f7fbfb;text-align:center
+        margin:12px 0 18px;padding:20px 16px;border:1px dashed var(--pv-line);
+        border-radius:18px;background:#f7fbfb;text-align:center;color:var(--pv-ink,#12343c)
       }
-      .pv-empty-state h3{margin:0 0 6px;font-size:1.05rem}
-      .pv-empty-state p{margin:0 0 12px;color:var(--pv-muted);font-size:.9rem}
+      .pv-empty-state .pv-empty-emo{display:block;font-size:2rem;line-height:1;margin:0 0 8px}
+      .pv-empty-state h3{margin:0 0 6px;font-size:1.08rem;font-weight:800;color:var(--pv-ink,#12343c)}
+      .pv-empty-state p{margin:0 0 12px;color:#3a545b;font-size:.9rem;font-weight:500}
       .pv-empty-state button{
         appearance:none;border:0;border-radius:999px;padding:10px 14px;font:700 13px inherit;
         background:var(--pv-teal);color:#fff;cursor:pointer
@@ -158,7 +159,7 @@
       body.pv-plat-open #pv-offline-chip{opacity:.85}
       .pv-menu-section{margin:0 0 16px}
       .pv-menu-section h3{
-        margin:0 0 10px;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#6a828a;font-weight:750
+        margin:0 0 10px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#3f5860;font-weight:800
       }
       .pv-menu-context{
         display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 14px;padding:12px 14px;
@@ -180,7 +181,8 @@
       }
       .pv-menu-grid button:hover{border-color:rgba(0,125,130,.22);box-shadow:0 8px 20px rgba(16,42,48,.07)}
       .pv-menu-grid button strong{display:block;font-weight:800;margin-bottom:3px;letter-spacing:-.01em}
-      .pv-menu-grid button span{display:block;color:#5b7380;font-size:.82rem;font-weight:500;line-height:1.35}
+      .pv-menu-grid button span{display:block;color:#3f5860;font-size:.82rem;font-weight:500;line-height:1.35}
+      .pv-menu-grid button .pv-menu-emo{margin-right:6px}
       .pv-menu-grid button.pv-menu-tools{
         border-color:rgba(0,125,130,.35);background:linear-gradient(165deg,#f5fcfc,#e8f5f5);
         box-shadow:0 6px 16px rgba(0,125,130,.08)
@@ -336,8 +338,15 @@
       .pv-compare-bar > span{display:block;height:100%;background:linear-gradient(90deg,#007d82,#2aa3a8)}
       .pv-compare-bar.warn > span{background:linear-gradient(90deg,#b45309,#d97706)}
       .pv-onboard-steps{display:grid;gap:10px;margin:12px 0}
-      .pv-onboard-steps div{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--pv-line)}
-      .pv-onboard-steps strong{display:block;margin-bottom:4px}
+      .pv-onboard-steps > div{
+        display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;
+        background:#fff;border:1px solid var(--pv-line);color:var(--pv-ink,#12343c)
+      }
+      .pv-onboard-steps .pv-onboard-emo{
+        flex:0 0 auto;width:40px;height:40px;border-radius:14px;display:grid;place-items:center;
+        font-size:1.25rem;background:#eef7f7;border:1px solid rgba(0,125,130,.12)
+      }
+      .pv-onboard-steps strong{display:block;margin-bottom:4px;font-weight:800;color:var(--pv-ink,#12343c)}
       #pv-ux-search-input{
         width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;
         border:1px solid var(--pv-line);font:inherit;margin:8px 0
@@ -360,24 +369,43 @@
         }
       }
       @media (min-width:768px){
-        .pv-menu-grid{grid-template-columns:1fr 1fr;gap:10px}
+        .pv-onboard-steps{grid-template-columns:1fr 1fr;gap:12px}
+        .pv-onboard-steps > div{padding:14px 16px;border-radius:16px;min-height:92px}
+        .pv-onboard-steps .pv-onboard-emo{width:46px;height:46px;font-size:1.4rem;border-radius:16px}
+        .pv-onboard-steps > div:last-child{grid-column:1 / -1}
+        .pv-menu-grid{grid-template-columns:1fr 1fr;gap:12px}
+        .pv-menu-grid button{
+          padding:16px 16px;border-radius:18px;min-height:88px
+        }
+        .pv-menu-grid button strong{font-size:1rem;margin-bottom:5px}
+        .pv-menu-grid button span{font-size:.86rem}
+        .pv-menu-grid button .pv-menu-emo{font-size:1.15rem;margin-right:8px}
         .pv-menu-grid button.pv-menu-tools,
-        .pv-menu-grid button.danger{grid-column:1 / -1}
+        .pv-menu-grid button.danger{grid-column:1 / -1;min-height:72px}
+        .pv-menu-section h3{font-size:.78rem;margin-bottom:12px}
+        .pv-empty-state{padding:24px 22px;border-radius:20px}
+        .pv-empty-state .pv-empty-emo{font-size:2.4rem;margin-bottom:10px}
+        .pv-empty-state h3{font-size:1.18rem}
         #pv-ux-toast{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
         body.pv-primary-nav-ready #pv-ux-toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
       }
       @media (min-width:1100px){
         .pv-ux-modal{padding:32px 24px}
         .pv-ux-modal .pv-ux-sheet{
-          width:min(680px,92vw);border-radius:24px;padding:22px 22px 30px
+          width:min(720px,92vw);border-radius:24px;padding:24px 24px 32px
         }
         .recent-trips.pv-home-cards{
           grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px
         }
-        .pv-empty-state{padding:22px 20px;max-width:720px;margin-inline:auto}
+        .pv-empty-state{padding:28px 24px;max-width:760px;margin-inline:auto}
+        .pv-menu-grid{gap:14px}
+        .pv-menu-grid button{padding:18px 18px;min-height:96px}
       }
       @media (min-width:1400px){
-        .pv-ux-modal .pv-ux-sheet{width:min(720px,90vw)}
+        .pv-ux-modal .pv-ux-sheet{width:min(760px,90vw)}
+        .pv-menu-grid{grid-template-columns:1fr 1fr 1fr;gap:14px}
+        .pv-menu-grid button.pv-menu-tools,
+        .pv-menu-grid button.danger{grid-column:1 / -1}
       }
       /* Spese / split: side-by-side on tablet+ */
       @media (min-width:900px){
@@ -656,6 +684,7 @@
     const body =
       links.length === 0
         ? `<div class="pv-empty-state" style="margin:4px 0 8px">
+             <span class="pv-empty-emo" aria-hidden="true">🧳</span>
              <h3>Nessun viaggio ancora</h3>
              <p>Crea il primo dalla home con «Nuovo viaggio», oppure apri un link condiviso.</p>
            </div>
@@ -1090,41 +1119,41 @@
                 <em>${escapeHtml(section.label)}</em>
                 <p>Le azioni rapide qui sotto valgono per questa sezione. Le tab in alto (Itinerario, Spese…) restano la navigazione principale del viaggio.</p>
               </div>
-              <h3>Azioni rapide</h3>
+              <h3>⚡ Azioni rapide</h3>
               <div class="pv-menu-grid">
                 <button type="button" class="pv-menu-tools" data-ux="section-tools">
                   <strong>${escapeHtml(section.title)}</strong>
                   <span>${escapeHtml(section.hint)}</span>
                 </button>
-                <button type="button" data-ux="search"><strong>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
+                <button type="button" data-ux="search"><strong><span class="pv-menu-emo" aria-hidden="true">🔎</span>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
-              <h3>Organizza</h3>
+              <h3>🗺️ Organizza</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="companions"><strong>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
-                <button type="button" data-ux="invite"><strong>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
-                <button type="button" data-ux="checklist"><strong>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
+                <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
+                <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
+                <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
-              <h3>Soldi</h3>
+              <h3>💶 Soldi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="compare"><strong>Preventivo e spese</strong><span>Confronta stima e spese reali</span></button>
+                <button type="button" data-ux="compare"><strong><span class="pv-menu-emo" aria-hidden="true">💶</span>Preventivo e spese</strong><span>Confronta stima e spese reali</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
               <h3>Altro</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="more"><strong>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
-                <button type="button" data-ux="hub"><strong>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso · voti, preparazione, backup</span></button>
+                <button type="button" data-ux="more"><strong><span class="pv-menu-emo" aria-hidden="true">🧰</span>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
+                <button type="button" data-ux="hub"><strong><span class="pv-menu-emo" aria-hidden="true">✨</span>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso · voti, preparazione, backup</span></button>
               </div>
             </div>`
           : `<div class="pv-menu-section">
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="manage-trips"><strong>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
-                <button type="button" data-ux="home-hint"><strong>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
+                <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
+                <button type="button" data-ux="home-hint"><strong><span class="pv-menu-emo" aria-hidden="true">🏠</span>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
@@ -1833,21 +1862,21 @@
       return;
     }
     openModal(
-      "Come muoverti in Pronti? VIA!",
+      "✨ Come muoverti in Pronti? VIA!",
       `<div class="pv-onboard-steps">
-        <div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div>
-        <div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div>
-        <div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div>
-        <div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div>
-        <div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🏠</span><div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🧳</span><div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">✨</span><div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🪄</span><div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">👤</span><div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div></div>
       </div>
       <div class="pv-ux-actions">
-        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">Inizia</button>
+        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">🚀 Inizia</button>
       </div>`,
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261107j" });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261110b" });
             closeModal();
             if (!tripAuth()) {
               const createBtn = [...document.querySelectorAll("button, a")].find((el) =>

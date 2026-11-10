@@ -177,9 +177,9 @@ async function auditViewport(browser, label, viewport, isMobile) {
   const scripts = await page.evaluate(() =>
     [...document.scripts].map((s) => s.src).filter((s) => /2026110/.test(s))
   );
-  if (!scripts.some((s) => /pv-platform-20261107l/.test(s))) {
+  if (!scripts.some((s) => /pv-platform-20261110b/.test(s))) {
     issue("high", label, "pv-platform stamp non 20261107l", JSON.stringify(scripts));
-  } else ok(label, "stamp platform 20261107l");
+  } else ok(label, "stamp platform 20261110b");
   if (!scripts.some((s) => /magic-extras-20261107l/.test(s))) {
     issue("high", label, "magic stamp non 20261107l", JSON.stringify(scripts));
   } else ok(label, "stamp magic 20261107l");

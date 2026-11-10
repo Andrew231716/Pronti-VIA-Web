@@ -23,10 +23,12 @@
       id: "default",
       label: "Pronti? VIA!",
       motif: "globe",
+      flag: "🌍",
+      stickers: ["✈️", "🧳", "🗺️", "📸", "🧭", "🌴"],
       teal: "#007d82",
       tealDeep: "#00656a",
       ink: "#12343c",
-      muted: "#5a727c",
+      muted: "#3f5860",
       sand: "#f3f8f8",
       line: "#d5e3e6",
       accent: "#2aa3a8",
@@ -37,10 +39,12 @@
       id: "it",
       label: "Italia",
       motif: "cypress",
+      flag: "🇮🇹",
+      stickers: ["🍝", "🏛️", "🍋", "🛵", "🍷", "⛵"],
       teal: "#0b6e6a",
       tealDeep: "#085651",
       ink: "#1a3030",
-      muted: "#5a706c",
+      muted: "#3f5854",
       sand: "#f4f7f4",
       line: "#d3e2dc",
       accent: "#c4a35a",
@@ -55,10 +59,12 @@
       id: "is",
       label: "Islanda",
       motif: "aurora",
+      flag: "🇮🇸",
+      stickers: ["🌋", "🌌", "🐋", "❄️", "♨️", "🐑"],
       teal: "#1a7f9c",
       tealDeep: "#0f5f78",
       ink: "#0e2a38",
-      muted: "#4f6d7a",
+      muted: "#3a5764",
       sand: "#eef6fa",
       line: "#c9dde6",
       accent: "#6bc4b0",
@@ -73,10 +79,12 @@
       id: "jp",
       label: "Giappone",
       motif: "sakura",
+      flag: "🇯🇵",
+      stickers: ["🌸", "⛩️", "🍣", "🗻", "🏯", "🍵"],
       teal: "#2c6b6f",
       tealDeep: "#1f5256",
       ink: "#1c2426",
-      muted: "#5c6a6c",
+      muted: "#425054",
       sand: "#f7f4f2",
       line: "#e0d6d2",
       accent: "#c45c5c",
@@ -91,13 +99,15 @@
       id: "gr",
       label: "Grecia",
       motif: "waves",
+      flag: "🇬🇷",
+      stickers: ["🏛️", "🫒", "🌊", "☀️", "🧿", "⛵"],
       teal: "#1d6fa5",
       tealDeep: "#14557f",
       ink: "#123246",
-      muted: "#567086",
+      muted: "#3d5568",
       sand: "#f3f8fb",
       line: "#c9dae6",
-      accent: "#f0ece3",
+      accent: "#d9c9a0",
       wash: "rgba(29,111,165,.12)",
       icons: {
         ...ICO,
@@ -109,10 +119,12 @@
       id: "es",
       label: "Spagna",
       motif: "sun",
+      flag: "🇪🇸",
+      stickers: ["☀️", "💃", "🍊", "🏰", "🍷", "⚽"],
       teal: "#0f7a72",
       tealDeep: "#0b5e58",
       ink: "#1f2e2c",
-      muted: "#5d6f6b",
+      muted: "#425550",
       sand: "#f7f5ef",
       line: "#e0dccf",
       accent: "#d4a017",
@@ -126,10 +138,12 @@
       id: "fr",
       label: "Francia",
       motif: "arc",
+      flag: "🇫🇷",
+      stickers: ["🥐", "🗼", "🧀", "🎨", "🥖", "🍷"],
       teal: "#2f6f8f",
       tealDeep: "#245872",
       ink: "#1a2c38",
-      muted: "#5a6f7c",
+      muted: "#405560",
       sand: "#f4f6f8",
       line: "#d0dae2",
       accent: "#c45c5c",
@@ -143,10 +157,12 @@
       id: "th",
       label: "Thailandia",
       motif: "lotus",
+      flag: "🇹🇭",
+      stickers: ["🛕", "🐘", "🍜", "🏝️", "🪷", "🥭"],
       teal: "#0d7a6f",
       tealDeep: "#0a5e56",
       ink: "#16332f",
-      muted: "#56736e",
+      muted: "#3d5853",
       sand: "#f3f8f5",
       line: "#cee3dc",
       accent: "#d4a84b",
@@ -160,12 +176,14 @@
       id: "no",
       label: "Norvegia",
       motif: "fjord",
+      flag: "🇳🇴",
+      stickers: ["🏔️", "🦌", "⛴️", "❄️", "🎣", "🌌"],
       teal: "#1b6b7a",
       tealDeep: "#14515c",
       ink: "#0f2830",
-      muted: "#4f6870",
+      muted: "#3a545c",
       sand: "#eef5f6",
-      line: "#c8 recede",
+      line: "#c8dce0",
       accent: "#d94f4f",
       wash: "rgba(27,107,122,.12)",
       icons: ICO,
@@ -174,10 +192,12 @@
       id: "eg",
       label: "Egitto",
       motif: "pyramid",
+      flag: "🇪🇬",
+      stickers: ["🏜️", "🐪", "☀️", "🏺", "🛶", "🧿"],
       teal: "#1f6f7a",
       tealDeep: "#17555e",
       ink: "#2a2418",
-      muted: "#6b6354",
+      muted: "#554c3c",
       sand: "#f7f2e8",
       line: "#e2d8c4",
       accent: "#c9a227",
@@ -191,10 +211,12 @@
       id: "ma",
       label: "Marocco",
       motif: "tile",
+      flag: "🇲🇦",
+      stickers: ["🕌", "🍵", "🧭", "🐪", "🌅", "🧿"],
       teal: "#1f5f6e",
       tealDeep: "#164853",
       ink: "#1a2430",
-      muted: "#5a6874",
+      muted: "#40505c",
       sand: "#f3f1ec",
       line: "#d9d3c7",
       accent: "#b8860b",
@@ -204,11 +226,13 @@
     gb: {
       id: "gb",
       label: "Regno Unito",
+      flag: "🇬🇧",
+      stickers: ["☔", "🫖", "🚌", "🏰", "🎸", "🌫️"],
       motif: "mist",
       teal: "#3a6b7a",
       tealDeep: "#2c5360",
       ink: "#1c2a32",
-      muted: "#5b6c74",
+      muted: "#41525a",
       sand: "#f3f5f6",
       line: "#d0d8dc",
       accent: "#c45c5c",
@@ -219,10 +243,12 @@
       id: "us",
       label: "Stati Uniti",
       motif: "skyline",
+      flag: "🇺🇸",
+      stickers: ["🗽", "🍔", "🎸", "🌵", "🎬", "🌃"],
       teal: "#1f6f8f",
       tealDeep: "#175572",
       ink: "#152433",
-      muted: "#5a6d7c",
+      muted: "#405564",
       sand: "#f3f6f9",
       line: "#cfd9e3",
       accent: "#d17a3a",
@@ -233,10 +259,12 @@
       id: "br",
       label: "Brasile",
       motif: "leaf",
+      flag: "🇧🇷",
+      stickers: ["🌴", "⚽", "🦜", "🏖️", "🍹", "🎉"],
       teal: "#1b7a4a",
       tealDeep: "#145c38",
       ink: "#143024",
-      muted: "#557365",
+      muted: "#3d574c",
       sand: "#f2f8f4",
       line: "#cce0d4",
       accent: "#d4a017",
@@ -250,10 +278,12 @@
       id: "de",
       label: "Germania",
       motif: "forest",
+      flag: "🇩🇪",
+      stickers: ["🥨", "🏰", "🍺", "🌲", "🚂", "🎼"],
       teal: "#2f6b5c",
       tealDeep: "#245246",
       ink: "#1a2a26",
-      muted: "#5a6e68",
+      muted: "#40554f",
       sand: "#f3f6f4",
       line: "#d0ddd6",
       accent: "#c45c5c",
@@ -264,10 +294,12 @@
       id: "pt",
       label: "Portogallo",
       motif: "tile",
+      flag: "🇵🇹",
+      stickers: ["🐟", "🚋", "🏖️", "🍷", "🌅", "⛵"],
       teal: "#1a6f7a",
       tealDeep: "#13555e",
       ink: "#1a2c30",
-      muted: "#5a6e72",
+      muted: "#40555a",
       sand: "#f4f7f6",
       line: "#d0dedc",
       accent: "#c45c3a",
@@ -278,10 +310,12 @@
       id: "hr",
       label: "Croazia",
       motif: "waves",
+      flag: "🇭🇷",
+      stickers: ["🌊", "🏰", "⛵", "🦞", "☀️", "🪨"],
       teal: "#1a7a8a",
       tealDeep: "#135c69",
       ink: "#123038",
-      muted: "#56747c",
+      muted: "#3d5760",
       sand: "#f2f8f9",
       line: "#c9e0e4",
       accent: "#d4a017",
@@ -292,10 +326,12 @@
       id: "tr",
       label: "Turchia",
       motif: "crescent",
+      flag: "🇹🇷",
+      stickers: ["🌙", "🫖", "🕌", "🎈", "🧿", "🥙"],
       teal: "#1f6f6a",
       tealDeep: "#175550",
       ink: "#1a2a28",
-      muted: "#5a6e6b",
+      muted: "#405550",
       sand: "#f5f3ef",
       line: "#ddd6cb",
       accent: "#c45c5c",
@@ -309,10 +345,12 @@
       id: "nl",
       label: "Paesi Bassi",
       motif: "canal",
+      flag: "🇳🇱",
+      stickers: ["🌷", "🚲", "🧀", "🛶", "🌬️", "🎨"],
       teal: "#2a6f8f",
       tealDeep: "#205672",
       ink: "#152833",
-      muted: "#5a6f7c",
+      muted: "#405560",
       sand: "#f3f7f9",
       line: "#cfdce4",
       accent: "#d17a3a",
@@ -323,10 +361,12 @@
       id: "se",
       label: "Svezia",
       motif: "aurora",
+      flag: "🇸🇪",
+      stickers: ["🦌", "🌲", "❄️", "🛶", "🕯️", "🌌"],
       teal: "#1f6f8f",
       tealDeep: "#175572",
       ink: "#132633",
-      muted: "#556e7c",
+      muted: "#3c5564",
       sand: "#eef5f8",
       line: "#c9dde6",
       accent: "#d4a017",
@@ -337,10 +377,12 @@
       id: "cn",
       label: "Cina",
       motif: "lantern",
+      flag: "🇨🇳",
+      stickers: ["🏮", "🐼", "🏯", "🐉", "🍜", "🎋"],
       teal: "#1f6b6f",
       tealDeep: "#175255",
       ink: "#1c2426",
-      muted: "#5c6a6c",
+      muted: "#425054",
       sand: "#f6f3f0",
       line: "#e0d6d0",
       accent: "#c45c5c",
@@ -351,10 +393,12 @@
       id: "in",
       label: "India",
       motif: "lotus",
+      flag: "🇮🇳",
+      stickers: ["🕌", "🪷", "🐘", "🍛", "🕉️", "🎨"],
       teal: "#0f6e6a",
       tealDeep: "#0b5451",
       ink: "#1a2c2a",
-      muted: "#5a6e6b",
+      muted: "#405550",
       sand: "#f6f3ea",
       line: "#e2d9c6",
       accent: "#d17a3a",
@@ -362,9 +406,6 @@
       icons: ICO,
     },
   };
-
-  // Fix typo in no.line
-  THEMES.no.line = "#c8dce0";
 
   const RULES = [
     { id: "is", re: /islanda|\bisland\b|iceland|reykjav|akureyr/ },
@@ -499,20 +540,38 @@
       }
       #pv-dest-atmosphere{
         position:fixed; inset:0; z-index:0; pointer-events:none;
-        opacity:.5; mix-blend-mode:multiply;
+        opacity:.62;
       }
-      html[data-pv-theme="dark"] #pv-dest-atmosphere{ opacity:.26; mix-blend-mode:screen; }
+      html[data-pv-theme="dark"] #pv-dest-atmosphere{ opacity:.34; }
       #root{ position:relative; z-index:1; }
       #pv-dest-theme-badge{
         display:inline-flex; align-items:center; gap:6px;
-        margin-left:8px; padding:3px 9px; border-radius:999px;
-        font:700 .68rem/1 inherit; letter-spacing:.02em;
-        color: var(--pv-dest-teal-deep, #00656a);
-        background: color-mix(in srgb, var(--pv-dest-wash, rgba(0,125,130,.12)) 85%, #fff);
-        border:1px solid color-mix(in srgb, var(--pv-dest-teal, #007d82) 22%, transparent);
-        max-width:min(220px, 42vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+        margin-left:8px; padding:4px 10px; border-radius:999px;
+        font:750 .7rem/1 inherit; letter-spacing:.01em;
+        color: var(--pv-dest-ink, #12343c);
+        background: color-mix(in srgb, var(--pv-dest-wash, rgba(0,125,130,.12)) 70%, #fff);
+        border:1px solid color-mix(in srgb, var(--pv-dest-teal, #007d82) 24%, transparent);
+        max-width:min(260px, 48vw); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
         transition: opacity .25s ease, transform .25s ease;
+        box-shadow: 0 2px 10px rgba(16,42,48,.06);
       }
+      #pv-dest-theme-badge .pv-dest-flag{ font-size:1rem; line-height:1; }
+      .pv-dest-floaters{
+        position:fixed; inset:auto 8px calc(96px + env(safe-area-inset-bottom,0px)) auto;
+        z-index:2; display:flex; gap:6px; pointer-events:none;
+        opacity:.92; filter: drop-shadow(0 4px 10px rgba(16,42,48,.12));
+        transition: opacity .2s ease, transform .2s ease;
+      }
+      .pv-dest-floaters span{
+        font-size:1.2rem; line-height:1; padding:6px 7px; border-radius:14px;
+        background:rgba(255,255,255,.82); border:1px solid rgba(16,42,48,.08);
+        backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      }
+      html[data-pv-theme="dark"] .pv-dest-floaters span{
+        background:rgba(20,36,40,.78); border-color:rgba(255,255,255,.08);
+      }
+      /* Keep floaters clear of floating Hub on tablet/desktop */
+      body.pv-plat-open .pv-dest-floaters{ opacity:0; transform:translateY(8px); }
       #pv-dest-theme-badge[hidden]{ display:none!important; }
       #pv-primary-nav .pv-nav-ico svg{ transition: transform .22s ease, color .22s ease; }
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico{
@@ -521,20 +580,60 @@
       }
       @media (min-width:768px){
         #pv-dest-theme-badge{
-          max-width:min(280px, 36vw); font-size:.72rem; padding:4px 11px;
+          max-width:min(300px, 36vw); font-size:.74rem; padding:5px 12px;
         }
-        #pv-dest-atmosphere{ opacity:.42; }
+        #pv-dest-atmosphere{ opacity:.55; }
+        .pv-dest-floaters{
+          top: calc(72px + env(safe-area-inset-top,0px));
+          right: max(16px, env(safe-area-inset-right,0px));
+          bottom: auto;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .pv-dest-floaters span{ font-size:1.45rem; padding:9px 10px; border-radius:16px; }
+        body.pv-plat-open .pv-dest-floaters{
+          opacity:.55; transform:none;
+          right: max(12px, calc((100vw - 680px) / 2 - 56px));
+        }
       }
       @media (min-width:1100px){
-        #pv-dest-theme-badge{ max-width:320px; }
-        #pv-dest-atmosphere{ opacity:.36; }
-        #pv-account-chip .pv-account-chip-main{
-          gap:16px;
+        #pv-dest-theme-badge{ max-width:340px; }
+        #pv-dest-atmosphere{ opacity:.48; }
+        #pv-account-chip .pv-account-chip-main{ gap:16px; }
+        .pv-dest-floaters{
+          top: calc(78px + env(safe-area-inset-top,0px));
+          right: max(24px, env(safe-area-inset-right,0px));
+          gap: 10px;
         }
+        .pv-dest-floaters span{ font-size:1.6rem; padding:10px 11px; border-radius:18px; }
+        body.pv-plat-open .pv-dest-floaters{
+          opacity:.65;
+          right: max(16px, calc((100vw - 820px) / 2 - 64px));
+        }
+        /* Extra scrapbook rail on the left for wide desktops */
+        .pv-dest-floaters-left{
+          position:fixed; top:calc(120px + env(safe-area-inset-top,0px));
+          left: max(22px, env(safe-area-inset-left,0px));
+          z-index:2; display:flex; flex-direction:column; gap:10px; pointer-events:none;
+          filter: drop-shadow(0 4px 10px rgba(16,42,48,.1));
+        }
+        .pv-dest-floaters-left span{
+          font-size:1.45rem; line-height:1; padding:9px 10px; border-radius:16px;
+          background:rgba(255,255,255,.8); border:1px solid rgba(16,42,48,.08);
+          backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+        }
+        html[data-pv-theme="dark"] .pv-dest-floaters-left span{
+          background:rgba(20,36,40,.78); border-color:rgba(255,255,255,.08);
+        }
+        body.pv-plat-open .pv-dest-floaters-left{ opacity:.5; }
+      }
+      @media (max-width:1099px){
+        .pv-dest-floaters-left{ display:none!important; }
       }
       @media (prefers-reduced-motion: reduce){
         body.pv-account-ready{ transition:none; }
         #pv-dest-atmosphere{ display:none; }
+        .pv-dest-floaters, .pv-dest-floaters-left{ display:none; }
       }
     `;
   }
@@ -580,11 +679,47 @@
     }
     if (!tripAuth() || theme.id === DEFAULT_ID) {
       badge.hidden = true;
+      ensureFloaters(null);
       return;
     }
     badge.hidden = false;
-    badge.textContent = `Tema · ${theme.label}`;
+    const flag = theme.flag || "🌍";
+    badge.innerHTML = `<span class="pv-dest-flag" aria-hidden="true">${flag}</span> Tema · ${theme.label}`;
     badge.title = `Grafica adattata a ${theme.label}`;
+    ensureFloaters(theme);
+  }
+
+  function ensureFloaters(theme) {
+    let row = document.querySelector(".pv-dest-floaters");
+    let left = document.querySelector(".pv-dest-floaters-left");
+    if (!theme || theme.id === DEFAULT_ID || !tripAuth()) {
+      if (row) row.remove();
+      if (left) left.remove();
+      return;
+    }
+    const stickers = theme.stickers || [];
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "pv-dest-floaters";
+      row.setAttribute("aria-hidden", "true");
+      document.body.appendChild(row);
+    }
+    const wide = window.matchMedia?.("(min-width: 1100px)")?.matches;
+    const tablet = window.matchMedia?.("(min-width: 768px)")?.matches;
+    const rightCount = wide ? 4 : tablet ? 3 : 3;
+    row.innerHTML = stickers.slice(0, rightCount).map((e) => `<span>${e}</span>`).join("");
+
+    if (wide && stickers.length > 3) {
+      if (!left) {
+        left = document.createElement("div");
+        left.className = "pv-dest-floaters-left";
+        left.setAttribute("aria-hidden", "true");
+        document.body.appendChild(left);
+      }
+      left.innerHTML = stickers.slice(rightCount).map((e) => `<span>${e}</span>`).join("");
+    } else if (left) {
+      left.remove();
+    }
   }
 
   function ensureCanvas() {
@@ -619,102 +754,153 @@
 
     const accent = theme.accent || theme.teal;
     const teal = theme.teal;
-
     const wide = w >= 1100;
     const density = wide ? 1.45 : w >= 768 ? 1.2 : 1;
 
+    // Soft photo-like color blobs (less geometric)
+    for (let i = 0; i < Math.round(4 * density); i++) {
+      const cx = ((i * 173) % w) + (i % 2 ? w * 0.08 : -w * 0.05);
+      const cy = h * (0.12 + (i % 4) * 0.18);
+      const radius = (wide ? 180 : 130) + i * 28;
+      const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, radius);
+      g.addColorStop(0, hexAlpha(i % 2 ? accent : teal, 0.16));
+      g.addColorStop(0.55, hexAlpha(i % 2 ? teal : accent, 0.06));
+      g.addColorStop(1, "transparent");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     if (theme.motif === "aurora") {
-      for (let i = 0; i < Math.round(5 * density); i++) {
-        const g = ctx.createLinearGradient(0, h * 0.1 * i, w, h * 0.2 * (i + 1));
+      for (let i = 0; i < Math.round(4 * density); i++) {
+        const g = ctx.createLinearGradient(0, h * 0.08 * i, w, h * 0.18 * (i + 1));
         g.addColorStop(0, "transparent");
-        g.addColorStop(0.4, hexAlpha(teal, 0.07 + i * 0.015));
-        g.addColorStop(0.7, hexAlpha(accent, 0.05));
+        g.addColorStop(0.4, hexAlpha(teal, 0.09 + i * 0.015));
+        g.addColorStop(0.7, hexAlpha(accent, 0.07));
         g.addColorStop(1, "transparent");
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.moveTo(0, 40 + i * 28);
+        ctx.moveTo(0, 36 + i * 26);
         for (let x = 0; x <= w; x += 24) {
-          ctx.lineTo(x, 60 + i * 30 + Math.sin(x * 0.01 + i) * 18);
+          ctx.lineTo(x, 55 + i * 28 + Math.sin(x * 0.01 + i) * 16);
         }
-        ctx.lineTo(w, h);
-        ctx.lineTo(0, h);
+        ctx.lineTo(w, h * 0.55);
+        ctx.lineTo(0, h * 0.55);
         ctx.fill();
       }
-    } else if (theme.motif === "waves" || theme.motif === "canal") {
-      for (let i = 0; i < 4; i++) {
-        ctx.strokeStyle = hexAlpha(teal, 0.08 + i * 0.02);
-        ctx.lineWidth = 1.5;
+    } else if (theme.motif === "waves" || theme.motif === "canal" || theme.motif === "fjord") {
+      for (let i = 0; i < 5; i++) {
+        ctx.strokeStyle = hexAlpha(teal, 0.1 + i * 0.02);
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        const y0 = h * 0.55 + i * 28;
+        const y0 = h * 0.58 + i * 22;
         ctx.moveTo(0, y0);
-        for (let x = 0; x <= w; x += 16) {
-          ctx.lineTo(x, y0 + Math.sin(x * 0.02 + i) * 10);
+        for (let x = 0; x <= w; x += 14) {
+          ctx.lineTo(x, y0 + Math.sin(x * 0.02 + i) * 9);
         }
         ctx.stroke();
       }
     } else if (theme.motif === "sakura") {
-      const count = Math.round(28 * density);
+      const count = Math.round(22 * density);
       for (let i = 0; i < count; i++) {
         const x = (i * 97) % w;
-        const y = (i * 53) % (h * 0.7);
-        ctx.fillStyle = hexAlpha(accent, 0.1 + (i % 5) * 0.02);
-        petal(ctx, x, y, 5 + (i % 4));
+        const y = (i * 53) % (h * 0.72);
+        ctx.fillStyle = hexAlpha(accent, 0.14 + (i % 5) * 0.02);
+        petal(ctx, x, y, 6 + (i % 4));
       }
     } else if (theme.motif === "sun" || theme.motif === "pyramid") {
-      const cx = w * 0.85;
-      const cy = h * 0.12;
-      const radius = wide ? 220 : w >= 768 ? 180 : 160;
-      const g = ctx.createRadialGradient(cx, cy, 10, cx, cy, radius);
-      g.addColorStop(0, hexAlpha(accent, 0.22));
+      const cx = w * 0.82;
+      const cy = h * 0.1;
+      const radius = wide ? 240 : w >= 768 ? 190 : 170;
+      const g = ctx.createRadialGradient(cx, cy, 8, cx, cy, radius);
+      g.addColorStop(0, hexAlpha(accent, 0.28));
       g.addColorStop(1, "transparent");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
       if (theme.motif === "pyramid") {
-        ctx.fillStyle = hexAlpha(accent, 0.08);
+        ctx.fillStyle = hexAlpha(accent, 0.12);
         ctx.beginPath();
-        ctx.moveTo(w * 0.15, h * 0.85);
-        ctx.lineTo(w * 0.35, h * 0.55);
-        ctx.lineTo(w * 0.55, h * 0.85);
+        ctx.moveTo(w * 0.12, h * 0.88);
+        ctx.lineTo(w * 0.34, h * 0.52);
+        ctx.lineTo(w * 0.56, h * 0.88);
         ctx.fill();
       }
-    } else if (theme.motif === "lotus" || theme.motif === "leaf") {
-      for (let i = 0; i < 10; i++) {
-        ctx.strokeStyle = hexAlpha(teal, 0.08);
+    } else if (theme.motif === "lotus" || theme.motif === "leaf" || theme.motif === "forest") {
+      for (let i = 0; i < 12; i++) {
+        ctx.strokeStyle = hexAlpha(teal, 0.1);
+        ctx.lineWidth = 1.6;
         ctx.beginPath();
-        const x = (w / 10) * i + 20;
+        const x = (w / 11) * i + 16;
         ctx.moveTo(x, h);
-        ctx.quadraticCurveTo(x + 30, h * 0.6, x + 10, h * 0.35);
+        ctx.quadraticCurveTo(x + 28, h * 0.62, x + 8, h * 0.32);
         ctx.stroke();
       }
     } else if (theme.motif === "cypress") {
-      for (let i = 0; i < 7; i++) {
-        const x = 30 + i * (w / 7);
-        ctx.fillStyle = hexAlpha(teal, 0.06);
+      for (let i = 0; i < 8; i++) {
+        const x = 24 + i * (w / 8);
+        ctx.fillStyle = hexAlpha(teal, 0.09);
         ctx.beginPath();
-        ctx.moveTo(x, h * 0.35);
-        ctx.lineTo(x + 14, h * 0.82);
-        ctx.lineTo(x - 14, h * 0.82);
+        ctx.moveTo(x, h * 0.32);
+        ctx.lineTo(x + 16, h * 0.84);
+        ctx.lineTo(x - 16, h * 0.84);
         ctx.fill();
       }
-    } else if (theme.motif === "skyline") {
-      ctx.fillStyle = hexAlpha(teal, 0.06);
-      const bases = [0.55, 0.62, 0.48, 0.7, 0.58, 0.65];
+    } else if (theme.motif === "skyline" || theme.motif === "arc") {
+      ctx.fillStyle = hexAlpha(teal, 0.08);
+      const bases = [0.55, 0.62, 0.48, 0.7, 0.58, 0.65, 0.5];
       bases.forEach((bh, i) => {
         const bw = w / bases.length;
-        ctx.fillRect(i * bw + 8, h * bh, bw - 16, h * (1 - bh));
+        ctx.fillRect(i * bw + 6, h * bh, bw - 14, h * (1 - bh));
       });
+    } else if (theme.motif === "lantern" || theme.motif === "crescent" || theme.motif === "tile") {
+      for (let i = 0; i < Math.round(10 * density); i++) {
+        const x = ((i * 131) % w) + 10;
+        const y = ((i * 79) % (h * 0.55)) + 40;
+        ctx.fillStyle = hexAlpha(accent, 0.12);
+        ctx.beginPath();
+        ctx.arc(x, y, 10 + (i % 4) * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     } else {
-      // soft globe rings
-      ctx.strokeStyle = hexAlpha(teal, 0.07);
-      ctx.lineWidth = 1.2;
+      ctx.strokeStyle = hexAlpha(teal, 0.09);
+      ctx.lineWidth = 1.4;
       for (let i = 1; i <= 3; i++) {
         ctx.beginPath();
-        ctx.ellipse(w * 0.5, h * 0.2, 80 * i, 28 * i, 0, 0, Math.PI * 2);
+        ctx.ellipse(w * 0.5, h * 0.18, 90 * i, 32 * i, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
+
+    // Figurative sticker layer — emoji scattered like travel scrapbook
+    drawEmojiStickers(ctx, theme, w, h, density);
+  }
+
+  function drawEmojiStickers(ctx, theme, w, h, density) {
+    const stickers = theme.stickers || [];
+    if (!stickers.length) return;
+    const count = Math.min(Math.round(12 * density), stickers.length * 3);
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    for (let i = 0; i < count; i++) {
+      const emo = stickers[i % stickers.length];
+      const x = 28 + ((i * 173) % Math.max(40, w - 56));
+      const y = 70 + ((i * 97) % Math.max(80, h * 0.62));
+      // Keep main reading area clearer
+      if (x > w * 0.2 && x < w * 0.8 && y > h * 0.26 && y < h * 0.7) continue;
+      const size = 24 + (i % 4) * 7;
+      ctx.save();
+      ctx.globalAlpha = 0.34 + (i % 5) * 0.07;
+      ctx.translate(x, y);
+      ctx.rotate(((i % 7) - 3) * 0.09);
+      ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      ctx.fillText(emo, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   function petal(ctx, x, y, r) {
@@ -749,6 +935,8 @@
       id: theme.id,
       label: theme.label,
       motif: theme.motif,
+      flag: theme.flag || "🌍",
+      stickers: theme.stickers || [],
     };
     window.dispatchEvent(new CustomEvent("pv-dest-theme", { detail: window.__pvDestTheme }));
   }
@@ -775,7 +963,10 @@
     if (!currentId) return;
     const theme = THEMES[currentId] || THEMES.default;
     cancelAnimationFrame(canvasRaf);
-    canvasRaf = requestAnimationFrame(() => drawAtmosphere(theme));
+    canvasRaf = requestAnimationFrame(() => {
+      drawAtmosphere(theme);
+      ensureFloaters(theme.id === DEFAULT_ID ? null : theme);
+    });
   }
 
   window.__pvApplyDestTheme = syncTheme;
