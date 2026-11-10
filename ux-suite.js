@@ -1050,7 +1050,7 @@
     btn.innerHTML = `<span class="emo" aria-hidden="true">📥</span>
       <span>
         <strong>Crea viaggio da evento</strong>
-        <span>Incolla testo o importa più file · tappe, prenotazioni, checklist e documenti</span>
+        <span>Incolla testo o importa PDF e altri file · tappe, prenotazioni, checklist e documenti</span>
       </span>`;
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
@@ -1388,7 +1388,7 @@
                 <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
                 <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
                 <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa PDF e altri file nelle sezioni del viaggio</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
@@ -1415,7 +1415,7 @@
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + PDF e altri file</span></button>
                 <button type="button" data-ux="home-hint"><strong><span class="pv-menu-emo" aria-hidden="true">🏠</span>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
               </div>
             </div>
@@ -1591,7 +1591,7 @@
     openModal(
       "Altri strumenti",
       `<div class="pv-menu-grid">
-         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Crea o aggiorna · testo + più file (.txt .json .ics…)</span></button>
+         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Crea o aggiorna · testo + PDF e file (.txt .json .ics…)</span></button>
          <button type="button" data-ux="activity"><strong>Attività recente</strong><span>Cose fatte su questo dispositivo</span></button>
          <button type="button" data-ux="templates"><strong>Template viaggio</strong><span>Parti da uno schema pronto</span></button>
          <button type="button" data-ux="revisions"><strong>Versioni locali</strong><span>Ripristina una copia salvata qui</span></button>
@@ -2550,9 +2550,113 @@
     return items.slice(0, 120);
   }
 
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (window.__pvPdfjsPromise) return window.__pvPdfjsPromise;
+    window.__pvPdfjsPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "/assets/vendor/pdfjs/pdf.min.js";
+      script.async = true;
+      script.onload = () => {
+        const lib = window.pdfjsLib;
+        if (!lib) {
+          reject(new Error("pdf.js non disponibile"));
+          return;
+        }
+        try {
+          lib.GlobalWorkerOptions.workerSrc = "/assets/vendor/pdfjs/pdf.worker.min.js";
+        } catch {
+          /* ignore */
+        }
+        resolve(lib);
+      };
+      script.onerror = () => reject(new Error("Impossibile caricare il lettore PDF"));
+      document.head.appendChild(script);
+    });
+    return window.__pvPdfjsPromise;
+  }
+
+  async function extractPdfText(file) {
+    const pdfjs = await loadPdfJs();
+    const data = new Uint8Array(await file.arrayBuffer());
+    const doc = await pdfjs.getDocument({ data }).promise;
+    const maxPages = Math.min(doc.numPages || 0, 40);
+    const parts = [];
+    for (let pageNo = 1; pageNo <= maxPages; pageNo += 1) {
+      const page = await doc.getPage(pageNo);
+      const content = await page.getTextContent();
+      const line = (content.items || [])
+        .map((it) => String(it?.str || ""))
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim();
+      if (line) parts.push(line);
+    }
+    try {
+      await doc.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    return parts.join("\n").trim();
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Lettura file fallita"));
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function readImportFile(file) {
     const name = String(file?.name || "file");
     const lower = name.toLowerCase();
+    const isPdf = lower.endsWith(".pdf") || String(file?.type || "").toLowerCase() === "application/pdf";
+    if (isPdf) {
+      const text = await extractPdfText(file);
+      const items = text
+        ? parseEventImportText(text, { sourceName: name })
+        : [];
+      // Keep the original PDF in Documenti when it fits a reasonable payload.
+      if (typeof file.size === "number" && file.size > 0 && file.size <= 1.5 * 1024 * 1024) {
+        try {
+          const url = await fileToDataUrl(file);
+          items.unshift({
+            id: newImportId("pdfdoc"),
+            kind: "doc",
+            title: name.slice(0, 120),
+            detail: "PDF allegato",
+            payload: {
+              doc: {
+                id: newImportId("doc"),
+                title: name.slice(0, 120),
+                url,
+                category: "Evento",
+                day: "",
+                private: false,
+              },
+            },
+          });
+        } catch {
+          /* ignore attachment failure; text import still proceeds */
+        }
+      } else if (!text) {
+        throw new Error("PDF senza testo estraibile (forse scansionato). Usa un PDF con testo o incolla il contenuto.");
+      } else {
+        items.unshift({
+          id: newImportId("pdfnote"),
+          kind: "note",
+          title: `PDF importato: ${name}`.slice(0, 160),
+          detail: "File troppo grande per allegarlo; testo analizzato.",
+          payload: { note: `PDF importato (solo testo): ${name}` },
+        });
+      }
+      if (!items.length) {
+        throw new Error("Nessuna voce trovata nel PDF");
+      }
+      return items;
+    }
     const text = await file.text();
     if (lower.endsWith(".json")) {
       const items = parseJsonEventPayload(text);
@@ -2920,7 +3024,8 @@
       preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
       `<div class="pv-import-hint">
          <strong>${preferAdd ? "Aggiunte al viaggio" : "Crea o arricchisci un viaggio"}</strong>
-         Incolla più volte e/o carica <em>più file</em> (.txt, .md, .csv, .json, .ics, .html).
+         Incolla più volte e/o carica <em>più file</em> (.pdf, .txt, .md, .csv, .json, .ics, .html).
+         I PDF vengono letti in automatico (testo + allegato in Documenti se non troppo grandi).
          Poi scegli le voci: l’app le mette in Itinerario, Prenotazioni, Checklist, HUB Preparazione e Note.
        </div>
        <h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
@@ -2945,10 +3050,10 @@
        <div class="pv-ux-actions" style="margin-top:8px">
          <button type="button" class="pv-ux-ghost" id="pv-imp-add-paste">➕ Aggiungi testo</button>
        </div>
-       <h3 style="margin:14px 0 8px;font-size:.95rem">3. Carica uno o più file</h3>
+       <h3 style="margin:14px 0 8px;font-size:.95rem">3. Carica uno o più file (anche PDF)</h3>
        <div class="pv-import-file">
-         <input id="pv-imp-file" type="file" multiple accept=".txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
-         <span style="font-size:.8rem;color:#3f5860">Puoi selezionare più file insieme e aggiungerne altri dopo</span>
+         <input id="pv-imp-file" type="file" multiple accept=".pdf,.txt,.md,.csv,.json,.ics,.html,.htm,application/pdf,text/plain,text/csv,application/json,text/calendar,text/html" />
+         <span style="font-size:.8rem;color:#3f5860">PDF, testo e calendari · puoi selezionare più file insieme</span>
        </div>
        <div class="pv-import-file-list" id="pv-imp-file-list"></div>
        <div class="pv-ux-actions">
@@ -3126,7 +3231,7 @@
     rail.className = "pv-event-rail";
     rail.innerHTML = `
       <h3>📥 Materiali evento / congresso</h3>
-      <p>Incolla testo o importa più file anche dopo: le voci finiscono subito in Itinerario, Prenotazioni, Checklist, Documenti e Note.</p>
+      <p>Incolla testo o importa PDF e altri file anche dopo: le voci finiscono subito in Itinerario, Prenotazioni, Checklist, Documenti e Note.</p>
       <div class="pv-ux-actions">
         <button type="button" class="pv-ux-primary" data-pv-event-add>Aggiungi da evento</button>
       </div>`;
@@ -3141,6 +3246,8 @@
 
   window.__pvParseEventImport = parseEventImportText;
   window.__pvOpenEventImport = openEventImportWizard;
+  window.__pvExtractPdfText = extractPdfText;
+  window.__pvReadImportFile = readImportFile;
 
   function escapeHtml(value) {
     return String(value || "")

@@ -23,8 +23,8 @@ function test(name, fn) {
 const ux = readFileSync("ux-suite.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
-test("stamp ux-suite-20261110f wired", () => {
-  assert.match(index, /ux-suite-20261110f\.js/);
+test("stamp ux-suite-20261110g wired", () => {
+  assert.match(index, /ux-suite-20261110g\.js/);
 });
 
 test("import event menu + wizard wired", () => {
@@ -36,8 +36,17 @@ test("import event menu + wizard wired", () => {
   assert.match(ux, /createTripForImport/);
   assert.match(ux, /injectEventImportRail/);
   assert.match(ux, /Aggiungi da evento/);
-  assert.match(ux, /Carica uno o più file/);
+  assert.match(ux, /Carica uno o più file \(anche PDF\)/);
   assert.match(ux, /Crea un nuovo viaggio/);
+});
+
+test("PDF import accept + extractor wired", () => {
+  assert.match(ux, /application\/pdf/);
+  assert.match(ux, /extractPdfText/);
+  assert.match(ux, /loadPdfJs/);
+  assert.match(ux, /assets\/vendor\/pdfjs\/pdf\.min\.js/);
+  assert.match(ux, /\.pdf/);
+  assert.match(ux, /PDF allegato/);
 });
 
 // Evaluate parser helpers in a sandbox by extracting and running the suite with stubs.
