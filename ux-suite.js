@@ -338,8 +338,15 @@
       .pv-compare-bar > span{display:block;height:100%;background:linear-gradient(90deg,#007d82,#2aa3a8)}
       .pv-compare-bar.warn > span{background:linear-gradient(90deg,#b45309,#d97706)}
       .pv-onboard-steps{display:grid;gap:10px;margin:12px 0}
-      .pv-onboard-steps div{padding:12px;border-radius:14px;background:#fff;border:1px solid var(--pv-line)}
-      .pv-onboard-steps strong{display:block;margin-bottom:4px}
+      .pv-onboard-steps > div{
+        display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:14px;
+        background:#fff;border:1px solid var(--pv-line);color:var(--pv-ink,#12343c)
+      }
+      .pv-onboard-steps .pv-onboard-emo{
+        flex:0 0 auto;width:40px;height:40px;border-radius:14px;display:grid;place-items:center;
+        font-size:1.25rem;background:#eef7f7;border:1px solid rgba(0,125,130,.12)
+      }
+      .pv-onboard-steps strong{display:block;margin-bottom:4px;font-weight:800;color:var(--pv-ink,#12343c)}
       #pv-ux-search-input{
         width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;
         border:1px solid var(--pv-line);font:inherit;margin:8px 0
@@ -362,24 +369,43 @@
         }
       }
       @media (min-width:768px){
-        .pv-menu-grid{grid-template-columns:1fr 1fr;gap:10px}
+        .pv-onboard-steps{grid-template-columns:1fr 1fr;gap:12px}
+        .pv-onboard-steps > div{padding:14px 16px;border-radius:16px;min-height:92px}
+        .pv-onboard-steps .pv-onboard-emo{width:46px;height:46px;font-size:1.4rem;border-radius:16px}
+        .pv-onboard-steps > div:last-child{grid-column:1 / -1}
+        .pv-menu-grid{grid-template-columns:1fr 1fr;gap:12px}
+        .pv-menu-grid button{
+          padding:16px 16px;border-radius:18px;min-height:88px
+        }
+        .pv-menu-grid button strong{font-size:1rem;margin-bottom:5px}
+        .pv-menu-grid button span{font-size:.86rem}
+        .pv-menu-grid button .pv-menu-emo{font-size:1.15rem;margin-right:8px}
         .pv-menu-grid button.pv-menu-tools,
-        .pv-menu-grid button.danger{grid-column:1 / -1}
+        .pv-menu-grid button.danger{grid-column:1 / -1;min-height:72px}
+        .pv-menu-section h3{font-size:.78rem;margin-bottom:12px}
+        .pv-empty-state{padding:24px 22px;border-radius:20px}
+        .pv-empty-state .pv-empty-emo{font-size:2.4rem;margin-bottom:10px}
+        .pv-empty-state h3{font-size:1.18rem}
         #pv-ux-toast{bottom:calc(28px + env(safe-area-inset-bottom,0px))}
         body.pv-primary-nav-ready #pv-ux-toast{bottom:calc(100px + env(safe-area-inset-bottom,0px))}
       }
       @media (min-width:1100px){
         .pv-ux-modal{padding:32px 24px}
         .pv-ux-modal .pv-ux-sheet{
-          width:min(680px,92vw);border-radius:24px;padding:22px 22px 30px
+          width:min(720px,92vw);border-radius:24px;padding:24px 24px 32px
         }
         .recent-trips.pv-home-cards{
           grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;max-width:1100px
         }
-        .pv-empty-state{padding:22px 20px;max-width:720px;margin-inline:auto}
+        .pv-empty-state{padding:28px 24px;max-width:760px;margin-inline:auto}
+        .pv-menu-grid{gap:14px}
+        .pv-menu-grid button{padding:18px 18px;min-height:96px}
       }
       @media (min-width:1400px){
-        .pv-ux-modal .pv-ux-sheet{width:min(720px,90vw)}
+        .pv-ux-modal .pv-ux-sheet{width:min(760px,90vw)}
+        .pv-menu-grid{grid-template-columns:1fr 1fr 1fr;gap:14px}
+        .pv-menu-grid button.pv-menu-tools,
+        .pv-menu-grid button.danger{grid-column:1 / -1}
       }
       /* Spese / split: side-by-side on tablet+ */
       @media (min-width:900px){
@@ -1836,21 +1862,21 @@
       return;
     }
     openModal(
-      "Come muoverti in Pronti? VIA!",
+      "✨ Come muoverti in Pronti? VIA!",
       `<div class="pv-onboard-steps">
-        <div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div>
-        <div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div>
-        <div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div>
-        <div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div>
-        <div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🏠</span><div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🧳</span><div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">✨</span><div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🪄</span><div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">👤</span><div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div></div>
       </div>
       <div class="pv-ux-actions">
-        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">Inizia</button>
+        <button type="button" class="pv-ux-primary" id="pv-ux-onboard-done">🚀 Inizia</button>
       </div>`,
       {
         onMount: (body) => {
           body.querySelector("#pv-ux-onboard-done")?.addEventListener("click", () => {
-            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261107j" });
+            writeJson(ONBOARD_KEY, { done: true, at: new Date().toISOString(), ver: "20261110b" });
             closeModal();
             if (!tripAuth()) {
               const createBtn = [...document.querySelectorAll("button, a")].find((el) =>

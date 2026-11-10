@@ -512,7 +512,7 @@ async function main() {
     );
     ok(
       "pv-platform 20261107l present",
-      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261110a/.test(s.src || "")))
+      await page.evaluate(() => [...document.scripts].some((s) => /pv-platform-20261110b/.test(s.src || "")))
     );
     // Tab switch: panel stays open, no enter-class bounce, chrome reused.
     const tabFluid = await page.evaluate(async () => {

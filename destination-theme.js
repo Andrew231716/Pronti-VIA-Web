@@ -557,22 +557,21 @@
       }
       #pv-dest-theme-badge .pv-dest-flag{ font-size:1rem; line-height:1; }
       .pv-dest-floaters{
-        position:fixed; inset:auto 10px calc(88px + env(safe-area-inset-bottom,0px)) auto;
+        position:fixed; inset:auto 8px calc(96px + env(safe-area-inset-bottom,0px)) auto;
         z-index:2; display:flex; gap:6px; pointer-events:none;
-        opacity:.9; filter: drop-shadow(0 4px 10px rgba(16,42,48,.12));
+        opacity:.92; filter: drop-shadow(0 4px 10px rgba(16,42,48,.12));
+        transition: opacity .2s ease, transform .2s ease;
       }
       .pv-dest-floaters span{
-        font-size:1.35rem; line-height:1; padding:7px 8px; border-radius:14px;
-        background:rgba(255,255,255,.78); border:1px solid rgba(16,42,48,.08);
+        font-size:1.2rem; line-height:1; padding:6px 7px; border-radius:14px;
+        background:rgba(255,255,255,.82); border:1px solid rgba(16,42,48,.08);
         backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
       }
       html[data-pv-theme="dark"] .pv-dest-floaters span{
         background:rgba(20,36,40,.78); border-color:rgba(255,255,255,.08);
       }
-      @media (max-width:767px){
-        .pv-dest-floaters{ right:8px; bottom:calc(96px + env(safe-area-inset-bottom,0px)); }
-        .pv-dest-floaters span{ font-size:1.2rem; padding:6px 7px; }
-      }
+      /* Keep floaters clear of floating Hub on tablet/desktop */
+      body.pv-plat-open .pv-dest-floaters{ opacity:0; transform:translateY(8px); }
       #pv-dest-theme-badge[hidden]{ display:none!important; }
       #pv-primary-nav .pv-nav-ico svg{ transition: transform .22s ease, color .22s ease; }
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico{
@@ -584,18 +583,57 @@
           max-width:min(300px, 36vw); font-size:.74rem; padding:5px 12px;
         }
         #pv-dest-atmosphere{ opacity:.55; }
-        .pv-dest-floaters{ right:18px; bottom:calc(100px + env(safe-area-inset-bottom,0px)); }
+        .pv-dest-floaters{
+          top: calc(72px + env(safe-area-inset-top,0px));
+          right: max(16px, env(safe-area-inset-right,0px));
+          bottom: auto;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .pv-dest-floaters span{ font-size:1.45rem; padding:9px 10px; border-radius:16px; }
+        body.pv-plat-open .pv-dest-floaters{
+          opacity:.55; transform:none;
+          right: max(12px, calc((100vw - 680px) / 2 - 56px));
+        }
       }
       @media (min-width:1100px){
         #pv-dest-theme-badge{ max-width:340px; }
         #pv-dest-atmosphere{ opacity:.48; }
         #pv-account-chip .pv-account-chip-main{ gap:16px; }
-        .pv-dest-floaters{ right:28px; }
+        .pv-dest-floaters{
+          top: calc(78px + env(safe-area-inset-top,0px));
+          right: max(24px, env(safe-area-inset-right,0px));
+          gap: 10px;
+        }
+        .pv-dest-floaters span{ font-size:1.6rem; padding:10px 11px; border-radius:18px; }
+        body.pv-plat-open .pv-dest-floaters{
+          opacity:.65;
+          right: max(16px, calc((100vw - 820px) / 2 - 64px));
+        }
+        /* Extra scrapbook rail on the left for wide desktops */
+        .pv-dest-floaters-left{
+          position:fixed; top:calc(120px + env(safe-area-inset-top,0px));
+          left: max(22px, env(safe-area-inset-left,0px));
+          z-index:2; display:flex; flex-direction:column; gap:10px; pointer-events:none;
+          filter: drop-shadow(0 4px 10px rgba(16,42,48,.1));
+        }
+        .pv-dest-floaters-left span{
+          font-size:1.45rem; line-height:1; padding:9px 10px; border-radius:16px;
+          background:rgba(255,255,255,.8); border:1px solid rgba(16,42,48,.08);
+          backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+        }
+        html[data-pv-theme="dark"] .pv-dest-floaters-left span{
+          background:rgba(20,36,40,.78); border-color:rgba(255,255,255,.08);
+        }
+        body.pv-plat-open .pv-dest-floaters-left{ opacity:.5; }
+      }
+      @media (max-width:1099px){
+        .pv-dest-floaters-left{ display:none!important; }
       }
       @media (prefers-reduced-motion: reduce){
         body.pv-account-ready{ transition:none; }
         #pv-dest-atmosphere{ display:none; }
-        .pv-dest-floaters{ display:none; }
+        .pv-dest-floaters, .pv-dest-floaters-left{ display:none; }
       }
     `;
   }
@@ -653,18 +691,35 @@
 
   function ensureFloaters(theme) {
     let row = document.querySelector(".pv-dest-floaters");
+    let left = document.querySelector(".pv-dest-floaters-left");
     if (!theme || theme.id === DEFAULT_ID || !tripAuth()) {
       if (row) row.remove();
+      if (left) left.remove();
       return;
     }
+    const stickers = theme.stickers || [];
     if (!row) {
       row = document.createElement("div");
       row.className = "pv-dest-floaters";
       row.setAttribute("aria-hidden", "true");
       document.body.appendChild(row);
     }
-    const picks = (theme.stickers || []).slice(0, 3);
-    row.innerHTML = picks.map((e) => `<span>${e}</span>`).join("");
+    const wide = window.matchMedia?.("(min-width: 1100px)")?.matches;
+    const tablet = window.matchMedia?.("(min-width: 768px)")?.matches;
+    const rightCount = wide ? 4 : tablet ? 3 : 3;
+    row.innerHTML = stickers.slice(0, rightCount).map((e) => `<span>${e}</span>`).join("");
+
+    if (wide && stickers.length > 3) {
+      if (!left) {
+        left = document.createElement("div");
+        left.className = "pv-dest-floaters-left";
+        left.setAttribute("aria-hidden", "true");
+        document.body.appendChild(left);
+      }
+      left.innerHTML = stickers.slice(rightCount).map((e) => `<span>${e}</span>`).join("");
+    } else if (left) {
+      left.remove();
+    }
   }
 
   function ensureCanvas() {
@@ -908,7 +963,10 @@
     if (!currentId) return;
     const theme = THEMES[currentId] || THEMES.default;
     cancelAnimationFrame(canvasRaf);
-    canvasRaf = requestAnimationFrame(() => drawAtmosphere(theme));
+    canvasRaf = requestAnimationFrame(() => {
+      drawAtmosphere(theme);
+      ensureFloaters(theme.id === DEFAULT_ID ? null : theme);
+    });
   }
 
   window.__pvApplyDestTheme = syncTheme;

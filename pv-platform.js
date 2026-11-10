@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261110a";
+  const VER = "20261110b";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -377,16 +377,61 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
     right: auto;
     left: 50%;
     bottom: calc(88px + env(safe-area-inset-bottom, 0px));
-    width: min(640px, calc(100vw - 48px));
+    width: min(680px, calc(100vw - 48px));
     max-height: min(80vh, 860px);
     transform: translateX(-50%);
-    border-radius: 24px;
-    padding: 18px 18px 20px;
+    border-radius: 26px;
+    padding: 20px 20px 22px;
+    box-shadow: 0 18px 56px rgba(12,40,48,.16);
   }
   #pv-plat-panel.open.pv-plat-entering { transform: translateX(-50%) translateY(18px); }
+  #pv-plat-panel .pv-plat-head { gap: 16px; margin-bottom: 16px; padding-bottom: 14px; }
+  #pv-plat-panel .pv-plat-kicker { font-size: .76rem; gap: 9px; }
+  #pv-plat-panel .pv-plat-kicker .pv-plat-emo { font-size: 1.3rem; }
+  #pv-plat-panel .pv-plat-head strong { font-size: 1.38rem; }
+  #pv-plat-panel .pv-plat-head .pv-plat-lead { font-size: .92rem; max-width: 46ch; }
+  #pv-plat-panel .pv-plat-tab-groups { gap: 6px; padding: 6px; margin-bottom: 14px; border-radius: 18px; }
+  #pv-plat-panel .pv-plat-tab-groups button { min-height: 46px; font-size: 14px; border-radius: 14px; }
   #pv-plat-panel .pv-plat-tabs {
-    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 16px;
   }
+  #pv-plat-panel .pv-plat-tabs button {
+    min-height: 64px; border-radius: 18px; padding: 10px 8px; font-size: 12.5px; gap: 5px;
+  }
+  #pv-plat-panel .pv-plat-tabs button .pv-plat-tab-emo { font-size: 1.4rem; }
+  .pv-plat-hero { gap: 16px; align-items: center; }
+  .pv-plat-hero-ico { width: 64px; height: 64px; border-radius: 20px; font-size: 2rem; }
+  .pv-plat-sticker-row { gap: 8px; margin: 14px 0 4px; }
+  .pv-plat-sticker { padding: 7px 12px; font-size: 13px; }
+  .pv-plat-sticker span { font-size: 1.15rem; }
+  .pv-plat-card { padding: 18px 18px; border-radius: 22px; }
+  .pv-plat-card h3 { font-size: 1.08rem; }
+  .pv-plat-grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .pv-plat-stat { padding: 12px 14px; border-radius: 14px; }
+  .pv-plat-stat b { font-size: 1.15rem; }
+  .pv-plat-actions { gap: 8px; margin-top: 12px; }
+  #pv-plat-panel .pv-plat-btn { min-height: 44px; padding: 10px 16px; font-size: 13px; border-radius: 14px; }
+  .pv-plat-dash-wide {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, .72fr);
+    gap: 12px;
+    align-items: stretch;
+    margin-bottom: 12px;
+  }
+  .pv-plat-dash-wide > .pv-plat-card { margin-bottom: 0; }
+  .pv-plat-side-stickers {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 14px; border-radius: 20px;
+    background: color-mix(in srgb, var(--pv-plat-accent) 8%, var(--pv-plat-card));
+    border: 1px solid var(--pv-plat-border);
+  }
+  .pv-plat-side-stickers h4 {
+    margin: 0; font: 800 .74rem/1.2 system-ui,sans-serif; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--pv-plat-accent);
+  }
+  .pv-plat-side-stickers .pv-plat-sticker-row { margin: 0; }
 }
 #pv-plat-body { min-height: 120px; transition: opacity .18s ease; }
 #pv-plat-body.pv-plat-body-busy { opacity: .7; }
@@ -468,6 +513,8 @@ body:not(.pv-primary-nav-ready) #pv-plat-panel {
   color: var(--pv-plat-ink);
 }
 .pv-plat-sticker span { font-size:1rem; }
+.pv-plat-side-stickers { display: none; }
+.pv-plat-dash-wide { display: block; }
 #pv-print-day { display: none; }
 .pv-plat-conflict-choice { display: block; padding: 8px 0; }
 .pv-plat-conflict-choice span, .pv-plat-conflict-details { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -506,17 +553,45 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 /* Desktop wide: larger Hub panel, still clear of capsule nav */
 @media (min-width: 1100px) {
   #pv-plat-panel {
-    width: min(760px, calc(100vw - 64px));
-    max-height: min(82vh, 900px);
-    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
-    padding: 20px 22px 22px;
+    width: min(820px, calc(100vw - 72px));
+    max-height: min(84vh, 920px);
+    bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    padding: 24px 26px 26px;
+    border-radius: 28px;
   }
   #pv-plat-fab { bottom: 28px; left: 28px; right: auto; }
+  #pv-plat-panel .pv-plat-head strong { font-size: 1.5rem; }
+  #pv-plat-panel .pv-plat-head .pv-plat-lead { font-size: .96rem; max-width: 52ch; }
+  #pv-plat-panel .pv-plat-tabs button { min-height: 72px; font-size: 13px; }
+  #pv-plat-panel .pv-plat-tabs button .pv-plat-tab-emo { font-size: 1.55rem; }
+  .pv-plat-hero-ico { width: 72px; height: 72px; border-radius: 22px; font-size: 2.2rem; }
+  .pv-plat-dash-wide {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(220px, .85fr);
+    gap: 14px;
+    align-items: start;
+  }
+  .pv-plat-dash-wide > .pv-plat-card { margin-bottom: 0; }
+  .pv-plat-side-stickers {
+    display: flex; flex-direction: column; gap: 10px;
+    padding: 16px; border-radius: 22px;
+    background: color-mix(in srgb, var(--pv-plat-accent) 8%, var(--pv-plat-card));
+    border: 1px solid var(--pv-plat-border);
+  }
+  .pv-plat-side-stickers h4 {
+    margin: 0; font: 800 .78rem/1.2 system-ui,sans-serif; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--pv-plat-accent);
+  }
+  .pv-plat-side-stickers .pv-plat-sticker-row { margin: 0; }
+  .pv-plat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 1400px) {
   #pv-plat-panel {
-    width: min(820px, calc(100vw - 80px));
+    width: min(900px, calc(100vw - 96px));
+    padding: 26px 28px 28px;
   }
+  #pv-plat-panel .pv-plat-tabs { gap: 10px; }
+  #pv-plat-panel .pv-plat-tabs button { min-height: 76px; }
 }
 `;
     document.head.appendChild(s);
@@ -878,24 +953,27 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     if (openPolls) todos.push(`${openPolls} votazioni aperte`);
     if (!(prep.departureChecklist || []).some((x) => x.done)) todos.push("Checklist partenza da completare");
     const destTheme = window.__pvDestTheme || {};
-    const destStickers = Array.isArray(destTheme.stickers) ? destTheme.stickers.slice(0, 4) : [];
+    const allStickers = Array.isArray(destTheme.stickers) ? destTheme.stickers : [];
+    const destStickers = allStickers.slice(0, 6);
     const destFlag = destTheme.flag || "✈️";
-    return `
+    const destLabel = destTheme.label && destTheme.id !== "default" ? destTheme.label : "";
+    const stickerHtml = destStickers.length
+      ? `<div class="pv-plat-sticker-row" aria-hidden="true">${destStickers
+          .map((e) => `<span class="pv-plat-sticker"><span>${e}</span></span>`)
+          .join("")}</div>`
+      : "";
+    const mainCard = `
       <div class="pv-plat-card">
         <div class="pv-plat-hero">
           <div class="pv-plat-hero-ico" aria-hidden="true">${destFlag}</div>
           <div>
             <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
-            <p class="pv-plat-muted">${escapeHtml(trip.destination || "Destinazione da definire")}</p>
+            <p class="pv-plat-muted">${escapeHtml(trip.destination || "Destinazione da definire")}${
+              destLabel ? ` · tema ${escapeHtml(destLabel)}` : ""
+            }</p>
           </div>
         </div>
-        ${
-          destStickers.length
-            ? `<div class="pv-plat-sticker-row" aria-hidden="true">${destStickers
-                .map((e) => `<span class="pv-plat-sticker"><span>${e}</span></span>`)
-                .join("")}</div>`
-            : ""
-        }
+        ${stickerHtml}
         <div class="pv-plat-grid" style="margin-top:10px">
           <div class="pv-plat-stat"><b>${
             dLeft == null ? "—" : dLeft > 0 ? `tra ${dLeft} gg` : dLeft === 0 ? "oggi" : "concluso"
@@ -905,20 +983,34 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <div class="pv-plat-stat"><b>${euro(spent)}</b><span>Spese</span></div>
         </div>
         <p class="pv-plat-muted" style="margin-top:8px">Budget ${euro(budget)} · resta ${euro(Math.max(0, budget - spent))}</p>
-      </div>
+      </div>`;
+    const nextCard = `
       <div class="pv-plat-card">
-        <h3>Prossimi passi</h3>
+        <h3>🧭 Prossimi passi</h3>
         <ul class="pv-plat-list">${(todos.length ? todos : ["Niente di urgente — puoi esplorare le sezioni qui sotto."])
           .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>
         <div class="pv-plat-actions">
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="today">Oggi</button>
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">Preparazione</button>
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">Votazioni</button>
-          <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">Mappa</a>
-          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">Riordina tappe</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="today">☀️ Oggi</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">🧳 Preparazione</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">🗳️ Votazioni</button>
+          <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">🗺️ Mappa</a>
+          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">🔀 Riordina tappe</button>
         </div>
       </div>`;
+    const side =
+      destStickers.length > 0
+        ? `<aside class="pv-plat-side-stickers" aria-hidden="true">
+            <h4>${destFlag} Atmosfera</h4>
+            <div class="pv-plat-sticker-row">${allStickers
+              .map((e) => `<span class="pv-plat-sticker"><span>${e}</span></span>`)
+              .join("")}</div>
+            <p class="pv-plat-muted" style="margin:0">Suggerimenti visivi dal paese di destinazione.</p>
+          </aside>`
+        : "";
+    return side
+      ? `<div class="pv-plat-dash-wide">${mainCard}${side}</div>${nextCard}`
+      : `${mainCard}${nextCard}`;
   }
 
   async function renderPolls() {
