@@ -62,11 +62,18 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       const cache = await caches.open(CACHE);
       const fresh = await fetch(req).catch(() => undefined);
-      if (fresh?.ok) cache.put(req, fresh.clone()).catch(() => {});
-      if (fresh && fresh.status < 500) return fresh;
+      const ct = fresh?.headers?.get("content-type") || "";
+      const wantsJs = /\.m?js(\?|$)/i.test(url.pathname) || req.destination === "script";
+      // Never cache an HTML shell as a JS module (breaks dynamic import → blank home).
+      const freshIsJsOk = Boolean(fresh?.ok && (!wantsJs || /javascript|ecmascript|json/i.test(ct)));
+      if (freshIsJsOk) cache.put(req, fresh.clone()).catch(() => {});
+      if (fresh && fresh.status < 500 && (!wantsJs || freshIsJsOk)) return fresh;
 
       const cached = await cache.match(req);
-      if (cached) return cached;
+      if (cached) {
+        const cachedCt = cached.headers?.get("content-type") || "";
+        if (!wantsJs || /javascript|ecmascript|json/i.test(cachedCt)) return cached;
+      }
       if (req.mode === "navigate") {
         const index = new URL("index.html", self.registration.scope);
         const shell = await cache.match(index.href);
