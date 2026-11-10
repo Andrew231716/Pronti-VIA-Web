@@ -344,6 +344,23 @@
         display:inline-flex;align-items:center;justify-content:center;cursor:pointer;min-height:36px
       }
       .toolbar-actions .pv-delete-trip-btn:hover{background:#ffe8e6;color:#b71c1c}
+      .pv-home-import-card{
+        display:flex;align-items:flex-start;gap:12px;width:100%;box-sizing:border-box;
+        margin:10px 0 12px;padding:14px 16px;border-radius:16px;text-align:left;cursor:pointer;
+        appearance:none;border:1px solid rgba(0,125,130,.18);
+        background:linear-gradient(160deg,#eef7f7,#e6f2f2);
+        color:#12343c;box-shadow:0 6px 18px rgba(16,42,48,.05);font:inherit
+      }
+      .pv-home-import-card .emo{
+        flex:0 0 auto;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+        background:#fff;border:1px solid rgba(0,125,130,.14);font-size:1.2rem
+      }
+      .pv-home-import-card strong{display:block;font-size:.95rem;line-height:1.25;margin:0 0 2px}
+      .pv-home-import-card span{display:block;font-size:.8rem;color:#3f5860;line-height:1.35}
+      .pv-home-import-card:active{transform:scale(.99)}
+      @media (min-width:768px){
+        .pv-home-import-card{max-width:720px}
+      }
       .pv-home-trash-wrap{
         display:inline-flex;align-items:center;gap:8px;margin-left:8px;vertical-align:middle
       }
@@ -980,32 +997,47 @@
   }
 
   function injectHomeImportEntry() {
+    const existing = document.getElementById("pv-home-import-btn");
     if (tripAuth()) {
-      document.getElementById("pv-home-import-btn")?.remove();
+      existing?.remove();
       return;
     }
-    if (document.getElementById("pv-home-import-btn")) return;
+    if (existing) return;
+
     const host = document.querySelector(".recent-trips");
-    const anchor =
-      [...document.querySelectorAll("button")].find((b) =>
-        /^i tuoi viaggi$/i.test((b.textContent || "").trim())
-      ) || host;
-    if (!anchor) return;
+    const nuovo =
+      [...document.querySelectorAll("button")].find((b) => /nuovo viaggio/i.test((b.textContent || "").trim())) || null;
+    const section =
+      host ||
+      nuovo?.closest("section") ||
+      nuovo?.parentElement?.parentElement ||
+      document.querySelector("#root main");
+    if (!section && !nuovo) return;
+
     const btn = document.createElement("button");
     btn.type = "button";
     btn.id = "pv-home-import-btn";
-    btn.className = "pv-ux-ghost";
-    btn.style.cssText = "margin:8px 0 0;font:700 12px inherit";
-    btn.textContent = "📥 Crea viaggio da evento (testo / più file)";
+    btn.className = "pv-home-import-card";
+    btn.innerHTML = `<span class="emo" aria-hidden="true">📥</span>
+      <span>
+        <strong>Crea viaggio da evento</strong>
+        <span>Incolla testo o importa più file · tappe, prenotazioni, checklist e documenti</span>
+      </span>`;
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
+      ev.stopPropagation();
       void openEventImportWizard({ mode: "create" });
     });
-    if (anchor.parentElement) {
-      const wrap = document.getElementById("pv-home-trash-wrap") || anchor.parentElement;
-      wrap.appendChild(btn);
+
+    // Full-width card under the "I tuoi viaggi / Nuovo viaggio" row — never inside the trash wrap.
+    if (nuovo) {
+      const row = nuovo.parentElement;
+      if (row && row !== section) row.insertAdjacentElement("afterend", btn);
+      else nuovo.insertAdjacentElement("afterend", btn);
+    } else if (host) {
+      host.prepend(btn);
     } else {
-      host?.prepend(btn);
+      section.prepend(btn);
     }
   }
 
