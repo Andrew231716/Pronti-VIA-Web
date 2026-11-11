@@ -937,7 +937,8 @@
         badge.className = "pv-trip-meta pv-trip-sync";
         card.querySelector(".pv-trip-body").append(badge);
       }
-      if (badge && badge.textContent !== label) badge.textContent = label;
+      const badgeText = label === "Sincronizzato" ? "" : label;
+      if (badge && badge.textContent !== badgeText) badge.textContent = badgeText;
     }
   }
 
@@ -986,7 +987,8 @@
       : featured.start ? `Partenza · ${featured.start.split("-").reverse().join("/")}` : "Apri l’itinerario e le prenotazioni.";
     for (const [selector, value] of [["h3", featured.title], ["p", detail], ["small", featured.status], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
       const node = resume.querySelector(selector);
-      if (node.textContent !== value) node.textContent = value;
+      const text = selector === "small" && value === "Sincronizzato" ? "" : value;
+      if (node.textContent !== text) node.textContent = text;
     }
     const href = "#" + new URLSearchParams({ trip: featured.id, key: featured.key });
     const link = resume.querySelector("a");

@@ -323,7 +323,7 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
 #root .trip-cover[data-pv-accra-cover] > img,
 #root .trip-cover[data-pv-accra-cover] > .pv-diary-cover,
 #root .trip-cover[data-pv-accra-cover]:not([data-pv-cover-ready="1"]) > .photo-credit {
-  visibility: hidden;
+  display: none !important;
 }
 
 html {
@@ -669,4 +669,10 @@ html #pv-plat-panel .pv-plat-btn.primary {
   background: var(--pv-dest-teal-deep, #16564b);
   border-color: var(--pv-dest-teal-deep, #16564b);
   color: white;
+}
+
+
+html #pv-plat-status.server { display: none !important; }
+html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
+  background: var(--diary-paper);
 }
