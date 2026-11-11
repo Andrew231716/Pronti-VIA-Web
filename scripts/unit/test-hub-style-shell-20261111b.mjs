@@ -19,10 +19,10 @@ function test(name, fn) {
   }
 }
 
-test("stamps 20261112f wired", () => {
-  assert.match(index, /pv-platform-20261112e\.js/);
+test("stamps 20261112g wired", () => {
+  assert.match(index, /pv-platform-20261112g\.js/);
   assert.match(index, /destination-theme-20261112f\.js/);
-  assert.match(index, /account\.css\?v=20261112f/);
+  assert.match(index, /account\.css\?v=20261112g/);
   assert.match(index, /expense-splitwise-20261111o\.js/);
 });
 

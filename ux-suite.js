@@ -1449,6 +1449,7 @@
 
   function settingsOrganizzaHtml(inTrip) {
     if (inTrip) {
+      const section = activeSectionMeta();
       const syncStatus =
         window.__pvTripOverview?.(tripAuth().id, tripAuth().key)?.status || "Verifica sincronizzazione";
       return `<div class="pv-menu-section">
@@ -1461,6 +1462,18 @@
                 <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
                 <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
               </div>
+            </div>
+            <div class="pv-menu-section">
+              <h3>🧰 Strumenti</h3>
+              <div class="pv-menu-grid">
+                <button type="button" class="pv-menu-tools" data-ux="section-tools">
+                  <strong>${escapeHtml(section.title)}</strong>
+                  <span>${escapeHtml(section.hint)}</span>
+                </button>
+                <button type="button" data-ux="search"><strong><span class="pv-menu-emo" aria-hidden="true">🔎</span>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
+                <button type="button" data-ux="compare"><strong><span class="pv-menu-emo" aria-hidden="true">💶</span>Preventivo e spese</strong><span>Confronta stima e spese reali</span></button>
+                <button type="button" data-ux="more"><strong><span class="pv-menu-emo" aria-hidden="true">🧰</span>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
+              </div>
             </div>`;
     }
     return `<div class="pv-menu-section">
@@ -1471,6 +1484,7 @@
               <h3>⚙️ Strumenti</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
+                <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
                 <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>Tema, sync e backup Hub</span></button>
               </div>
             </div>`;
@@ -1547,71 +1561,15 @@
     clearMenuNavExpanded();
     menuBtn?.setAttribute("aria-expanded", "true");
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("profile");
-    const section = inTrip ? activeSectionMeta() : null;
     const modal = openModal(
-      inTrip && section ? `Profilo · ${section.label}` : "Profilo e account",
-      `${
-        inTrip
-          ? `<div class="pv-menu-section">
-              <div class="pv-menu-context">
-                <strong>Sei in</strong>
-                <em>${escapeHtml(section.label)}</em>
-                <p>Le azioni rapide qui sotto valgono per questa sezione. Compagni, inviti e sync sono in Impostazioni (ingranaggio).</p>
-              </div>
-              <h3>⚡ Azioni rapide</h3>
-              <div class="pv-menu-grid">
-                <button type="button" class="pv-menu-tools" data-ux="section-tools">
-                  <strong>${escapeHtml(section.title)}</strong>
-                  <span>${escapeHtml(section.hint)}</span>
-                </button>
-                <button type="button" data-ux="search"><strong><span class="pv-menu-emo" aria-hidden="true">🔎</span>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
-              <h3>💶 Soldi</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="compare"><strong><span class="pv-menu-emo" aria-hidden="true">💶</span>Preventivo e spese</strong><span>Confronta stima e spese reali</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
-              <h3>Altro</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="more"><strong><span class="pv-menu-emo" aria-hidden="true">🧰</span>Altri strumenti</strong><span>Attività, template, versioni, export</span></button>
-                <button type="button" data-ux="hub"><strong><span class="pv-menu-emo" aria-hidden="true">✨</span>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso · voti, preparazione, backup</span></button>
-              </div>
-            </div>`
-          : `<div class="pv-menu-section">
-              <h3>Il tuo account</h3>
-              ${renderAccountInfoBlock()}
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
-              <h3>I tuoi viaggi</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
-                <button type="button" data-ux="home-hint"><strong><span class="pv-menu-emo" aria-hidden="true">🏠</span>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
-              <h3>Altro</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="hub"><strong>Funzioni di gruppo (HUB)</strong><span>Anche dalla barra in basso</span></button>
-              </div>
-            </div>`
-      }
-       ${
-         inTrip
-           ? `<div class="pv-menu-section">
+      "Profilo e account",
+      `<div class="pv-menu-section">
          <h3>Il tuo account</h3>
          ${renderAccountInfoBlock()}
          <div class="pv-menu-grid">
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
          </div>
-       </div>`
-           : ""
-       }
+       </div>
        <div class="pv-menu-section">
          <h3>Zona pericolosa</h3>
          <div class="pv-menu-grid">

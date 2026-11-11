@@ -4,9 +4,10 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112c";
+  const VER = "20261112g";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
+  const THEME_CYCLE = ["system", "light", "dark"];
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
   const REMINDERS_LOCAL = "viavia-reminders-local-v1";
   const ARCHIVE_KEY = "viavia-archive-index-v1";
@@ -270,9 +271,14 @@
   }
 
   /* ---------- theme ---------- */
+  function getThemeMode() {
+    const mode = readJson(THEME_KEY, { mode: "system" }).mode || "system";
+    return THEME_CYCLE.includes(mode) ? mode : "system";
+  }
+
   function applyTheme(mode) {
     const root = document.documentElement;
-    const m = mode || readJson(THEME_KEY, { mode: "system" }).mode || "system";
+    const m = THEME_CYCLE.includes(mode) ? mode : getThemeMode();
     writeJson(THEME_KEY, { mode: m });
     let dark = m === "dark";
     if (m === "system") {
@@ -282,6 +288,21 @@
     root.style.colorScheme = dark ? "dark" : "light";
     // Keep Tailwind `.dark` utilities in sync with Hub theme.
     root.classList.toggle("dark", dark);
+    root.dataset.pvThemeMode = m;
+    try {
+      window.dispatchEvent(new CustomEvent("pv-theme-changed", { detail: { mode: m, dark } }));
+    } catch {
+      /* ignore */
+    }
+    const select = document.getElementById("pv-theme");
+    if (select && select.value !== m) select.value = m;
+  }
+
+  function cycleTheme() {
+    const cur = getThemeMode();
+    const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+    applyTheme(next);
+    return next;
   }
 
   /* ---------- styles ---------- */
@@ -2338,6 +2359,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       validateBackup,
       roleForTrip,
       canRole,
+      getThemeMode,
+      setTheme: applyTheme,
+      cycleTheme,
       open: () => togglePanel(true),
       openSettings: () => { activeTab = "settings"; togglePanel(true); },
     };
