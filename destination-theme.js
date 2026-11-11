@@ -1039,6 +1039,9 @@
   function renderCover(theme) {
     const mount = document.querySelector("#root .trip-cover");
     if (!mount || document.querySelector("#root .demo-notice")) return;
+    // The local Accra cover follows the rendered trip, independent of image replacement.
+    const destination = mount.querySelector(".destination")?.textContent || "";
+    mount.toggleAttribute("data-pv-accra-cover", Boolean(tripAuth() && /\baccra\b/i.test(destination)));
     let canvas = mount.querySelector(".pv-diary-cover");
     if (!tripAuth()) {
       canvas?.remove();

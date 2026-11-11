@@ -314,3 +314,14 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
     padding-inline: .35rem;
   }
 }
+
+/* The local photo is painted by the cover itself, so a React image remount
+   or an asynchronous destination lookup cannot remove it. */
+#root .trip-cover[data-pv-accra-cover] {
+  background: #104d37 url("./assets/accra-black-star-square.jpg") center 43% / cover no-repeat;
+}
+#root .trip-cover[data-pv-accra-cover] > img,
+#root .trip-cover[data-pv-accra-cover] > .pv-diary-cover,
+#root .trip-cover[data-pv-accra-cover]:not([data-pv-cover-ready="1"]) > .photo-credit {
+  visibility: hidden;
+}
