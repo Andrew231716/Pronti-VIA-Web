@@ -5,7 +5,15 @@
       "destination": "https://pronti-via-k7es.netlify.app/api/:path"
     },
     {
-      "source": "/((?!assets/|vendor/|api/|.*\\..*).*)",
+      "source": "/invito",
+      "destination": "https://pronti-via-k7es.netlify.app/invito"
+    },
+    {
+      "source": "/invito/:id*",
+      "destination": "https://pronti-via-k7es.netlify.app/invito/:id*"
+    },
+    {
+      "source": "/((?!assets/|vendor/|api/|invito/|.*\\..*).*)",
       "destination": "/index.html"
     }
   ],

@@ -97,15 +97,27 @@ function publicRecord(record) {
     ...rest,
     key: "",
     canEdit: false,
-    preview: {
-      title: rest.trip?.title || rest.title || "Viaggio",
-      destination: rest.trip?.destination || "",
-      start: rest.trip?.start || "",
-      end: rest.trip?.end || "",
-      members: Array.isArray(rest.trip?.members)
-        ? rest.trip.members.map((m) => ({ name: m?.name || "" }))
-        : [],
-    },
+    preview: (() => {
+      const title = rest.trip?.title || rest.title || "Viaggio";
+      const destination = rest.trip?.destination || "";
+      const start = rest.trip?.start || "";
+      const end = rest.trip?.end || "";
+      const when = [start, end].filter(Boolean).join(" → ");
+      const bits = [destination, when].filter(Boolean).join(" · ");
+      return {
+        title,
+        destination,
+        start,
+        end,
+        inviteTitle: `Invito · ${title}`,
+        inviteMessage: bits
+          ? `Sei invitato a «${title}» · ${bits}. Apri Pronti? VIA! per entrare nel viaggio.`
+          : `Sei invitato a «${title}». Apri Pronti? VIA! per entrare nel viaggio.`,
+        members: Array.isArray(rest.trip?.members)
+          ? rest.trip.members.map((m) => ({ name: m?.name || "" }))
+          : [],
+      };
+    })(),
   };
 }
 

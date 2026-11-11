@@ -1030,6 +1030,78 @@
     }
   }
 
+  function formatInviteRange(start, end) {
+    const fmt = (iso) => {
+      if (!iso) return "";
+      try {
+        return new Intl.DateTimeFormat("it-IT", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }).format(new Date(`${iso}T12:00:00`));
+      } catch {
+        return String(iso);
+      }
+    };
+    const a = fmt(start);
+    const b = fmt(end);
+    if (a && b) return `${a} → ${b}`;
+    return a || b || "";
+  }
+
+  /**
+   * Prefer /invito/:id so messengers can show an Open Graph card.
+   * Falls back to the hash URL when the snapshot is not a Netlify ref.
+   */
+  function toInvitePreviewUrl(enrichedUrl) {
+    try {
+      const url = new URL(String(enrichedUrl || ""));
+      const params = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const s = String(params.get("s") || "");
+      if (!s.startsWith("n:")) return url.toString();
+      const id = s.slice(2).trim();
+      if (!id) return url.toString();
+      return `${url.origin}/invito/${encodeURIComponent(id)}`;
+    } catch {
+      return String(enrichedUrl || "");
+    }
+  }
+
+  function buildInviteSharePayload(enrichedUrl) {
+    try {
+      const url = new URL(String(enrichedUrl || ""));
+      const params = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const tripId = params.get("trip");
+      const rec = tripId ? readLocalTrips()[tripId] : null;
+      const title = String(rec?.trip?.title || "un viaggio").trim() || "un viaggio";
+      const destination = String(rec?.trip?.destination || "").trim();
+      const when = formatInviteRange(rec?.trip?.start, rec?.trip?.end);
+      const bits = [destination, when].filter(Boolean).join(" · ");
+      const inviteUrl = toInvitePreviewUrl(url.toString());
+      const lines = [`Sei invitato a «${title}»`];
+      if (bits) lines.push(bits);
+      lines.push("", "Apri l'invito su Pronti? VIA!:", inviteUrl);
+      return {
+        title: `Invito · ${title}`,
+        text: lines.join("\n"),
+        url: inviteUrl,
+        description: bits
+          ? `Sei invitato a «${title}» · ${bits}.`
+          : `Sei invitato a «${title}».`,
+      };
+    } catch {
+      return {
+        title: "Invito · Pronti? VIA!",
+        text: String(enrichedUrl || ""),
+        url: String(enrichedUrl || ""),
+        description: "Sei invitato a un viaggio su Pronti? VIA!",
+      };
+    }
+  }
+
+  window.__pvBuildInviteShare = buildInviteSharePayload;
+  window.__pvToInvitePreviewUrl = toInvitePreviewUrl;
+
   function shareUrlHasSnapshot(text) {
     try {
       const url = new URL(String(text || ""));
@@ -1083,7 +1155,9 @@
           notifyShareBlocked(msg);
           throw new Error(msg);
         }
-        return originalWriteText(enriched);
+        // Copy invite message + preview URL (OG card) instead of a bare hash link.
+        const invite = buildInviteSharePayload(enriched);
+        return originalWriteText(invite.text || enriched);
       }
       return originalWriteText(text);
     };
@@ -1107,12 +1181,16 @@
             notifyShareBlocked(msg);
             throw new Error(msg);
           }
-          next.url = enrichShareUrl(next.url || url.toString());
-          if (!shareUrlHasSnapshot(next.url)) {
+          const enriched = enrichShareUrl(next.url || url.toString());
+          if (!shareUrlHasSnapshot(enriched)) {
             const msg = "Link incompleto senza snapshot. Condivisione annullata.";
             notifyShareBlocked(msg);
             throw new Error(msg);
           }
+          const invite = buildInviteSharePayload(enriched);
+          next.url = invite.url || enriched;
+          next.title = invite.title || next.title || "Invito · Pronti? VIA!";
+          next.text = invite.description || next.text || invite.text;
         } else if (typeof next.url === "string") {
           next.url = enrichShareUrl(next.url);
         }
@@ -1123,6 +1201,34 @@
       }
       return originalShare(next);
     };
+  }
+
+  // SPA hosts without /invito rewrite (e.g. some static mirrors): open hash from path.
+  try {
+    const inviteMatch = String(location.pathname || "").match(/\/invito\/([^/]+)\/?$/i);
+    if (inviteMatch?.[1] && !location.hash.includes("trip=")) {
+      const shareId = decodeURIComponent(inviteMatch[1]).replace(/^n:/, "");
+      void (async () => {
+        try {
+          const res = await originalFetch(`${NETLIFY_API}/api/share/${encodeURIComponent(shareId)}`, {
+            headers: { Accept: "application/json" },
+            cache: "no-store",
+          });
+          if (!res.ok) return;
+          const data = await res.json().catch(() => ({}));
+          const tripId = data?.id;
+          const accessKey = data?.key || data?.viewToken;
+          if (!tripId || !accessKey) return;
+          if (data?.trip) applySeededRecord(tripId, accessKey, data);
+          const params = new URLSearchParams({ trip: tripId, key: accessKey, s: `n:${shareId}` });
+          location.replace(`${location.origin}/#${params.toString()}`);
+        } catch {
+          /* ignore */
+        }
+      })();
+    }
+  } catch {
+    /* ignore */
   }
 
   function readLocalFilesDb() {

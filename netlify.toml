@@ -58,6 +58,31 @@
   status = 200
   force = true
 
+# Trip invite landing with Open Graph preview (WhatsApp / iMessage / Telegram…).
+[[redirects]]
+  from = "/invito"
+  to = "/.netlify/functions/invite"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/invito/*"
+  to = "/.netlify/functions/invite/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/invite"
+  to = "/.netlify/functions/invite"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/invite/*"
+  to = "/.netlify/functions/invite/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/api/search"
   to = "/.netlify/functions/search"
