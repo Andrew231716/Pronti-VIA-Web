@@ -2271,10 +2271,15 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     ensureFab();
     ensureTodayShortcut();
     // Chip may mount after platform boot — rebind when account becomes ready.
+    let refreshFrame = 0;
     const mo = new MutationObserver(() => {
-      if (document.getElementById("pv-hub-nav")) ensureFab();
-      ensureTodayShortcut();
-      applyDaySelection();
+      if (document.hidden || refreshFrame) return;
+      refreshFrame = requestAnimationFrame(() => {
+        refreshFrame = 0;
+        if (document.getElementById("pv-hub-nav")) ensureFab();
+        ensureTodayShortcut();
+        applyDaySelection();
+      });
     });
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));

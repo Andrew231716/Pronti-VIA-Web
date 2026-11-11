@@ -325,3 +325,32 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
 #root .trip-cover[data-pv-accra-cover]:not([data-pv-cover-ready="1"]) > .photo-credit {
   visibility: hidden;
 }
+
+html {
+  scroll-padding-top: calc(62px + env(safe-area-inset-top, 0px));
+  scroll-padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+}
+#root :is(.section-heading, .day-heading) { scroll-margin-top: .65rem; }
+#root .workspace-tabs .main-tabs [role="tab"] { min-height: 44px !important; }
+#root .app-shell :is(.icon-btn, .day-strip button),
+#pv-magic-panel :is(.pv-chips button, .pv-actions button),
+.pv-ux-sheet .pv-ux-actions button {
+  min-height: 44px;
+}
+#root .app-shell .icon-btn { min-width: 44px; }
+#pv-magic-panel .pv-panel-body { min-height: 0; overscroll-behavior: contain; }
+#pv-magic-panel .pv-chat-form > input { min-width: 0; font-size: 16px; }
+#pv-magic-panel .pv-panel-foot { padding-bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+#pv-primary-nav .pv-nav-item { min-width: 0; }
+#pv-primary-nav #pv-nav-budget .pv-nav-label { text-overflow: clip; }
+@media (max-width: 640px) {
+  html[data-pv-dest] body.pv-account-ready { background-attachment: scroll; }
+  #pv-primary-nav .pv-primary-nav-inner { gap: 2px; padding-inline: 4px; }
+  #pv-primary-nav .pv-nav-item { padding-inline: 1px; }
+  #pv-magic-panel .pv-drag-handle { touch-action: pan-y; }
+  #root .primary-panel .section-heading > div { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .day-strip { scroll-behavior: auto; }
+  #pv-primary-nav .pv-nav-item { transition: none; }
+}

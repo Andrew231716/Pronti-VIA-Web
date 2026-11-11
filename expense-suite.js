@@ -8,7 +8,7 @@
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261111i";
+  const ASSET_VER = "20261111m";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -377,16 +377,14 @@
       }
       return;
     }
-    const tabs = document.querySelector("[role=tablist]");
-    const tabBox = tabs?.getBoundingClientRect();
-    const vh = window.innerHeight || 800;
-    let bottomPad = 10;
-    if (tabBox && tabBox.bottom > vh * 0.55 && tabBox.top < vh && tabBox.height > 20) {
-      bottomPad = Math.min(Math.floor(vh * 0.28), Math.max(10, Math.ceil(vh - tabBox.top + 8)));
-    }
-    host.style.bottom = `calc(${bottomPad}px + env(safe-area-inset-bottom,0px))`;
-    const h = Math.ceil(host.getBoundingClientRect().height) || Math.floor(vh * 0.32);
-    document.documentElement.style.setProperty("--pv-es-dock-h", `${h + bottomPad}px`);
+    const nav = document.getElementById("pv-primary-nav");
+    const navHeight = nav && !nav.hidden ? Math.ceil(nav.getBoundingClientRect().height) : 0;
+    const bottom = navHeight ? `${navHeight + 8}px` : "calc(10px + env(safe-area-inset-bottom, 0px))";
+    if (host.style.bottom !== bottom) host.style.bottom = bottom;
+    const height = Math.ceil(host.getBoundingClientRect().height);
+    const offset = `${height + navHeight + 8}px`;
+    const style = document.documentElement.style;
+    if (style.getPropertyValue("--pv-es-dock-h") !== offset) style.setProperty("--pv-es-dock-h", offset);
   }
 
   function animateDockIn(host) {
@@ -476,7 +474,7 @@
   function expensesSectionVisible() {
     // Only the active tab — React keeps other tab panels in the DOM, so heading
     // lookups would keep the Spese dock stuck open over Itinerario/cover.
-    const tab = document.querySelector('[role=tab][data-state=active], [role=tab][aria-selected="true"]');
+    const tab = document.querySelector('#root .main-tabs [role=tab][aria-selected="true"]');
     const label = (tab?.textContent || "").trim().toLowerCase();
     return /spese/.test(label);
   }
@@ -537,13 +535,12 @@
   function refreshOnlineHint() {
     const el = document.querySelector("#pv-es-online-hint");
     if (!el) return;
-    if (navigator.onLine) {
-      el.textContent = "Tassi aggiornabili · spese e saldi funzionano anche offline";
-      el.classList.remove("pv-es-offline-fx");
-    } else {
-      el.textContent = "Offline: usiamo l’ultimo tasso salvato su questo dispositivo";
-      el.classList.add("pv-es-offline-fx");
-    }
+    const offline = !navigator.onLine;
+    const message = offline
+      ? "Offline: usiamo l’ultimo tasso salvato su questo dispositivo"
+      : "Tassi aggiornabili · spese e saldi funzionano anche offline";
+    if (el.textContent !== message) el.textContent = message;
+    el.classList.toggle("pv-es-offline-fx", offline);
   }
 
   function currencyOptions(selected) {
@@ -1247,6 +1244,7 @@
 
   /* ---------- Tick ---------- */
   function tick() {
+    if (document.hidden) return;
     ensureStyles();
     ensureDockStartsClosed();
     // Always sync portal visibility from the active tab (never from page text).
@@ -1380,8 +1378,11 @@
   };
 
   const obs = new MutationObserver(() => {
-    clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 220);
+    if (document.hidden || tick._t) return;
+    tick._t = setTimeout(() => {
+      tick._t = 0;
+      tick();
+    }, 220);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   const schedulePlace = () => {
@@ -1391,7 +1392,7 @@
       placeExpensePortal();
     });
   };
-  addEventListener("scroll", schedulePlace, { passive: true });
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
   addEventListener("resize", schedulePlace);
   addEventListener("keydown", (ev) => {
     if (ev.key === "Escape" && document.body.classList.contains("pv-es-dock-open")) dismissDock();

@@ -130,7 +130,7 @@
         overflow:hidden;display:flex;flex-direction:column;background:#fff;
         border:1px solid #d0e0e0;border-radius:22px;
         box-shadow:0 22px 60px rgba(12,40,48,.28);padding:0;
-        touch-action:none;
+        touch-action:auto;
       }
       #${ROOT_ID} .pv-magic-panel[hidden]{display:none !important}
       #${ROOT_ID} .pv-magic-panel .pv-drag-handle{cursor:grab;touch-action:none}
@@ -196,8 +196,9 @@
           bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px) + 82px);
         }
         #${ROOT_ID} .pv-magic-panel{
-          left:0!important;right:0!important;bottom:0!important;top:auto!important;
-          width:100%;max-width:none;max-height:min(88dvh,88vh);height:min(88dvh,88vh);
+          left:0!important;right:0!important;bottom:var(--pv-chat-keyboard, 0px)!important;top:auto!important;
+          width:100%;max-width:none;max-height:88vh;max-height:min(88dvh,var(--pv-chat-viewport, 88dvh));
+          height:88vh;height:min(88dvh,var(--pv-chat-viewport, 88dvh));
           border-radius:18px 18px 0 0;border-left:0;border-right:0;border-bottom:0;
         }
         #${ROOT_ID} .pv-magic-btn .pv-pronty-label{display:none}
@@ -408,6 +409,16 @@
     restoreFabStyle(prev);
   }
 
+  function syncChatViewport() {
+    const viewport = window.visualViewport;
+    const panel = document.getElementById("pv-magic-panel");
+    if (!panelOpen || !viewport || !panel || !window.matchMedia?.("(max-width:640px)").matches) return;
+    panel.style.setProperty("--pv-chat-viewport", `${Math.floor(viewport.height)}px`);
+    panel.style.setProperty("--pv-chat-keyboard", `${Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop))}px`);
+  }
+  window.visualViewport?.addEventListener("resize", syncChatViewport, { passive: true });
+  window.visualViewport?.addEventListener("scroll", syncChatViewport, { passive: true });
+
   function setMagicOpen(open) {
     panelOpen = open;
     const root = document.getElementById(ROOT_ID);
@@ -427,6 +438,7 @@
       document.documentElement.style.overflow = "";
     }
     if (open) {
+      syncChatViewport();
       // FABs are CSS-hidden while open; no need to park them into the header.
       restoreFabsFromPark();
     } else if (!document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
@@ -6214,9 +6226,9 @@ Regole pv-places:
   }
 
   const obs = new MutationObserver(() => {
-    if (tick._running) return;
-    clearTimeout(tick._t);
+    if (document.hidden || tick._running || tick._t) return;
     tick._t = setTimeout(() => {
+      tick._t = 0;
       tick._running = true;
       try {
         tick();

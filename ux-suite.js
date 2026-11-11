@@ -1570,6 +1570,9 @@
       const tab = [...document.querySelectorAll("button, [role=tab], a")].find((el) =>
         /^Itinerario$/i.test((el.textContent || "").trim())
       );
+      if (tab?.getAttribute("role") === "tab") {
+        tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      }
       tab?.click();
       const stop = [...document.querySelectorAll("h2, h3, button")].find((el) =>
         /Il nostro itinerario|Aggiungi tappa/i.test(el.textContent || "")
@@ -3377,6 +3380,7 @@
   window.addEventListener("pv-save-status", enhanceHomeTripCards);
 
   function tick() {
+    if (document.hidden) return;
     const run = (fn) => {
       try {
         fn();
@@ -3399,10 +3403,7 @@
     run(injectEventImportRail);
     run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);
-    run(sanitizeStoredTrips);
-    run(() => {
-      if (typeof window.__pvApplyDestTheme === "function") void window.__pvApplyDestTheme(false);
-    });
+
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {
@@ -3413,8 +3414,11 @@
   hookTripSanitizeFetch();
   sanitizeStoredTrips();
   const obs = new MutationObserver(() => {
-    clearTimeout(tick._t);
-    tick._t = setTimeout(tick, 220);
+    if (document.hidden || tick._t) return;
+    tick._t = setTimeout(() => {
+      tick._t = 0;
+      tick();
+    }, 220);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
@@ -3424,15 +3428,7 @@
     }, 200);
   });
   setTimeout(tick, 500);
-  // Backup: SPA mutation storms can starve the debounced observer tick.
-  setInterval(() => {
-    try {
-      polishLocalOnlyBanner();
-      enhanceHomeTripCards();
-    } catch {
-      /* ignore */
-    }
-  }, 1200);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
   setTimeout(() => {
     void redeemInviteFromHash();
     maybeOnboarding();
