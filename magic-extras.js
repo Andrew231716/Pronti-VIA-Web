@@ -210,10 +210,30 @@
       .pv-extras-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
       .pv-extras-bar button,.pv-budget-box button,.pv-chart-box button{appearance:none;border:1px solid #c9dbdb;background:#fff;color:#184047;border-radius:999px;padding:7px 12px;font:600 12px inherit;cursor:pointer}
       .pv-extras-bar button:hover,.pv-budget-box button:hover{background:#eef7f7}
-      .pv-budget-box,.pv-chart-box{margin:12px 0;padding:12px 14px;border:1px solid #d9e7e7;border-radius:16px;background:linear-gradient(180deg,#f7fbfb,#fff)}
+      .pv-budget-box,.pv-chart-box{margin:12px 0;padding:12px 14px;border:1px solid #d9e7e7;border-radius:16px;background:linear-gradient(180deg,#f7fbfb,#fff);color:#12343c}
       .pv-budget-box strong,.pv-chart-box strong{display:block;margin-bottom:8px;color:#16353b}
       .pv-budget-box .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-      .pv-budget-box input{flex:1;min-width:120px;border:1px solid #c9dbdb;border-radius:10px;padding:8px 10px;font:inherit}
+      .pv-budget-box input{flex:1;min-width:120px;border:1px solid #c9dbdb;border-radius:10px;padding:8px 10px;font:inherit;color:#12343c;background:#fff;caret-color:#007d82}
+      html[data-pv-theme="dark"] .pv-budget-box,
+      html[data-pv-theme="dark"] .pv-chart-box,
+      html[data-pv-theme="dark"] .pv-day-weather,
+      html[data-pv-theme="dark"] .pv-links-box,
+      html[data-pv-theme="dark"] .pv-fx-calc{
+        color:#12343c !important;background:#fff !important;border-color:#d9e7e7 !important;isolation:isolate
+      }
+      html[data-pv-theme="dark"] .pv-budget-box input,
+      html[data-pv-theme="dark"] .pv-fx-calc input,
+      html[data-pv-theme="dark"] .pv-fx-home-pick select,
+      html[data-pv-theme="dark"] .pv-expense-fx :is(input,select){
+        color:#12343c !important;background:#fff !important;border-color:#c9dbdb !important
+      }
+      html[data-pv-theme="dark"] .pv-budget-box strong,
+      html[data-pv-theme="dark"] .pv-chart-box strong,
+      html[data-pv-theme="dark"] .pv-fx-calc .pv-block-title,
+      html[data-pv-theme="dark"] .pv-fx-home-pick label{
+        color:#16353b !important
+      }
+      html[data-pv-theme="dark"] .pv-budget-box button{color:#184047 !important;background:#fff !important;border-color:#c9dbdb !important}
       .pv-chart-row{display:grid;grid-template-columns:88px 1fr 64px;gap:8px;align-items:center;margin:6px 0;font-size:.86rem;color:#355055}
       .pv-chart-row .bar{height:10px;border-radius:999px;background:#e6efef;overflow:hidden}
       .pv-chart-row .fill{height:100%;background:#007d82;border-radius:inherit}

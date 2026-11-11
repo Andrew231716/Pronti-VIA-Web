@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112k";
+  const VER = "20261112m";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const THEME_CYCLE = ["system", "light", "dark"];
@@ -452,7 +452,7 @@ html[data-pv-theme="dark"] #root .share-box input{
   background: #fff !important;
   border-color: #d6e1e6 !important;
 }
-/* Light paper surfaces (notes, etc.) keep dark ink — workspace inherits Hub light text */
+/* Light paper surfaces keep dark ink — workspace inherits Hub light text */
 html[data-pv-theme="dark"] #root .notes-paper,
 html[data-pv-theme="dark"] .notes-paper{
   color: #12343c !important;
@@ -469,6 +469,73 @@ html[data-pv-theme="dark"] #root .notes-paper input:not([type="checkbox"]):not([
   background: #fff !important;
   border-color: #d6e1e6 !important;
   caret-color: #007d82;
+}
+/* Spese / budget / FX white cards + fields (same failure mode as notes-paper) */
+html[data-pv-theme="dark"] #root .money-stats > div{
+  background: #fff !important;
+  border-color: #dde6eb !important;
+  color: #12343c !important;
+  isolation: isolate;
+}
+html[data-pv-theme="dark"] #root .money-stats > div :is(strong, span, small, p, div){
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div :is(span, small){
+  color: #5b7076 !important;
+}
+/* Keep first-child readable even when SPA white-on-teal is washed to white */
+html[data-pv-theme="dark"] #root .money-stats > div:first-child{
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #dde6eb !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div:first-child strong{
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div:first-child :is(span, small){
+  color: #5b7076 !important;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box,.pv-chart-box,.pv-day-weather,.pv-links-box,.pv-fx-calc,.pv-day-legend,.pv-es-member-fx,.budget-card,.budget-total){
+  color: #12343c !important;
+  isolation: isolate;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box,.pv-chart-box,.pv-day-weather,.pv-links-box,.pv-fx-calc,.pv-day-legend,.pv-es-member-fx){
+  background: #fff !important;
+  border-color: #d9e7e7 !important;
+}
+html[data-pv-theme="dark"] #root .budget-card{
+  background: #f7fbfb !important;
+  border-color: #d9e7e7 !important;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box,.pv-chart-box,.pv-day-weather,.pv-links-box,.pv-fx-calc,.pv-day-legend,.pv-es-member-fx,.budget-card,.budget-total) :is(p, span, strong, small, label, div, em, li, time, h3, h4):not(button):not(button *){
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box,.pv-chart-box,.pv-fx-calc,.pv-expense-fx,.pv-es-member-fx) :is(input, select, textarea){
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+  caret-color: #007d82;
+}
+html[data-pv-theme="dark"] #root .pv-budget-box button,
+html[data-pv-theme="dark"] #root .pv-chart-box button{
+  color: #184047 !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+}
+html[data-pv-theme="dark"] #root .app-shell .field :is(input, select, textarea){
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+  caret-color: #007d82;
+}
+html[data-pv-theme="dark"] #root .app-shell .field > span{
+  color: #3f5860 !important;
+}
+html[data-pv-theme="dark"] #root .budget-total strong{
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .budget-total span{
+  color: #5b7076 !important;
 }
 html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item{
   color: #c5d6da !important;
