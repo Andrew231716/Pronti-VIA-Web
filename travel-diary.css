@@ -516,6 +516,13 @@ html {
 #root .check-row:has(.pv-packing-owner) { flex-wrap: wrap; }
 #root .pv-packing-owner { margin-inline-start: auto; }
 #root .pv-bookings-ordered:not([hidden]) { display: flex; flex-direction: column; }
+#root .pv-bookings-ordered > .section-heading,
+#root .pv-bookings-ordered > [data-pv-planning="personal-bookings"],
+#root .pv-bookings-ordered > .pv-book-shared-label,
+#root .pv-bookings-ordered > .pv-event-section,
+#root .pv-bookings-ordered > .pv-planning-tools {
+  order: -20;
+}
 #root .pv-booking-docs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .6rem; }
 #root :is(.pv-booking-docs, .pv-planning-tools) a { color: var(--diary-accent); text-decoration: underline; }
 #root .pv-plan-place { margin-block: .2rem .65rem; }
