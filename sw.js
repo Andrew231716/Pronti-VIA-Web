@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261111b`;
+const CACHE = `${CACHE_PREFIX}20261111c`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -11,8 +11,8 @@ const PRECACHE = [
   "./logo.png",
   "./logo.png?v=20261107e",
   "./manifest.webmanifest?v=20261107e",
-  "./account.css?v=20261111b",
-  "./account.js?v=20261111b",
+  "./account.css?v=20261111c",
+  "./account.js?v=20261111c",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261104d",
   "./assets/index-JJ3bX5VS.css",
@@ -20,12 +20,12 @@ const PRECACHE = [
   "./assets/index-loadfix-20261104d.js",
   "./assets/api-shim-20261111a.js",
   "./assets/magic-extras-20261107l.js",
-  "./assets/expense-suite-20261107l.js",
+  "./assets/expense-suite-20261111c.js",
   "./assets/app-suite-20261107l.js",
   "./assets/preventivo-islanda-20261104d.js",
-  "./assets/ux-suite-20261111b.js",
-  "./assets/pv-platform-20261111b.js",
-  "./assets/destination-theme-20261111b.js",
+  "./assets/ux-suite-20261111c.js",
+  "./assets/pv-platform-20261111c.js",
+  "./assets/destination-theme-20261111c.js",
   "./map.html",
   "./coast.jpg",
   "./iceland.svg",
@@ -49,6 +49,10 @@ self.addEventListener("activate", (event) => {
       .then((keys) => Promise.all(keys.filter((k) => k.startsWith(CACHE_PREFIX) && k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event?.data?.type === "SKIP_WAITING") self.skipWaiting();
 });
 
 self.addEventListener("fetch", (event) => {
