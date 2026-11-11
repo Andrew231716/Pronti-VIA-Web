@@ -760,3 +760,13 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   font-size: .62rem;
   line-height: 1.2;
 }
+
+#root .trip-cover[data-pv-accra-cover] .cover-content h1 {
+  position: absolute;
+  inset: auto 0 100%;
+  padding: 2rem .85rem .65rem;
+  background: linear-gradient(transparent, rgb(10 26 22 / .9));
+  color: #fff;
+  font-size: clamp(1.45rem, 6vw, 2.2rem);
+  text-shadow: 0 1px 4px rgb(0 0 0 / .55);
+}
