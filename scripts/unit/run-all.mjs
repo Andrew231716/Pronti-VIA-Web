@@ -7,6 +7,7 @@ import {
   splitEqualCents,
   splitWeightedCents,
   computeBalances,
+  computeShareBalances,
   settleBalances,
   convertWithRate,
   toCents,
@@ -62,6 +63,39 @@ test("computeBalances + settle", () => {
   assert.equal(Object.values(bal).reduce((a, b) => a + b, 0), 0);
   const transfers = settleBalances(bal);
   assert.ok(transfers.length >= 1);
+});
+
+test("computeShareBalances matches Splitpay custom shares + transfer", () => {
+  const trip = {
+    members: [
+      { id: "m1", name: "Andrea" },
+      { id: "m2", name: "Luca" },
+      { id: "m3", name: "Sara" },
+    ],
+    expenses: [
+      {
+        id: "e1",
+        title: "Cena",
+        amount: 9000,
+        payer: "m1",
+        shares: [
+          { member: "m1", amount: 4500 },
+          { member: "m2", amount: 3000 },
+          { member: "m3", amount: 1500 },
+        ],
+      },
+    ],
+    transfers: [{ id: "t1", from: "m2", to: "m1", amount: 3000 }],
+  };
+  const bal = computeShareBalances(trip);
+  assert.equal(bal.m1, 1500);
+  assert.equal(bal.m2, 0);
+  assert.equal(bal.m3, -1500);
+  const settle = settleBalances(bal);
+  assert.equal(settle.length, 1);
+  assert.equal(settle[0].from, "m3");
+  assert.equal(settle[0].to, "m1");
+  assert.equal(settle[0].amountCents, 1500);
 });
 
 test("convertWithRate", () => {

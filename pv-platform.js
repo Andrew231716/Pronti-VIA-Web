@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261110b";
+  const VER = "20261111d";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -1228,6 +1228,53 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     ];
   }
 
+  function computeShareBalances(trip) {
+    const bal = Object.fromEntries((trip?.members || []).map((m) => [m.id, 0]));
+    for (const e of trip?.expenses || []) {
+      const cents = expenseAmountCents(e);
+      const payer = e.payer || e.paidBy;
+      if (payer && payer in bal) bal[payer] += cents;
+      for (const s of e.shares || []) {
+        const mid = s.member || s.memberId;
+        if (mid && mid in bal) bal[mid] -= Math.trunc(Number(s.amount) || 0);
+      }
+    }
+    for (const t of trip?.transfers || []) {
+      const cents = Math.trunc(
+        Number.isFinite(t.amountCents) ? t.amountCents : Number(t.amount) || 0
+      );
+      if (t.from && t.from in bal) bal[t.from] += cents;
+      if (t.to && t.to in bal) bal[t.to] -= cents;
+    }
+    return bal;
+  }
+
+  function settleBalancesMap(balances) {
+    const debtors = [];
+    const creditors = [];
+    for (const [id, v] of Object.entries(balances || {})) {
+      const n = Math.trunc(v);
+      if (n < 0) debtors.push({ id, amount: -n });
+      else if (n > 0) creditors.push({ id, amount: n });
+    }
+    debtors.sort((a, b) => b.amount - a.amount);
+    creditors.sort((a, b) => b.amount - a.amount);
+    const transfers = [];
+    let i = 0;
+    let j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const pay = Math.min(debtors[i].amount, creditors[j].amount);
+      if (pay > 0) {
+        transfers.push({ from: debtors[i].id, to: creditors[j].id, amountCents: pay });
+        debtors[i].amount -= pay;
+        creditors[j].amount -= pay;
+      }
+      if (debtors[i].amount === 0) i += 1;
+      if (creditors[j].amount === 0) j += 1;
+    }
+    return transfers;
+  }
+
   async function renderStats() {
     const auth = tripAuth();
     if (auth) {
@@ -1250,6 +1297,46 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
              </div></div>`
         )
         .join("");
+      const bal = computeShareBalances(trip);
+      const maxAbs = Math.max(1, ...Object.values(bal).map((v) => Math.abs(Math.trunc(v || 0))));
+      const nameOf = (id) => {
+        const m = (trip.members || []).find((x) => x.id === id);
+        return m?.name || m?.username || id;
+      };
+      const balRows = (trip.members || [])
+        .map((m) => {
+          const v = Math.trunc(bal[m.id] || 0);
+          const pct = Math.round((Math.abs(v) / maxAbs) * 100);
+          const label = v > 0 ? `+${euro(v)}` : v < 0 ? `−${euro(-v)}` : euro(0);
+          return `<div style="margin:6px 0">
+            <div class="pv-plat-muted">${escapeHtml(m.name || m.id)} · ${escapeHtml(label)}</div>
+            <div style="height:8px;background:var(--pv-plat-border);border-radius:99px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${v < 0 ? "var(--pv-plat-warn,#b45309)" : "var(--pv-plat-accent)"}"></div>
+            </div></div>`;
+        })
+        .join("");
+      const settles = settleBalancesMap(bal);
+      const settleList = settles.length
+        ? `<ul class="pv-plat-list">${settles
+            .map(
+              (t) =>
+                `<li><strong>${escapeHtml(nameOf(t.from))}</strong> → <strong>${escapeHtml(
+                  nameOf(t.to)
+                )}</strong> · ${euro(t.amountCents)}</li>`
+            )
+            .join("")}</ul>`
+        : `<p class="pv-plat-muted">Tutti in pari.</p>`;
+      const activity = [...(trip.meta?.expenseActivity || [])].reverse().slice(0, 6);
+      const actList = activity.length
+        ? `<ul class="pv-plat-list">${activity
+            .map(
+              (a) =>
+                `<li>${escapeHtml(String(a.at || "").slice(0, 10))} · ${escapeHtml(
+                  a.summary || a.type || ""
+                )}</li>`
+            )
+            .join("")}</ul>`
+        : `<p class="pv-plat-muted">Ancora nessuna attività spese.</p>`;
       return `<div class="pv-plat-card">
         <h3>Statistiche viaggio</h3>
         <div class="pv-plat-grid">
@@ -1259,6 +1346,13 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <div class="pv-plat-stat"><b>${(trip.stops || []).length}</b><span>Tappe</span></div>
         </div>
         <div style="margin-top:10px">${bars || '<p class="pv-plat-muted">Nessuna spesa categorizzata.</p>'}</div>
+        <h3 style="margin-top:14px">Spese condivise · saldi</h3>
+        <p class="pv-plat-muted">Come Splitwise: crediti, debiti e rimborsi suggeriti (semplificati).</p>
+        <div style="margin-top:8px">${balRows || '<p class="pv-plat-muted">Nessun membro.</p>'}</div>
+        <h3 style="margin-top:14px">Come pareggiare</h3>
+        ${settleList}
+        <h3 style="margin-top:14px">Attività spese</h3>
+        ${actList}
         <div class="pv-plat-actions">
           <button type="button" class="pv-plat-btn" data-plat="export-json">Export JSON</button>
           <button type="button" class="pv-plat-btn" data-plat="export-csv">Export CSV spese</button>
@@ -2153,6 +2247,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       splitEqualCents,
       expenseCents,
       expenseAmountCents,
+      computeShareBalances,
+      settleBalances: settleBalancesMap,
       validateBackup,
       roleForTrip,
       canRole,

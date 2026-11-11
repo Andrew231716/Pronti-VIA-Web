@@ -20,9 +20,10 @@ function test(name, fn) {
 }
 
 test("stamps 20261111b wired", () => {
-  assert.match(index, /pv-platform-20261111b\.js/);
+  assert.match(index, /pv-platform-20261111d\.js/);
   assert.match(index, /destination-theme-20261111b\.js/);
   assert.match(index, /account\.css\?v=20261111b/);
+  assert.match(index, /expense-splitwise-20261111d\.js/);
 });
 
 test("Hub tokens alias into app shell", () => {
