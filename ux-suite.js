@@ -696,14 +696,16 @@
     }
   }
 
-  async function deleteTripById(id, key, { title = "questo viaggio", leavePage = false } = {}) {
+  async function deleteTripById(id, key, { title = "questo viaggio", leavePage = false, skipConfirm = false } = {}) {
     const tripId = String(id || "").trim();
     const tripKey = String(key || "").trim();
     if (!tripId || !tripKey) throw new Error("Viaggio non valido");
-    const ok = confirm(
-      `Eliminare definitivamente «${title}»?\n\nVerrà rimosso da questo dispositivo e, se possibile, anche dal cloud. L’azione non si può annullare.`
-    );
-    if (!ok) return false;
+    if (!skipConfirm) {
+      const ok = confirm(
+        `Eliminare definitivamente «${title}»?\n\nVerrà rimosso da questo dispositivo e, se possibile, anche dal cloud. L’azione non si può annullare.`
+      );
+      if (!ok) return false;
+    }
 
     const res = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
       method: "DELETE",
@@ -799,7 +801,7 @@
     </svg>`;
   }
 
-  async function deleteCurrentTrip() {
+  async function deleteCurrentTrip({ skipConfirm = false } = {}) {
     const auth = tripAuth();
     if (!auth) {
       toast("Apri un viaggio per eliminarlo", "warn");
@@ -813,7 +815,7 @@
       /* use default title */
     }
     try {
-      await deleteTripById(auth.id, auth.key, { title, leavePage: true });
+      await deleteTripById(auth.id, auth.key, { title, leavePage: true, skipConfirm });
     } catch (err) {
       toast(err.message || "Eliminazione non riuscita", "err");
     }
@@ -1507,6 +1509,35 @@
       b.addEventListener("click", () => {
         const act = b.getAttribute("data-ux");
         const sectionNow = activeSectionMeta();
+        if (act === "delete-trip") {
+          if (
+            !window.confirm(
+              "Eliminare definitivamente questo viaggio?\n\nVerrà rimosso da questo dispositivo e, se possibile, anche dal cloud. L’azione non si può annullare."
+            )
+          ) {
+            return;
+          }
+        } else if (act === "manage-trips" && b.classList.contains("danger")) {
+          if (
+            !window.confirm(
+              "Stai per scegliere un viaggio da eliminare.\n\nContinui? Potrai ancora annullare sul singolo viaggio."
+            )
+          ) {
+            return;
+          }
+        } else if (act === "delete-account") {
+          if (isGuestAccount()) {
+            toast("Gli ospiti del link condiviso non possono gestire l’account qui", "warn");
+            return;
+          }
+          if (
+            !window.confirm(
+              "Eliminare definitivamente il tuo account?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link."
+            )
+          ) {
+            return;
+          }
+        }
         closeModal();
         menuBtn?.setAttribute("aria-expanded", "false");
         if (act === "companions") void openCompanionsManager();
@@ -1529,14 +1560,16 @@
         else if (act === "more") openMoreTools();
         else if (act === "import-event") void openEventImportWizard();
         else if (act === "manage-trips") openManageTrips();
-        else if (act === "delete-trip") void deleteCurrentTrip();
+        else if (act === "delete-trip") void deleteCurrentTrip({ skipConfirm: true });
         else if (act === "home-hint") {
           if (typeof window.__pvNavHome === "function") window.__pvNavHome();
           else toast("Usa «Nuovo viaggio» in homepage", "ok");
         } else if (act === "logout") {
           if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
         } else if (act === "delete-account") {
-          if (typeof window.__pvAccountDelete === "function") window.__pvAccountDelete();
+          if (typeof window.__pvAccountDelete === "function") {
+            window.__pvAccountDelete({ skipConfirm: true });
+          }
         } else runUxAction(act);
       });
     });
@@ -1557,10 +1590,31 @@
 
   function openAccountMenu() {
     const inTrip = Boolean(tripAuth());
+    const guest = isGuestAccount();
+    const session = readAccountSession();
+    const hasOwnAccount = Boolean(!guest && session?.user?.username);
     const menuBtn = document.getElementById("pv-account-menu");
     clearMenuNavExpanded();
     menuBtn?.setAttribute("aria-expanded", "true");
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("profile");
+    const tripDanger = guest
+      ? ""
+      : inTrip
+        ? `<button type="button" class="danger" data-ux="delete-trip"><strong>Elimina viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>`
+        : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`;
+    const accountDanger = hasOwnAccount
+      ? `<button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella il login su questo dispositivo/cloud</span></button>`
+      : "";
+    const dangerSection =
+      tripDanger || accountDanger
+        ? `<div class="pv-menu-section">
+         <h3>Zona pericolosa</h3>
+         <div class="pv-menu-grid">
+           ${tripDanger}
+           ${accountDanger}
+         </div>
+       </div>`
+        : "";
     const modal = openModal(
       "Profilo e account",
       `<div class="pv-menu-section">
@@ -1570,17 +1624,7 @@
            <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
          </div>
        </div>
-       <div class="pv-menu-section">
-         <h3>Zona pericolosa</h3>
-         <div class="pv-menu-grid">
-           ${
-             inTrip
-               ? `<button type="button" class="danger" data-ux="delete-trip"><strong>Elimina viaggio</strong><span>Cancellalo da questo dispositivo e dal cloud</span></button>`
-               : `<button type="button" class="danger" data-ux="manage-trips"><strong>Elimina un viaggio</strong><span>Scegli un viaggio salvato da rimuovere</span></button>`
-           }
-           <button type="button" class="danger" data-ux="delete-account"><strong>Elimina account</strong><span>Cancella il login su questo dispositivo/cloud</span></button>
-         </div>
-       </div>`,
+       ${dangerSection}`,
       {
         onMount: (body) => wireUxMenuActions(body, menuBtn),
       }

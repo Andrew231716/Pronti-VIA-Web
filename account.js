@@ -698,13 +698,19 @@ function wipeLocalUser(username) {
   }
 }
 
-async function onDeleteAccount() {
+async function onDeleteAccount(opts = {}) {
+  if (state.user && readJson(SESSION_KEY, null)?.guest) {
+    window.alert("Gli ospiti del link condiviso non possono eliminare un account da qui.");
+    return;
+  }
   const username = state.user?.username || "";
   if (!username) return;
-  const ok = window.confirm(
-    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
-  );
-  if (!ok) return;
+  if (!opts.skipConfirm) {
+    const ok = window.confirm(
+      `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+    );
+    if (!ok) return;
+  }
   const password = window.prompt("Conferma con la password dell’account:");
   if (password == null) return;
   if (!String(password).trim()) {
@@ -1135,7 +1141,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261112g";
+const SHELL_VER = "20261112h";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

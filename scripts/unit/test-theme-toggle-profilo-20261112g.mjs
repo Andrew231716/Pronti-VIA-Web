@@ -20,11 +20,11 @@ ok("theme toggle button", /pv-theme-toggle/.test(accountJs) && /cycleThemeMode/.
 ok("default system theme", /mode: "system"/.test(accountJs) && /THEME_CYCLE/.test(accountJs));
 ok("theme toggle css", /#pv-theme-toggle\.pv-theme-toggle/.test(accountCss));
 ok("platform theme API", /cycleTheme/.test(plat) && /getThemeMode/.test(plat) && /setTheme: applyTheme/.test(plat));
-ok("profilo only account + danger", /openAccountMenu[\s\S]*Il tuo account[\s\S]*Zona pericolosa[\s\S]*__pvOpenAccountMenu/.test(ux));
+ok("profilo only account + danger", /openAccountMenu[\s\S]*Zona pericolosa[\s\S]*Il tuo account[\s\S]*__pvOpenAccountMenu/.test(ux) && /hasOwnAccount/.test(ux));
 ok("profilo no azioni rapide", !/openAccountMenu[\s\S]*Azioni rapide[\s\S]*__pvOpenAccountMenu/.test(ux));
 ok("tools moved to impostazioni", /settingsOrganizzaHtml[\s\S]*Cerca nel viaggio/.test(ux));
-ok("stamps wired", /account\.js\?v=20261112g/.test(index) && /ux-suite-20261112g\.js/.test(index) && /pv-platform-20261112g\.js/.test(index));
-ok("assets exist", existsSync("assets/ux-suite-20261112g.js") && existsSync("assets/pv-platform-20261112g.js"));
+ok("stamps wired", /account\.js\?v=20261112h/.test(index) && /ux-suite-20261112h\.js/.test(index) && /pv-platform-20261112g\.js/.test(index));
+ok("assets exist", existsSync("assets/ux-suite-20261112h.js") && existsSync("assets/pv-platform-20261112g.js"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

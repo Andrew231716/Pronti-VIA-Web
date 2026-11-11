@@ -18,7 +18,7 @@ function test(name, fn) {
 }
 
 test("stamp ux-suite wired", () => {
-  assert.match(index, /ux-suite-20261112g\.js/);
+  assert.match(index, /ux-suite-20261112h\.js/);
 });
 
 test("Profilo shows account info helpers", () => {
