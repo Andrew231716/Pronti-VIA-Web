@@ -21,12 +21,12 @@ function test(name, fn) {
 }
 
 const shim = readFileSync("api-shim.js", "utf8");
-const asset = readFileSync("assets/api-shim-20261111f.js", "utf8");
+const asset = readFileSync("assets/api-shim-20261111i.js", "utf8");
 const tripsFn = readFileSync("netlify/functions/trips.mjs", "utf8");
 const index = readFileSync("index.html", "utf8");
 
 test("api-shim stamp wired", () => {
-  assert.match(index, /api-shim-20261111f\.js/);
+  assert.match(index, /api-shim-20261111i\.js/);
   assert.equal(shim, asset);
 });
 

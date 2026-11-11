@@ -15,8 +15,8 @@ function ok(name, cond, detail = "") {
 }
 
 const index = readFileSync("index.html", "utf8");
-ok("index loads expense-splitwise stamp", /expense-splitwise-20261111f\.js/.test(index));
-ok("asset file exists", existsSync("assets/expense-splitwise-20261111f.js"));
+ok("index loads expense-splitwise stamp", /expense-splitwise-20261111i\.js/.test(index));
+ok("asset file exists", existsSync("assets/expense-splitwise-20261111i.js"));
 ok("source file exists", existsSync("expense-splitwise.js"));
 
 const src = readFileSync("expense-splitwise.js", "utf8");
@@ -32,7 +32,7 @@ ok("expense rows and notes share the same stable ID",
 );
 
 const sw = readFileSync("sw.js", "utf8");
-ok("sw precaches splitwise", /expense-splitwise-20261111f\.js/.test(sw));
+ok("sw precaches splitwise", /expense-splitwise-20261111i\.js/.test(sw));
 
 const plat = readFileSync("pv-platform.js", "utf8");
 ok("Hub Numeri shows saldi", /Spese condivise · saldi/.test(plat));

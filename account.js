@@ -761,17 +761,21 @@ function namesMatch(a, b) {
 }
 
 async function ensureCurrentUserOnTrip() {
-  const name = currentDisplayName();
-  if (!name) return;
-
   const params = new URLSearchParams(location.hash.replace(/^#/, ""));
   const tripId = params.get("trip");
   const key = params.get("key");
-  if (!tripId || !key || key.startsWith("pv-personal-")) return;
-
-  const joinKey = `${tripId}:${name.toLowerCase()}`;
+  if (!tripId || !key) return;
+  const auth = { id: tripId, key };
+  const personal = key.startsWith("pv-personal-");
+  const session = readSession();
+  const guest = session?.guest;
+  const joinKey = `${tripId}:${key}`;
   if (joinedTrips.has(joinKey) || joinInFlight === joinKey) return;
   joinInFlight = joinKey;
+  const isCurrent = () => {
+    const current = new URLSearchParams(location.hash.slice(1));
+    return current.get("trip") === tripId && current.get("key") === key;
+  };
 
   try {
     const response = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
@@ -779,54 +783,42 @@ async function ensureCurrentUserOnTrip() {
       cache: "no-store",
     });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok || !data?.trip) return;
-    if (data.canEdit === false) {
-      joinedTrips.add(joinKey);
-      return;
-    }
+    if (!response.ok || !data?.trip || !isCurrent()) return;
+    const onboarding = guest || personal || data.canEdit === false;
+    const name = onboarding && window.__pvNotificationName
+      ? await window.__pvNotificationName(auth, data.personalName || (guest ? "" : currentDisplayName()), Boolean(data.personalName))
+      : currentDisplayName();
+    if (!name || !isCurrent()) return;
 
     const members = Array.isArray(data.trip.members) ? data.trip.members : [];
-    if (members.some((member) => namesMatch(member?.name, name))) {
+    const blocked = Array.isArray(data.trip.meta?.blockedMembers) ? data.trip.meta.blockedMembers : [];
+    if (blocked.some(entry => namesMatch(typeof entry === "string" ? entry : entry?.name, name))) {
       joinedTrips.add(joinKey);
       return;
     }
 
-    // Honor removals from the trip owner: blocked names must not auto-rejoin via the shared link.
-    const blocked = Array.isArray(data.trip?.meta?.blockedMembers) ? data.trip.meta.blockedMembers : [];
-    const isBlocked = blocked.some((entry) =>
-      namesMatch(typeof entry === "string" ? entry : entry?.name, name)
-    );
-    if (isBlocked) {
-      joinedTrips.add(joinKey);
-      return;
+    if (!personal && data.canEdit !== false && !members.some(member => namesMatch(member?.name, name))) {
+      if (members.length >= 30) return;
+      const save = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          trip: { ...data.trip, members: [...members, { id: crypto.randomUUID(), name }] },
+          revision: data.revision,
+        }),
+      });
+      if (!save.ok || !isCurrent()) return;
     }
 
-    const nextTrip = {
-      ...data.trip,
-      members: [
-        ...members,
-        { id: crypto.randomUUID(), name },
-      ].slice(0, 30),
-    };
-
-    const save = await fetch(`/api/trips/${encodeURIComponent(tripId)}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        trip: nextTrip,
-        revision: data.revision,
-      }),
-    });
-    if (save.ok) {
-      joinedTrips.add(joinKey);
-      // Do not reload — a full reload during "Apriamo il tuo viaggio…" can leave
-      // Safari stuck on the loading screen when the trips proxy is slow.
+    if (guest && state.user && state.user.username === session.user.username) {
+      state.user = { ...state.user, displayName: name };
+      writeSession({ ...readSession(), user: state.user });
+      showChip();
     }
+    joinedTrips.add(joinKey);
+    if (onboarding) window.__pvNotificationJoined?.(auth, name);
   } catch {
-    /* ignore transient join failures */
+    /* A transient join failure can be retried. */
   } finally {
     if (joinInFlight === joinKey) joinInFlight = null;
   }
@@ -996,7 +988,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261111d";
+const SHELL_VER = "20261111i";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

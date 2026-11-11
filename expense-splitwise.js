@@ -450,6 +450,20 @@
       await renderBoard(true);
       return;
     }
+    if (act === "remind") {
+      const auth = tripAuth();
+      if (!auth || !window.__pvSendExpenseReminder) return;
+      btn.disabled = true;
+      try {
+        const result = await window.__pvSendExpenseReminder(auth, btn.dataset.from, btn.dataset.to);
+        toast(result.sent ? "Promemoria inviato." : "Nessun dispositivo del destinatario ha ricevuto il promemoria.", result.sent ? "ok" : "err");
+      } catch (error) {
+        toast(error.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+      return;
+    }
     if (act === "settle") {
       const from = btn.getAttribute("data-from");
       const to = btn.getAttribute("data-to");
@@ -689,7 +703,9 @@
             <strong>${euro(t.amount)}</strong> a
             <strong>${escapeHtml(nameOf(trip, t.to))}</strong></p>
           ${canEdit ? `<button type="button" data-sw="settle" data-from="${escapeHtml(t.from)}"
-            data-to="${escapeHtml(t.to)}" data-amount="${t.amount}">Registra rimborso</button>` : ""}
+            data-to="${escapeHtml(t.to)}" data-amount="${t.amount}">Registra rimborso</button>
+          <button type="button" class="ghost" data-sw="remind" data-from="${escapeHtml(t.from)}"
+            data-to="${escapeHtml(t.to)}" aria-label="Invia promemoria a ${escapeHtml(nameOf(trip, t.from))}">Invia promemoria</button>` : ""}
         </div>`
           )
           .join("")

@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261111h`;
+const CACHE = `${CACHE_PREFIX}20261111i`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -12,22 +12,23 @@ const PRECACHE = [
   "./logo.png?v=20261107e",
   "./manifest.webmanifest?v=20261107e",
   "./account.css?v=20261111c",
-  "./travel-diary.css?v=20261111h",
-  "./account.js?v=20261111f",
+  "./travel-diary.css?v=20261111i",
+  "./account.js?v=20261111i",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261104d",
   "./assets/index-JJ3bX5VS.css",
   // Must match the case-sensitive dynamic import in account.js.
   "./assets/index-loadfix-20261111f.js",
-  "./assets/api-shim-20261111f.js",
+  "./assets/api-shim-20261111i.js",
   "./assets/magic-extras-20261107l.js",
-  "./assets/expense-suite-20261111c.js",
-  "./assets/expense-splitwise-20261111f.js",
+  "./assets/expense-suite-20261111i.js",
+  "./assets/expense-splitwise-20261111i.js",
   "./assets/app-suite-20261107l.js",
   "./assets/preventivo-islanda-20261104d.js",
   "./assets/ux-suite-20261111f.js",
-  "./assets/pv-platform-20261111f.js",
+  "./assets/pv-platform-20261111i.js",
   "./assets/destination-theme-20261111h.js",
+  "./trip-notifications.js?v=20261111i",
   "./map.html",
   "./coast.jpg",
   "./iceland.svg",
@@ -101,4 +102,33 @@ self.addEventListener("notificationclick", (event) => {
       return undefined;
     })
   );
+});
+
+self.addEventListener("push", event => {
+  let payload;
+  try { payload = event.data?.json(); } catch { return; }
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(payload?.tripId || "")) return;
+  const reminder = payload.kind === "reminder";
+  event.waitUntil(self.registration.showNotification(reminder ? "Promemoria spese" : "Viaggio aggiornato", {
+    body: reminder ? "Apri Pronti? VIA! per vedere il saldo da rimborsare." : "Apri Pronti? VIA! per vedere le modifiche.",
+    icon: "./assets/pronti-via-icon-192.png",
+    tag: `pv-${payload.kind}-${payload.tripId}`,
+    data: { tripId: payload.tripId },
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  const tripId = event.notification.data?.tripId;
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(tripId || "")) return;
+  event.notification.close();
+  const target = new URL(`./#pv-notification=${encodeURIComponent(tripId)}`, self.registration.scope).href;
+  event.waitUntil((async () => {
+    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const app = windows.find(client => client.url.startsWith(self.registration.scope));
+    if (app && "navigate" in app) {
+      const opened = await app.navigate(target);
+      if (opened) return opened.focus();
+    }
+    return self.clients.openWindow(target);
+  })());
 });

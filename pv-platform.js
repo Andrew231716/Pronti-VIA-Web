@@ -1686,6 +1686,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         </select>
       </label>
       <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica</button>
+      ${auth ? `<h3 style="margin-top:16px">Notifiche del viaggio</h3>
+      <button type="button" class="pv-plat-btn" data-trip-notifications>Preferenze notifiche</button>` : ""}
       <h3 style="margin-top:16px">Sincronizzazione</h3>
       <p class="pv-plat-muted">${
         navigator.onLine
@@ -1774,6 +1776,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       window.addEventListener("afterprint", () => copy.remove(), { once: true });
       window.print();
     });
+    body.querySelector("[data-trip-notifications]")?.addEventListener("click", () => window.__pvOpenTripNotifications?.());
     const inviteList = body.querySelector("#pv-invite-list");
     const inviteForm = body.querySelector("#pv-invite-form");
     if (inviteForm && inviteList) {

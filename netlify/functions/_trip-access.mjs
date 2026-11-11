@@ -115,7 +115,7 @@ export async function handlePersonalAccess({ event, id, sub, token, json, reques
   }
   const view = (data) => ({
     id, trip: data.trip, revision: data.revision, updated: data.updated,
-    canEdit: invite.role === "editor", personalRole: invite.role,
+    canEdit: invite.role === "editor", personalRole: invite.role, personalName: invite.name,
     source: data.source, local: data.local, durable: data.durable,
   });
   if (method === "GET") return json(200, view(current));

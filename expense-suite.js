@@ -6,10 +6,9 @@
 (() => {
   const META_KEY = "viavia-expense-fx-meta-v1";
   const FX_DISK_KEY = "viavia-fx-rate-disk-v1";
-  const NOTIFY_KEY = "viavia-expense-notify-v1";
   const DOCK_DISMISS_KEY = "pv-es-dock-dismissed-v1";
   const STYLE_ID = "pv-expense-suite-style";
-  const ASSET_VER = "20261111c";
+  const ASSET_VER = "20261111i";
 
   const TEMPLATES = [
     { id: "cena", title: "Cena", category: "Cibo", local: 0 },
@@ -287,37 +286,6 @@
     }
   }
 
-  /* ---------- Notifications ---------- */
-  function notifyEnabled() {
-    return Boolean(readJson(NOTIFY_KEY, { on: false }).on);
-  }
-
-  function setNotifyEnabled(on) {
-    writeJson(NOTIFY_KEY, { on: Boolean(on) });
-  }
-
-  async function ensureNotifyPermission() {
-    if (!("Notification" in window)) return false;
-    if (Notification.permission === "granted") return true;
-    if (Notification.permission === "denied") return false;
-    const res = await Notification.requestPermission();
-    return res === "granted";
-  }
-
-  function notifyExpense(title, body) {
-    if (!notifyEnabled() || !("Notification" in window) || Notification.permission !== "granted") return;
-    try {
-      const n = new Notification(title, {
-        body,
-        icon: "./logo.png",
-        tag: "pv-expense",
-      });
-      setTimeout(() => n.close(), 6000);
-    } catch {
-      /* ignore */
-    }
-  }
-
   /* ---------- Fair rounding (Splitpay-style) ---------- */
   function fairSplitCents(totalCents, memberIds) {
     const n = memberIds.length || 1;
@@ -531,7 +499,7 @@
       <button type="button" class="primary" data-es="export-csv">Esporta CSV</button>
       <button type="button" data-es="export-pdf">Esporta riepilogo</button>
       <button type="button" data-es="members-fx">Valute compagni</button>
-      <button type="button" data-es="notify">${notifyEnabled() ? "Notifiche on" : "Attiva notifiche"}</button>
+      <button type="button" data-es="notify">Preferenze notifiche</button>
       <span class="pv-es-hint" id="pv-es-online-hint"></span>
     `;
     const title = host.querySelector(".pv-es-dock-title");
@@ -544,7 +512,7 @@
       if (act === "export-csv") void exportCsv();
       if (act === "export-pdf") void exportPdf();
       if (act === "members-fx") injectMemberCurrencyPanel(true);
-      if (act === "notify") void toggleNotify(btn);
+      if (act === "notify") window.__pvOpenTripNotifications?.();
     });
     refreshOnlineHint();
   }
@@ -576,22 +544,6 @@
       el.textContent = "Offline: usiamo l’ultimo tasso salvato su questo dispositivo";
       el.classList.add("pv-es-offline-fx");
     }
-  }
-
-  async function toggleNotify(btn) {
-    if (notifyEnabled()) {
-      setNotifyEnabled(false);
-      btn.textContent = "Attiva notifiche";
-      return;
-    }
-    const ok = await ensureNotifyPermission();
-    if (!ok) {
-      btn.textContent = "Notifiche bloccate";
-      return;
-    }
-    setNotifyEnabled(true);
-    btn.textContent = "Notifiche on";
-    notifyExpense("Notifiche attive", "Ti avviseremo quando aggiungi o vedi nuove spese su questo dispositivo.");
   }
 
   function currencyOptions(selected) {
@@ -1076,10 +1028,6 @@
         const key = `${match.id}:${match.amount}:${match.date}`;
         if (!meta.seenExpenseKeys.includes(key)) {
           meta.seenExpenseKeys = [key, ...meta.seenExpenseKeys].slice(0, 200);
-          notifyExpense(
-            "Spesa salvata",
-            `${match.title.replace(/\s*\([0-9].*$/, "")} · ${formatEuro(match.amount)}`
-          );
         }
         meta.pending = null;
         saveTripMeta(auth.id, meta);
@@ -1297,32 +1245,6 @@
     }
   }
 
-  /* ---------- Watch new expenses for notifications ---------- */
-  let lastExpenseFingerprint = "";
-  async function watchExpenseChanges() {
-    const auth = tripAuth();
-    if (!auth || !notifyEnabled()) return;
-    try {
-      const { trip } = await loadTripData();
-      const fp = (trip.expenses || []).map((e) => `${e.id}:${e.amount}`).join("|");
-      if (!lastExpenseFingerprint) {
-        lastExpenseFingerprint = fp;
-        return;
-      }
-      if (fp === lastExpenseFingerprint) return;
-      const prev = new Set(lastExpenseFingerprint.split("|"));
-      lastExpenseFingerprint = fp;
-      for (const e of trip.expenses || []) {
-        const key = `${e.id}:${e.amount}`;
-        if (!prev.has(key)) {
-          notifyExpense("Nuova spesa nel viaggio", `${e.title} · ${formatEuro(e.amount)}`);
-        }
-      }
-    } catch {
-      /* offline ok */
-    }
-  }
-
   /* ---------- Tick ---------- */
   function tick() {
     ensureStyles();
@@ -1476,12 +1398,5 @@
   });
   setTimeout(tick, 500);
   setTimeout(tick, 1600);
-  setInterval(() => void watchExpenseChanges(), 8000);
 
-  // Register service worker for offline shell
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker.register(`./sw.js?v=${ASSET_VER}`).catch(() => {});
-    });
-  }
 })();

@@ -216,6 +216,7 @@
           rememberReplayedRevision(item.tripId, item.key, data.revision);
           cacheTripRecord(item.tripId, { ...data, key: item.key, canEdit: true, local: false });
         }
+        window.__pvPublishTripNotification?.(item.tripId, item.key);
         flushed += 1;
         try {
           window.dispatchEvent(
@@ -266,6 +267,7 @@
     if ((method === "PUT" || method === "PATCH" || method === "POST") && status === "server") {
       replayedRevisions.delete(tripId);
       clearOutboxTrip(tripId, "trip-put", key);
+      if (method !== "POST" && key) window.__pvPublishTripNotification?.(tripId, key);
     }
   }
 
