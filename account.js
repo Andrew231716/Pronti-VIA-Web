@@ -255,7 +255,7 @@ function ensureUi() {
   `;
   document.body.appendChild(chip);
 
-  // Primary nav — schema: Home · Viaggi · HUB · Assistente IA · Profilo
+  // Primary nav — Home · Viaggi · HUB · IA · Preventivo · Impostazioni · Profilo
   const nav = document.createElement("nav");
   nav.id = "pv-primary-nav";
   nav.hidden = true;
@@ -290,9 +290,15 @@ function ensureUi() {
         <span class="pv-nav-ico" aria-hidden="true"></span>
         <span class="pv-nav-label">Preventivo</span>
       </button>
-      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e strumenti">
+      <button type="button" class="pv-nav-item" data-nav="settings" id="pv-nav-settings" aria-haspopup="dialog" aria-expanded="false" title="Impostazioni — compagni, inviti, sync e checklist">
         <span class="pv-nav-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/><circle cx="18.2" cy="6.2" r="2" /><path d="M17.2 6.2h2M18.2 5.2v2"/></svg>
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.86-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.86 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.86l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.86.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.86V9c.14.65.7 1.12 1.55 1.12H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>
+        </span>
+        <span class="pv-nav-label">Impostaz.</span>
+      </button>
+      <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e account">
+        <span class="pv-nav-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/></svg>
         </span>
         <span class="pv-nav-label">Profilo</span>
       </button>
@@ -319,7 +325,9 @@ function ensureUi() {
   nav.addEventListener("click", event => {
     const target = event.target.closest(".pv-nav-item")?.dataset.nav;
     if (!target) return;
-    if (target !== "profile") document.querySelector("#pv-ux-modal.pv-open .pv-ux-close")?.click();
+    if (target !== "profile" && target !== "settings") {
+      document.querySelector("#pv-ux-modal.pv-open .pv-ux-close")?.click();
+    }
     if (target !== "ai") document.querySelector("#pv-magic-root.pv-open .pv-magic-close")?.click();
     if (target !== "hub") document.querySelector("#pv-plat-panel.open [data-plat=close]")?.click();
     if (target !== "budget") document.querySelector('#pv-preventivo-root.open .pv-prev-top [data-act="close"]')?.click();
@@ -377,6 +385,14 @@ function ensureUi() {
   });
 
   nav.querySelector("#pv-nav-budget").addEventListener("click", () => window.__pvOpenPreventivo?.());
+  nav.querySelector("#pv-nav-settings").addEventListener("click", () => {
+    setNavCurrent("settings");
+    if (typeof window.__pvOpenSettingsMenu === "function") {
+      window.__pvOpenSettingsMenu();
+      return;
+    }
+    window.ProntiPlatform?.openSettings?.();
+  });
   nav.querySelector("#pv-account-menu").addEventListener("click", () => {
     setNavCurrent("profile");
     if (typeof window.__pvOpenAccountMenu === "function") {
@@ -1018,7 +1034,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261111j";
+const SHELL_VER = "20261112f";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

@@ -22,8 +22,8 @@ ok("dest dark remaps ink", /html\[data-pv-theme="dark"\]\[data-pv-dest\][\s\S]*-
 ok("dest dark nav item color", /body\.pv-dest-theme-ready #pv-primary-nav \.pv-nav-item\{[\s\S]*--pv-plat-muted/.test(dest));
 ok("platform syncs .dark class", /classList\.toggle\("dark", dark\)/.test(plat));
 ok("platform dark brand override", /html\[data-pv-theme="dark"\] #root \.brand/.test(plat));
-ok("stamps wired", /account\.css\?v=20261112e/.test(index) && /destination-theme-20261112e\.js/.test(index));
-ok("assets exist", existsSync("assets/destination-theme-20261112e.js") && existsSync("assets/pv-platform-20261112e.js"));
+ok("stamps wired", /account\.css\?v=20261112f/.test(index) && /destination-theme-20261112f\.js/.test(index));
+ok("assets exist", existsSync("assets/destination-theme-20261112f.js") && existsSync("assets/pv-platform-20261112e.js"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

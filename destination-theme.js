@@ -15,6 +15,7 @@
     hub: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.5"/><path d="M3.5 19c.6-3 2.8-4.5 5.5-4.5S14 16 14.5 19"/><path d="M14 14.2c1.5-.7 3.2-.5 4.8.8.6.5 1 1.2 1.2 2"/></svg>`,
     ai: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.2 4.2L17.5 8.5 13.2 9.8 12 14l-1.2-4.2L6.5 8.5l4.3-1.3L12 3z"/><path d="M18.5 14.5 19 16l1.5.5L19 17l-.5 1.5L18 17l-1.5-.5L18 16l.5-1.5z"/></svg>`,
     profile: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/></svg>`,
+    settings: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.86l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.86-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.86.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.86 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.86l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.86.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.86-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.86V9c.14.65.7 1.12 1.55 1.12H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1z"/></svg>`,
   };
 
   function ghanaIcon(path) {
@@ -51,6 +52,7 @@
         ai: ghanaIcon('<path d="m12 3 2.6 5.5 6 .8-4.3 4.2 1 5.9-5.3-2.8-5.3 2.8 1-5.9-4.3-4.2 6-.8L12 3Z"/>'),
         profile: ghanaIcon('<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a7 7 0 0 1 14 0v2M8 17l2 2 2-2 2 2 2-2"/>'),
         budget: ghanaIcon('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8m-8 4h2m4 0h2m-8 4h2m4 0h2m-8 3h8"/>'),
+        settings: ghanaIcon('<circle cx="12" cy="12" r="3"/><path d="M4 12h2m12 0h2M12 4v2m0 12v2M6.3 6.3l1.4 1.4m8.6 8.6 1.4 1.4m0-11.4-1.4 1.4M7.7 16.3l-1.4 1.4"/>'),
       },
     },
     it: {
@@ -795,6 +797,7 @@
       "pv-nav-ai": theme.icons.ai,
       "pv-account-menu": theme.icons.profile,
       "pv-nav-budget": theme.icons.budget || ghanaIcon('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8m-8 4h2m4 0h2m-8 4h2m4 0h2"/>'),
+      "pv-nav-settings": theme.icons.settings || ICO.settings,
     };
     for (const [id, svg] of Object.entries(map)) {
       const ico = document.querySelector(`#${id} .pv-nav-ico`);

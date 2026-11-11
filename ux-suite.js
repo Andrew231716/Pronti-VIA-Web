@@ -278,14 +278,34 @@
       .pv-account-fields{display:grid;gap:8px;margin:0 0 10px}
       .pv-account-field{
         display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;
-        padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--pv-line)
+        padding:10px 12px;border-radius:12px;background:#fff;border:1px solid var(--pv-line);
+        color:#12343c
       }
       .pv-account-field dt{margin:0;font:650 .72rem/1.2 inherit;letter-spacing:.04em;text-transform:uppercase;color:#5b7380}
-      .pv-account-field dd{margin:0;font:750 .92rem/1.3 inherit;color:var(--pv-ink);word-break:break-word}
+      .pv-account-field dd{margin:0;font:750 .92rem/1.3 inherit;color:#12343c;word-break:break-word}
       .pv-account-field button{
         appearance:none;border:0;background:transparent;color:var(--pv-teal-deep);
         font:750 .75rem/1 inherit;cursor:pointer;padding:0
       }
+      html[data-pv-theme="dark"] .pv-account-card{
+        background:linear-gradient(160deg,#1a2d32,#152428);
+        border-color:rgba(231,242,243,.14);color:#eef6f7
+      }
+      html[data-pv-theme="dark"] .pv-account-card .av{
+        background:#24383d;border-color:rgba(231,242,243,.16);color:#5eead4
+      }
+      html[data-pv-theme="dark"] .pv-account-card .user{color:#7dd3d8}
+      html[data-pv-theme="dark"] .pv-account-card .meta{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-account-card .pill{
+        background:#24383d;border-color:rgba(231,242,243,.16);color:#c5d6da
+      }
+      html[data-pv-theme="dark"] .pv-account-field{
+        background:#1a2d32;border-color:rgba(231,242,243,.14);color:#eef6f7
+      }
+      html[data-pv-theme="dark"] .pv-account-field dt{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-account-field dd{color:#eef6f7}
+      html[data-pv-theme="dark"] .pv-account-field button{color:#5eead4}
+      html[data-pv-theme="dark"] .pv-menu-section h3{color:#c5d6da}
       .pv-trip-manage-list{display:grid;gap:10px;margin:4px 0 12px}
       .pv-trip-manage-row{
         display:flex;align-items:center;gap:10px;padding:12px;
@@ -1216,16 +1236,22 @@
     return modal;
   }
 
+  function clearMenuNavExpanded() {
+    document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
+    document.getElementById("pv-nav-settings")?.setAttribute("aria-expanded", "false");
+  }
+
   function closeModal() {
     const modal = document.getElementById("pv-ux-modal");
     if (!modal || modal.hidden) {
       document.documentElement.style.overflow = "";
-      document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
+      clearMenuNavExpanded();
       return;
     }
     modal.classList.remove("pv-open");
     document.documentElement.style.overflow = "";
-    document.getElementById("pv-account-menu")?.setAttribute("aria-expanded", "false");
+    clearMenuNavExpanded();
+    delete modal.dataset.pvMenu;
     clearTimeout(modal._closeT);
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
     modal._closeT = setTimeout(
@@ -1421,21 +1447,116 @@
       </dl>`;
   }
 
+  function settingsOrganizzaHtml(inTrip) {
+    if (inTrip) {
+      const syncStatus =
+        window.__pvTripOverview?.(tripAuth().id, tripAuth().key)?.status || "Verifica sincronizzazione";
+      return `<div class="pv-menu-section">
+              <h3>⚙️ Impostazioni viaggio</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
+                <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
+                <button type="button" data-ux="notifications"><strong>Notifiche del viaggio</strong><span>Aggiornamenti e promemoria spese</span></button>
+                <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>${escapeHtml(syncStatus)}</span></button>
+                <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
+              </div>
+            </div>`;
+    }
+    return `<div class="pv-menu-section">
+              <div class="pv-menu-context">
+                <strong>Impostazioni</strong>
+                <p>Apri un viaggio per compagni, inviti, notifiche, sync e checklist. Qui puoi già importare da un evento.</p>
+              </div>
+              <h3>⚙️ Strumenti</h3>
+              <div class="pv-menu-grid">
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
+                <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>Tema, sync e backup Hub</span></button>
+              </div>
+            </div>`;
+  }
+
+  function wireUxMenuActions(body, menuBtn) {
+    body.querySelector("[data-ux-copy-user]")?.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const user = body.querySelector("[data-ux-copy-user]")?.getAttribute("data-user") || "";
+      if (!user) return;
+      try {
+        await navigator.clipboard.writeText(user);
+        toast("Nome utente copiato", "ok");
+      } catch {
+        toast(user, "ok");
+      }
+    });
+    body.querySelectorAll("button[data-ux]").forEach((b) => {
+      b.addEventListener("click", () => {
+        const act = b.getAttribute("data-ux");
+        const sectionNow = activeSectionMeta();
+        closeModal();
+        menuBtn?.setAttribute("aria-expanded", "false");
+        if (act === "companions") void openCompanionsManager();
+        else if (act === "notifications") window.__pvOpenTripNotifications?.();
+        else if (act === "sync-settings") window.ProntiPlatform?.openSettings?.();
+        else if (act === "hub") {
+          if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
+          else if (document.getElementById("pv-hub-nav")) document.getElementById("pv-hub-nav").click();
+          else document.getElementById("pv-plat-fab")?.click();
+        } else if (act === "section-tools") {
+          let opened = false;
+          if (typeof window.__pvAppSuite?.reopenDock === "function") {
+            opened = Boolean(window.__pvAppSuite.reopenDock());
+          } else if (typeof window.__pvExpenseSuite?.reopenDock === "function") {
+            opened = Boolean(window.__pvExpenseSuite.reopenDock());
+          }
+          if (opened) toast(`${sectionNow.toast} — chiudi con ×`, "ok");
+          else toast(`Nessuno strumento per «${sectionNow.label}» in questa vista`, "warn");
+        } else if (act === "search") openSearchSheet();
+        else if (act === "more") openMoreTools();
+        else if (act === "import-event") void openEventImportWizard();
+        else if (act === "manage-trips") openManageTrips();
+        else if (act === "delete-trip") void deleteCurrentTrip();
+        else if (act === "home-hint") {
+          if (typeof window.__pvNavHome === "function") window.__pvNavHome();
+          else toast("Usa «Nuovo viaggio» in homepage", "ok");
+        } else if (act === "logout") {
+          if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
+        } else if (act === "delete-account") {
+          if (typeof window.__pvAccountDelete === "function") window.__pvAccountDelete();
+        } else runUxAction(act);
+      });
+    });
+  }
+
+  function openSettingsMenu() {
+    const inTrip = Boolean(tripAuth());
+    const menuBtn = document.getElementById("pv-nav-settings");
+    clearMenuNavExpanded();
+    menuBtn?.setAttribute("aria-expanded", "true");
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("settings");
+    const modal = openModal("Impostazioni", settingsOrganizzaHtml(inTrip), {
+      onMount: (body) => wireUxMenuActions(body, menuBtn),
+    });
+    if (modal) modal.dataset.pvMenu = "settings";
+  }
+  window.__pvOpenSettingsMenu = openSettingsMenu;
+
   function openAccountMenu() {
     const inTrip = Boolean(tripAuth());
     const menuBtn = document.getElementById("pv-account-menu");
+    clearMenuNavExpanded();
     menuBtn?.setAttribute("aria-expanded", "true");
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("profile");
     const section = inTrip ? activeSectionMeta() : null;
-    openModal(
-      inTrip && section ? `Profilo · ${section.label}` : "Profilo e strumenti",
+    const modal = openModal(
+      inTrip && section ? `Profilo · ${section.label}` : "Profilo e account",
       `${
         inTrip
           ? `<div class="pv-menu-section">
               <div class="pv-menu-context">
                 <strong>Sei in</strong>
                 <em>${escapeHtml(section.label)}</em>
-                <p>Le azioni rapide qui sotto valgono per questa sezione. Le tab in alto (Itinerario, Spese…) restano la navigazione principale del viaggio.</p>
+                <p>Le azioni rapide qui sotto valgono per questa sezione. Compagni, inviti e sync sono in Impostazioni (ingranaggio).</p>
               </div>
               <h3>⚡ Azioni rapide</h3>
               <div class="pv-menu-grid">
@@ -1444,17 +1565,6 @@
                   <span>${escapeHtml(section.hint)}</span>
                 </button>
                 <button type="button" data-ux="search"><strong><span class="pv-menu-emo" aria-hidden="true">🔎</span>Cerca nel viaggio</strong><span>Trova tappe, spese e note</span></button>
-              </div>
-            </div>
-            <div class="pv-menu-section">
-              <h3>🗺️ Organizza</h3>
-              <div class="pv-menu-grid">
-                <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
-                <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
-                <button type="button" data-ux="notifications"><strong>Notifiche del viaggio</strong><span>Aggiornamenti e promemoria spese</span></button>
-                <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>${escapeHtml(window.__pvTripOverview?.(tripAuth().id, tripAuth().key)?.status || "Verifica sincronizzazione")}</span></button>
-                <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
@@ -1481,7 +1591,6 @@
               <h3>I tuoi viaggi</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
                 <button type="button" data-ux="home-hint"><strong><span class="pv-menu-emo" aria-hidden="true">🏠</span>Torna alla home</strong><span>Crea un viaggio con «Nuovo viaggio»</span></button>
               </div>
             </div>
@@ -1515,60 +1624,10 @@
          </div>
        </div>`,
       {
-        onMount: (body) => {
-          body.querySelector("[data-ux-copy-user]")?.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            const user = body.querySelector("[data-ux-copy-user]")?.getAttribute("data-user") || "";
-            if (!user) return;
-            try {
-              await navigator.clipboard.writeText(user);
-              toast("Nome utente copiato", "ok");
-            } catch {
-              toast(user, "ok");
-            }
-          });
-          body.querySelectorAll("button[data-ux]").forEach((b) => {
-            b.addEventListener("click", () => {
-              const act = b.getAttribute("data-ux");
-              const sectionNow = activeSectionMeta();
-              closeModal();
-              menuBtn?.setAttribute("aria-expanded", "false");
-              if (act === "companions") void openCompanionsManager();
-              else if (act === "notifications") window.__pvOpenTripNotifications?.();
-              else if (act === "sync-settings") window.ProntiPlatform?.openSettings?.();
-              else if (act === "hub") {
-                if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
-                else if (document.getElementById("pv-hub-nav")) document.getElementById("pv-hub-nav").click();
-                else document.getElementById("pv-plat-fab")?.click();
-              } else if (act === "section-tools") {
-                let opened = false;
-                if (typeof window.__pvAppSuite?.reopenDock === "function") {
-                  opened = Boolean(window.__pvAppSuite.reopenDock());
-                } else if (typeof window.__pvExpenseSuite?.reopenDock === "function") {
-                  opened = Boolean(window.__pvExpenseSuite.reopenDock());
-                }
-                if (opened) toast(`${sectionNow.toast} — chiudi con ×`, "ok");
-                else toast(`Nessuno strumento per «${sectionNow.label}» in questa vista`, "warn");
-              }               else if (act === "search") openSearchSheet();
-              else if (act === "more") openMoreTools();
-              else if (act === "import-event") void openEventImportWizard();
-              else if (act === "manage-trips") openManageTrips();
-              else if (act === "delete-trip") void deleteCurrentTrip();
-              else if (act === "home-hint") {
-                if (typeof window.__pvNavHome === "function") window.__pvNavHome();
-                else toast("Usa «Nuovo viaggio» in homepage", "ok");
-              }
-              else if (act === "logout") {
-                if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
-              } else if (act === "delete-account") {
-                if (typeof window.__pvAccountDelete === "function") window.__pvAccountDelete();
-              } else runUxAction(act);
-            });
-          });
-        },
+        onMount: (body) => wireUxMenuActions(body, menuBtn),
       }
     );
+    if (modal) modal.dataset.pvMenu = "profile";
   }
   window.__pvOpenAccountMenu = openAccountMenu;
 
@@ -3708,9 +3767,9 @@
       return;
     }
     document.getElementById("pv-nav-ai")?.setAttribute("aria-expanded", "false");
-    const menuOpen = Boolean(document.querySelector(".pv-ux-modal.pv-open"));
+    const menuOpen = document.querySelector(".pv-ux-modal.pv-open");
     if (menuOpen) {
-      window.__pvSetPrimaryNav("profile");
+      window.__pvSetPrimaryNav(menuOpen.dataset.pvMenu === "settings" ? "settings" : "profile");
       return;
     }
     window.__pvSetPrimaryNav(tripAuth() ? "trips" : "home");
