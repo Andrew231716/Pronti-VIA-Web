@@ -418,6 +418,7 @@
     document.body.classList.toggle("pv-magic-open", open);
     if (panel) panel.hidden = !open;
     if (fab) fab.setAttribute("aria-expanded", open ? "true" : "false");
+    document.getElementById("pv-nav-ai")?.setAttribute("aria-expanded", String(open));
     // Cover the fixed account Menu while Pronty is open (avoids double chrome).
     if (chip) chip.style.visibility = open ? "hidden" : "";
     if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
@@ -573,9 +574,19 @@
   let tripLoadCache = null; // { id, at, payload }
   const TRIP_LOAD_TTL_MS = 4000;
 
-  async function loadTrip({ force = false } = {}) {
+  async function loadTrip({ force = false, allowReadOnly = false } = {}) {
     const auth = tripAuth();
     if (!auth) throw new Error("Apri un viaggio salvato per usare questa funzione.");
+    if (allowReadOnly) {
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+        signal: AbortSignal.timeout(6000),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.trip) throw new Error(data.error || "Viaggio non disponibile");
+      return { auth, data };
+    }
     const now = Date.now();
     if (
       !force &&
@@ -959,12 +970,12 @@
     });
   }
 
-  function renderFab() {
+  function renderFab(fromNav = false) {
     if (!document.body.classList.contains("pv-account-ready")) return;
     // Hide Pronty on login/home — only while a trip is open (avoids covering the gate).
     try {
       const p = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
-      if (!(p.get("trip") && p.get("key"))) {
+      if (!fromNav && !panelOpen && !(p.get("trip") && p.get("key"))) {
         document.getElementById(ROOT_ID)?.remove();
         return;
       }
@@ -975,7 +986,7 @@
     // SPA uses class "loading" for BOTH the spinner ("Apriamo…") and the hard
     // error ("Non riusciamo ad aprire…"). Only block the FAB during the spinner
     // — Pronty must remain reachable once a trip hash is present (incl. error).
-    if (document.querySelector("main.loading .spin")) return;
+    if (!fromNav && document.querySelector("main.loading .spin")) return;
 
     const root = ensureRoot();
     // Keep an open suggestion panel intact (MutationObserver would otherwise wipe it).
@@ -1001,6 +1012,17 @@
     root.querySelector("#pv-magic-scrim").onclick = () => setMagicOpen(false);
   }
 
+  window.__pvOpenTravelAssistant = () => {
+    renderFab(true);
+    const panel = document.querySelector("#pv-magic-panel");
+    if (!panel) return false;
+    if (!panelOpen) {
+      setMagicOpen(true);
+      void showMagicPanel(panel, "chiedi");
+    }
+    return true;
+  };
+
   function bindPanelChrome(panel) {
     const close = panel.querySelector(".pv-magic-close");
     if (close) close.onclick = () => setMagicOpen(false);
@@ -1023,6 +1045,7 @@
 
   async function showMagicPanel(panel, tab = "chiedi") {
     magicTab = tab;
+    if (tab === "chiedi") return void renderChatTab(panel);
     const auth = tripAuth();
     if (auth) {
       try {
@@ -2253,7 +2276,7 @@ Regole pv-places:
 
   function isAiProviderError(text) {
     const t = String(text || "");
-    return /not enough credits|raise the key budget|top up|pollinations\.ai\/(?:top-up|quests|edit-key)|API key|queue full|rate limit|budget|deprecation_notice|enter\.pollinations/i.test(
+    return /not enough credits|raise the key budget|top up|pollinations\.ai\/(?:top-up|quests|edit-key)|API key|queue full|rate limit|deprecation_notice|enter\.pollinations/i.test(
       t
     );
   }
@@ -2420,84 +2443,24 @@ Regole pv-places:
         content: String(m.content || "").slice(0, 4000),
       })),
     ];
-    // Free public Pollinations endpoints — rotate models when one is rate-limited.
-    const models = ["openai", "openai-fast", "mistral", "deepseek", "gemini"];
-    const endpoints = [];
-    for (const model of models) {
-      endpoints.push({
-        url: "https://text.pollinations.ai/openai",
-        body: { model, messages, temperature: 0.65, seed: Math.floor(Math.random() * 1e9) },
-        parse: async (res) => {
-          const data = await res.json().catch(() => ({}));
-          const err =
-            data?.error?.message ||
-            (typeof data?.error === "string" ? data.error : "") ||
-            data?.status ||
-            data?.deprecation_notice ||
-            "";
-          if (err && isAiProviderError(String(err))) return "";
-          const content = data?.choices?.[0]?.message?.content || data?.content || "";
-          return content;
-        },
-      });
-    }
-    endpoints.push({
-      url: "https://text.pollinations.ai/",
-      body: { model: "openai", messages, temperature: 0.65 },
-      parse: async (res) => {
-        const ct = res.headers.get("content-type") || "";
-        if (ct.includes("json")) {
-          const data = await res.json().catch(() => ({}));
-          const err = data?.error?.message || data?.error || "";
-          if (err && isAiProviderError(String(err))) return "";
-          return data?.choices?.[0]?.message?.content || data?.content || "";
-        }
-        return await res.text();
-      },
-    });
-    // GET prompt fallback (sometimes works when OpenAI-compat POST is throttled).
-    try {
-      const lastUser = [...history].reverse().find((m) => m.role === "user");
-      const shortPrompt = `${buildTravelSystemPrompt(trip).slice(0, 900)}\n\nUtente: ${String(lastUser?.content || "").slice(0, 500)}\n\nRispondi in italiano, concreto.`;
-      endpoints.push({
-        url: `https://text.pollinations.ai/${encodeURIComponent(shortPrompt)}?model=openai&seed=${Math.floor(Math.random() * 1e9)}`,
-        body: null,
-        method: "GET",
-        parse: async (res) => {
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("json")) {
-            const data = await res.json().catch(() => ({}));
-            return data?.choices?.[0]?.message?.content || data?.content || "";
-          }
-          return await res.text();
-        },
-      });
-    } catch {
-      /* ignore */
-    }
-
-    let lastErr = null;
-    for (const ep of endpoints) {
+    const signal = AbortSignal.timeout(12000);
+    for (const model of ["openai", "openai-fast"]) {
       try {
-        const res = await fetch(ep.url, {
-          method: ep.method || "POST",
-          headers:
-            ep.method === "GET"
-              ? { Accept: "text/plain, application/json" }
-              : { "Content-Type": "application/json", Accept: "application/json" },
-          body: ep.body == null ? undefined : JSON.stringify(ep.body),
-          signal: AbortSignal.timeout(14000),
+        const res = await fetch("https://text.pollinations.ai/openai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ model, messages, temperature: 0.65 }),
+          signal,
         });
-        if (!res.ok) throw new Error(`AI ${res.status}`);
-        const content = String((await ep.parse(res)) || "").trim();
-        if (!content || content.length < 8) continue;
-        if (isAiProviderError(content)) continue;
-        return content;
-      } catch (err) {
-        lastErr = err;
+        if (!res.ok) continue;
+        const data = await res.json();
+        const content = String(data?.choices?.[0]?.message?.content || "").trim();
+        if (content && !isAiProviderError(content)) return content;
+      } catch {
+        if (signal.aborted) break;
       }
     }
-    throw lastErr || new Error("Assistente non disponibile");
+    throw new Error("Assistente IA temporaneamente non disponibile.");
   }
 
   async function resolveAiPlaces(aiPlaces, destination, title, lat, lng) {
@@ -2608,7 +2571,7 @@ Regole pv-places:
       let trip = magicTripCache;
       if (!trip && tripAuth()) {
         try {
-          trip = (await loadTrip()).data.trip;
+          trip = (await loadTrip({ allowReadOnly: true })).data.trip;
         } catch {
           trip = null;
         }
@@ -2663,6 +2626,8 @@ Regole pv-places:
           }
         }
       }
+
+      if (reply) thinking.textContent = formatChatDisplay(reply);
 
       // Geocode / cards whenever the user asks for places OR the AI named some.
       let place = { lat: null, lng: null };
@@ -2720,7 +2685,8 @@ Regole pv-places:
 
       if (!reply) {
         reply =
-          "Dimmi pure cosa ti serve: ristoranti, musei, natura, itinerario giorno per giorno, budget o checklist. Ti mostro posti con foto da aggiungere al viaggio.";
+          "Il servizio IA è temporaneamente non disponibile. Riprova oppure scegli una domanda su itinerario, ristoranti o budget.";
+        addRetry();
       }
 
       thinking.textContent = formatChatDisplay(reply);
@@ -2733,8 +2699,6 @@ Regole pv-places:
       if (combined.length) {
         renderPlaceCards(results, combined, 0, { itineraryMode: placeAsk || aiPlaces.length > 0 });
         results.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      } else {
-        results.innerHTML = "";
       }
       status.textContent = combined.some((c) => !c.webOnly)
         ? `${combined.filter((c) => !c.webOnly).length} luoghi trovati su mappe e guide · verifica orari e disponibilità`
@@ -2745,7 +2709,9 @@ Regole pv-places:
             : "Prova un chip o riformula la domanda";
       if (needPlaces && !combined.some(c => !c.webOnly)) addRetry();
     } catch (err) {
-      thinking.textContent = err instanceof Error ? err.message : "Qualcosa è andato storto.";
+      if (thinking.textContent === "Sto pensando…") {
+        thinking.textContent = err instanceof Error ? err.message : "Qualcosa è andato storto.";
+      }
       status.textContent = "";
       addRetry();
     } finally {

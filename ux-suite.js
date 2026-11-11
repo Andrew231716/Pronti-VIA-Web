@@ -1584,16 +1584,8 @@
   function navGoAi() {
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("ai");
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
-    const aiBtn = document.getElementById("pv-nav-ai");
-    aiBtn?.setAttribute("aria-expanded", "true");
-    // Bacchetta può essere display:none con primary nav — click() resta valido
-    const magic = document.getElementById("pv-magic-open");
-    if (magic) {
-      magic.style.display = "inline-flex";
-      magic.click();
-      return;
-    }
-    toast(tripAuth() ? "Assistente in caricamento…" : "Apri un viaggio per usare l’assistente IA", "warn");
+    if (window.__pvOpenTravelAssistant?.()) return;
+    toast("Assistente in caricamento. Riprova tra un momento.", "warn");
   }
 
   window.__pvNavHome = navGoHome;
