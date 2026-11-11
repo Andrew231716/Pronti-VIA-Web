@@ -1572,16 +1572,56 @@
   }
   window.__pvOpenAccountMenu = openAccountMenu;
 
-  function navGoHome() {
-    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("home");
-    document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
-    document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
-    // Home = landing: esci dal viaggio e mostra crea/apri
-    if (tripAuth()) {
-      history.replaceState(null, "", location.pathname + location.search);
-      location.reload();
-      return;
+  /** Keep an explicit nav choice sticky so auto-sync cannot snap Home → Viaggi. */
+  let primaryNavLock = null; // { tab, until }
+  function lockPrimaryNav(tab, ms = 4500) {
+    primaryNavLock = { tab, until: Date.now() + Math.max(400, Number(ms) || 0) };
+    window.__pvPrimaryNavLock = primaryNavLock;
+    if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav(tab);
+  }
+  function clearPrimaryNavLock() {
+    primaryNavLock = null;
+    window.__pvPrimaryNavLock = null;
+  }
+  function primaryNavLockActive(tab) {
+    if (!primaryNavLock) return false;
+    if (Date.now() > primaryNavLock.until) {
+      clearPrimaryNavLock();
+      return false;
     }
+    return !tab || primaryNavLock.tab === tab;
+  }
+
+  function isGuestAccount() {
+    try {
+      const s = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return Boolean(s?.guest);
+    } catch {
+      return false;
+    }
+  }
+
+  function leaveOpenTripSoft() {
+    document.body.classList.remove("pv-trip-open");
+    try {
+      sessionStorage.setItem("pv-prefer-home-v1", "1");
+    } catch {
+      /* ignore */
+    }
+    const clean = location.pathname + location.search;
+    try {
+      history.replaceState(null, "", clean);
+    } catch {
+      location.hash = "";
+    }
+    try {
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } catch {
+      window.dispatchEvent(new Event("hashchange"));
+    }
+  }
+
+  function focusHomeLanding() {
     window.scrollTo({ top: 0, behavior: "smooth" });
     const createBtn = [...document.querySelectorAll("button, a")].find((el) =>
       /nuovo viaggio/i.test((el.textContent || "").trim())
@@ -1589,7 +1629,51 @@
     createBtn?.scrollIntoView?.({ block: "center", behavior: "smooth" });
   }
 
+  function navGoHome() {
+    // Share recipients (guest): Home would clear #trip&key → login gate. Keep them in the trip.
+    if (isGuestAccount()) {
+      lockPrimaryNav("trips", 2500);
+      toast(
+        "Sei nel viaggio condiviso. Home (i tuoi viaggi) richiede un account — resta qui o accedi.",
+        "warn"
+      );
+      return;
+    }
+    lockPrimaryNav("home", 6000);
+    document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
+    document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
+    // Home = landing fuori viaggio: esci in modo soft (niente reload confuso).
+    if (tripAuth() || /(?:^|[&#])trip=/.test(String(location.hash || ""))) {
+      leaveOpenTripSoft();
+      // If SPA still keeps the trip workspace, fall back to a clean reload once.
+      setTimeout(() => {
+        if (tripAuth() || document.body.classList.contains("pv-trip-open")) {
+          lockPrimaryNav("home", 8000);
+          try {
+            history.replaceState(null, "", location.pathname + location.search);
+          } catch {
+            /* ignore */
+          }
+          location.reload();
+          return;
+        }
+        lockPrimaryNav("home", 4000);
+        focusHomeLanding();
+        toast("Home — qui crei un viaggio o ne apri uno. Per l’itinerario usa Viaggi.", "ok");
+      }, 280);
+      return;
+    }
+    focusHomeLanding();
+    toast("Sei già in Home — panoramica e nuovo viaggio", "ok");
+  }
+
   function navGoTrips() {
+    clearPrimaryNavLock();
+    try {
+      sessionStorage.removeItem("pv-prefer-home-v1");
+    } catch {
+      /* ignore */
+    }
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("trips");
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
     if (tripAuth()) {
@@ -2212,8 +2296,8 @@
     openModal(
       "✨ Come muoverti in Pronti? VIA!",
       `<div class="pv-onboard-steps">
-        <div><span class="pv-onboard-emo" aria-hidden="true">🏠</span><div><strong>Home</strong>Panoramica e crea un nuovo viaggio.</div></div>
-        <div><span class="pv-onboard-emo" aria-hidden="true">🧳</span><div><strong>Viaggi</strong>Itinerario del viaggio aperto, oppure elenco dei tuoi viaggi.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🏠</span><div><strong>Home</strong>Panoramica: crea un viaggio o aprine uno. Se sei dentro un viaggio, Home ti fa uscire.</div></div>
+        <div><span class="pv-onboard-emo" aria-hidden="true">🧳</span><div><strong>Viaggi</strong>Dentro il viaggio (itinerario, spese…). Senza viaggio aperto: elenco dei tuoi viaggi.</div></div>
         <div><span class="pv-onboard-emo" aria-hidden="true">✨</span><div><strong>HUB</strong>Collabora: voti, preparazione, numeri e backup di gruppo.</div></div>
         <div><span class="pv-onboard-emo" aria-hidden="true">🪄</span><div><strong>IA</strong>Bacchetta magica — suggerimenti e Lingua sul posto.</div></div>
         <div><span class="pv-onboard-emo" aria-hidden="true">👤</span><div><strong>Profilo</strong>Strumenti, inviti, account e impostazioni.</div></div>
@@ -3563,8 +3647,53 @@
     }
   }
 
+  function syncPrimaryNavLabels() {
+    const home = document.getElementById("pv-nav-home");
+    const trips = document.getElementById("pv-nav-trips");
+    const inTrip = Boolean(tripAuth());
+    const guest = isGuestAccount();
+    if (home) {
+      // Guests on share links: hide Home — clearing the trip hash would kick them to login.
+      home.hidden = guest;
+      home.toggleAttribute("disabled", guest);
+      home.setAttribute("aria-hidden", guest ? "true" : "false");
+      if (guest) {
+        home.title = "Home non disponibile sul link condiviso (serve un account)";
+      } else {
+        home.title = inTrip
+          ? "Home — esci dal viaggio e torna alla panoramica"
+          : "Home — panoramica, crea o apri un viaggio";
+      }
+    }
+    if (trips) {
+      trips.title = inTrip
+        ? "Viaggi — itinerario e schede di questo viaggio"
+        : "Viaggi — elenco dei tuoi viaggi";
+    }
+  }
+
   function syncPrimaryNavState() {
     if (typeof window.__pvSetPrimaryNav !== "function") return;
+    syncPrimaryNavLabels();
+    // Guests live inside the shared trip — never claim Home as current.
+    if (isGuestAccount() && tripAuth()) {
+      if (!document.body.classList.contains("pv-plat-open") &&
+          !document.body.classList.contains("pv-magic-open") &&
+          !document.getElementById("pv-preventivo-root")?.classList.contains("open") &&
+          !document.querySelector(".pv-ux-modal.pv-open")) {
+        window.__pvSetPrimaryNav("trips");
+        return;
+      }
+    }
+    // User just chose Home: keep Home selected even while hash is clearing.
+    if (primaryNavLockActive("home") && !isGuestAccount()) {
+      window.__pvSetPrimaryNav("home");
+      return;
+    }
+    if (primaryNavLockActive()) {
+      window.__pvSetPrimaryNav(primaryNavLock.tab);
+      return;
+    }
     if (document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
       window.__pvSetPrimaryNav("budget");
       return;

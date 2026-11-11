@@ -262,13 +262,13 @@ function ensureUi() {
   nav.setAttribute("aria-label", "Navigazione principale");
   nav.innerHTML = `
     <div class="pv-primary-nav-inner" role="toolbar">
-      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page" title="Home — panoramica e nuovo viaggio">
+      <button type="button" class="pv-nav-item" data-nav="home" id="pv-nav-home" aria-current="page" title="Home — panoramica, crea o apri un viaggio (esce dal viaggio aperto)">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5z"/></svg>
         </span>
         <span class="pv-nav-label">Home</span>
       </button>
-      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips" title="Viaggi — itinerario o elenco">
+      <button type="button" class="pv-nav-item" data-nav="trips" id="pv-nav-trips" title="Viaggi — itinerario del viaggio aperto, oppure elenco">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h9l2 4H7l2-4z"/><path d="M7 8v11a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V8"/><path d="M10 12h4"/></svg>
         </span>
@@ -338,6 +338,17 @@ function ensureUi() {
   });
 
   nav.querySelector("#pv-nav-home").addEventListener("click", () => {
+    // Guests on shared links must not clear #trip&key (that opens the login gate).
+    try {
+      const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      if (session?.guest) {
+        setNavCurrent("trips");
+        if (typeof window.__pvNavHome === "function") window.__pvNavHome();
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
     setNavCurrent("home");
     if (typeof window.__pvNavHome === "function") {
       window.__pvNavHome();
