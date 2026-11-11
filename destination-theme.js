@@ -505,7 +505,6 @@
     if (hints.destination || hints.title) return hints;
 
     try {
-      // api-shim / Netlify expect Bearer, not ?key=
       const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
         headers: { Authorization: `Bearer ${auth.key}` },
         cache: "no-store",
@@ -565,6 +564,7 @@
     }
     style.textContent = `
       html[data-pv-dest]{
+        --pv-dest-wash-soft: var(--pv-dest-wash);
         --pv-account-teal: var(--pv-dest-teal);
         --pv-account-teal-deep: var(--pv-dest-teal-deep);
         --pv-account-teal-soft: var(--pv-dest-wash);
@@ -577,16 +577,37 @@
         --pv-ink: var(--pv-dest-ink);
         --pv-muted: var(--pv-dest-muted);
         --pv-line: var(--pv-dest-line);
-        --pv-wash: var(--pv-dest-sand);
+        --pv-wash: var(--pv-dest-wash);
+        /* Full Hub palette follows destination */
         --pv-plat-accent: var(--pv-dest-teal);
+        --pv-plat-accent-deep: var(--pv-dest-teal-deep);
+        --pv-plat-ink: var(--pv-dest-ink);
+        --pv-plat-muted: var(--pv-dest-muted);
+        --pv-plat-bg: var(--pv-dest-sand);
+        --pv-plat-wash: var(--pv-dest-wash);
+        --pv-plat-border: var(--pv-dest-line);
+        --pv-plat-panel-bg: linear-gradient(180deg, color-mix(in srgb, var(--pv-dest-sand) 88%, #fff), color-mix(in srgb, var(--pv-dest-wash) 35%, var(--pv-dest-sand)) 42%, var(--pv-dest-sand));
       }
       body.pv-account-ready{
         background:
           radial-gradient(900px 420px at 0% -8%, var(--pv-dest-wash, rgba(0,125,130,.07)), transparent 55%),
           radial-gradient(700px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 18%, transparent), transparent 50%),
-          linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%) !important;
+          var(--pv-plat-panel-bg, linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%)) !important;
         background-attachment: fixed;
         transition: background .45s ease;
+      }
+      /* Bottom nav + chip follow Hub/destination accents */
+      body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,
+      body.pv-dest-theme-ready #pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
+      body.pv-dest-theme-ready #pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico{
+        background: var(--pv-dest-teal) !important;
+        color: #fff !important;
+      }
+      body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active{
+        color: var(--pv-dest-teal-deep) !important;
+      }
+      body.pv-dest-theme-ready #pv-account-chip .pv-account-chip-hint{
+        color: var(--pv-dest-teal) !important;
       }
       #pv-dest-atmosphere{
         position:fixed; inset:0; z-index:1; pointer-events:none;
@@ -597,9 +618,7 @@
         opacity:.55;
         mix-blend-mode: screen;
       }
-      /* Keep React UI above atmosphere; chrome stays higher via account.css */
       #root{ position:relative; z-index:2; background:transparent; }
-      #pv-account-chip,#pv-primary-nav,#pv-ux-modal,#pv-plat-panel,#pv-magic-root{ position:relative; }
       #pv-dest-theme-badge{
         display:inline-flex; align-items:center; gap:6px;
         margin-left:8px; padding:4px 10px; border-radius:999px;
@@ -631,8 +650,8 @@
       #pv-dest-theme-badge[hidden]{ display:none!important; }
       #pv-primary-nav .pv-nav-ico svg{ transition: transform .22s ease, color .22s ease; }
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico{
-        background: var(--pv-dest-wash, rgba(0,125,130,.12));
-        color: var(--pv-dest-teal, #007d82);
+        background: var(--pv-dest-teal, #007d82) !important;
+        color: #fff !important;
       }
       @media (min-width:768px){
         #pv-dest-theme-badge{
@@ -688,7 +707,6 @@
       }
       @media (prefers-reduced-motion: reduce){
         body.pv-account-ready{ transition:none; }
-        /* Keep a static atmosphere; hide only animated floaters */
         #pv-dest-atmosphere{ opacity:.55; }
         .pv-dest-floaters, .pv-dest-floaters-left{ display:none!important; }
       }
@@ -795,7 +813,6 @@
     const canvas = ensureCanvas();
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    // Still draw a static soft layer when motion is reduced (do not remove the canvas).
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -941,7 +958,6 @@
     ctx.textBaseline = "middle";
     for (let i = 0; i < count; i++) {
       const emo = stickers[i % stickers.length];
-      // Bias stickers to the side rails so they remain visible beside cards
       const rail = i % 2 === 0;
       const x = rail
         ? 18 + ((i * 37) % Math.max(36, Math.floor(w * 0.18)))

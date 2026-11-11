@@ -45,12 +45,13 @@
     }
     style.textContent = `
       :root{
-        --pv-ink:#12343c; --pv-muted:#526e76; --pv-line:#d2e2e5; --pv-teal:#007d82;
-        --pv-teal-deep:#00656a; --pv-surface:#ffffff; --pv-wash:#f3f8f8;
+        /* Match Hub contrast tokens */
+        --pv-ink:#102f36; --pv-muted:#3a545b; --pv-line:rgba(20,52,58,.14); --pv-teal:#007d82;
+        --pv-teal-deep:#00656a; --pv-surface:#ffffff; --pv-wash:#f4f7f8;
         --pv-ease:cubic-bezier(.22,.8,.22,1);
         --pv-ease-out:cubic-bezier(.16,1,.3,1);
         --pv-motion:.32s;
-        --pv-shadow:0 10px 28px rgba(16,42,48,.08);
+        --pv-shadow:0 10px 30px rgba(16,42,48,.08);
       }
       html{scroll-behavior:smooth}
       @media (prefers-reduced-motion:reduce){

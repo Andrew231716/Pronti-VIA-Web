@@ -294,6 +294,7 @@
   --pv-plat-ink: #102f36;
   --pv-plat-muted: #3a545b;
   --pv-plat-accent: #007d82;
+  --pv-plat-accent-deep: #00656a;
   --pv-plat-warn: #b45309;
   --pv-plat-ok: #047857;
   --pv-plat-err: #b91c1c;
@@ -303,6 +304,8 @@
   --pv-plat-panel-edge: rgba(255,255,255,.7);
   --pv-plat-group-track: rgba(16,47,54,.08);
   --pv-plat-group-on-bg: #fff;
+  --pv-plat-wash: rgba(0,125,130,.12);
+  --pv-plat-glass: rgba(255,255,255,.86);
 }
 [data-pv-theme="dark"] {
   --pv-plat-bg: #0f1c1f;
@@ -310,6 +313,7 @@
   --pv-plat-ink: #eef6f7;
   --pv-plat-muted: #b7c9cd;
   --pv-plat-accent: #2dd4bf;
+  --pv-plat-accent-deep: #14b8a6;
   --pv-plat-warn: #fbbf24;
   --pv-plat-ok: #34d399;
   --pv-plat-err: #f87171;
@@ -319,6 +323,81 @@
   --pv-plat-panel-edge: rgba(255,255,255,.08);
   --pv-plat-group-track: rgba(231,242,243,.1);
   --pv-plat-group-on-bg: #24383d;
+  --pv-plat-wash: rgba(45,212,191,.16);
+  --pv-plat-glass: rgba(22,40,44,.88);
+}
+/* Hub tokens drive the whole shell (nav, chip, UX overlays, body) */
+:root, [data-pv-theme="light"], [data-pv-theme="dark"] {
+  --pv-ink: var(--pv-plat-ink);
+  --pv-muted: var(--pv-plat-muted);
+  --pv-teal: var(--pv-plat-accent);
+  --pv-teal-deep: var(--pv-plat-accent-deep);
+  --pv-surface: var(--pv-plat-card);
+  --pv-wash: var(--pv-plat-wash);
+  --pv-line: var(--pv-plat-border);
+  --pv-shadow: var(--pv-plat-shadow);
+  --pv-glass: var(--pv-plat-glass);
+  --pv-account-ink: var(--pv-plat-ink);
+  --pv-account-muted: var(--pv-plat-muted);
+  --pv-account-teal: var(--pv-plat-accent);
+  --pv-account-teal-deep: var(--pv-plat-accent-deep);
+  --pv-account-teal-soft: var(--pv-plat-wash);
+  --pv-account-sand: var(--pv-plat-bg);
+  --pv-account-line: var(--pv-plat-border);
+}
+/* App chrome mirrors Hub panel language */
+body.pv-account-ready{
+  background: var(--pv-plat-panel-bg) !important;
+  background-attachment: fixed !important;
+  color: var(--pv-plat-ink);
+}
+#pv-account-chip{
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pv-plat-glass) 92%, transparent), color-mix(in srgb, var(--pv-plat-card) 78%, transparent)) !important;
+  border-bottom-color: var(--pv-plat-border) !important;
+  color: var(--pv-plat-ink) !important;
+  box-shadow: 0 1px 0 var(--pv-plat-panel-edge) inset, 0 8px 22px rgba(16,42,48,.05) !important;
+}
+#pv-account-chip .pv-account-chip-who{ color: var(--pv-plat-muted) !important; }
+#pv-account-chip strong{ color: var(--pv-plat-ink) !important; }
+#pv-account-chip .pv-account-chip-hint{ color: var(--pv-plat-accent) !important; }
+#pv-primary-nav .pv-primary-nav-inner{
+  background: var(--pv-plat-glass) !important;
+  border-color: var(--pv-plat-border) !important;
+  box-shadow: var(--pv-plat-shadow), 0 1px 0 var(--pv-plat-panel-edge) inset !important;
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+#pv-primary-nav .pv-nav-item{
+  color: var(--pv-plat-muted) !important;
+}
+#pv-primary-nav .pv-nav-item.is-active{
+  color: var(--pv-plat-accent-deep) !important;
+}
+/* Active icon = Hub tab style (filled accent) */
+#pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,
+#pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
+#pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico{
+  background: var(--pv-plat-accent) !important;
+  color: #fff !important;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-plat-accent) 28%, transparent);
+}
+#pv-primary-nav .pv-nav-hub.is-active .pv-nav-ico,
+#pv-primary-nav .pv-nav-ai.is-active .pv-nav-ico{
+  background: var(--pv-plat-accent) !important;
+  color: #fff !important;
+}
+/* Soft Hub-like cards on trip surfaces when present */
+#root .booking-card,
+#root .pv-trip-card,
+#root .workspace > section,
+#root .day-card{
+  border-color: var(--pv-plat-border) !important;
+  box-shadow: var(--pv-plat-shadow) !important;
+}
+#root .main-tabs [role="tab"][aria-selected="true"],
+#root .main-tabs [role="tab"][data-state="active"]{
+  color: var(--pv-plat-accent-deep) !important;
+  box-shadow: inset 0 -2px 0 var(--pv-plat-accent);
 }
 /*
   Hub lives in the primary bottom nav (#pv-hub-nav). Floating FAB is fallback only
