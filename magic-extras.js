@@ -6222,16 +6222,14 @@ Regole pv-places:
       note.className = "pv-member-remove-note";
       list.after(note);
     }
-    if (canManage) {
-      note.textContent =
-        "Come creatore puoi eliminare chi è entrato dal link (es. Ospite). Non rientrerà in automatico con lo stesso nome.";
-    } else if (!creatorOk) {
-      note.textContent = "Solo il creatore del viaggio può eliminare i partecipanti dal link.";
-      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
-      return;
-    } else {
-      note.textContent = "Apri il viaggio con il link di modifica per gestire i compagni.";
-      list.querySelectorAll(".pv-member-remove").forEach((b) => b.remove());
+    const message = canManage
+      ? "Come creatore puoi eliminare chi è entrato dal link (es. Ospite). Non rientrerà in automatico con lo stesso nome."
+      : !creatorOk
+        ? "Solo il creatore del viaggio può eliminare i partecipanti dal link."
+        : "Apri il viaggio con il link di modifica per gestire i compagni.";
+    if (note.textContent !== message) note.textContent = message;
+    if (!canManage) {
+      list.querySelectorAll(".pv-member-remove").forEach(button => button.remove());
       return;
     }
 
@@ -6271,6 +6269,7 @@ Regole pv-places:
     return false;
   };
 
+  let itineraryEnhancement;
   function tick() {
     if (typeof document !== "undefined" && document.hidden) return;
     renderFab();
@@ -6293,7 +6292,9 @@ Regole pv-places:
     bindForceDeleteStop();
     relabelInvalidDateBadges();
     void repairInvalidStopCategories();
-    void enhanceItineraryStops();
+    if (!itineraryEnhancement && document.querySelector(".stops-list .stop-card:not(:has(.pv-stop-media))")) {
+      itineraryEnhancement = enhanceItineraryStops().catch(() => {}).finally(() => { itineraryEnhancement = null; });
+    }
   }
 
   function markPrivateBudgetLabels() {
@@ -6320,8 +6321,12 @@ Regole pv-places:
     }
   }
 
-  const obs = new MutationObserver(() => {
+  const obs = new MutationObserver(records => {
     if (document.hidden || tick._running || tick._t) return;
+    const relevant = records.some(record =>
+      record.target.closest?.('#root, [role="dialog"]') ||
+      [...record.addedNodes].some(node => node.matches?.('#root, [role="dialog"], [data-radix-portal]')));
+    if (!relevant) return;
     tick._t = setTimeout(() => {
       tick._t = 0;
       tick._running = true;

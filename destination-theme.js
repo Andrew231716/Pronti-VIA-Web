@@ -845,7 +845,7 @@
     const canvas = coverCanvas || ensureCanvas();
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, window.innerWidth <= 640 ? 1 : 2);
     const w = coverCanvas ? 480 : window.innerWidth;
     const h = coverCanvas ? 200 : window.innerHeight;
     canvas.width = Math.floor(w * dpr);
@@ -1129,6 +1129,7 @@
   // Boot + light polling so SPA trip loads are picked up without fighting React.
   setTimeout(() => void syncTheme(true), 400);
   setInterval(() => {
+    if (document.hidden) return;
     try {
       void syncTheme(false);
     } catch {

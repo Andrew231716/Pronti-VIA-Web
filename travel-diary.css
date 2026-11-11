@@ -810,3 +810,16 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
 }
 #root .pv-destination-collage a { flex: 1 1 0; min-width: 0; }
 #root .pv-destination-collage img { width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 640px) {
+  #pv-account-chip,
+  #pv-primary-nav .pv-primary-nav-inner {
+    background: var(--diary-paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html[data-pv-dest] #pv-dest-atmosphere {
+    mix-blend-mode: normal;
+    opacity: .38;
+  }
+}
