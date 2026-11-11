@@ -996,7 +996,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261111c";
+const SHELL_VER = "20261111d";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
