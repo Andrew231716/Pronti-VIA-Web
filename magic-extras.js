@@ -5390,6 +5390,15 @@ Regole pv-places:
       return accra;
     }
 
+    const scenes = await Promise.all(["landmark", "landscape", "city"].map(subject =>
+      fetchCommonsCover(`${key} ${subject}`).catch(() => null)));
+    const photos = [...new Map(scenes.filter(Boolean).map(photo => [photo.creditUrl, photo])).values()];
+    if (photos.length) {
+      const result = { ...photos[0], photos };
+      coverCache.set(key, result);
+      return result;
+    }
+
     if (/islanda|iceland|reykjav/i.test(destination)) {
       const iceland = {
         url: new URL("iceland.svg", location.href).href,
@@ -5428,9 +5437,34 @@ Regole pv-places:
     return null;
   }
 
+  function renderDestinationCollage(cover, photos) {
+    cover.querySelector(".pv-destination-collage")?.remove();
+    if (!photos?.length) return;
+    const collage = document.createElement("div");
+    collage.className = "pv-destination-collage";
+    for (const photo of photos) {
+      const tile = document.createElement("a");
+      tile.href = photo.creditUrl;
+      tile.target = "_blank";
+      tile.rel = "noopener noreferrer";
+      tile.title = photo.credit;
+      const image = document.createElement("img");
+      image.src = photo.url;
+      image.alt = photo.credit || photo.alt;
+      image.addEventListener("error", () => {
+        tile.remove();
+        if (!collage.childElementCount) collage.remove();
+      }, { once: true });
+      tile.append(image);
+      collage.append(tile);
+    }
+    cover.prepend(collage);
+  }
+
   function applyTripCover(cover, result, destination) {
     const img = cover.querySelector("img");
     if (!img || !result?.url) return;
+    renderDestinationCollage(cover, result.photos);
     img.dataset.pvCoverSwap = "1";
     img.dataset.pvCoverFor = destination;
     img.src = result.url;
@@ -5478,10 +5512,11 @@ Regole pv-places:
       !isDefaultBalosCover(img) && cover.dataset.pvCoverReady === "1";
     if (alreadyGood || (img && cover.dataset.pvCoverDest === destination && cover.dataset.pvCoverFailed === img.src)) return;
     delete cover.dataset.pvCoverReady;
+    if (cover.dataset.pvCoverDest !== destination) cover.querySelector(".pv-destination-collage")?.remove();
 
     // React often re-renders the hardcoded Balos coast.jpg — re-apply cached cover immediately.
     const cached = coverCache.get(destination.toLowerCase());
-    if (cached?.url && isDefaultBalosCover(img)) {
+    if (cached?.url) {
       applyTripCover(cover, cached, destination);
       return;
     }

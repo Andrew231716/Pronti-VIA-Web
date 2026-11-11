@@ -1041,6 +1041,7 @@
     if (!mount || document.querySelector("#root .demo-notice")) return;
     // The local Accra cover follows the rendered trip, independent of image replacement.
     const destination = mount.querySelector(".destination")?.textContent || "";
+    mount.toggleAttribute("data-pv-trip-cover", Boolean(tripAuth()));
     mount.toggleAttribute("data-pv-accra-cover", Boolean(tripAuth() && /\b(?:accra|ghana)\b/i.test(destination)));
     let canvas = mount.querySelector(".pv-diary-cover");
     if (!tripAuth()) {

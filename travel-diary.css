@@ -558,12 +558,12 @@ html[data-pv-theme="dark"] { --diary-status: #b9dfd2; }
   background: #173b30 url("./assets/ghana-collage.webp") center / cover no-repeat;
 }
 #root .trip-cover[data-pv-accra-cover] .cover-shade { display: none; }
-#root .trip-cover[data-pv-accra-cover] .cover-content {
+#root .trip-cover[data-pv-trip-cover] .cover-content {
   position: relative;
   inset: auto;
   padding: clamp(1rem, 4vw, 2rem);
 }
-#root .trip-cover[data-pv-accra-cover] .photo-credit {
+#root .trip-cover[data-pv-trip-cover] .photo-credit {
   position: static;
   display: block;
   width: fit-content;
@@ -707,12 +707,12 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
     font-size: clamp(.77rem, 3.35vw, .92rem) !important;
   }
-  #root .trip-cover[data-pv-accra-cover] .cover-content { padding-block: .7rem; }
-  #root .trip-cover[data-pv-accra-cover] .photo-credit { margin-bottom: .45rem; }
+  #root .trip-cover[data-pv-trip-cover] .cover-content { padding-block: .7rem; }
+  #root .trip-cover[data-pv-trip-cover] .photo-credit { margin-bottom: .45rem; }
 }
 
 /* Compact information strip below the Ghana collage. */
-#root .trip-cover[data-pv-accra-cover] .cover-content {
+#root .trip-cover[data-pv-trip-cover] .cover-content {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -721,7 +721,7 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   font-size: .78rem;
   line-height: 1.25;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-content h1 {
+#root .trip-cover[data-pv-trip-cover] .cover-content h1 {
   order: -2;
   flex: 0 0 100%;
   display: block;
@@ -731,37 +731,37 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   overflow: visible;
   overflow-wrap: anywhere;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-content .destination {
+#root .trip-cover[data-pv-trip-cover] .cover-content .destination {
   padding: 0;
   border: 0;
   background: transparent;
   font-size: inherit;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-meta { display: contents; }
-#root .trip-cover[data-pv-accra-cover] .cover-meta > span:first-child {
+#root .trip-cover[data-pv-trip-cover] .cover-meta { display: contents; }
+#root .trip-cover[data-pv-trip-cover] .cover-meta > span:first-child {
   order: -1;
   flex: 0 0 100%;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-meta > :is(span,button) {
+#root .trip-cover[data-pv-trip-cover] .cover-meta > :is(span,button) {
   display: inline-flex;
   align-items: center;
   gap: .25rem;
   font-size: inherit;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-content svg {
+#root .trip-cover[data-pv-trip-cover] .cover-content svg {
   width: .85rem;
   height: .85rem;
 }
-#root .trip-cover[data-pv-accra-cover] .cover-meta > button {
+#root .trip-cover[data-pv-trip-cover] .cover-meta > button {
   min-height: 44px;
 }
-#root .trip-cover[data-pv-accra-cover] .photo-credit {
+#root .trip-cover[data-pv-trip-cover] .photo-credit {
   margin: 0 .85rem .45rem;
   font-size: .62rem;
   line-height: 1.2;
 }
 
-#root .trip-cover[data-pv-accra-cover] .cover-content h1 {
+#root .trip-cover[data-pv-trip-cover] .cover-content h1 {
   position: absolute;
   inset: auto 0 100%;
   padding: 2rem .85rem .65rem;
@@ -770,3 +770,43 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   font-size: clamp(1.45rem, 6vw, 2.2rem);
   text-shadow: 0 1px 4px rgb(0 0 0 / .55);
 }
+
+
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover]) {
+  height: auto;
+  min-height: 0;
+  background: var(--pv-dest-teal-deep, #173b30);
+}
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover])::before {
+  content: "";
+  display: block;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+}
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover]):has(.pv-destination-collage)::before,
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover])[data-pv-cover-ready="1"]:not(:has(.pv-destination-collage))::before {
+  display: none;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-shade { display: none; }
+#root .trip-cover[data-pv-trip-cover] .pv-diary-cover {
+  bottom: auto;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+}
+#root .trip-cover[data-pv-trip-cover] > img {
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+  object-fit: cover;
+}
+#root .trip-cover[data-pv-trip-cover]:has(.pv-destination-collage) > img { display: none; }
+#root .trip-cover .pv-destination-collage {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+  overflow: hidden;
+}
+#root .pv-destination-collage a { flex: 1 1 0; min-width: 0; }
+#root .pv-destination-collage img { width: 100%; height: 100%; object-fit: cover; }
