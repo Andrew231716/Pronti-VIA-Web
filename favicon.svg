@@ -10,12 +10,16 @@
     </linearGradient>
   </defs>
   <path fill="url(#sea)" d="M0 0h512v512H0z"/>
-  <path d="M125 331c-15 27 20 62 109 73 62 8 122-6 153-38" fill="none" stroke="#a2e6da" stroke-width="15" stroke-linecap="round" stroke-dasharray="1 27"/>
-  <circle cx="125" cy="331" r="13" fill="#a2e6da"/>
+  <g fill="#a2e6da">
+    <circle cx="130" cy="329" r="12"/>
+    <circle cx="142" cy="356" r="10"/>
+    <circle cx="169" cy="377" r="9"/>
+    <circle cx="204" cy="392" r="8"/>
+    <circle cx="315" cy="392" r="8"/>
+  </g>
   <path d="M256 99c-66 0-119 52-119 117 0 75 62 133 109 180a14 14 0 0 0 20 0c47-47 109-105 109-180 0-65-53-117-119-117Z" fill="#052d38" opacity=".25" transform="translate(0 8)"/>
   <path d="M256 99c-66 0-119 52-119 117 0 75 62 133 109 180a14 14 0 0 0 20 0c47-47 109-105 109-180 0-65-53-117-119-117Z" fill="url(#sun)"/>
   <path d="M233 192v-13a9 9 0 0 1 9-9h28a9 9 0 0 1 9 9v13" fill="none" stroke="#143f48" stroke-width="13" stroke-linejoin="round"/>
   <rect x="184" y="192" width="144" height="92" rx="21" fill="#143f48"/>
-  <path d="M214 202v72m84-72v72" stroke="#fff1cb" stroke-width="9" stroke-linecap="round"/>
-  <path d="M246 237h20" stroke="#fff1cb" stroke-width="8" stroke-linecap="round"/>
+  <path d="M212 207v62m88-62v62" stroke="#fff1cb" stroke-width="12" stroke-linecap="round"/>
 </svg>

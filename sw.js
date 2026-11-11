@@ -1,16 +1,16 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261111p`;
+const CACHE = `${CACHE_PREFIX}20261111q`;
 const PRECACHE = [
   "./",
   "./index.html",
   "./404.html",
-  "./favicon.svg?v=20261107e",
-  "./assets/pronti-via-icon-192.png",
-  "./assets/pronti-via-apple-180.png",
+  "./favicon.svg?v=20261111q",
+  "./assets/pronti-via-icon-192.png?v=20261111q",
+  "./assets/pronti-via-apple-180.png?v=20261111q",
   "./logo.png",
-  "./logo.png?v=20261107e",
-  "./manifest.webmanifest?v=20261107e",
+  "./logo.png?v=20261111q",
+  "./manifest.webmanifest?v=20261111q",
   "./account.css?v=20261111c",
   "./travel-diary.css?v=20261111p",
   "./account.js?v=20261111j",
@@ -112,7 +112,7 @@ self.addEventListener("push", event => {
   const reminder = payload.kind === "reminder";
   event.waitUntil(self.registration.showNotification(reminder ? "Promemoria spese" : "Viaggio aggiornato", {
     body: reminder ? "Apri Pronti? VIA! per vedere il saldo da rimborsare." : "Apri Pronti? VIA! per vedere le modifiche.",
-    icon: "./assets/pronti-via-icon-192.png",
+    icon: "./assets/pronti-via-icon-192.png?v=20261111q",
     tag: `pv-${payload.kind}-${payload.tripId}`,
     data: { tripId: payload.tripId },
   }));
