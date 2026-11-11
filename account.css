@@ -739,6 +739,69 @@ body.pv-primary-nav-ready #pv-plat-fab {
   border-radius: 999px !important;
 }
 
+/* Dark mode safety net (even before/without destination remaps) */
+html[data-pv-theme="dark"] {
+  --pv-account-ink: #eef6f7;
+  --pv-account-muted: #c5d6da;
+  --pv-account-teal: #2dd4bf;
+  --pv-account-teal-deep: #5eead4;
+  --pv-account-teal-soft: rgba(45, 212, 191, 0.16);
+  --pv-account-sand: #0f1c1f;
+  --pv-account-line: rgba(231, 242, 243, 0.16);
+  --pv-glass: rgba(22, 40, 44, 0.9);
+  --pv-shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+html[data-pv-theme="dark"] body.pv-account-ready {
+  background:
+    radial-gradient(900px 420px at 0% -8%, rgba(45, 212, 191, 0.12), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(45, 212, 191, 0.08), transparent 50%),
+    linear-gradient(180deg, #121f23 0%, #0e191c 100%);
+  color: var(--pv-account-ink);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip {
+  background: linear-gradient(180deg, rgba(22, 40, 44, 0.96), rgba(15, 28, 31, 0.92));
+  border-bottom-color: rgba(231, 242, 243, 0.1);
+  color: var(--pv-account-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-who {
+  color: var(--pv-account-muted);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip strong {
+  color: var(--pv-account-ink);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-hint {
+  color: var(--pv-account-teal);
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner {
+  background: rgba(231, 242, 243, 0.1);
+  border-color: rgba(231, 242, 243, 0.14);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item {
+  color: var(--pv-account-muted);
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active {
+  color: var(--pv-account-teal);
+  background: #24383d;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
+  background: var(--pv-account-teal);
+  color: #072422;
+}
+
 /* Print / PDF friendly */
 @media print {
   #pv-account-chip,
