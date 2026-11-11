@@ -360,44 +360,74 @@ body.pv-account-ready{
 #pv-account-chip .pv-account-chip-who{ color: var(--pv-plat-muted) !important; }
 #pv-account-chip strong{ color: var(--pv-plat-ink) !important; }
 #pv-account-chip .pv-account-chip-hint{ color: var(--pv-plat-accent) !important; }
+/* Bottom nav = Hub tab-group language (track + active pill) */
 #pv-primary-nav .pv-primary-nav-inner{
-  background: var(--pv-plat-glass) !important;
-  border-color: var(--pv-plat-border) !important;
+  background: var(--pv-plat-group-track) !important;
+  border: 1px solid var(--pv-plat-border) !important;
   box-shadow: var(--pv-plat-shadow), 0 1px 0 var(--pv-plat-panel-edge) inset !important;
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  padding: 6px !important;
+  gap: 4px !important;
+  border-radius: 22px !important;
 }
 #pv-primary-nav .pv-nav-item{
   color: var(--pv-plat-muted) !important;
+  border-radius: 16px !important;
+  min-height: 54px !important;
 }
-#pv-primary-nav .pv-nav-item.is-active{
+#pv-primary-nav .pv-nav-item.is-active,
+#pv-primary-nav #pv-hub-nav[aria-expanded="true"],
+#pv-primary-nav #pv-nav-ai[aria-expanded="true"]{
   color: var(--pv-plat-accent-deep) !important;
+  background: var(--pv-plat-group-on-bg) !important;
+  box-shadow: 0 4px 14px rgba(16,42,48,.1);
+  font-weight: 800 !important;
 }
-/* Active icon = Hub tab style (filled accent) */
+/* Active icon = Hub tab fill */
 #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,
 #pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
-#pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico{
-  background: var(--pv-plat-accent) !important;
-  color: #fff !important;
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-plat-accent) 28%, transparent);
-}
+#pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico,
 #pv-primary-nav .pv-nav-hub.is-active .pv-nav-ico,
 #pv-primary-nav .pv-nav-ai.is-active .pv-nav-ico{
   background: var(--pv-plat-accent) !important;
   color: #fff !important;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-plat-accent) 32%, transparent);
+  transform: translateY(-1px);
 }
-/* Soft Hub-like cards on trip surfaces when present */
+/* Trip surfaces pick Hub card look */
 #root .booking-card,
 #root .pv-trip-card,
 #root .workspace > section,
-#root .day-card{
+#root .day-card,
+#root .share-box,
+#root .topbar{
   border-color: var(--pv-plat-border) !important;
   box-shadow: var(--pv-plat-shadow) !important;
+  background-color: color-mix(in srgb, var(--pv-plat-card) 92%, transparent) !important;
+}
+#root .main-tabs,
+#root [role="tablist"]{
+  background: var(--pv-plat-group-track) !important;
+  border-radius: 16px !important;
+  padding: 4px !important;
+  border: 1px solid var(--pv-plat-border) !important;
 }
 #root .main-tabs [role="tab"][aria-selected="true"],
-#root .main-tabs [role="tab"][data-state="active"]{
+#root .main-tabs [role="tab"][data-state="active"],
+#root [role="tablist"] [role="tab"][aria-selected="true"],
+#root [role="tablist"] [role="tab"][data-state="active"]{
   color: var(--pv-plat-accent-deep) !important;
-  box-shadow: inset 0 -2px 0 var(--pv-plat-accent);
+  background: var(--pv-plat-group-on-bg) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 2px 8px rgba(16,42,48,.08) !important;
+}
+/* Destination wash strip under chip — very visible cue */
+body.pv-dest-theme-ready.pv-account-ready::before{
+  content:"";
+  position:fixed; left:0; right:0; top:0; height:calc(48px + env(safe-area-inset-top,0px));
+  pointer-events:none; z-index:99980;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--pv-plat-accent) 22%, transparent), transparent);
 }
 /*
   Hub lives in the primary bottom nav (#pv-hub-nav). Floating FAB is fallback only

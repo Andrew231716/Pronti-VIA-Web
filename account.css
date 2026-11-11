@@ -422,16 +422,16 @@ body.pv-primary-nav-ready {
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 2px;
-  padding: 7px 5px;
-  border-radius: 26px;
-  background: var(--pv-glass);
-  border: 1px solid rgba(21, 59, 71, 0.07);
+  gap: 4px;
+  padding: 6px;
+  border-radius: 22px;
+  background: rgba(16, 47, 54, 0.08);
+  border: 1px solid var(--pv-account-line);
   box-shadow:
     0 12px 32px rgba(16, 42, 48, 0.12),
     0 1px 0 rgba(255, 255, 255, 0.75) inset;
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
   animation: pv-nav-rise 0.45s var(--pv-ease-out) both;
 }
 
@@ -491,13 +491,16 @@ body.pv-primary-nav-ready {
 
 #pv-primary-nav .pv-nav-item.is-active {
   color: var(--pv-account-teal-deep);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(16, 42, 48, 0.1);
+  font-weight: 800;
 }
 
 #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
   background: var(--pv-account-teal);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-account-teal) 28%, transparent);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-account-teal) 32%, transparent);
 }
 
 /* Hub / IA match Hub tab active fill (accent pill) */
