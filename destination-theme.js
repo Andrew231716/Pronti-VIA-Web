@@ -412,7 +412,7 @@
     { id: "jp", re: /giappone|japan|tokyo|osaka|kyoto|hokkaido/ },
     { id: "gr", re: /grecia|greece|athen|atene|santorini|mykonos|creta|crete/ },
     { id: "es", re: /spain|spagna|madrid|barcellona|barcelona|sevilla|valencia|ibiza|mallorca/ },
-    { id: "fr", re: /france|francia|parigi|paris|lyon|marsiglia|nizza|nice|bordeaux/ },
+    { id: "fr", re: /france|francia|parigi|paris|lyon|marsiglia|nizza|\bnice\b|bordeaux/ },
     { id: "th", re: /thailandia|thailand|bangkok|phuket|chiang/ },
     { id: "no", re: /norvegia|norway|oslo|bergen|troms[oø]/ },
     { id: "eg", re: /egitto|egypt|cairo|luxor|sharm|giza|aswan/ },
@@ -421,19 +421,21 @@
     { id: "us", re: /stati uniti|\busa\b|new york|california|miami|hawaii|los angeles|chicago|boston/ },
     { id: "br", re: /brasile|brazil|rio de janeiro|s[aã]o paulo|salvador|brasilia/ },
     { id: "de", re: /germania|germany|berlin|monaco di baviera|münchen|munich|hamburg|colonia|köln/ },
-    { id: "pt", re: /portugal|portogallo|lisbona|lisboa|porto|algarve/ },
+    { id: "pt", re: /portugal|portogallo|lisbona|lisboa|\bporto\b|algarve/ },
     { id: "hr", re: /croazia|croatia|dubrovnik|zagabria|zagreb|split|hvar/ },
     { id: "tr", re: /turchia|turkey|istanbul|ankara|antalya|cappadocia/ },
     { id: "nl", re: /olanda|netherlands|amsterdam|rotterdam|paesi bassi/ },
     { id: "se", re: /svezia|sweden|stockholm|stoccolma|gothenburg/ },
     { id: "cn", re: /cina|china|pechino|beijing|shanghai|hong kong|xi.?an/ },
     { id: "in", re: /india|delhi|mumbai|goa|jaipur|agra|kerala/ },
-    { id: "it", re: /italia|italy|rome|roma|milan|milano|firenze|napoli|venezia|torino|bologna|sicilia|sardegna|toscana|amalfi|positano|cinque terre/ },
+    { id: "it", re: /italia|italy|\brome\b|\broma\b|\bmilan\b|\bmilano\b|firenze|napoli|venezia|torino|bologna|sicilia|sardegna|toscana|amalfi|positano|cinque terre/ },
   ];
 
   let currentId = null;
   let canvasRaf = 0;
-  let lastDestKey = "";
+  let activeTrip = "";
+  let themeRequest = 0;
+  let remoteTrip = null;
 
   function tripAuth() {
     try {
@@ -504,31 +506,33 @@
     const hints = readTripHints(auth.id);
     if (hints.destination || hints.title) return hints;
 
-    try {
-      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
-        headers: { Authorization: `Bearer ${auth.key}` },
-        cache: "no-store",
-      });
-      if (!res.ok) return hints;
-      const data = await res.json().catch(() => ({}));
-      return {
-        destination: String(data?.trip?.destination || hints.destination || "").trim(),
-        title: String(data?.trip?.title || hints.title || "").trim(),
+    if (remoteTrip?.id !== auth.id || remoteTrip?.key !== auth.key || remoteTrip.expires < Date.now()) {
+      remoteTrip = {
+        ...auth,
+        expires: Infinity,
+        result: fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+          headers: { Authorization: `Bearer ${auth.key}` },
+          cache: "no-store",
+        }).then((res) => res.ok ? res.json() : null).catch(() => null).then((data) => ({
+          destination: String(data?.trip?.destination || "").trim(),
+          title: String(data?.trip?.title || "").trim(),
+        })),
       };
-    } catch {
-      return hints;
+      const request = remoteTrip;
+      request.result.then(() => { request.expires = Date.now() + 10000; });
     }
+    return remoteTrip.result;
   }
 
   function resolveThemeId(destination, title = "") {
-    const q = `${destination} ${title}`.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
+    const q = `${String(destination).trim() || title}`.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
     if (!q.trim()) return DEFAULT_ID;
     for (const rule of RULES) {
       if (rule.re.test(q)) return rule.id;
     }
     // Prefer language helper when available
     try {
-      const lang = window.__pvLanguageForDestination?.(destination);
+      const lang = window.__pvLanguageForDestination?.(String(destination).trim() || title);
       if (lang?.code === "is") return "is";
       if (lang?.code === "ja") return "jp";
       if (lang?.code === "el") return "gr";
@@ -548,7 +552,6 @@
       if (lang?.code === "nl") return "nl";
       if (lang?.code === "sv") return "se";
       if (lang?.code === "zh-CN" || lang?.code === "zh") return "cn";
-      if (lang?.home) return "it";
     } catch {
       /* ignore */
     }
@@ -557,11 +560,9 @@
 
   function ensureStyle() {
     let style = document.getElementById(STYLE_ID);
-    if (!style) {
-      style = document.createElement("style");
-      style.id = STYLE_ID;
-      document.head.appendChild(style);
-    }
+    if (style) return;
+    style = document.createElement("style");
+    style.id = STYLE_ID;
     style.textContent = `
       html[data-pv-dest]{
         --pv-dest-wash-soft: var(--pv-dest-wash);
@@ -710,7 +711,27 @@
         #pv-dest-atmosphere{ opacity:.55; }
         .pv-dest-floaters, .pv-dest-floaters-left{ display:none!important; }
       }
+      #pv-dest-cover {
+        position: relative; isolation: isolate; overflow: hidden;
+        display: flex; align-items: center; min-height: 5rem;
+        margin-block: .65rem; padding: .7rem 1rem;
+        border: 1px solid var(--pv-dest-line); border-radius: 1rem;
+        background: linear-gradient(110deg, var(--pv-dest-sand) 20%,
+          color-mix(in srgb, var(--pv-dest-accent) 27%, var(--pv-dest-sand)));
+        color: var(--pv-dest-ink);
+      }
+      #pv-dest-cover canvas {
+        position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1;
+      }
+      #pv-dest-cover span { display: block; font-size: .75rem; font-weight: 650; }
+      #pv-dest-cover strong { font: 700 clamp(1.15rem, 4vw, 1.65rem)/1.2 Georgia, serif; }
+      html[data-pv-theme="dark"] #pv-dest-cover {
+        background: linear-gradient(110deg, #15272c 20%, color-mix(in srgb, var(--pv-dest-teal) 55%, #15272c));
+        color: #f4fafb;
+        border-color: var(--pv-dest-teal);
+      }
     `;
+    document.head.appendChild(style);
   }
 
   function applyCssVars(theme) {
@@ -739,7 +760,10 @@
     };
     for (const [id, svg] of Object.entries(map)) {
       const ico = document.querySelector(`#${id} .pv-nav-ico`);
-      if (ico && svg) ico.innerHTML = svg;
+      if (ico && svg && ico.dataset.pvDestIcon !== theme.id) {
+        ico.innerHTML = svg;
+        ico.dataset.pvDestIcon = theme.id;
+      }
     }
   }
 
@@ -753,15 +777,15 @@
       hint.insertAdjacentElement("afterend", badge);
     }
     if (!tripAuth() || theme.id === DEFAULT_ID) {
-      badge.hidden = true;
-      ensureFloaters(null);
+      if (!badge.hidden) badge.hidden = true;
       return;
     }
-    badge.hidden = false;
+    if (badge.hidden) badge.hidden = false;
+    if (badge.dataset.pvDest === theme.id) return;
+    badge.dataset.pvDest = theme.id;
     const flag = theme.flag || "🌍";
     badge.innerHTML = `<span class="pv-dest-flag" aria-hidden="true">${flag}</span> Tema · ${theme.label}`;
     badge.title = `Grafica adattata a ${theme.label}`;
-    ensureFloaters(theme);
   }
 
   function ensureFloaters(theme) {
@@ -782,7 +806,11 @@
     const wide = window.matchMedia?.("(min-width: 1100px)")?.matches;
     const tablet = window.matchMedia?.("(min-width: 768px)")?.matches;
     const rightCount = wide ? 4 : tablet ? 3 : 3;
-    row.innerHTML = stickers.slice(0, rightCount).map((e) => `<span>${e}</span>`).join("");
+    const layoutKey = `${theme.id}:${rightCount}`;
+    if (row.dataset.pvDest !== layoutKey) {
+      row.innerHTML = stickers.slice(0, rightCount).map((e) => `<span>${e}</span>`).join("");
+      row.dataset.pvDest = layoutKey;
+    }
 
     if (wide && stickers.length > 3) {
       if (!left) {
@@ -791,7 +819,10 @@
         left.setAttribute("aria-hidden", "true");
         document.body.appendChild(left);
       }
-      left.innerHTML = stickers.slice(rightCount).map((e) => `<span>${e}</span>`).join("");
+      if (left.dataset.pvDest !== layoutKey) {
+        left.innerHTML = stickers.slice(rightCount).map((e) => `<span>${e}</span>`).join("");
+        left.dataset.pvDest = layoutKey;
+      }
     } else if (left) {
       left.remove();
     }
@@ -808,18 +839,20 @@
     return c;
   }
 
-  function drawAtmosphere(theme) {
+  function drawAtmosphere(theme, coverCanvas) {
     const reduced = Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
-    const canvas = ensureCanvas();
+    const canvas = coverCanvas || ensureCanvas();
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const w = window.innerWidth;
-    const h = window.innerHeight;
+    const w = coverCanvas ? 480 : window.innerWidth;
+    const h = coverCanvas ? 200 : window.innerHeight;
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
+    if (!coverCanvas) {
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
+    }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
@@ -946,7 +979,11 @@
     }
 
     // Figurative sticker layer — emoji scattered like travel scrapbook
-    if (!reduced) drawEmojiStickers(ctx, theme, w, h, density);
+    if (coverCanvas) {
+      ctx.font = "54px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(theme.stickers[0], w * 0.85, h * 0.64);
+    } else if (!reduced) drawEmojiStickers(ctx, theme, w, h, density);
   }
 
   function drawEmojiStickers(ctx, theme, w, h, density) {
@@ -995,11 +1032,28 @@
     return `rgba(${r},${g},${b},${a})`;
   }
 
+  function renderCover(theme) {
+    let cover = document.getElementById("pv-dest-cover");
+    const mount = document.querySelector(".trip-hero, .workspace");
+    if (theme.id === DEFAULT_ID || !mount) {
+      cover?.remove();
+      return;
+    }
+    if (!cover) {
+      cover = document.createElement("div");
+      cover.id = "pv-dest-cover";
+      cover.innerHTML = '<canvas aria-hidden="true"></canvas><div><span>Destinazione</span><strong></strong></div>';
+      mount.prepend(cover);
+    }
+    if (cover.dataset.pvDest === theme.id) return;
+    cover.dataset.pvDest = theme.id;
+    cover.querySelector("strong").textContent = `${theme.flag} ${theme.label}`;
+    drawAtmosphere(theme, cover.querySelector("canvas"));
+  }
+
   function applyTheme(theme) {
     ensureStyle();
     applyCssVars(theme);
-    applyNavIcons(theme);
-    ensureBadge(theme);
     cancelAnimationFrame(canvasRaf);
     canvasRaf = requestAnimationFrame(() => drawAtmosphere(theme));
     currentId = theme.id;
@@ -1015,21 +1069,29 @@
 
   async function syncTheme(force = false, hintTrip = null) {
     ensureStyle();
+    const request = ++themeRequest;
     const auth = tripAuth();
-    if (!auth) {
-      if (currentId !== DEFAULT_ID || force) applyTheme(THEMES.default);
+    const trip = auth ? `${auth.id}|${auth.key}` : "";
+    if (trip !== activeTrip || currentId === null) {
+      activeTrip = trip;
+      if (currentId !== DEFAULT_ID) applyTheme(THEMES.default);
+      applyNavIcons(THEMES.default);
       ensureBadge(THEMES.default);
       ensureFloaters(null);
-      return THEMES.default;
+      renderCover(THEMES.default);
     }
-    const { destination, title } = await loadTripDestination(hintTrip);
-    const key = `${auth.id}|${destination}|${title}`;
-    if (!force && key === lastDestKey && currentId) return THEMES[currentId] || THEMES.default;
-    lastDestKey = key;
-    const id = resolveThemeId(destination, title);
-    const theme = THEMES[id] || THEMES.default;
-    applyTheme(theme);
-    ensureFloaters(theme.id === DEFAULT_ID ? null : theme);
+    let theme = THEMES.default;
+    if (auth) {
+      const { destination, title } = await loadTripDestination(hintTrip);
+      const active = tripAuth();
+      if (request !== themeRequest || active?.id !== auth.id || active?.key !== auth.key) return THEMES[currentId];
+      theme = THEMES[resolveThemeId(destination, title)] || THEMES.default;
+    }
+    if (currentId !== theme.id) applyTheme(theme);
+    applyNavIcons(theme);
+    ensureBadge(theme);
+    ensureFloaters(theme);
+    renderCover(theme);
     return theme;
   }
 
@@ -1048,14 +1110,12 @@
   window.__pvDestThemes = THEMES;
 
   addEventListener("hashchange", () => {
-    lastDestKey = "";
     void syncTheme(true);
   });
   addEventListener("resize", onResize);
   addEventListener("pv-trip-loaded", (ev) => {
-    lastDestKey = "";
     const trip = ev?.detail?.trip || null;
-    void syncTheme(true, trip);
+    if (!ev?.detail?.id || ev.detail.id === tripAuth()?.id) void syncTheme(true, trip);
   });
 
   // Boot + light polling so SPA trip loads are picked up without fighting React.
