@@ -12,8 +12,8 @@ function test(name, fn) {
   catch (err) { console.error(`FAIL  ${name}: ${err.message}`); process.exitCode = 1; }
 }
 
-test("stamp destination-theme-20261111a wired", () => {
-  assert.match(index, /destination-theme-20261111a\.js/);
+test("stamp destination-theme wired", () => {
+  assert.match(index, /destination-theme-20261112f\.js/);
 });
 
 test("canvas destination load uses Bearer + hints", () => {

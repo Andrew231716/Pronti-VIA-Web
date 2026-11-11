@@ -263,8 +263,12 @@ html[data-pv-dest="gh"] #root .trip-cover {
 #pv-primary-nav:has(#pv-nav-budget) .pv-primary-nav-inner {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
-#pv-primary-nav:has(#pv-nav-budget) .pv-nav-label {
-  font-size: clamp(.6rem, 2.65vw, .78rem);
+#pv-primary-nav:has(#pv-nav-settings) .pv-primary-nav-inner {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+#pv-primary-nav:has(#pv-nav-budget) .pv-nav-label,
+#pv-primary-nav:has(#pv-nav-settings) .pv-nav-label {
+  font-size: clamp(.52rem, 2.2vw, .72rem);
 }
 body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !important; }
 
@@ -621,7 +625,7 @@ body.pv-primary-nav-ready #pv-plat-status {
   pointer-events: none;
 }
 body.pv-primary-nav-ready:not(:has([role="dialog"][data-state="open"], [role="listbox"])):is(
-  .pv-magic-open, .pv-plat-open, :has(#pv-account-menu[aria-expanded="true"])
+  .pv-magic-open, .pv-plat-open, :has(#pv-account-menu[aria-expanded="true"]), :has(#pv-nav-settings[aria-expanded="true"])
 ) #pv-primary-nav {
   z-index: 125500;
 }
@@ -631,10 +635,10 @@ body.pv-primary-nav-ready #pv-plat-panel.open {
   max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
   padding-bottom: 16px;
 }
-body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"]) #pv-ux-modal {
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"], #pv-nav-settings[aria-expanded="true"]) #pv-ux-modal {
   padding-bottom: var(--pv-panel-nav-space);
 }
-body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"]) #pv-ux-modal .pv-ux-sheet {
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"], #pv-nav-settings[aria-expanded="true"]) #pv-ux-modal .pv-ux-sheet {
   max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
   padding-bottom: 20px;
 }
@@ -653,12 +657,17 @@ html #pv-plat-panel {
   color: var(--diary-ink);
 }
 html #pv-magic-root :is(.pv-panel-head, .pv-panel-foot, .pv-place-card),
-html #pv-ux-modal :is(.pv-menu-grid button, .pv-menu-context),
+html #pv-ux-modal :is(.pv-menu-grid button, .pv-menu-context, .pv-account-card, .pv-account-field),
 html #pv-plat-panel .pv-plat-card {
   background: var(--diary-paper);
   color: var(--diary-ink);
   border-color: var(--diary-line);
 }
+html #pv-ux-modal .pv-account-field dt { color: var(--diary-muted); }
+html #pv-ux-modal .pv-account-field dd { color: var(--diary-ink); }
+html #pv-ux-modal .pv-account-card .user { color: var(--diary-accent); }
+html #pv-ux-modal .pv-account-card .meta,
+html #pv-ux-modal .pv-menu-section h3 { color: var(--diary-muted); }
 html #pv-magic-root :is(.pv-magic-panel h3, .pv-lead, .pv-bubble.bot, .pv-place-card p),
 html #pv-ux-modal :is(.pv-menu-grid button span, .pv-menu-context p),
 html #pv-plat-panel .pv-plat-muted { color: var(--diary-ink); }
