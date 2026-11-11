@@ -3882,6 +3882,9 @@
       const brand = document.querySelector("#root .topbar .brand");
       if (mark && brand && !brand.querySelector(".pv-account-mark")) brand.prepend(mark.cloneNode(true));
     });
+    run(() => {
+      if (typeof window.__pvPlaceThemeToggle === "function") window.__pvPlaceThemeToggle();
+    });
     run(ensureStyles);
     run(ensureItineraryLayoutPolish);
     run(cleanupLegacyChrome);

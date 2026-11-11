@@ -100,8 +100,28 @@ function syncThemeToggleUi() {
   btn.innerHTML = `${meta.icon}<span class="pv-theme-toggle-label">${meta.label}</span>`;
 }
 
+/** Sit next to the SPA brand (.topbar); float only on the login gate. */
+function placeThemeToggle() {
+  const btn = document.getElementById("pv-theme-toggle");
+  if (!btn) return;
+  const topbar = document.querySelector("#root .topbar");
+  const gate = document.getElementById("pv-account-gate");
+  const gateOpen = Boolean(gate && !gate.hidden);
+  if (topbar && !gateOpen) {
+    if (btn.parentElement !== topbar) topbar.appendChild(btn);
+    btn.classList.add("pv-theme-toggle--topbar");
+    btn.classList.remove("pv-theme-toggle--float");
+    return;
+  }
+  if (btn.parentElement !== document.body) document.body.appendChild(btn);
+  btn.classList.add("pv-theme-toggle--float");
+  btn.classList.remove("pv-theme-toggle--topbar");
+}
+window.__pvPlaceThemeToggle = placeThemeToggle;
+
 function ensureThemeToggle() {
   if (document.getElementById("pv-theme-toggle")) {
+    placeThemeToggle();
     syncThemeToggleUi();
     return;
   }
@@ -109,13 +129,14 @@ function ensureThemeToggle() {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.id = "pv-theme-toggle";
-  btn.className = "pv-theme-toggle";
+  btn.className = "pv-theme-toggle pv-theme-toggle--float";
   btn.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
     cycleThemeMode();
   });
   document.body.appendChild(btn);
+  placeThemeToggle();
   syncThemeToggleUi();
   window.addEventListener("pv-theme-changed", () => syncThemeToggleUi());
   if (window.matchMedia) {
@@ -571,12 +592,14 @@ function showGate(message = "") {
   document.body.classList.remove("pv-account-ready", "pv-primary-nav-ready");
   document.getElementById("pv-account-error").textContent = message;
   document.documentElement.style.overflow = "hidden";
+  placeThemeToggle();
 }
 
 function hideGate() {
   const gate = document.getElementById("pv-account-gate");
   if (gate) gate.hidden = true;
   document.documentElement.style.overflow = "";
+  placeThemeToggle();
 }
 
 function showChip() {
@@ -588,6 +611,7 @@ function showChip() {
   const nav = document.getElementById("pv-primary-nav");
   if (nav) nav.hidden = false;
   document.body.classList.add("pv-account-ready", "pv-primary-nav-ready");
+  placeThemeToggle();
 }
 
 async function upsertLocalUser(usernameRaw, password, displayName) {
@@ -1141,7 +1165,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261112h";
+const SHELL_VER = "20261112i";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
