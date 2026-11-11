@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112g";
+  const VER = "20261112j";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const THEME_CYCLE = ["system", "light", "dark"];
@@ -418,6 +418,40 @@ html[data-pv-theme="dark"] #root .link-reminder,
 html[data-pv-theme="dark"] #root .footer,
 html[data-pv-theme="dark"] #root .muted,
 html[data-pv-theme="dark"] #root .explore-links span{ color: var(--pv-plat-muted) !important; }
+/* SPA dialogs/sheets stay light: override Hub ink so titles are readable */
+html[data-pv-theme="dark"] [data-slot="dialog-content"],
+html[data-pv-theme="dark"] [data-slot="alert-dialog-content"],
+html[data-pv-theme="dark"] .share-content{
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] [data-slot="dialog-title"],
+html[data-pv-theme="dark"] [data-slot="alert-dialog-title"],
+html[data-pv-theme="dark"] [data-slot="dialog-content"] :is(h1,h2,h3),
+html[data-pv-theme="dark"] [data-slot="alert-dialog-content"] :is(h1,h2,h3),
+html[data-pv-theme="dark"] .share-content :is(h1,h2,h3),
+html[data-pv-theme="dark"] .share-box h3,
+html[data-pv-theme="dark"] #root .share-box h3{
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] [data-slot="dialog-description"],
+html[data-pv-theme="dark"] [data-slot="alert-dialog-description"],
+html[data-pv-theme="dark"] .share-box p,
+html[data-pv-theme="dark"] #root .share-box p{
+  color: #3f5860 !important;
+}
+html[data-pv-theme="dark"] #root .share-box,
+html[data-pv-theme="dark"] .share-box{
+  background: #f6f9f9 !important;
+  border-color: #dde8e8 !important;
+  color: #12343c !important;
+  box-shadow: none !important;
+}
+html[data-pv-theme="dark"] .share-box input,
+html[data-pv-theme="dark"] #root .share-box input{
+  color: #254555 !important;
+  background: #fff !important;
+  border-color: #d6e1e6 !important;
+}
 html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active{
   color: var(--pv-plat-accent) !important;
 }
