@@ -24,6 +24,17 @@ html[data-pv-theme="dark"] body.pv-account-ready {
   background: radial-gradient(ellipse at 80% 0%, var(--diary-wash), #101c21 70%) !important;
 }
 
+/* Light SPA dialogs (share, forms) keep dark ink in dark mode */
+html[data-pv-theme="dark"] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  color: #12343c;
+}
+html[data-pv-theme="dark"] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] .share-box h3 {
+  color: #12343c !important;
+}
+
 #root .trip-cover {
   border-radius: 1.3rem;
   box-shadow: var(--diary-shadow);

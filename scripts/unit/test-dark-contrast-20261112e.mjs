@@ -23,7 +23,7 @@ ok("dest dark nav item color", /body\.pv-dest-theme-ready #pv-primary-nav \.pv-n
 ok("platform syncs .dark class", /classList\.toggle\("dark", dark\)/.test(plat));
 ok("platform dark brand override", /html\[data-pv-theme="dark"\] #root \.brand/.test(plat));
 ok("stamps wired", /account\.css\?v=20261112i/.test(index) && /destination-theme-20261112f\.js/.test(index));
-ok("assets exist", existsSync("assets/destination-theme-20261112f.js") && existsSync("assets/pv-platform-20261112g.js"));
+ok("assets exist", existsSync("assets/destination-theme-20261112f.js") && existsSync("assets/pv-platform-20261112j.js"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);
