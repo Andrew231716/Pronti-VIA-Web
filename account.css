@@ -1,18 +1,19 @@
 :root {
-  --pv-account-ink: #12343c;
-  --pv-account-muted: #5a727c;
+  /* Aligned with Hub (--pv-plat-*) so shell matches before/after platform CSS */
+  --pv-account-ink: #102f36;
+  --pv-account-muted: #3a545b;
   --pv-account-teal: #007d82;
   --pv-account-teal-deep: #00656a;
   --pv-account-teal-soft: rgba(0, 125, 130, 0.12);
-  --pv-account-sand: #f3f8f8;
-  --pv-account-line: #d5e3e6;
+  --pv-account-sand: #f4f7f8;
+  --pv-account-line: rgba(20, 52, 58, 0.14);
   --pv-account-danger: #b42318;
   --pv-ease: cubic-bezier(0.22, 0.8, 0.22, 1);
   --pv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --pv-nav-h: 66px;
   --pv-nav-gap: 10px;
-  --pv-glass: rgba(255, 255, 255, 0.82);
-  --pv-shadow-soft: 0 10px 28px rgba(16, 42, 48, 0.1);
+  --pv-glass: rgba(255, 255, 255, 0.86);
+  --pv-shadow-soft: 0 10px 30px rgba(16, 42, 48, 0.08);
 }
 
 body.pv-account-ready {
@@ -493,22 +494,19 @@ body.pv-primary-nav-ready {
 }
 
 #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
-  background: var(--pv-account-teal-soft);
-  color: var(--pv-account-teal);
+  background: var(--pv-account-teal);
+  color: #fff;
   transform: translateY(-1px);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-account-teal) 28%, transparent);
 }
 
-/* Hub / IA stay in the teal family for a calmer, more intuitive chrome */
+/* Hub / IA match Hub tab active fill (accent pill) */
 #pv-primary-nav .pv-nav-hub.is-active .pv-nav-ico,
-#pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico {
-  background: rgba(0, 125, 130, 0.16);
-  color: var(--pv-account-teal-deep);
-}
-
+#pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
 #pv-primary-nav .pv-nav-ai.is-active .pv-nav-ico,
 #pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico {
-  background: rgba(0, 125, 130, 0.18);
-  color: var(--pv-account-teal);
+  background: var(--pv-account-teal);
+  color: #fff;
 }
 
 #pv-primary-nav .pv-nav-label {

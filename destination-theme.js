@@ -462,9 +462,12 @@
     const local = readLocalTrip(auth.id);
     if (local?.destination) return { destination: local.destination, title: local.title || "" };
     try {
-      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}?key=${encodeURIComponent(auth.key)}`);
+      const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
+        headers: { Authorization: `Bearer ${auth.key}` },
+        cache: "no-store",
+      });
       if (!res.ok) return { destination: "", title: "" };
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       return { destination: data?.trip?.destination || "", title: data?.trip?.title || "" };
     } catch {
       return { destination: "", title: "" };
@@ -515,6 +518,7 @@
     }
     style.textContent = `
       html[data-pv-dest]{
+        --pv-dest-wash-soft: var(--pv-dest-wash);
         --pv-account-teal: var(--pv-dest-teal);
         --pv-account-teal-deep: var(--pv-dest-teal-deep);
         --pv-account-teal-soft: var(--pv-dest-wash);
@@ -527,16 +531,37 @@
         --pv-ink: var(--pv-dest-ink);
         --pv-muted: var(--pv-dest-muted);
         --pv-line: var(--pv-dest-line);
-        --pv-wash: var(--pv-dest-sand);
+        --pv-wash: var(--pv-dest-wash);
+        /* Full Hub palette follows destination */
         --pv-plat-accent: var(--pv-dest-teal);
+        --pv-plat-accent-deep: var(--pv-dest-teal-deep);
+        --pv-plat-ink: var(--pv-dest-ink);
+        --pv-plat-muted: var(--pv-dest-muted);
+        --pv-plat-bg: var(--pv-dest-sand);
+        --pv-plat-wash: var(--pv-dest-wash);
+        --pv-plat-border: var(--pv-dest-line);
+        --pv-plat-panel-bg: linear-gradient(180deg, color-mix(in srgb, var(--pv-dest-sand) 88%, #fff), color-mix(in srgb, var(--pv-dest-wash) 35%, var(--pv-dest-sand)) 42%, var(--pv-dest-sand));
       }
       body.pv-account-ready{
         background:
           radial-gradient(900px 420px at 0% -8%, var(--pv-dest-wash, rgba(0,125,130,.07)), transparent 55%),
           radial-gradient(700px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 18%, transparent), transparent 50%),
-          linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%) !important;
+          var(--pv-plat-panel-bg, linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%)) !important;
         background-attachment: fixed;
         transition: background .45s ease;
+      }
+      /* Bottom nav + chip follow Hub/destination accents */
+      body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,
+      body.pv-dest-theme-ready #pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
+      body.pv-dest-theme-ready #pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico{
+        background: var(--pv-dest-teal) !important;
+        color: #fff !important;
+      }
+      body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active{
+        color: var(--pv-dest-teal-deep) !important;
+      }
+      body.pv-dest-theme-ready #pv-account-chip .pv-account-chip-hint{
+        color: var(--pv-dest-teal) !important;
       }
       #pv-dest-atmosphere{
         position:fixed; inset:0; z-index:0; pointer-events:none;
