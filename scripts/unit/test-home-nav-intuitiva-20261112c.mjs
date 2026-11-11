@@ -25,8 +25,8 @@ ok("onboard clarifies Home exits trip", /Home ti fa uscire/.test(ux));
 ok("account Home title mentions exit", /esce dal viaggio/.test(account));
 ok("account guest Home guard", /session\?\.guest/.test(account));
 ok("hub close respects nav lock", /__pvPrimaryNavLock/.test(plat));
-ok("ux stamp wired", /ux-suite-20261112n\.js/.test(index));
-ok("asset exists", existsSync("assets/ux-suite-20261112n.js"));
+ok("ux stamp wired", /ux-suite-20261112o\.js/.test(index));
+ok("asset exists", existsSync("assets/ux-suite-20261112o.js"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

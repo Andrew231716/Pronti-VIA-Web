@@ -1078,13 +1078,20 @@
       const when = formatInviteRange(rec?.trip?.start, rec?.trip?.end);
       const bits = [destination, when].filter(Boolean).join(" · ");
       const inviteUrl = toInvitePreviewUrl(url.toString());
+      // Keep a self-contained hash URL as backup so recipients still open the
+      // real trip if /invito preview fails or signup clears the path.
+      const hashUrl = url.toString();
       const lines = [`Sei invitato a «${title}»`];
       if (bits) lines.push(bits);
       lines.push("", "Apri l'invito su Pronti? VIA!:", inviteUrl);
+      if (inviteUrl !== hashUrl && params.get("trip") && params.get("key")) {
+        lines.push("", "Link diretto:", hashUrl);
+      }
       return {
         title: `Invito · ${title}`,
         text: lines.join("\n"),
         url: inviteUrl,
+        hashUrl,
         description: bits
           ? `Sei invitato a «${title}» · ${bits}.`
           : `Sei invitato a «${title}».`,
@@ -1094,6 +1101,7 @@
         title: "Invito · Pronti? VIA!",
         text: String(enrichedUrl || ""),
         url: String(enrichedUrl || ""),
+        hashUrl: String(enrichedUrl || ""),
         description: "Sei invitato a un viaggio su Pronti? VIA!",
       };
     }
@@ -1208,6 +1216,17 @@
     const inviteMatch = String(location.pathname || "").match(/\/invito\/([^/]+)\/?$/i);
     if (inviteMatch?.[1] && !location.hash.includes("trip=")) {
       const shareId = decodeURIComponent(inviteMatch[1]).replace(/^n:/, "");
+      try {
+        window.__pvWritePendingShare?.({
+          trip: "",
+          key: "",
+          s: `n:${shareId}`,
+          inviteId: shareId,
+          title: "",
+        });
+      } catch {
+        /* pending helper may not be ready yet */
+      }
       void (async () => {
         try {
           const res = await originalFetch(`${NETLIFY_API}/api/share/${encodeURIComponent(shareId)}`, {
@@ -1220,6 +1239,17 @@
           const accessKey = data?.key || data?.viewToken;
           if (!tripId || !accessKey) return;
           if (data?.trip) applySeededRecord(tripId, accessKey, data);
+          try {
+            window.__pvWritePendingShare?.({
+              trip: tripId,
+              key: accessKey,
+              s: `n:${shareId}`,
+              inviteId: shareId,
+              title: String(data?.trip?.title || "").trim(),
+            });
+          } catch {
+            /* ignore */
+          }
           const params = new URLSearchParams({ trip: tripId, key: accessKey, s: `n:${shareId}` });
           location.replace(`${location.origin}/#${params.toString()}`);
         } catch {

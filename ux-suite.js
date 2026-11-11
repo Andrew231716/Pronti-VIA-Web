@@ -1980,7 +1980,38 @@
         else if (act === "home-hint") {
           if (typeof window.__pvNavHome === "function") window.__pvNavHome();
           else toast("Usa «Nuovo viaggio» in homepage", "ok");
+        } else if (act === "upgrade-account") {
+          try {
+            window.__pvCapturePendingShare?.();
+          } catch {
+            /* ignore */
+          }
+          try {
+            window.__pvSetPreferAccountGate?.(true);
+          } catch {
+            /* ignore */
+          }
+          try {
+            // Soft leave guest → gate without wiping the pending shared trip.
+            const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+            if (session?.guest) {
+              localStorage.removeItem("viavia-account-v1");
+            }
+          } catch {
+            /* ignore */
+          }
+          try {
+            window.__pvRestorePendingShare?.();
+          } catch {
+            /* ignore */
+          }
+          location.reload();
         } else if (act === "logout") {
+          try {
+            window.__pvCapturePendingShare?.();
+          } catch {
+            /* ignore */
+          }
           if (typeof window.__pvAccountLogout === "function") window.__pvAccountLogout();
         } else if (act === "delete-account") {
           if (typeof window.__pvAccountDelete === "function") {
@@ -2031,13 +2062,17 @@
          </div>
        </div>`
         : "";
+    const accountActions = guest
+      ? `<button type="button" data-ux="upgrade-account"><strong>Accedi o crea account</strong><span>Tieni aperto questo viaggio e passa al tuo login</span></button>
+           <button type="button" data-ux="logout"><strong>Esci da ospite</strong><span>Chiudi la sessione ospite (il viaggio resta in memoria)</span></button>`
+      : `<button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>`;
     const modal = openModal(
       "Profilo e account",
       `<div class="pv-menu-section">
          <h3>Il tuo account</h3>
          ${renderAccountInfoBlock()}
          <div class="pv-menu-grid">
-           <button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>
+           ${accountActions}
          </div>
        </div>
        ${dangerSection}`,
@@ -2080,6 +2115,11 @@
 
   function leaveOpenTripSoft() {
     document.body.classList.remove("pv-trip-open");
+    try {
+      window.__pvCapturePendingShare?.();
+    } catch {
+      /* ignore */
+    }
     try {
       sessionStorage.setItem("pv-prefer-home-v1", "1");
     } catch {
