@@ -1592,6 +1592,15 @@
     return !tab || primaryNavLock.tab === tab;
   }
 
+  function isGuestAccount() {
+    try {
+      const s = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return Boolean(s?.guest);
+    } catch {
+      return false;
+    }
+  }
+
   function leaveOpenTripSoft() {
     document.body.classList.remove("pv-trip-open");
     try {
@@ -1621,6 +1630,15 @@
   }
 
   function navGoHome() {
+    // Share recipients (guest): Home would clear #trip&key → login gate. Keep them in the trip.
+    if (isGuestAccount()) {
+      lockPrimaryNav("trips", 2500);
+      toast(
+        "Sei nel viaggio condiviso. Home (i tuoi viaggi) richiede un account — resta qui o accedi.",
+        "warn"
+      );
+      return;
+    }
     lockPrimaryNav("home", 6000);
     document.querySelector("#pv-plat-panel [data-plat=close]")?.click();
     document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
@@ -3633,10 +3651,19 @@
     const home = document.getElementById("pv-nav-home");
     const trips = document.getElementById("pv-nav-trips");
     const inTrip = Boolean(tripAuth());
+    const guest = isGuestAccount();
     if (home) {
-      home.title = inTrip
-        ? "Home — esci dal viaggio e torna alla panoramica"
-        : "Home — panoramica, crea o apri un viaggio";
+      // Guests on share links: hide Home — clearing the trip hash would kick them to login.
+      home.hidden = guest;
+      home.toggleAttribute("disabled", guest);
+      home.setAttribute("aria-hidden", guest ? "true" : "false");
+      if (guest) {
+        home.title = "Home non disponibile sul link condiviso (serve un account)";
+      } else {
+        home.title = inTrip
+          ? "Home — esci dal viaggio e torna alla panoramica"
+          : "Home — panoramica, crea o apri un viaggio";
+      }
     }
     if (trips) {
       trips.title = inTrip
@@ -3648,8 +3675,18 @@
   function syncPrimaryNavState() {
     if (typeof window.__pvSetPrimaryNav !== "function") return;
     syncPrimaryNavLabels();
+    // Guests live inside the shared trip — never claim Home as current.
+    if (isGuestAccount() && tripAuth()) {
+      if (!document.body.classList.contains("pv-plat-open") &&
+          !document.body.classList.contains("pv-magic-open") &&
+          !document.getElementById("pv-preventivo-root")?.classList.contains("open") &&
+          !document.querySelector(".pv-ux-modal.pv-open")) {
+        window.__pvSetPrimaryNav("trips");
+        return;
+      }
+    }
     // User just chose Home: keep Home selected even while hash is clearing.
-    if (primaryNavLockActive("home")) {
+    if (primaryNavLockActive("home") && !isGuestAccount()) {
       window.__pvSetPrimaryNav("home");
       return;
     }

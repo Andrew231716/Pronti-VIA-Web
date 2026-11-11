@@ -338,6 +338,17 @@ function ensureUi() {
   });
 
   nav.querySelector("#pv-nav-home").addEventListener("click", () => {
+    // Guests on shared links must not clear #trip&key (that opens the login gate).
+    try {
+      const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      if (session?.guest) {
+        setNavCurrent("trips");
+        if (typeof window.__pvNavHome === "function") window.__pvNavHome();
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
     setNavCurrent("home");
     if (typeof window.__pvNavHome === "function") {
       window.__pvNavHome();

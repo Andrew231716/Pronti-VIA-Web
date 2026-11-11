@@ -19,11 +19,14 @@ ok("home lock helper", /lockPrimaryNav\(/.test(ux) && /primaryNavLockActive/.tes
 ok("soft leave trip", /leaveOpenTripSoft/.test(ux) && /pv-prefer-home-v1/.test(ux));
 ok("reload only as fallback", /SPA still keeps the trip workspace/.test(ux) && /location\.reload\(\)/.test(ux));
 ok("sync respects home lock", /primaryNavLockActive\("home"\)/.test(ux));
+ok("guest Home blocked", /isGuestAccount/.test(ux) && /viaggio condiviso/.test(ux));
+ok("guest Home hidden", /home\.hidden = guest/.test(ux));
 ok("onboard clarifies Home exits trip", /Home ti fa uscire/.test(ux));
 ok("account Home title mentions exit", /esce dal viaggio/.test(account));
+ok("account guest Home guard", /session\?\.guest/.test(account));
 ok("hub close respects nav lock", /__pvPrimaryNavLock/.test(plat));
-ok("ux stamp wired", /ux-suite-20261112c\.js/.test(index));
-ok("asset exists", existsSync("assets/ux-suite-20261112c.js"));
+ok("ux stamp wired", /ux-suite-20261112d\.js/.test(index));
+ok("asset exists", existsSync("assets/ux-suite-20261112d.js"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);
