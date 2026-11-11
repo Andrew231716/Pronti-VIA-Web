@@ -711,25 +711,6 @@
         #pv-dest-atmosphere{ opacity:.55; }
         .pv-dest-floaters, .pv-dest-floaters-left{ display:none!important; }
       }
-      #pv-dest-cover {
-        position: relative; isolation: isolate; overflow: hidden;
-        display: flex; align-items: center; min-height: 5rem;
-        margin-block: .65rem; padding: .7rem 1rem;
-        border: 1px solid var(--pv-dest-line); border-radius: 1rem;
-        background: linear-gradient(110deg, var(--pv-dest-sand) 20%,
-          color-mix(in srgb, var(--pv-dest-accent) 27%, var(--pv-dest-sand)));
-        color: var(--pv-dest-ink);
-      }
-      #pv-dest-cover canvas {
-        position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1;
-      }
-      #pv-dest-cover span { display: block; font-size: .75rem; font-weight: 650; }
-      #pv-dest-cover strong { font: 700 clamp(1.15rem, 4vw, 1.65rem)/1.2 Georgia, serif; }
-      html[data-pv-theme="dark"] #pv-dest-cover {
-        background: linear-gradient(110deg, #15272c 20%, color-mix(in srgb, var(--pv-dest-teal) 55%, #15272c));
-        color: #f4fafb;
-        border-color: var(--pv-dest-teal);
-      }
     `;
     document.head.appendChild(style);
   }
@@ -980,9 +961,12 @@
 
     // Figurative sticker layer — emoji scattered like travel scrapbook
     if (coverCanvas) {
-      ctx.font = "54px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(theme.stickers[0], w * 0.85, h * 0.64);
+      ctx.font = "62px sans-serif";
+      ctx.fillText(theme.stickers[0], w * 0.84, h * 0.64);
+      ctx.font = "27px sans-serif";
+      ctx.fillText(theme.flag, w * 0.94, h * 0.28);
+      ctx.fillText(theme.stickers[1], w * 0.74, h * 0.85);
     } else if (!reduced) drawEmojiStickers(ctx, theme, w, h, density);
   }
 
@@ -1033,22 +1017,22 @@
   }
 
   function renderCover(theme) {
-    let cover = document.getElementById("pv-dest-cover");
-    const mount = document.querySelector(".trip-hero, .workspace");
-    if (theme.id === DEFAULT_ID || !mount) {
-      cover?.remove();
+    const mount = document.querySelector("#root .trip-cover");
+    if (!mount || document.querySelector("#root .demo-notice")) return;
+    let canvas = mount.querySelector(".pv-diary-cover");
+    if (!tripAuth()) {
+      canvas?.remove();
       return;
     }
-    if (!cover) {
-      cover = document.createElement("div");
-      cover.id = "pv-dest-cover";
-      cover.innerHTML = '<canvas aria-hidden="true"></canvas><div><span>Destinazione</span><strong></strong></div>';
-      mount.prepend(cover);
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      canvas.className = "pv-diary-cover";
+      canvas.setAttribute("aria-hidden", "true");
+      mount.prepend(canvas);
     }
-    if (cover.dataset.pvDest === theme.id) return;
-    cover.dataset.pvDest = theme.id;
-    cover.querySelector("strong").textContent = `${theme.flag} ${theme.label}`;
-    drawAtmosphere(theme, cover.querySelector("canvas"));
+    if (canvas.dataset.pvDest === theme.id) return;
+    canvas.dataset.pvDest = theme.id;
+    drawAtmosphere(theme, canvas);
   }
 
   function applyTheme(theme) {

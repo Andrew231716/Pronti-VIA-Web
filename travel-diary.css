@@ -1,0 +1,212 @@
+/* Shared travel diary styling. Country colours come from the destination engine. */
+html {
+  --diary-accent: var(--pv-dest-teal-deep, #00656a);
+  --diary-ink: var(--pv-dest-ink, #12343c);
+  --diary-muted: var(--pv-dest-muted, #3f5860);
+  --diary-line: var(--pv-dest-line, #d5e3e6);
+  --diary-paper: #fff;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-sand, #f3f8f8) 80%, #fff);
+  --diary-shadow: 0 5px 18px rgba(20, 49, 55, .07);
+  --diary-display: "New York", Georgia, serif;
+}
+
+html[data-pv-theme="dark"] {
+  --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 43%, white);
+  --diary-ink: #edf5f5;
+  --diary-muted: #bacccc;
+  --diary-line: #3d555a;
+  --diary-paper: #17272c;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #007d82) 17%, #17272c);
+  --diary-shadow: none;
+}
+
+html[data-pv-theme="dark"] body.pv-account-ready {
+  background: radial-gradient(ellipse at 80% 0%, var(--diary-wash), #101c21 70%) !important;
+}
+
+#root .trip-cover {
+  border-radius: 1.3rem;
+  box-shadow: var(--diary-shadow);
+}
+
+#root .trip-cover:has(> .pv-diary-cover) {
+  isolation: isolate;
+  background: linear-gradient(118deg, #132e36 15%, var(--pv-dest-teal-deep) 77%, var(--pv-dest-teal));
+}
+
+#root .trip-cover:has(> .pv-diary-cover) > :is(img, .photo-credit) {
+  display: none;
+}
+
+.pv-diary-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#root .trip-cover:has(> .pv-diary-cover) .cover-shade {
+  background: linear-gradient(90deg, rgba(9, 23, 29, .7), rgba(9, 23, 29, .48) 72%, rgba(9, 23, 29, .12));
+}
+
+#root .cover-content h1,
+#root .section-heading h2,
+#pv-plat-panel .pv-plat-hero h2,
+.pv-account-hero h1 {
+  font-family: var(--diary-display);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1.12;
+}
+
+#root .cover-content .destination {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: .35rem .65rem;
+  border: 1px solid rgba(255, 255, 255, .43);
+  border-radius: 999px;
+  background: rgba(8, 25, 30, .48);
+}
+
+#root .section-heading,
+#root .refund-heading {
+  border-bottom: 1px solid var(--diary-line);
+  padding-bottom: .7rem;
+}
+
+#root .section-heading h2 {
+  color: var(--diary-ink);
+}
+
+#root .section-heading .eyebrow {
+  color: var(--diary-muted);
+}
+
+#root :is(.stop-card, .booking-card, .budget-card, .expense-row, .split-panel,
+  .transfer-row, .text-card, .map-card, .check-row, .saved-card, .empty-state, .edit-form),
+#root :is(.pv-trip-card, .pv-home-resume, .pv-event-rail),
+#pv-account-gate :is(.pv-trip-card, .pv-home-resume),
+#pv-plat-panel :is(.pv-plat-card, .pv-plat-stat),
+.pv-ux-sheet :is(.pv-ux-card, .pv-import-group) {
+  background-color: var(--diary-paper);
+  border-color: var(--diary-line);
+  border-radius: 1rem;
+  color: var(--diary-ink);
+  box-shadow: var(--diary-shadow);
+}
+
+#root :is(.budget-card, .empty-state, .pv-home-resume, .pv-event-rail),
+#pv-account-gate .pv-home-resume {
+  background: var(--diary-wash);
+}
+
+#root :is(.booking-card, .expense-row, .stop-card) p,
+#root :is(.balance-row, .expense-row) details {
+  color: var(--diary-muted);
+}
+
+#root .app-shell .main-tabs {
+  border-bottom-color: var(--diary-line) !important;
+  padding-block: .25rem;
+  scroll-padding-inline: .5rem;
+}
+
+#root .app-shell .main-tabs button {
+  min-height: 44px;
+  border-radius: .75rem !important;
+  color: var(--diary-muted) !important;
+}
+
+#root .app-shell .main-tabs button[data-state="active"] {
+  color: var(--diary-accent) !important;
+  background: var(--diary-wash) !important;
+}
+
+#root .app-shell .main-tabs button[data-state="active"]::after {
+  background: var(--diary-accent) !important;
+}
+
+#root .app-shell .button:not(.secondary):not(.danger) {
+  background: var(--pv-dest-teal-deep, #00656a);
+  border-color: var(--pv-dest-teal-deep, #00656a);
+}
+
+#root .app-shell .button,
+#root .app-shell .field :is(input, select, textarea) {
+  border-radius: .7rem;
+}
+
+#root .app-shell .button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: center;
+}
+
+#root .app-shell .button.secondary,
+#root .app-shell .field :is(input, select, textarea) {
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  border-color: var(--diary-line);
+}
+
+:is(#root, #pv-plat-panel, #pv-primary-nav, .pv-ux-sheet, #pv-account-gate)
+  :is(a, button, input, select, textarea, [role="tab"]):focus-visible {
+  outline: 2px solid var(--diary-accent);
+  outline-offset: 3px;
+}
+
+#pv-primary-nav .pv-nav-ico {
+  border-radius: .8rem;
+}
+
+#pv-plat-panel .pv-plat-hero {
+  border-radius: 1rem;
+}
+
+#pv-plat-panel .pv-plat-btn,
+.pv-ux-sheet :is(.pv-ux-primary, .pv-ux-ghost),
+#pv-account-gate .pv-account-submit {
+  min-height: 44px;
+  border-radius: .7rem;
+}
+
+@media (max-width: 520px) {
+  #root .trip-cover {
+    min-height: 190px;
+  }
+
+  #root .cover-content h1 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    font-size: clamp(1.4rem, 7vw, 1.8rem);
+  }
+
+  #root .cover-content {
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+  }
+
+  #root .section-heading {
+    flex-wrap: wrap;
+  }
+
+  #root .section-heading h2 {
+    font-size: clamp(1.35rem, 6vw, 1.6rem);
+  }
+
+  #root .app-shell .field :is(input, select, textarea) {
+    font-size: 16px;
+  }
+}
+
+@media print {
+  .pv-diary-cover { display: none; }
+  #root .trip-cover { box-shadow: none; }
+}
