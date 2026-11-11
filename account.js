@@ -1,6 +1,8 @@
 const SESSION_KEY = "viavia-account-v1";
 const USERS_KEY = "viavia-accounts-db-v1";
 const TRIPS_KEY = "viavia-recent-links-v1";
+const THEME_KEY = "viavia-theme-v1";
+const THEME_CYCLE = ["system", "light", "dark"];
 const API = "/api/account";
 /** Client-side session ceiling (matches server 30d sliding). Local tokens keep 30d too. */
 const CLIENT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -23,6 +25,104 @@ function readJson(key, fallback) {
 function writeJson(key, value) {
   if (value == null) localStorage.removeItem(key);
   else localStorage.setItem(key, JSON.stringify(value));
+}
+
+function readThemeMode() {
+  if (typeof window.ProntiPlatform?.getThemeMode === "function") {
+    return window.ProntiPlatform.getThemeMode();
+  }
+  const mode = readJson(THEME_KEY, { mode: "system" }).mode || "system";
+  return THEME_CYCLE.includes(mode) ? mode : "system";
+}
+
+function applyThemeMode(mode) {
+  if (typeof window.ProntiPlatform?.setTheme === "function") {
+    window.ProntiPlatform.setTheme(mode);
+    syncThemeToggleUi();
+    return;
+  }
+  const m = THEME_CYCLE.includes(mode) ? mode : readThemeMode();
+  writeJson(THEME_KEY, { mode: m });
+  let dark = m === "dark";
+  if (m === "system") {
+    dark = Boolean(window.matchMedia?.("(prefers-color-scheme: dark)")?.matches);
+  }
+  const root = document.documentElement;
+  root.dataset.pvTheme = dark ? "dark" : "light";
+  root.dataset.pvThemeMode = m;
+  root.style.colorScheme = dark ? "dark" : "light";
+  root.classList.toggle("dark", dark);
+  syncThemeToggleUi();
+}
+
+function cycleThemeMode() {
+  if (typeof window.ProntiPlatform?.cycleTheme === "function") {
+    const next = window.ProntiPlatform.cycleTheme();
+    syncThemeToggleUi();
+    return next;
+  }
+  const cur = readThemeMode();
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
+  applyThemeMode(next);
+  return next;
+}
+
+function themeToggleMeta(mode) {
+  if (mode === "light") {
+    return {
+      label: "Chiaro",
+      title: "Tema chiaro — tocca per scuro",
+      icon: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M4.2 12H2M22 12h-2.2M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6"/></svg>`,
+    };
+  }
+  if (mode === "dark") {
+    return {
+      label: "Scuro",
+      title: "Tema scuro — tocca per come il sistema",
+      icon: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.2A8.2 8.2 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>`,
+    };
+  }
+  return {
+    label: "Sistema",
+    title: "Come il sistema — tocca per chiaro",
+    icon: `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/><path d="M8 9.5h.01M12 9.5h.01M16 9.5h.01"/></svg>`,
+  };
+}
+
+function syncThemeToggleUi() {
+  const btn = document.getElementById("pv-theme-toggle");
+  if (!btn) return;
+  const mode = readThemeMode();
+  const meta = themeToggleMeta(mode);
+  btn.dataset.mode = mode;
+  btn.title = meta.title;
+  btn.setAttribute("aria-label", `Tema: ${meta.label}. ${meta.title}`);
+  btn.innerHTML = `${meta.icon}<span class="pv-theme-toggle-label">${meta.label}</span>`;
+}
+
+function ensureThemeToggle() {
+  if (document.getElementById("pv-theme-toggle")) {
+    syncThemeToggleUi();
+    return;
+  }
+  applyThemeMode(readThemeMode());
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "pv-theme-toggle";
+  btn.className = "pv-theme-toggle";
+  btn.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    cycleThemeMode();
+  });
+  document.body.appendChild(btn);
+  syncThemeToggleUi();
+  window.addEventListener("pv-theme-changed", () => syncThemeToggleUi());
+  if (window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      if (readThemeMode() === "system") applyThemeMode("system");
+    });
+  }
 }
 
 function readSession() {
@@ -188,6 +288,7 @@ async function api(action, { method = "POST", body, token } = {}) {
 }
 
 function ensureUi() {
+  ensureThemeToggle();
   if (document.getElementById("pv-account-gate")) return;
 
   const brandMark = `<svg class="pv-account-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
@@ -597,13 +698,19 @@ function wipeLocalUser(username) {
   }
 }
 
-async function onDeleteAccount() {
+async function onDeleteAccount(opts = {}) {
+  if (state.user && readJson(SESSION_KEY, null)?.guest) {
+    window.alert("Gli ospiti del link condiviso non possono eliminare un account da qui.");
+    return;
+  }
   const username = state.user?.username || "";
   if (!username) return;
-  const ok = window.confirm(
-    `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
-  );
-  if (!ok) return;
+  if (!opts.skipConfirm) {
+    const ok = window.confirm(
+      `Eliminare definitivamente l’account «${state.user?.displayName || username}»?\n\nQuesta azione cancella l’account online e su questo dispositivo. I viaggi già creati restano raggiungibili solo se hai i link.`
+    );
+    if (!ok) return;
+  }
   const password = window.prompt("Conferma con la password dell’account:");
   if (password == null) return;
   if (!String(password).trim()) {
@@ -1034,7 +1141,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261112f";
+const SHELL_VER = "20261112h";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
