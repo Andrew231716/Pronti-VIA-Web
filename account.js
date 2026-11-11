@@ -281,6 +281,10 @@ function ensureUi() {
         </span>
         <span class="pv-nav-label">IA</span>
       </button>
+      <button type="button" class="pv-nav-item" id="pv-nav-budget" aria-haspopup="dialog" aria-label="Preventivo intelligente">
+        <span class="pv-nav-ico" aria-hidden="true"></span>
+        <span class="pv-nav-label">Preventivo</span>
+      </button>
       <button type="button" class="pv-nav-item" data-nav="profile" id="pv-account-menu" aria-haspopup="dialog" aria-expanded="false" title="Profilo e strumenti">
         <span class="pv-nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/><circle cx="18.2" cy="6.2" r="2" /><path d="M17.2 6.2h2M18.2 5.2v2"/></svg>
@@ -347,6 +351,7 @@ function ensureUi() {
     document.getElementById("pv-magic-open")?.click();
   });
 
+  nav.querySelector("#pv-nav-budget").addEventListener("click", () => window.__pvOpenPreventivo?.());
   nav.querySelector("#pv-account-menu").addEventListener("click", () => {
     setNavCurrent("profile");
     if (typeof window.__pvOpenAccountMenu === "function") {
@@ -988,7 +993,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261111i";
+const SHELL_VER = "20261111j";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

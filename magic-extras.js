@@ -5341,6 +5341,17 @@ Regole pv-places:
     if (!key) return null;
     if (coverCache.has(key)) return coverCache.get(key);
 
+    if (/\b(?:accra|ghana)\b/i.test(destination) && !/kumasi|tamale|cape coast|takoradi/i.test(destination)) {
+      const accra = {
+        url: new URL("assets/accra-black-star-square.jpg", location.href).href,
+        alt: "Black Star Square e Arco dell’Indipendenza, Accra",
+        credit: "Guido Sohne · CC BY-SA 2.0",
+        creditUrl: "https://commons.wikimedia.org/wiki/File:Black_Star_Square_and_Independence_Arch,_Accra,_Ghana.jpg",
+      };
+      coverCache.set(key, accra);
+      return accra;
+    }
+
     if (/islanda|iceland|reykjav/i.test(destination)) {
       const iceland = {
         url: new URL("iceland.svg", location.href).href,
@@ -5400,6 +5411,12 @@ Regole pv-places:
     cover.dataset.pvCoverDest = destination;
     cover.dataset.pvCoverUrl = result.url;
     cover.dataset.pvCoverReady = "1";
+    img.addEventListener("error", () => {
+      if (cover.dataset.pvCoverUrl === result.url && img.src === result.url) {
+        delete cover.dataset.pvCoverReady;
+        cover.dataset.pvCoverFailed = result.url;
+      }
+    }, { once: true });
   }
 
   function syncTripCoverToDestination() {
@@ -5420,8 +5437,9 @@ Regole pv-places:
       cover.dataset.pvCoverUrl &&
       img &&
       img.src === cover.dataset.pvCoverUrl &&
-      !isDefaultBalosCover(img);
-    if (alreadyGood) return;
+      !isDefaultBalosCover(img) && cover.dataset.pvCoverReady === "1";
+    if (alreadyGood || (img && cover.dataset.pvCoverDest === destination && cover.dataset.pvCoverFailed === img.src)) return;
+    delete cover.dataset.pvCoverReady;
 
     // React often re-renders the hardcoded Balos coast.jpg — re-apply cached cover immediately.
     const cached = coverCache.get(destination.toLowerCase());

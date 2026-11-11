@@ -2838,7 +2838,7 @@
     return { id: kind, title: kind, hint: "" };
   }
 
-  function renderImportItems(items) {
+  function renderImportItems(items, section) {
     if (!items.length) {
       return `<p class="pv-import-count">Nessuna voce riconosciuta. Aggiungi altro testo o altri file, poi analizza di nuovo.</p>`;
     }
@@ -2846,14 +2846,14 @@
     const groups = order
       .map((kind) => ({ kind, items: items.filter((i) => i.kind === kind) }))
       .filter((g) => g.items.length);
-    return `<p class="pv-import-count">${items.length} voci trovate — spunta cosa inserire. L’app le mette già nelle sezioni giuste.</p>
-      <div class="pv-import-map">
+    return `<p class="pv-import-count">${items.length} voci trovate — spunta cosa inserire.</p>
+      ${section ? "" : `<div class="pv-import-map">
         <div><strong>📍 Tappe</strong> → Itinerario</div>
         <div><strong>🎫 Prenotazioni</strong> → Prenotazioni</div>
         <div><strong>✅ Checklist</strong> → Checklist + HUB Preparazione</div>
         <div><strong>🔗 Documenti</strong> → HUB · Preparazione</div>
         <div><strong>📝 Note</strong> → Note del viaggio</div>
-      </div>
+      </div>`}
       <div class="pv-import-toolbar">
         <button type="button" class="pv-ux-ghost" data-imp-all>Seleziona tutte</button>
         <button type="button" class="pv-ux-ghost" data-imp-none>Deseleziona</button>
@@ -2927,8 +2927,45 @@
     );
   }
 
+  const EVENT_SECTIONS = {
+    itinerary: { label: "Itinerario", kind: "stop" },
+    explore: { label: "Esplora", kind: "stop" },
+    places: { label: "Luoghi", kind: "stop" },
+    bookings: { label: "Prenotazioni", kind: "booking" },
+    documents: { label: "Documenti", kind: "doc" },
+    packing: { label: "Valigia", kind: "checklist" },
+    notes: { label: "Note", kind: "note" },
+  };
+
+  function applySectionEventImport(trip, items, section) {
+    const spec = EVENT_SECTIONS[section];
+    if (!spec) return applyImportItemsToTrip(trip, items);
+    const selected = items.filter(item => item.kind === spec.kind && (spec.kind !== "stop" || item.payload?.stop));
+    if (section === "explore" || section === "documents") {
+      const key = section === "explore" ? "eventExplore" : "eventDocumentLinks";
+      const existing = trip.meta?.[key] || [];
+      const incoming = selected.map(item => section === "explore"
+        ? { title: item.title, query: item.payload?.stop?.address || item.title }
+        : { title: item.title, url: item.payload?.doc?.url });
+      const combined = [...existing];
+      for (const entry of incoming) {
+        if (!(entry.query || /^https?:\/\//i.test(entry.url || ""))) continue;
+        if (!combined.some(row => row.title === entry.title && row.query === entry.query && row.url === entry.url)) combined.push(entry);
+      }
+      return { trip: { ...trip, meta: { ...trip.meta, [key]: combined.slice(0, 100) } } };
+    }
+    const clean = section === "places" ? selected.map(item => ({
+      ...item, payload: { stop: { ...item.payload.stop, day: undefined, time: undefined } },
+    })) : selected;
+    const imported = applyImportItemsToTrip(trip, clean).trip;
+    const field = { stop: "stops", booking: "bookings", checklist: "checklist", note: "notes" }[spec.kind];
+    return { trip: { ...trip, [field]: imported[field] } };
+  }
+
   async function openEventImportWizard(opts = {}) {
     const current = tripAuth();
+    const section = Object.hasOwn(EVENT_SECTIONS, opts.section) ? EVENT_SECTIONS[opts.section] : null;
+    if (section && !current) return;
     const recent = readRecentLinks();
     const preferAdd = opts.mode === "add" || Boolean(opts.auth || current);
     const state = {
@@ -2958,13 +2995,13 @@
     }
 
     openModal(
-      preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
+      section ? `Aggiungi da evento · ${section.label}` : preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
       `<div class="pv-import-hint">
          <strong>${preferAdd ? "Aggiunte al viaggio" : "Crea o arricchisci un viaggio"}</strong>
          Incolla più volte e/o carica <em>più file</em> (.txt, .md, .csv, .json, .ics, .html).
-         Poi scegli le voci: l’app le mette in Itinerario, Prenotazioni, Checklist, HUB Preparazione e Note.
+         ${section ? "" : "Poi scegli le voci da inserire nelle sezioni del viaggio."}
        </div>
-       <h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
+       ${section ? `<p>Le voci selezionate saranno aggiunte solo a <strong>${section.label}</strong> in questo viaggio.</p>` : `<h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
        <div class="pv-import-trip-list" id="pv-imp-trips">
          <label class="${preferAdd && state.auth ? "" : "on"}">
            <input type="radio" name="pv-imp-trip" value="__new__" data-key="" ${preferAdd && state.auth ? "" : "checked"} />
@@ -2980,8 +3017,8 @@
              </label>`
            )
            .join("")}
-       </div>
-       <h3 style="margin:14px 0 8px;font-size:.95rem">2. Incolla testo (anche più volte)</h3>
+       </div>`}
+       <h3 style="margin:14px 0 8px;font-size:.95rem">Incolla testo (anche più volte)</h3>
        <textarea id="pv-imp-paste" class="pv-import-paste" placeholder="Incolla programma, hotel, transfer, checklist, link… poi «Aggiungi testo»"></textarea>
        <div class="pv-ux-actions" style="margin-top:8px">
          <button type="button" class="pv-ux-ghost" id="pv-imp-add-paste">➕ Aggiungi testo</button>
@@ -2998,7 +3035,7 @@
        </div>
        <div id="pv-imp-results" style="margin-top:12px"></div>
        <div class="pv-ux-actions" id="pv-imp-apply-wrap" hidden>
-         <button type="button" class="pv-ux-primary" id="pv-imp-apply">Inserisci selezionate nelle sezioni</button>
+         <button type="button" class="pv-ux-primary" id="pv-imp-apply">${section ? `Inserisci in ${section.label}` : "Inserisci voci selezionate"}</button>
        </div>`,
       {
         onMount: (body) => {
@@ -3084,11 +3121,11 @@
               ...state.files.flatMap((f) => f.items),
               ...liveItems,
             ];
-            const merged = mergeImportItems(all);
+            const merged = mergeImportItems(section ? all.filter(item => item.kind === section.kind) : all);
             state.items = merged;
             const results = body.querySelector("#pv-imp-results");
             const applyWrap = body.querySelector("#pv-imp-apply-wrap");
-            if (results) results.innerHTML = renderImportItems(merged);
+            if (results) results.innerHTML = renderImportItems(merged, section);
             if (applyWrap) applyWrap.hidden = !merged.length;
             wireResults(results);
             if (!merged.length) toast("Nessuna voce riconosciuta", "warn");
@@ -3110,7 +3147,12 @@
               let auth;
               let data;
               let created = false;
-              if (!picked || picked.value === "__new__") {
+              if (section) {
+                auth = state.auth;
+                const active = tripAuth();
+                if (active?.id !== auth.id || active.key !== auth.key) throw new Error("Il viaggio aperto è cambiato");
+                ({ data } = await loadTripByAuth(auth));
+              } else if (!picked || picked.value === "__new__") {
                 const seed = inferTripSeedFromItems(selected);
                 const createdRes = await createTripForImport(seed);
                 auth = createdRes.auth;
@@ -3121,6 +3163,14 @@
                 ({ data } = await loadTripByAuth(auth));
               }
               if (data.canEdit === false) throw new Error("Questo viaggio è in sola lettura");
+              if (section) {
+                const { trip } = applySectionEventImport(data.trip, selected, opts.section);
+                const saved = await saveTrip(auth, trip, data.revision);
+                window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: saved.trip || trip } }));
+                sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section: opts.section }));
+                location.reload();
+                return;
+              }
               const { trip, counts } = applyImportItemsToTrip(data.trip || {}, selected, { replaceMeta: created });
               // If created empty then imported, revision is 1
               const saved = await saveTrip(auth, trip, data.revision);
@@ -3149,35 +3199,57 @@
   }
 
   function injectEventImportRail() {
-    const existing = document.getElementById("pv-event-import-rail");
-    if (!tripAuth()) {
-      existing?.remove();
-      return;
+    const auth = tripAuth();
+    const tabs = document.querySelector("#root .main-tabs");
+    if (!auth || !tabs) return;
+    const active = tabs.querySelector('[role="tab"][aria-selected="true"]');
+    const panel = document.getElementById(active?.getAttribute("aria-controls"));
+    const section = Object.keys(EVENT_SECTIONS).find(key => panel?.id.endsWith(`-content-${key}`));
+    try {
+      const pending = JSON.parse(sessionStorage.getItem("pv-event-return-section") || "null");
+      if (pending?.id === auth.id && EVENT_SECTIONS[pending.section]) {
+        const target = [...tabs.querySelectorAll('[role="tab"]')].find(tab =>
+          tab.getAttribute("aria-controls")?.endsWith(`-content-${pending.section}`));
+        if (target) {
+          sessionStorage.removeItem("pv-event-return-section");
+          if (target !== active) {
+            target.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+            target.click();
+            return;
+          }
+        }
+      }
+    } catch { /* restore only when session storage is available */ }
+    if (!section || !panel || panel.hidden) return;
+    let row;
+    try { row = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[auth.id]; }
+    catch { /* trip may still be loading */ }
+    if (!row?.trip) return;
+    const items = (section === "explore" ? row.trip.meta?.eventExplore :
+      section === "documents" ? row.trip.meta?.eventDocumentLinks : []) || [];
+    const canEdit = row.canEdit !== false && (row.key === auth.key || !row.key);
+    let rail = panel.querySelector(".pv-event-section");
+    if (!rail) {
+      rail = document.createElement("div");
+      rail.className = "pv-event-section";
+      const heading = panel.querySelector(".section-heading");
+      if (heading?.parentElement === panel) heading.after(rail);
+      else panel.prepend(rail);
     }
-    // Prefer under trip workspace / recent area
-    const mount =
-      document.querySelector(".workspace") ||
-      document.querySelector(".trip-hero")?.parentElement ||
-      document.querySelector("#root main") ||
-      document.getElementById("root");
-    if (!mount) return;
-    if (existing) return;
-    const rail = document.createElement("section");
-    rail.id = "pv-event-import-rail";
-    rail.className = "pv-event-rail";
-    rail.innerHTML = `
-      <h3>📥 Materiali evento / congresso</h3>
-      <p>Incolla testo o importa più file anche dopo: le voci finiscono subito in Itinerario, Prenotazioni, Checklist, Documenti e Note.</p>
-      <div class="pv-ux-actions">
-        <button type="button" class="pv-ux-primary" data-pv-event-add>Aggiungi da evento</button>
-      </div>`;
+    const signature = JSON.stringify([section, canEdit, items]);
+    if (rail.dataset.render === signature) return;
+    rail.dataset.render = signature;
+    const links = items.map(item => {
+      const url = section === "explore"
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query + " " + (row.trip.destination || ""))}`
+        : item.url;
+      return /^https?:\/\//i.test(url || "") ? `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a></li>` : "";
+    }).join("");
+    rail.innerHTML = `${canEdit ? '<button type="button" class="button secondary" data-pv-event-add>Aggiungi da evento</button>' : ""}
+      ${links ? `<ul aria-label="Materiali importati">${links}</ul>` : ""}`;
     rail.querySelector("[data-pv-event-add]")?.addEventListener("click", () => {
-      void openEventImportWizard({ mode: "add" });
+      void openEventImportWizard({ mode: "add", section });
     });
-    // Place after hero if possible
-    const hero = mount.querySelector?.(".trip-hero");
-    if (hero?.nextSibling) mount.insertBefore(rail, hero.nextSibling);
-    else mount.prepend(rail);
   }
 
   window.__pvParseEventImport = parseEventImportText;

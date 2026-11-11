@@ -10,7 +10,7 @@ const tripIdPattern = /^[a-zA-Z0-9_-]{1,128}$/;
 const devicePattern = /^[a-f0-9-]{36}$/;
 const allowedHosts = /^(?:fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|push\.services\.mozilla\.com|(?:[a-z0-9-]+\.)?push\.apple\.com|(?:[a-z0-9-]+\.)?notify\.windows\.com)$/;
 const fields = ["title", "destination", "start", "end", "stops", "bookings", "expenses", "transfers", "checklist", "notes"];
-const fingerprint = trip => digest(JSON.stringify([...fields.map(key => trip[key]), trip.meta?.polls, trip.meta?.preparation, trip.meta?.reminders]));
+const fingerprint = trip => digest(JSON.stringify([...fields.map(key => trip[key]), trip.meta?.polls, trip.meta?.preparation, trip.meta?.reminders, trip.meta?.eventExplore, trip.meta?.eventDocumentLinks]));
 const normalName = name => String(name || "").trim().normalize("NFC").toLowerCase();
 
 function validSubscription(subscription) {

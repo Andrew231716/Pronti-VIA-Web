@@ -17,6 +17,10 @@
     profile: `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 19.2c1.2-3.2 3.6-4.7 7-4.7s5.8 1.5 7 4.7"/></svg>`,
   };
 
+  function ghanaIcon(path) {
+    return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
+  }
+
   /** Country / region themes — distinctive but on-brand travel feel */
   const THEMES = {
     default: {
@@ -34,6 +38,20 @@
       accent: "#2aa3a8",
       wash: "rgba(0,125,130,.08)",
       icons: ICO,
+    },
+    gh: {
+      id: "gh", label: "Ghana", motif: "tile", flag: "🇬🇭",
+      stickers: ["⭐", "🥁", "🌴", "☀️"],
+      teal: "#176348", tealDeep: "#104d37", ink: "#29271e", muted: "#605645",
+      sand: "#fff5df", line: "#e5d2ac", accent: "#dba62f", wash: "rgba(179,63,44,.12)",
+      icons: {
+        home: ghanaIcon('<path d="M3 10h18L12 4 3 10Zm3 1v8m4-8v8m4-8v8m4-8v8M4 20h16"/>'),
+        trips: ghanaIcon('<path d="M4 20v-8h4V7h8v5h4v8M10 20v-4a2 2 0 0 1 4 0v4M3 20h18"/><path d="m12 2 .7 1.5 1.6.2-1.2 1.1.3 1.6L12 5.6l-1.4.8.3-1.6-1.2-1.1 1.6-.2Z"/>'),
+        hub: ghanaIcon('<path d="M6 5h12l-2 5v4l2 5H6l2-5v-4L6 5Zm2 5h8m-8 4h8M8 5l8 14m0-14L8 19"/>'),
+        ai: ghanaIcon('<path d="m12 3 2.6 5.5 6 .8-4.3 4.2 1 5.9-5.3-2.8-5.3 2.8 1-5.9-4.3-4.2 6-.8L12 3Z"/>'),
+        profile: ghanaIcon('<circle cx="12" cy="8" r="3"/><path d="M5 20v-2a7 7 0 0 1 14 0v2M8 17l2 2 2-2 2 2 2-2"/>'),
+        budget: ghanaIcon('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8m-8 4h2m4 0h2m-8 4h2m4 0h2m-8 3h8"/>'),
+      },
     },
     it: {
       id: "it",
@@ -408,6 +426,7 @@
   };
 
   const RULES = [
+    { id: "gh", re: /\b(?:ghana|accra|kumasi|tamale|cape coast|tema|takoradi)\b/ },
     { id: "is", re: /islanda|\bisland\b|iceland|reykjav|akureyr/ },
     { id: "jp", re: /giappone|japan|tokyo|osaka|kyoto|hokkaido/ },
     { id: "gr", re: /grecia|greece|athen|atene|santorini|mykonos|creta|crete/ },
@@ -738,6 +757,7 @@
       "pv-hub-nav": theme.icons.hub,
       "pv-nav-ai": theme.icons.ai,
       "pv-account-menu": theme.icons.profile,
+      "pv-nav-budget": theme.icons.budget || ghanaIcon('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8m-8 4h2m4 0h2m-8 4h2m4 0h2"/>'),
     };
     for (const [id, svg] of Object.entries(map)) {
       const ico = document.querySelector(`#${id} .pv-nav-ico`);

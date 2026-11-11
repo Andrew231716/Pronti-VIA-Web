@@ -23,8 +23,8 @@ function test(name, fn) {
 const ux = readFileSync("ux-suite.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
-test("stamp ux-suite-20261111f wired", () => {
-  assert.match(index, /ux-suite-20261111f\.js/);
+test("stamp ux-suite-20261111j wired", () => {
+  assert.match(index, /ux-suite-20261111j\.js/);
 });
 
 test("import event menu + wizard wired", () => {
@@ -94,7 +94,34 @@ const sandbox = {
 sandbox.window = sandbox;
 sandbox.globalThis = sandbox;
 vm.createContext(sandbox);
-vm.runInContext(ux, sandbox);
+vm.runInContext(ux.replace("  window.__pvParseEventImport", "  window.testSectionImport = applySectionEventImport;\n  window.__pvParseEventImport"), sandbox);
+
+test("scoped event imports only update the chosen section", () => {
+  const apply = sandbox.testSectionImport;
+  const original = { title: "Accra", stops: [], bookings: [], checklist: [], notes: "Originali" };
+  const items = [
+    { kind: "stop", title: "Black Star Square", payload: { stop: { title: "Black Star Square", day: "2027-08-02", time: "09:30" } } },
+    { kind: "checklist", title: "Badge", payload: { checklist: { title: "Badge" } } },
+    { kind: "note", title: "Nota", payload: { note: "Contatto" } },
+    { kind: "doc", title: "Biglietto", payload: { doc: { url: "https://example.org/biglietto" } } },
+  ];
+  const itinerary = apply(original, items, "itinerary").trip;
+  assert.equal(itinerary.stops[0].day, "2027-08-02");
+  assert.equal(itinerary.notes, original.notes);
+  assert.equal(itinerary.checklist.length, 0);
+  const places = apply(original, items, "places").trip;
+  assert.equal(places.stops[0].day, undefined);
+  assert.equal(places.stops[0].time, undefined);
+  const explore = apply(original, items, "explore").trip;
+  assert.equal(explore.stops.length, 0);
+  assert.equal(explore.meta.eventExplore[0].title, "Black Star Square");
+  const documents = apply(original, items, "documents").trip;
+  assert.equal(documents.meta.eventDocumentLinks[0].url, "https://example.org/biglietto");
+  assert.equal(documents.notes, original.notes);
+  const packing = apply(original, items, "packing").trip;
+  assert.equal(packing.checklist[0].title, "Badge");
+  assert.equal(packing.meta, undefined);
+});
 
 test("parse hotel + program + checklist + link", () => {
   const text = `

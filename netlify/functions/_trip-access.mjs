@@ -138,7 +138,7 @@ export async function handlePersonalAccess({ event, id, sub, token, json, reques
   }
   const currentMeta = current.trip.meta || {};
   const allowedMeta = { ...currentMeta };
-  for (const field of ["polls", "preparation", "optimizeReport"]) {
+  for (const field of ["polls", "preparation", "optimizeReport", "eventExplore", "eventDocumentLinks"]) {
     if (meta?.[field] !== undefined) allowedMeta[field] = meta[field];
   }
   const trip = { ...current.trip };

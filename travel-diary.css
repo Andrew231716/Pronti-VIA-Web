@@ -247,3 +247,70 @@ html[data-pv-theme="dark"] body.pv-account-ready {
   color: #fff;
 }
 .pv-trip-push-status:empty { display: none; }
+
+/* Keep resolved destination photos visible above the illustrated fallback. */
+#root .trip-cover[data-pv-cover-ready="1"]:has(> .pv-diary-cover) > img {
+  display: block;
+}
+#root .trip-cover[data-pv-cover-ready="1"]:has(> .pv-diary-cover) > .photo-credit {
+  display: block;
+}
+#root .trip-cover[data-pv-cover-ready="1"] > .pv-diary-cover { display: none; }
+html[data-pv-dest="gh"] #root .trip-cover {
+  border-block-start: 4px solid #dba62f;
+  border-block-end: 3px solid #b84132;
+}
+#pv-primary-nav:has(#pv-nav-budget) .pv-primary-nav-inner {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+#pv-primary-nav:has(#pv-nav-budget) .pv-nav-label {
+  font-size: clamp(.6rem, 2.65vw, .78rem);
+}
+body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !important; }
+
+#root .workspace-tabs, #root .workspace-grid, #root .primary-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+#root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  min-width: 0;
+  padding: clamp(.75rem, 3vw, 1.25rem);
+  border: 1px solid var(--diary-line);
+  border-radius: 1rem;
+  background: var(--diary-paper);
+  overflow-wrap: anywhere;
+}
+#root .workspace-tabs { background: transparent !important; }
+#root .pv-event-section { margin-bottom: .8rem; }
+#root .pv-event-section ul { margin-block: .45rem; padding-inline-start: 1.2rem; }
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    min-width: 0;
+    width: 100%;
+    height: auto;
+    padding: .4rem .2rem !important;
+    gap: .25rem;
+    white-space: normal;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+  #root .workspace-tabs .main-tabs [role="tab"] svg { flex-shrink: 0; width: 14px; }
+  #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
+  #root .day-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .4rem;
+    overflow: visible;
+  }
+  #root .day-strip > button {
+    min-width: 0;
+    padding-inline: .35rem;
+  }
+}
