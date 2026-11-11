@@ -1740,6 +1740,8 @@
     const root = rootEl();
     if (!root) return;
     root.classList.toggle("open", open);
+    document.getElementById("pv-nav-budget")?.setAttribute("aria-expanded", String(open));
+    window.__pvSetPrimaryNav?.(open ? "budget" : tripAuth() ? "trips" : "home");
     // Floating panel: lock scroll only on small screens.
     if (window.matchMedia && window.matchMedia("(max-width:640px)").matches) {
       document.documentElement.style.overflow = open ? "hidden" : "";
@@ -2380,7 +2382,7 @@
         <div class="pv-prev-top" id="pv-prev-drag">
           <div>
             <h1>Preventivo intelligente</h1>
-            <span class="pv-prev-sub">Floating · trascina per spostare</span>
+            <span class="pv-prev-sub">Trascina per spostare</span>
           </div>
           <button type="button" data-act="close">Chiudi</button>
         </div>

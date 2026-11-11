@@ -959,6 +959,18 @@
       host.prepend(resume);
     }
     const heading = featured.card.querySelector("strong")?.textContent || "Viaggio";
+    const accra = /\baccra\b/i.test(featured.destination || heading);
+    resume.classList.toggle("pv-resume-accra", accra);
+    const credit = resume.querySelector(".pv-resume-credit");
+    if (accra && !credit) {
+      const link = document.createElement("a");
+      link.className = "pv-resume-credit";
+      link.href = "https://commons.wikimedia.org/wiki/File:Black_Star_Gate_in_Accra.jpg";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Bright Kwame Ayisi · CC BY-SA 4.0";
+      resume.append(link);
+    } else if (!accra) credit?.remove();
     const next = featured.next;
     const detail = next
       ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
@@ -1555,8 +1567,8 @@
     document.querySelectorAll(".pv-ux-modal .pv-ux-close, .pv-ux-modal [data-ux-close]").forEach((el) => el.click());
     // Home = landing: esci dal viaggio e mostra crea/apri
     if (tripAuth()) {
-      location.hash = "";
-      toast("Home — crea un viaggio o aprine uno recente", "ok");
+      history.replaceState(null, "", location.pathname + location.search);
+      location.reload();
       return;
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -3542,6 +3554,10 @@
 
   function syncPrimaryNavState() {
     if (typeof window.__pvSetPrimaryNav !== "function") return;
+    if (document.getElementById("pv-preventivo-root")?.classList.contains("open")) {
+      window.__pvSetPrimaryNav("budget");
+      return;
+    }
     if (document.body.classList.contains("pv-plat-open")) {
       window.__pvSetPrimaryNav("hub");
       return;
@@ -3659,6 +3675,11 @@
         /* keep suite alive */
       }
     };
+    run(() => {
+      const mark = document.querySelector("#pv-account-chip .pv-account-mark");
+      const brand = document.querySelector("#root .topbar .brand");
+      if (mark && brand && !brand.querySelector(".pv-account-mark")) brand.prepend(mark.cloneNode(true));
+    });
     run(ensureStyles);
     run(ensureItineraryLayoutPolish);
     run(cleanupLegacyChrome);

@@ -286,7 +286,7 @@ function ensureUi() {
         </span>
         <span class="pv-nav-label">IA</span>
       </button>
-      <button type="button" class="pv-nav-item" id="pv-nav-budget" aria-haspopup="dialog" aria-label="Preventivo intelligente">
+      <button type="button" class="pv-nav-item" id="pv-nav-budget" data-nav="budget" aria-expanded="false" aria-haspopup="dialog" aria-label="Preventivo intelligente">
         <span class="pv-nav-ico" aria-hidden="true"></span>
         <span class="pv-nav-label">Preventivo</span>
       </button>

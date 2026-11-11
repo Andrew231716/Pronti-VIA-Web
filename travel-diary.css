@@ -318,7 +318,7 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
 /* The local photo is painted by the cover itself, so a React image remount
    or an asynchronous destination lookup cannot remove it. */
 #root .trip-cover[data-pv-accra-cover] {
-  background: #104d37 url("./assets/accra-black-star-square.jpg") center 43% / cover no-repeat;
+  background: #104d37 url("./assets/accra-golden-hour.jpg") center 43% / cover no-repeat;
 }
 #root .trip-cover[data-pv-accra-cover] > img,
 #root .trip-cover[data-pv-accra-cover] > .pv-diary-cover,
@@ -540,4 +540,54 @@ html[data-pv-theme="dark"] { --diary-status: #b9dfd2; }
   }
   #pv-magic-panel .pv-panel-body { flex: 0 0 auto; }
   #pv-magic-panel .pv-panel-foot { position: sticky; bottom: 0; }
+}
+
+#root .topbar .brand:has(.pv-account-mark) > img { display: none; }
+#root .topbar .brand .pv-account-mark { width: 32px; height: 32px; }
+#root .trip-cover[data-pv-accra-cover] {
+  min-height: clamp(270px, 62vw, 410px);
+  background-position: center 48%;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-shade {
+  background: linear-gradient(to top, rgb(16 22 20 / .88), rgb(16 22 20 / .38) 48%, transparent 85%);
+}
+#root .trip-cover[data-pv-accra-cover] .cover-content { bottom: 2.25rem; }
+#root .pv-home-resume.pv-resume-accra {
+  min-height: 260px;
+  align-content: end;
+  background: linear-gradient(to top, #14221df5 5%, #14221d60 68%, transparent), url("./assets/accra-golden-hour.jpg") center 47% / cover;
+  color: white;
+}
+#root .pv-resume-accra :is(.pv-resume-top span, .pv-resume-top small, .pv-resume-credit) { color: #fff; }
+#root .pv-resume-credit { width: fit-content; font-size: .72rem; text-decoration: underline; }
+html #pv-preventivo-root .pv-prev-shell {
+  background: var(--diary-wash);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-preventivo-root .pv-prev-top { background: var(--pv-dest-teal-deep, #124048); }
+html #pv-preventivo-root .pv-prev-tabs,
+html #pv-preventivo-root .pv-callout { background: var(--diary-wash); border-color: var(--diary-line); color: var(--diary-ink); }
+html #pv-preventivo-root .pv-prev-card,
+html #pv-preventivo-root .pv-prev-tabs button,
+html #pv-preventivo-root label.pv-field :is(input,select,textarea) {
+  background: var(--diary-paper);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-preventivo-root .pv-prev-card :is(h2,p),
+html #pv-preventivo-root :is(.pv-prev-muted,.pv-status,label.pv-field) { color: var(--diary-ink); }
+html #pv-preventivo-root .pv-prev-tabs button.active,
+html #pv-preventivo-root .pv-prev-actions .primary {
+  background: var(--pv-dest-teal-deep, #16564b);
+  border-color: var(--pv-dest-teal-deep, #16564b);
+  color: white;
+}
+@media (max-width: 640px) {
+  body.pv-primary-nav-ready #pv-preventivo-root .pv-prev-shell {
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    height: min(72dvh, 700px) !important;
+    max-height: calc(100dvh - 100px - env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #pv-preventivo-root .pv-prev-sub { display: none !important; }
 }

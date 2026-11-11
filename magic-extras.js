@@ -5381,10 +5381,10 @@ Regole pv-places:
 
     if (/\b(?:accra|ghana)\b/i.test(destination) && !/kumasi|tamale|cape coast|takoradi/i.test(destination)) {
       const accra = {
-        url: new URL("assets/accra-black-star-square.jpg", location.href).href,
-        alt: "Black Star Square e Arco dell’Indipendenza, Accra",
-        credit: "Guido Sohne · CC BY-SA 2.0",
-        creditUrl: "https://commons.wikimedia.org/wiki/File:Black_Star_Square_and_Independence_Arch,_Accra,_Ghana.jpg",
+        url: new URL("assets/accra-golden-hour.jpg", location.href).href,
+        alt: "Black Star Gate al tramonto, Accra",
+        credit: "Bright Kwame Ayisi · CC BY-SA 4.0",
+        creditUrl: "https://commons.wikimedia.org/wiki/File:Black_Star_Gate_in_Accra.jpg",
       };
       coverCache.set(key, accra);
       return accra;
