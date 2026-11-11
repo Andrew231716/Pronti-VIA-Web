@@ -5381,10 +5381,10 @@ Regole pv-places:
 
     if (/\b(?:accra|ghana)\b/i.test(destination) && !/kumasi|tamale|cape coast|takoradi/i.test(destination)) {
       const accra = {
-        url: new URL("assets/accra-golden-hour.jpg", location.href).href,
-        alt: "Black Star Gate al tramonto, Accra",
-        credit: "Bright Kwame Ayisi · CC BY-SA 4.0",
-        creditUrl: "https://commons.wikimedia.org/wiki/File:Black_Star_Gate_in_Accra.jpg",
+        url: new URL("assets/ghana-collage.webp", location.href).href,
+        alt: "Collage illustrativo del Ghana: spiaggia, castello di Elmina ed elefanti del parco di Mole",
+        credit: "Collage illustrativo del Ghana",
+        creditUrl: "",
       };
       coverCache.set(key, accra);
       return accra;

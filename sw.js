@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261111t`;
+const CACHE = `${CACHE_PREFIX}20261111u`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -12,7 +12,7 @@ const PRECACHE = [
   "./logo.png?v=20261111q",
   "./manifest.webmanifest?v=20261111q",
   "./account.css?v=20261111r",
-  "./travel-diary.css?v=20261111t",
+  "./travel-diary.css?v=20261111u",
   "./account.js?v=20261111t",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261104d",
@@ -20,18 +20,18 @@ const PRECACHE = [
   // Must match the case-sensitive dynamic import in account.js.
   "./assets/index-loadfix-20261111f.js",
   "./assets/api-shim-20261111i.js",
-  "./assets/magic-extras-20261111s.js",
+  "./assets/magic-extras-20261111u.js",
   "./assets/expense-suite-20261111m.js",
   "./assets/expense-splitwise-20261111o.js",
   "./assets/app-suite-20261107l.js",
   "./assets/preventivo-islanda-20261111s.js",
-  "./assets/ux-suite-20261111s.js",
+  "./assets/ux-suite-20261111u.js",
   "./assets/pv-platform-20261111n.js",
-  "./assets/destination-theme-20261111k.js",
+  "./assets/destination-theme-20261111u.js",
   "./trip-notifications.js?v=20261111i",
   "./map.html",
   "./coast.jpg",
-  "./assets/accra-golden-hour.jpg",
+  "./assets/ghana-collage.webp",
   "./iceland.svg",
   "./vendor/leaflet/leaflet.css",
   "./vendor/leaflet/leaflet.js",

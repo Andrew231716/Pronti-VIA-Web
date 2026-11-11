@@ -916,8 +916,6 @@
         row.classList.add("pv-card-wrap");
       }
     }
-    const choices = [];
-    const recent = readRecentLinks();
     const mode = host.querySelector(".pv-home-seg .on")?.dataset.seg || "all";
     const today = new Date().toLocaleDateString("sv-SE");
     for (const card of links) {
@@ -926,15 +924,13 @@
       const key = params.get("key");
       if (!id || !key) continue;
       const meta = readJson(`viavia-trip-card-meta:${id}`, null);
-      const saved = recent.find(item => item.id === id && item.key === key);
       const overview = window.__pvTripOverview?.(id, key);
-      const start = overview?.start || meta?.start || saved?.start;
-      const end = overview?.end || meta?.end || saved?.end;
+      const start = overview?.start || meta?.start;
+      const end = overview?.end || meta?.end;
       const when = start > today ? "upcoming" : end && end < today ? "past" : start && end ? "active" : "";
       const row = card.closest(".pv-recent-row") || card;
       row.hidden = mode !== "all" && mode !== when;
       const label = overview?.status || "Stato da verificare";
-      choices.push({ card, start, when, label, next: overview?.next, destination: overview?.destination || meta?.destination || saved?.destination });
       let badge = card.querySelector(".pv-trip-sync");
       if (!badge && card.querySelector(".pv-trip-body")) {
         badge = document.createElement("span");
@@ -943,45 +939,58 @@
       }
       if (badge && badge.textContent !== label) badge.textContent = label;
     }
-    const order = { active: 0, upcoming: 1, "": 2, past: 3 };
-    const featured = choices.filter(item => item.when !== "past").sort((a, b) =>
-      order[a.when] - order[b.when] || (a.start || "").localeCompare(b.start || "")
-    )[0];
-    let resume = host.querySelector(".pv-home-resume");
-    if (!featured) {
-      resume?.remove();
+  }
+
+  function renderHomeResume() {
+    const existing = document.querySelector("#root .pv-home-resume");
+    const host = document.querySelector("#root main.app-shell");
+    if (tripAuth() || !host) {
+      existing?.remove();
       return;
     }
-    if (!resume) {
-      resume = document.createElement("section");
+
+    const records = readJson("viavia-local-trips-v1", {}) || {};
+    const today = new Date().toLocaleDateString("sv-SE");
+    const featured = readRecentLinks().map(recent => {
+      const record = records[recent.id];
+      const trip = record?.key === recent.key ? record.trip : null;
+      const meta = readJson(`viavia-trip-card-meta:${recent.id}`, null);
+      const overview = window.__pvTripOverview?.(recent.id, recent.key);
+      const start = overview?.start || trip?.start || meta?.start || recent.start || "";
+      const end = overview?.end || trip?.end || meta?.end || recent.end || "";
+      return {
+        ...recent, start,
+        title: trip?.title || recent.title || "Viaggio",
+        destination: trip?.destination || meta?.destination || recent.destination || "",
+        next: overview?.next,
+        status: overview?.status || "Stato da verificare",
+        priority: start > today ? 1 : end && end < today ? 3 : start && end ? 0 : 2,
+      };
+    }).sort((first, second) => first.priority - second.priority
+      || (first.priority === 1 ? first.start.localeCompare(second.start) : 0))[0];
+    if (!featured) {
+      existing?.remove();
+      return;
+    }
+
+    const resume = existing || document.createElement("section");
+    if (!existing) {
       resume.className = "pv-home-resume";
       resume.innerHTML = '<div class="pv-resume-top"><span></span><small></small></div><h3></h3><p></p><a class="button">Riprendi viaggio</a>';
       host.prepend(resume);
     }
-    const heading = featured.card.querySelector("strong")?.textContent || "Viaggio";
-    const accra = /\baccra\b/i.test(featured.destination || heading);
-    resume.classList.toggle("pv-resume-accra", accra);
-    const credit = resume.querySelector(".pv-resume-credit");
-    if (accra && !credit) {
-      const link = document.createElement("a");
-      link.className = "pv-resume-credit";
-      link.href = "https://commons.wikimedia.org/wiki/File:Black_Star_Gate_in_Accra.jpg";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "Bright Kwame Ayisi · CC BY-SA 4.0";
-      resume.append(link);
-    } else if (!accra) credit?.remove();
+    resume.classList.toggle("pv-resume-accra", /\b(?:accra|ghana)\b/i.test(`${featured.destination} ${featured.title}`));
     const next = featured.next;
     const detail = next
       ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
       : featured.start ? `Partenza · ${featured.start.split("-").reverse().join("/")}` : "Apri l’itinerario e le prenotazioni.";
-    for (const [selector, value] of [["h3", heading], ["p", detail], ["small", featured.label], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
+    for (const [selector, value] of [["h3", featured.title], ["p", detail], ["small", featured.status], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
       const node = resume.querySelector(selector);
       if (node.textContent !== value) node.textContent = value;
     }
+    const href = "#" + new URLSearchParams({ trip: featured.id, key: featured.key });
     const link = resume.querySelector("a");
-    if (link.href !== featured.card.href) link.href = featured.card.href;
-
+    if (link.getAttribute("href") !== href) link.setAttribute("href", href);
   }
 
   function polishLocalOnlyBanner() {
@@ -3665,6 +3674,7 @@
 
   window.addEventListener("pv-outbox-changed", enhanceHomeTripCards);
   window.addEventListener("pv-save-status", enhanceHomeTripCards);
+  window.addEventListener("pv-save-status", renderHomeResume);
 
   function tick() {
     if (document.hidden) return;
@@ -3687,6 +3697,7 @@
     run(injectEmptyStates);
     run(injectMemberRoles);
     run(injectOfflineChip);
+    run(renderHomeResume);
     run(enhanceHomeTripCards);
     run(enhanceRecentTripsDelete);
     run(injectTripDeleteButton);
