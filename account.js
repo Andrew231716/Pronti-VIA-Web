@@ -657,7 +657,7 @@ async function activateSession(data, { bootApp = true } = {}) {
 
 let appLoaded = false;
 let appLoadPromise = null;
-const APP_MODULE = "/assets/index-loadfix-20261104d.js";
+const APP_MODULE = "/assets/index-loadfix-20261111f.js";
 
 function rootHasApp() {
   const root = document.getElementById("root");

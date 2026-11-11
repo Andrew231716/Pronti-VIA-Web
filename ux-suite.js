@@ -327,6 +327,12 @@
       .recent-trips .pv-recent-row > a.booking-card{margin:0;flex:1;min-width:0}
       .recent-trips .pv-recent-row > .pv-delete-trip{flex:0 0 auto}
       /* Home trip cards — mockup-inspired */
+      .pv-home-resume {
+        grid-column: 1 / -1; padding: 16px; border: 1px solid var(--line, #b7d8d8);
+        border-radius: 16px; display: grid; gap: 6px; justify-items: start;
+      }
+      .pv-home-resume :is(h3,p){margin:0;overflow-wrap:anywhere}
+      .pv-home-resume a{margin-top:4px;min-height:44px}
       .recent-trips.pv-home-cards{
         display:grid;gap:14px;margin-top:10px
       }
@@ -910,18 +916,25 @@
         row.classList.add("pv-card-wrap");
       }
     }
+    const choices = [];
+    const recent = readRecentLinks();
     const mode = host.querySelector(".pv-home-seg .on")?.dataset.seg || "all";
     const today = new Date().toLocaleDateString("sv-SE");
     for (const card of links) {
-      const id = new URLSearchParams(new URL(card.href, location.href).hash.slice(1)).get("trip");
-      if (!id) continue;
+      const params = new URLSearchParams(new URL(card.href, location.href).hash.slice(1));
+      const id = params.get("trip");
+      const key = params.get("key");
+      if (!id || !key) continue;
       const meta = readJson(`viavia-trip-card-meta:${id}`, null);
-      const when = meta?.start > today ? "upcoming" : meta?.end && meta.end < today ? "past" : meta?.start && meta?.end ? "active" : "";
+      const saved = recent.find(item => item.id === id && item.key === key);
+      const overview = window.__pvTripOverview?.(id, key);
+      const start = overview?.start || meta?.start || saved?.start;
+      const end = overview?.end || meta?.end || saved?.end;
+      const when = start > today ? "upcoming" : end && end < today ? "past" : start && end ? "active" : "";
       const row = card.closest(".pv-recent-row") || card;
       row.hidden = mode !== "all" && mode !== when;
-      const local = window.__pvIsTripLocalOnly?.(id) || meta?.local;
-      const offlinePending = (readJson("viavia-platform-outbox-v1", []) || []).some(item => item.tripId === id);
-      const label = offlinePending ? "In attesa di sincronizzazione" : local ? "Solo sul dispositivo" : meta ? "Sincronizzato" : "Da verificare";
+      const label = overview?.status || "Stato da verificare";
+      choices.push({ card, start, when, label, next: overview?.next });
       let badge = card.querySelector(".pv-trip-sync");
       if (!badge && card.querySelector(".pv-trip-body")) {
         badge = document.createElement("span");
@@ -930,6 +943,33 @@
       }
       if (badge && badge.textContent !== label) badge.textContent = label;
     }
+    const order = { active: 0, upcoming: 1, "": 2, past: 3 };
+    const featured = choices.filter(item => item.when !== "past").sort((a, b) =>
+      order[a.when] - order[b.when] || (a.start || "").localeCompare(b.start || "")
+    )[0];
+    let resume = host.querySelector(".pv-home-resume");
+    if (!featured) {
+      resume?.remove();
+      return;
+    }
+    if (!resume) {
+      resume = document.createElement("section");
+      resume.className = "pv-home-resume";
+      resume.innerHTML = '<h3></h3><p></p><small></small><a class="button">Riprendi viaggio</a>';
+      host.prepend(resume);
+    }
+    const heading = featured.card.querySelector("strong")?.textContent || "Viaggio";
+    const next = featured.next;
+    const detail = next
+      ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
+      : featured.start ? `Partenza · ${featured.start.split("-").reverse().join("/")}` : "Apri l’itinerario e le prenotazioni.";
+    for (const [selector, value] of [["h3", heading], ["p", detail], ["small", featured.label]]) {
+      const node = resume.querySelector(selector);
+      if (node.textContent !== value) node.textContent = value;
+    }
+    const link = resume.querySelector("a");
+    if (link.href !== featured.card.href) link.href = featured.card.href;
+
   }
 
   function polishLocalOnlyBanner() {
@@ -3268,6 +3308,9 @@
       return orig.apply(this, arguments);
     };
   }
+
+  window.addEventListener("pv-outbox-changed", enhanceHomeTripCards);
+  window.addEventListener("pv-save-status", enhanceHomeTripCards);
 
   function tick() {
     const run = (fn) => {

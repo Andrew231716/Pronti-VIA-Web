@@ -15,8 +15,8 @@ function ok(name, cond, detail = "") {
 }
 
 const index = readFileSync("index.html", "utf8");
-ok("index loads expense-splitwise stamp", /expense-splitwise-20261111e\.js/.test(index));
-ok("asset file exists", existsSync("assets/expense-splitwise-20261111e.js"));
+ok("index loads expense-splitwise stamp", /expense-splitwise-20261111f\.js/.test(index));
+ok("asset file exists", existsSync("assets/expense-splitwise-20261111f.js"));
 ok("source file exists", existsSync("expense-splitwise.js"));
 
 const src = readFileSync("expense-splitwise.js", "utf8");
@@ -25,9 +25,14 @@ ok("settle one-tap", src.includes('data-sw="settle"') || src.includes("recordSet
 ok("activity hook", src.includes("installActivityHook") && src.includes("expenseActivity"));
 ok("filters", src.includes("data-sw-filter"));
 ok("comments", src.includes("expenseComments"));
+const activeBundle = readFileSync("assets/index-loadfix-20261111f.js", "utf8");
+ok("expense rows and notes share the same stable ID",
+  activeBundle.includes('className:`expense-row`,"data-expense-id":e.id') &&
+  src.includes("expense.id === li.dataset.expenseId")
+);
 
 const sw = readFileSync("sw.js", "utf8");
-ok("sw precaches splitwise", /expense-splitwise-20261111e\.js/.test(sw));
+ok("sw precaches splitwise", /expense-splitwise-20261111f\.js/.test(sw));
 
 const plat = readFileSync("pv-platform.js", "utf8");
 ok("Hub Numeri shows saldi", /Spese condivise · saldi/.test(plat));

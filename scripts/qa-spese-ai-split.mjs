@@ -485,7 +485,7 @@ if ((await chat.count()) > 0) {
 }
 
 // Schema: custom mismatch should fail Zod refine — check source
-const bundle = readFileSync(join(ROOT, "assets/index-loadfix-20261104d.js"), "utf8");
+const bundle = readFileSync(join(ROOT, "assets/index-loadfix-20261111f.js"), "utf8");
 ok(
   "Schema enforce shares sum == amount",
   /Le quote devono corrispondere al/.test(bundle)

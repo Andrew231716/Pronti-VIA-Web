@@ -6,7 +6,7 @@
 (() => {
   const STYLE_ID = "pv-splitwise-css";
   const BOARD_ID = "pv-splitwise-board";
-  const ASSET_VER = "20261111e";
+  const ASSET_VER = "20261111f";
   const ACTIVITY_MAX = 80;
 
   let lastTripSnap = null;
@@ -387,6 +387,7 @@
         appearance:none; border:1px solid #c9dbdb; background:#fff; color:#16353b;
         border-radius:999px; padding:3px 8px; font:700 .72rem inherit; cursor:pointer;
       }
+      .expense-columns .expense-row[data-pv-sw-hide="1"],
       .expense-columns li[data-pv-sw-hide="1"],
       .expense-list li[data-pv-sw-hide="1"]{ display:none !important }
     `;
@@ -516,8 +517,8 @@
           }`,
         },
       ].slice(-ACTIVITY_MAX);
-      await putTrip(bundle.auth, trip, bundle.data.revision, actor);
-      toast("Rimborso registrato — saldi aggiornati", "ok");
+      const saved = await putTrip(bundle.auth, trip, bundle.data.revision, actor);
+      toast(window.__pvSaveToast?.(saved) || "Rimborso registrato", saved.local ? "warn" : "ok");
       // Soft refresh SPA: hash poke or reload trip view
       try {
         window.dispatchEvent(new CustomEvent("pv:trip-mutated", { detail: { reason: "settle" } }));
@@ -545,6 +546,9 @@
         ? structuredClone(bundle.trip)
         : JSON.parse(JSON.stringify(bundle.trip));
       trip.meta = trip.meta && typeof trip.meta === "object" ? trip.meta : {};
+      if (!(trip.expenses || []).some(expense => expense.id === expenseId)) {
+        throw new Error("La spesa non è più disponibile");
+      }
       const map = trip.meta.expenseComments && typeof trip.meta.expenseComments === "object"
         ? trip.meta.expenseComments
         : {};
@@ -568,8 +572,8 @@
           summary: `Nota su «${expenseTitle || "spesa"}»`,
         },
       ].slice(-ACTIVITY_MAX);
-      await putTrip(bundle.auth, trip, bundle.data.revision, actor);
-      toast("Nota salvata", "ok");
+      const saved = await putTrip(bundle.auth, trip, bundle.data.revision, actor);
+      toast(window.__pvSaveToast?.(saved) || "Nota salvata", saved.local ? "warn" : "ok");
       await renderBoard(true);
       decorateExpenseRows(trip);
     } catch (err) {
@@ -579,20 +583,15 @@
 
   function decorateExpenseRows(trip, canEdit = true) {
     const comments = trip?.meta?.expenseComments || {};
-    const items = document.querySelectorAll(".expense-columns li, .expense-list li");
+    const items = document.querySelectorAll(".expense-columns .expense-row, .expense-columns li, .expense-list li");
     for (const li of items) {
       if (li.closest(`#${BOARD_ID}`)) continue;
       const currentTools = li.querySelector(".pv-sw-expense-tools");
-      const titleEl = li.querySelector("strong, h4, .title") || li;
-      const title = (titleEl.textContent || "").trim();
-      // The legacy list has no expense ID. Avoid attaching a note to an
-      // arbitrary expense when two rows share a title.
-      const matches = (trip.expenses || []).filter((e) => String(e.title || "").trim() === title);
-      if (matches.length !== 1) {
+      const match = (trip.expenses || []).find(expense => expense.id === li.dataset.expenseId);
+      if (!match) {
         currentTools?.remove();
         continue;
       }
-      const [match] = matches;
       const count = (comments[match.id] || []).length;
       const label = count ? `💬 ${count}` : "💬 Nota";
       if (currentTools && canEdit && li.dataset.pvSwExpenseId === match.id) {
@@ -629,7 +628,7 @@
   function applyExpenseFilters() {
     const { member, category, q } = filterState;
     const qn = q.toLowerCase();
-    const items = document.querySelectorAll(".expense-columns li, .expense-list li");
+    const items = document.querySelectorAll(".expense-columns .expense-row, .expense-columns li, .expense-list li");
     for (const li of items) {
       const id = li.dataset.pvSwExpenseId || "";
       const cat = li.dataset.pvSwCategory || "";

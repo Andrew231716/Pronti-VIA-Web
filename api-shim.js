@@ -36,8 +36,8 @@
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
   const replayedRevisions = new Map();
   const SAVE_MSG = {
-    SERVER: "Salvato e sincronizzato",
-    LOCAL: "Salvato su questo dispositivo. In attesa di sincronizzazione",
+    SERVER: "Sincronizzato",
+    LOCAL: "Salvato sul dispositivo",
     ERROR: "Salvataggio non riuscito",
     CONFLICT: "Versione non aggiornata. Confronta le versioni in Hub, Impostazioni.",
     CREATE_SERVER: "Viaggio creato e sincronizzato. Conserva il link per ritrovarlo.",
@@ -62,7 +62,8 @@
       if (status === "server") return SAVE_MSG.CREATE_SERVER;
       return data.id?.startsWith("pv-") ? SAVE_MSG.CREATE_PENDING : SAVE_MSG.CREATE_LOCAL;
     }
-    if (status === "local" || status === "pending") return SAVE_MSG.LOCAL;
+    if (status === "pending" || data.pending || (data.id && readOutbox().some(item => item.tripId === data.id))) return "Da sincronizzare";
+    if (status === "local") return SAVE_MSG.LOCAL;
     if (status === "error") return SAVE_MSG.ERROR;
     return SAVE_MSG.SERVER;
   }
@@ -910,6 +911,32 @@
       "";
     if (!id) return false;
     return Boolean(readLocalTrips()[id]?.local);
+  };
+  window.__pvTripOverview = (id, key) => {
+    const record = readLocalTrips()[id];
+    const queued = window.__pvReadOutbox().find(item => item.tripId === id && item.key === key);
+    const sameTrip = record?.key === key;
+    const status = queued?.lastError === "conflict" ? "Conflitto da risolvere"
+      : queued ? "Da sincronizzare"
+      : !sameTrip ? "Stato da verificare"
+      : record.local ? "Salvato sul dispositivo"
+      : record.local === false ? "Sincronizzato" : "Stato da verificare";
+    const trip = sameTrip ? record.trip : null;
+    const now = new Date();
+    const day = now.toLocaleDateString("sv-SE");
+    const time = now.toTimeString().slice(0, 5);
+    const stops = Array.isArray(trip?.stops) ? trip.stops : [];
+    const next = stops.filter(stop => {
+      const date = stop.day || stop.date;
+      return date > day || (date === day && (!stop.time || stop.time >= time));
+    }).sort((a, b) => (a.day || a.date).localeCompare(b.day || b.date)
+      || (a.time || "99:99").localeCompare(b.time || "99:99"))[0];
+    return {
+      status,
+      start: trip?.start || "",
+      end: trip?.end || "",
+      next: next ? { title: next.title || next.name || "Tappa", date: next.day || next.date, time: next.time || "" } : null,
+    };
   };
   window.__pvHasShareSnapshot = function hasShareSnapshot(tripId, shareKey) {
     return Boolean(getCachedShareRef(tripId, shareKey));

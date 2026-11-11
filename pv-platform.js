@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261111d";
+  const VER = "20261111f";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -1506,7 +1506,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     const itineraryDay = selected >= 0 && Number.isFinite(first)
       ? new Date(first + selected * 86400_000).toISOString().slice(0, 10) : "";
     const selectedDay = itineraryDay && (!trip.end || itineraryDay <= trip.end) ? itineraryDay : "";
-    const day = daySelections.get(auth.id)?.day || selectedDay || tripDay(trip);
+    const syncLabel = window.__pvTripOverview?.(auth.id, auth.key).status;
+    const chosen = daySelections.get(auth.id);
+    const day = chosen ? chosen.day || tripDay(trip) : selectedDay || tripDay(trip);
     const stops = (trip.stops || []).filter(stop => (stop.day || stop.date) === day)
       .sort((a, b) => (a.time || "99:99").localeCompare(b.time || "99:99"));
     const bookings = (trip.bookings || []).filter(booking => {
@@ -1514,16 +1516,19 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       const end = booking.checkOut || booking.end || start;
       return start && start <= day && end >= day;
     });
-    const transfers = (trip.transfers || []).filter(transfer => (transfer.date || transfer.day) === day);
     const docs = data.canEdit === false ? [] : (trip.meta?.preparation?.docs || []).filter(doc => doc.day === day);
-    function rows(items) {
+    function rows(items, directions = false) {
       return items.map(item => {
         const when = item.time || item.departureTime || item.startTime;
         const route = [item.from, item.to].filter(Boolean).join(" → ");
         const title = item.title || item.name || route || item.type || "Tappa";
+        const point = Number.isFinite(item.lat) && Number.isFinite(item.lng)
+          ? `${item.lat},${item.lng}` : [item.address || item.location || item.title, trip.destination].filter(Boolean).join(", ");
+        const maps = directions && point
+          ? `<div><a href="https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(point)}" target="_blank" rel="noopener">Indicazioni</a></div>` : "";
         return `<li><strong>${escapeHtml(when ? `${when} · ${title}` : title)}</strong>
           ${[item.address || item.location, item.reference || item.confirmation, item.notes]
-            .filter(Boolean).map(value => `<div>${escapeHtml(value)}</div>`).join("")}</li>`;
+            .filter(Boolean).map(value => `<div>${escapeHtml(value)}</div>`).join("")}${maps}</li>`;
       }).join("") || "<li>Nessuna voce per questa data.</li>";
     }
     return `<div class="pv-plat-card">
@@ -1537,8 +1542,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     <article class="pv-plat-card" id="pv-day-sheet">
       <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
       <p>${escapeHtml([day.split("-").reverse().join("/"), trip.destination].filter(Boolean).join(" · "))}</p>
-      <h4>Tappe</h4><ol class="pv-plat-list">${rows(stops)}</ol>
-      <h4>Spostamenti</h4><ul class="pv-plat-list">${rows(transfers)}</ul>
+      ${syncLabel ? `<p class="pv-plat-muted">${escapeHtml(syncLabel)}</p>` : ""}
+      <h4>Tappe e indicazioni</h4><ol class="pv-plat-list">${rows(stops, true)}</ol>
       <h4>Prenotazioni</h4><ul class="pv-plat-list">${rows(bookings)}</ul>
       ${docs.length ? `<h4>Documenti del giorno</h4><ul class="pv-plat-list">${docs.map(doc =>
         `<li>${escapeHtml(doc.title)}${/^https?:\/\//i.test(doc.url || "") ? ` · <a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">Apri</a>` : ""}</li>`
@@ -1686,7 +1691,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         navigator.onLine
           ? pending
             ? `${pending} modifiche in attesa di conferma dal server.`
-            : "Online — tutto sincronizzato per ora."
+            : "Nessuna modifica in coda."
           : "Offline — le modifiche restano su questo dispositivo finché torni online."
       }</p>
       <button type="button" class="pv-plat-btn" data-plat="flush-outbox">Riprova ora</button>
@@ -1885,7 +1890,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           trip.stops = stops;
           trip.meta.optimizeReport = report;
         });
-        showStatus("Tappe ottimizzate (modificabile)", "server");
         void renderPanel();
       } catch (e) {
         showStatus(e.message, "error");
@@ -2010,7 +2014,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
             }
           }
         });
-        showStatus("Checklist bagagli aggiunta", "server");
       } catch (e) {
         showStatus(e.message, "error");
       }
@@ -2023,7 +2026,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
             trip.meta.destinationNotes[inp.dataset.note] = inp.value.slice(0, 500);
           });
         });
-        showStatus("Note destinazione salvate", "server");
       } catch (e) {
         showStatus(e.message, "error");
       }
@@ -2108,7 +2110,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           t.meta.archive.archived = true;
           t.meta.archive.archivedAt = new Date().toISOString();
         });
-        showStatus("Viaggio archiviato", "server");
         void renderPanel();
       } catch (e) {
         showStatus(e.message, "error");
@@ -2198,7 +2199,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       showStatus("Sincronizzazione in corso…", "pending");
       const result = await window.__pvFlushOutbox();
       if (result.flushed && !result.left) {
-        showStatus("Salvato e sincronizzato", "server");
+        showStatus("Sincronizzato", "server");
       } else if (result.flushed) {
         showStatus(
           `Sincronizzati ${result.flushed}, ancora in coda ${result.left}`,
@@ -2244,13 +2245,32 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
   }
 
+  function ensureTodayShortcut() {
+    const strip = document.querySelector(".day-strip");
+    if (!strip || !tripAuth() || strip.parentElement.querySelector(".pv-today-shortcut")) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "pv-plat-btn pv-today-shortcut";
+    button.textContent = "Oggi";
+    button.addEventListener("click", () => {
+      const auth = tripAuth();
+      if (!auth) return;
+      daySelections.set(auth.id, { day: "", index: -1 });
+      activeTab = "today";
+      togglePanel(true);
+    });
+    strip.before(button);
+  }
+
   function boot() {
     injectCss();
     applyTheme();
     ensureFab();
+    ensureTodayShortcut();
     // Chip may mount after platform boot — rebind when account becomes ready.
     const mo = new MutationObserver(() => {
       if (document.getElementById("pv-hub-nav")) ensureFab();
+      ensureTodayShortcut();
       applyDaySelection();
     });
     mo.observe(document.body, { childList: true, subtree: true });

@@ -56,6 +56,7 @@ test("Pages retries the newest offline edit with its original server revision", 
 
   navigator.onLine = true;
   const pending = await (await window.fetch(url, { headers })).json();
+  assert.equal(window.__pvTripOverview(id, key).status, "Da sincronizzare");
   assert.equal(pending.trip.title, "Latest edit");
   assert.equal(pending.trip.budget, 12000);
   assert.equal(pending.local, true);
@@ -80,6 +81,8 @@ test("Pages retries the newest offline edit with its original server revision", 
   assert.equal((await window.__pvFlushOutbox()).flushed, 0);
   await window.__pvResolveTripConflict(id, key, conflict, conflict.local);
   assert.equal(window.__pvReadOutbox().length, 0);
+  assert.equal(window.__pvTripOverview(id, key).status, "Sincronizzato");
+  assert.equal(window.__pvTripOverview(id, "altra-chiave").status, "Stato da verificare");
   assert.equal(JSON.parse(storage.get(localKey))[id].revision, 4);
   assert.equal(events.some(event => event.detail.local === false), true);
 
@@ -201,6 +204,7 @@ test("the daily sheet uses cached trips and includes only the selected day", asy
       { day: "2027-01-01", title: "Colazione", time: "08:00" },
       { day: "2027-01-02", title: "Treno di ritorno" },
     ],
+    transfers: [{ date: "2027-01-01", from: "A", to: "B", amount: 500 }],
     bookings: [{ checkIn: "2027-01-01", checkOut: "2027-01-02", title: "Albergo", reference: "<ABC>" }],
     meta: { preparation: { docs: [{ day: "2027-01-01", title: "Biglietto museo" }, { day: "2027-01-02", title: "Biglietto treno" }] } },
   };
@@ -219,6 +223,8 @@ test("the daily sheet uses cached trips and includes only the selected day", asy
   assert.match(html, /Stampa o salva come PDF/);
   assert.match(html, /value="2027-01-01"/);
   assert.match(html, /Via Roma/);
+  assert.match(html, /destination=Via%20Roma%2C%20Roma/);
+  assert.doesNotMatch(html, /A → B/);
   assert.match(html, /Biglietto museo/);
   assert.doesNotMatch(html, /Biglietto treno/);
   assert.match(html, /&lt;ABC&gt;/);

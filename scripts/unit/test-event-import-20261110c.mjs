@@ -23,8 +23,8 @@ function test(name, fn) {
 const ux = readFileSync("ux-suite.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
-test("stamp ux-suite-20261111c wired", () => {
-  assert.match(index, /ux-suite-20261111c\.js/);
+test("stamp ux-suite-20261111f wired", () => {
+  assert.match(index, /ux-suite-20261111f\.js/);
 });
 
 test("import event menu + wizard wired", () => {

@@ -109,7 +109,7 @@ test("api-shim exposes toast helpers", () => {
   const shim = readFileSync("api-shim.js", "utf8");
   assert.match(shim, /__pvSaveToast/);
   assert.match(shim, /__pvFlushOutbox/);
-  assert.match(shim, /Salvato e sincronizzato/);
+  assert.match(shim, /Sincronizzato/);
 });
 
 test("CORS allowlist: Pages/Netlify/localhost; reject open vercel/netlify", () => {
