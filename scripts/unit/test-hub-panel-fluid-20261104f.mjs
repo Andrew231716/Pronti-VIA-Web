@@ -22,8 +22,8 @@ const plat = readFileSync("pv-platform.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
 
-test("stamp pv-platform-20261112j wired", () => {
-  assert.match(index, /pv-platform-20261112j\.js/);
+test("stamp pv-platform-20261112k wired", () => {
+  assert.match(index, /pv-platform-20261112k\.js/);
 });
 
 test("enter animation is opt-in (pv-plat-entering)", () => {

@@ -98,7 +98,7 @@ html[data-pv-theme="dark"] .share-box h3 {
 }
 
 #root :is(.stop-card, .booking-card, .budget-card, .expense-row, .split-panel,
-  .transfer-row, .text-card, .map-card, .check-row, .saved-card, .empty-state, .edit-form),
+  .transfer-row, .text-card, .map-card, .check-row, .saved-card, .empty-state, .edit-form, .notes-paper),
 #root :is(.pv-trip-card, .pv-home-resume, .pv-event-rail),
 #pv-account-gate :is(.pv-trip-card, .pv-home-resume),
 #pv-plat-panel :is(.pv-plat-card, .pv-plat-stat),
@@ -108,6 +108,13 @@ html[data-pv-theme="dark"] .share-box h3 {
   border-radius: 1rem;
   color: var(--diary-ink);
   box-shadow: var(--diary-shadow);
+}
+
+/* notes-paper is a white pad in the SPA: keep ink readable even when workspace is light-on-dark */
+html[data-pv-theme="dark"] #root .notes-paper {
+  background: #fff !important;
+  border-color: #dfe7eb !important;
+  color: #12343c !important;
 }
 
 #root :is(.budget-card, .empty-state, .pv-home-resume, .pv-event-rail),
@@ -695,6 +702,15 @@ html #pv-plat-panel .pv-plat-btn.primary {
 html #pv-plat-status.server { display: none !important; }
 html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   background: var(--diary-paper);
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: #c5d6da !important;
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active {
+  color: var(--pv-account-teal, #5eead4) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
+  background: rgba(22, 40, 44, 0.94) !important;
 }
 
 /* Keep the trip sections next to the cover and distinguish the active one. */

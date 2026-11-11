@@ -853,20 +853,27 @@ html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-hint {
 }
 
 html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner {
-  background: rgba(231, 242, 243, 0.1);
-  border-color: rgba(231, 242, 243, 0.14);
+  background: rgba(22, 40, 44, 0.94);
+  border-color: rgba(231, 242, 243, 0.16);
   box-shadow:
     0 12px 32px rgba(0, 0, 0, 0.35),
     0 1px 0 rgba(255, 255, 255, 0.06) inset;
 }
 
-html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item {
-  color: var(--pv-account-muted);
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: #c5d6da !important;
 }
 
-html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active {
-  color: var(--pv-account-teal);
-  background: #24383d;
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item .pv-nav-label,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item .pv-nav-label {
+  color: inherit !important;
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active {
+  color: var(--pv-account-teal) !important;
+  background: #24383d !important;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
 }
 
