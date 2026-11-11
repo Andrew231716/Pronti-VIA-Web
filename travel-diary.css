@@ -676,3 +676,37 @@ html #pv-plat-status.server { display: none !important; }
 html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   background: var(--diary-paper);
 }
+
+/* Keep the trip sections next to the cover and distinguish the active one. */
+#root .app-shell .workspace-tabs > .main-tabs {
+  margin-top: .55rem;
+  background: var(--diary-paper) !important;
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+  color: var(--diary-ink) !important;
+  font-size: .92rem !important;
+  font-weight: 720 !important;
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"][aria-selected="true"] {
+  background: var(--diary-action) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+#root .workspace-tabs > .trip-toolbar { margin-top: .6rem; }
+#pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: var(--diary-ink);
+}
+#pv-primary-nav .pv-primary-nav-inner .pv-nav-item .pv-nav-label {
+  font-weight: 700;
+}
+:is(#pv-plat-panel, #pv-ux-modal, #pv-magic-panel, #pv-preventivo-root)
+  :is(.pv-plat-tab, .pv-plat-btn, .pv-prev-tabs button, .pv-menu-grid button, .pv-chips button) {
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    font-size: clamp(.77rem, 3.35vw, .92rem) !important;
+  }
+  #root .trip-cover[data-pv-accra-cover] .cover-content { padding-block: .7rem; }
+  #root .trip-cover[data-pv-accra-cover] .photo-credit { margin-bottom: .45rem; }
+}

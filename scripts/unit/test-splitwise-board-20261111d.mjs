@@ -25,7 +25,7 @@ ok("settle one-tap", src.includes('data-sw="settle"') || src.includes("recordSet
 ok("activity hook", src.includes("installActivityHook") && src.includes("expenseActivity"));
 ok("filters", src.includes("data-sw-filter"));
 ok("comments", src.includes("expenseComments"));
-const activeBundle = readFileSync("assets/index-loadfix-20261111w.js", "utf8");
+const activeBundle = readFileSync("assets/index-loadfix-20261111x.js", "utf8");
 ok("expense rows and notes share the same stable ID",
   activeBundle.includes('className:`expense-row`,"data-expense-id":e.id') &&
   src.includes("expense.id === li.dataset.expenseId")
