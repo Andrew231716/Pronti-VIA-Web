@@ -710,3 +710,53 @@ html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   #root .trip-cover[data-pv-accra-cover] .cover-content { padding-block: .7rem; }
   #root .trip-cover[data-pv-accra-cover] .photo-credit { margin-bottom: .45rem; }
 }
+
+/* Compact information strip below the Ghana collage. */
+#root .trip-cover[data-pv-accra-cover] .cover-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem .7rem;
+  padding: .65rem .85rem .15rem;
+  font-size: .78rem;
+  line-height: 1.25;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-content h1 {
+  order: -2;
+  flex: 0 0 100%;
+  display: block;
+  margin: 0;
+  font-size: clamp(1.18rem, 4.9vw, 1.6rem);
+  line-height: 1.1;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-content .destination {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: inherit;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-meta { display: contents; }
+#root .trip-cover[data-pv-accra-cover] .cover-meta > span:first-child {
+  order: -1;
+  flex: 0 0 100%;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-meta > :is(span,button) {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: inherit;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-content svg {
+  width: .85rem;
+  height: .85rem;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-meta > button {
+  min-height: 44px;
+}
+#root .trip-cover[data-pv-accra-cover] .photo-credit {
+  margin: 0 .85rem .45rem;
+  font-size: .62rem;
+  line-height: 1.2;
+}
