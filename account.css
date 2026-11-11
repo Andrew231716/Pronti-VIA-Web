@@ -130,15 +130,35 @@ body.pv-primary-nav-ready {
   margin: 0 0 6px;
 }
 
-#pv-account-gate .pv-account-mark {
+.pv-account-mark {
+  display: block;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  display: block;
   flex: 0 0 auto;
-  object-fit: cover;
-  background: var(--pv-account-teal);
-  box-shadow: 0 1px 2px rgba(21, 59, 71, 0.12);
+}
+
+.pv-mark-pin {
+  fill: color-mix(in srgb, var(--pv-dest-accent, #ffb36e) 48%, var(--diary-paper, #fff));
+  stroke: var(--diary-accent, #00656a);
+  stroke-width: 1.5;
+}
+
+.pv-mark-case {
+  fill: none;
+  stroke: var(--diary-ink, #12343c);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+#pv-account-chip .pv-account-chip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+#pv-account-chip .pv-account-mark {
+  width: 22px;
+  height: 22px;
 }
 
 #pv-account-gate .pv-account-brand strong {

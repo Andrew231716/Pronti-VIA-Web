@@ -190,13 +190,18 @@ async function api(action, { method = "POST", body, token } = {}) {
 function ensureUi() {
   if (document.getElementById("pv-account-gate")) return;
 
+  const brandMark = `<svg class="pv-account-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+    <path class="pv-mark-pin" d="M20 3a13 13 0 0 0-13 13c0 8 8 15 12 19a1.4 1.4 0 0 0 2 0c4-4 12-11 12-19A13 13 0 0 0 20 3Z"/>
+    <path class="pv-mark-case" d="M17 15v-2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-8 0h10a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H15a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"/>
+  </svg>`;
+
   const gate = document.createElement("div");
   gate.id = "pv-account-gate";
   gate.innerHTML = `
     <div class="pv-account-card" role="dialog" aria-modal="true" aria-labelledby="pv-account-title">
       <header class="pv-account-hero">
         <div class="pv-account-brand">
-          <img class="pv-account-mark" src="./logo.png" width="40" height="40" alt="">
+          ${brandMark}
           <strong>Pronti? VIA!</strong>
         </div>
         <h1 id="pv-account-title">Accedi al tuo spazio</h1>
@@ -245,7 +250,7 @@ function ensureUi() {
   chip.innerHTML = `
     <div class="pv-account-chip-main">
       <span class="pv-account-chip-who">Ciao, <strong id="pv-account-chip-label"></strong></span>
-      <span class="pv-account-chip-hint" id="pv-account-chip-hint">Pronti? VIA!</span>
+      <span class="pv-account-chip-hint" id="pv-account-chip-hint">${brandMark}Pronti? VIA!</span>
     </div>
   `;
   document.body.appendChild(chip);
