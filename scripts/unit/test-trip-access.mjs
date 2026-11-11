@@ -70,12 +70,15 @@ test("personal access is scoped, revocable and never returns the owner's credent
   }, { "X-Pronti-Member-Id": "owner-id" });
   assert.equal(forged.status, 403);
   const edited = await call(id, "PUT", editor.data.token, {
-    trip: { ...trip, title: "Firenze" }, revision: 1,
+    trip: { ...trip, title: "Firenze", meta: { ...trip.meta, pinnedNote: "Portare i biglietti", packingAssignments: { bag: "owner-id" }, bookingDocuments: { flight: [{ title: "Voucher", url: "https://example.org/voucher" }] } } }, revision: 1,
   });
   assert.equal(edited.status, 200);
   assert.equal(edited.data.key, undefined);
   assert.equal(edited.data.trip.title, "Firenze");
   assert.deepEqual(edited.data.trip.meta.roles, trip.meta.roles);
+  assert.equal(edited.data.trip.meta.pinnedNote, "Portare i biglietti");
+  assert.equal(edited.data.trip.meta.packingAssignments.bag, "owner-id");
+  assert.equal(edited.data.trip.meta.bookingDocuments.flight[0].title, "Voucher");
   assert.equal((await call(id, "PUT", editor.data.token, { trip, revision: 1 })).status, 409);
   const list = await call(`${id}/access`, "GET", key);
   assert.equal(list.data.invites.length, 2);

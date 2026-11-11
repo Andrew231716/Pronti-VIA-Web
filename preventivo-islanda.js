@@ -2226,6 +2226,15 @@
   function budgetHtml() {
     ensureBudgetLines();
     const tot = budgetTotals();
+    let actual = null;
+    try {
+      const cached = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[tripAuth()?.id]?.trip;
+      if (Array.isArray(cached?.expenses)) {
+        const count = cached.members?.length || Number(state.params.travelers) || 1;
+        const sum = cached.expenses.reduce((total, expense) => total + (Number(expense.amountCents ?? expense.amount) || 0), 0);
+        actual = { group: sum, pp: Math.round(sum / count), count };
+      }
+    } catch { /* the budget also works without a saved trip */ }
     const rows = state.lines
       .map(
         (l) => `<tr>
@@ -2254,6 +2263,7 @@
         </h2>
         <p class="pv-callout">I totali sotto includono voci <strong>STIMA</strong>. Non sono un preventivo esaustivo di mercato. Scenario iniziale: Economico (no ostelli).</p>
         <p><strong>Gruppo:</strong> ${fmtMoney(tot.group)} · <strong>/persona:</strong> ${fmtMoney(tot.pp)} · <strong>/giorno pp:</strong> ${fmtMoney(tot.perDay)}</p>
+        ${actual ? `<p><strong>Spese registrate:</strong> ${fmtMoney(actual.group)} · media ${fmtMoney(actual.pp)} per persona (${actual.count} viaggiatori)</p>` : ""}
         <p class="pv-prev-muted">VERIFICATO ${fmtMoney(tot.byStatus.VERIFICATO)} · STIMA ${fmtMoney(tot.byStatus.STIMA)} · DA VERIFICARE ${fmtMoney(tot.byStatus["DA VERIFICARE"])}</p>
         <div style="overflow:auto">
           <table>

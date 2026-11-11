@@ -1428,6 +1428,8 @@
               <div class="pv-menu-grid">
                 <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
                 <button type="button" data-ux="invite"><strong><span class="pv-menu-emo" aria-hidden="true">📨</span>Invita con codice</strong><span>Condividi un codice a 6 caratteri</span></button>
+                <button type="button" data-ux="notifications"><strong>Notifiche del viaggio</strong><span>Aggiornamenti e promemoria spese</span></button>
+                <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>${escapeHtml(window.__pvTripOverview?.(tripAuth().id, tripAuth().key)?.status || "Verifica sincronizzazione")}</span></button>
                 <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
                 <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
               </div>
@@ -1510,6 +1512,8 @@
               closeModal();
               menuBtn?.setAttribute("aria-expanded", "false");
               if (act === "companions") void openCompanionsManager();
+              else if (act === "notifications") window.__pvOpenTripNotifications?.();
+              else if (act === "sync-settings") window.ProntiPlatform?.openSettings?.();
               else if (act === "hub") {
                 if (typeof window.ProntiPlatform?.open === "function") window.ProntiPlatform.open();
                 else if (document.getElementById("pv-hub-nav")) document.getElementById("pv-hub-nav").click();
@@ -3193,6 +3197,240 @@
     );
   }
 
+  function injectTripPlanningTools(panel, section, auth, row, canEdit) {
+    const trip = row.trip;
+    const meta = trip.meta || {};
+    const mount = (key, signature, render) => {
+      let tools = panel.querySelector(`[data-pv-planning="${key}"]`);
+      if (!tools) {
+        tools = document.createElement("div");
+        tools.dataset.pvPlanning = key;
+        tools.className = "pv-planning-tools";
+        const heading = panel.querySelector(".section-heading");
+        if (heading?.parentElement === panel) heading.after(tools);
+        else panel.prepend(tools);
+      }
+      if (tools.dataset.signature !== signature) {
+        tools.dataset.signature = signature;
+        render(tools);
+      }
+      return tools;
+    };
+    const saveMeta = async (button, field, update) => {
+      button.disabled = true;
+      try {
+        const active = tripAuth();
+        if (active?.id !== auth.id || active.key !== auth.key) throw new Error("Il viaggio aperto è cambiato");
+        const { data } = await loadTripByAuth(auth);
+        if (data.canEdit === false) throw new Error("Viaggio in sola lettura");
+        const latest = data.trip.meta || {};
+        await saveTrip(auth, { ...data.trip, meta: { ...latest, [field]: update(latest[field], data.trip) } }, data.revision);
+        if (button.closest(".pv-ux-sheet")) closeModal();
+        tick();
+      } catch (error) {
+        toast(error.message, "err");
+      } finally {
+        button.disabled = false;
+      }
+    };
+
+    if (section === "itinerary") {
+      const strip = panel.querySelector(".day-strip");
+      const days = [...(strip?.querySelectorAll("button") || [])];
+      if (days.length < 5) return;
+      const active = days.findIndex(day => day.classList.contains("selected"));
+      const labels = days.map(day => day.querySelector("strong")?.textContent || day.textContent);
+      const controls = mount("days", JSON.stringify(labels), tools => {
+        tools.innerHTML = `<label>Vai al giorno <select aria-label="Vai al giorno">${labels.map((label, index) =>
+          `<option value="${index}">${escapeHtml(label)} · Giorno ${index + 1}</option>`).join("")}</select></label>`;
+      });
+      controls.querySelector("select").onchange = event => {
+        strip.querySelectorAll("button")[Number(event.currentTarget.value)]?.click();
+      };
+      if (active >= 0 && controls.querySelector("select").value !== String(active)) controls.querySelector("select").value = String(active);
+    }
+
+    if (section === "explore") {
+      const stops = trip.stops || [];
+      for (const card of panel.querySelectorAll("article.booking-card")) {
+        const title = card.querySelector("h3")?.textContent;
+        const saved = stops.find(stop => stop.title?.trim().toLowerCase() === title?.trim().toLowerCase());
+        const button = card.querySelector("button");
+        let badge = card.querySelector(".pv-explore-saved");
+        if (!saved) {
+          badge?.remove();
+          if (button?.hidden) button.hidden = false;
+          if (button?.textContent.trim() === "Salva") button.setAttribute("aria-label", "Salva in Luoghi");
+          continue;
+        }
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "pv-explore-saved";
+          badge.textContent = "Già salvato in Luoghi";
+          card.querySelector(".grow")?.append(badge);
+        }
+        if (button) button.hidden = true;
+      }
+      mount("explore", "places-link", tools => {
+        tools.innerHTML = '<button type="button" class="button secondary">Apri Luoghi salvati</button>';
+        tools.querySelector("button").onclick = () => {
+          const tab = [...document.querySelectorAll("#root .main-tabs [role=tab]")].find(element =>
+            element.getAttribute("aria-controls")?.endsWith("-content-places"));
+          tab?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+          tab?.click();
+        };
+      });
+    }
+
+    if (section === "places" && canEdit) {
+      const rows = [...panel.querySelectorAll(".stops-list > div")];
+      rows.forEach((element, index) => {
+        const stop = trip.stops?.[index];
+        if (!stop || element.querySelector("strong,h3,h4")?.textContent !== stop.title) return;
+        let button = element.querySelector(".pv-plan-place");
+        if (!button) {
+          button = document.createElement("button");
+          button.type = "button";
+          button.className = "button secondary pv-plan-place";
+          element.append(button);
+        }
+        const label = stop.day ? "Cambia giorno" : "Assegna a un giorno";
+        if (button.textContent !== label) button.textContent = label;
+        button.onclick = () => void window.__pvAssignSavedPlace?.(stop.id, button);
+      });
+    }
+
+    if (section === "packing") {
+      const items = trip.checklist || [];
+      const assigned = meta.packingAssignments || {};
+      const members = trip.members || [];
+      const rows = [...panel.querySelectorAll(".check-row")];
+      const applyFilter = () => {
+        const onlyOpen = panel.querySelector('[data-pv-planning="packing"] input')?.checked;
+        for (const item of rows) item.hidden = Boolean(onlyOpen && item.classList.contains("done"));
+      };
+      const controls = mount("packing", "filter", tools => {
+        tools.innerHTML = '<label><input type="checkbox"> Mostra solo da fare</label>';
+      });
+      controls.querySelector("input").onchange = applyFilter;
+      applyFilter();
+      rows.forEach((element, index) => {
+        const item = items[index];
+        if (!item) return;
+        const current = assigned[item.id] || "";
+        const signature = JSON.stringify([item.id, current, members, canEdit]);
+        if (element.dataset.pvAssignment === signature) return;
+        element.dataset.pvAssignment = signature;
+        element.querySelector(".pv-packing-owner")?.remove();
+        const owner = document.createElement(canEdit ? "select" : "small");
+        owner.className = "pv-packing-owner";
+        if (canEdit) {
+          owner.setAttribute("aria-label", `Assegna ${item.title}`);
+          owner.innerHTML = '<option value="">Assegna a…</option>' + members.map(member =>
+            `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}</option>`).join("");
+          owner.value = members.some(member => member.id === current) ? current : "";
+          owner.onchange = () => {
+            const selected = owner.value;
+            void saveMeta(owner, "packingAssignments", (prior, latest) => {
+              if (!latest.checklist?.some(entry => entry.id === item.id)) throw new Error("Voce rimossa dalla valigia");
+              if (selected && !latest.members?.some(member => member.id === selected)) throw new Error("Viaggiatore non disponibile");
+              const next = { ...prior };
+              if (selected) next[item.id] = selected;
+              else delete next[item.id];
+              return next;
+            });
+          };
+        } else {
+          owner.textContent = members.find(member => member.id === current)?.name || "";
+        }
+        element.append(owner);
+      });
+    }
+
+    if (section === "notes") {
+      const pin = String(meta.pinnedNote || "");
+      if (!pin && !canEdit) return;
+      mount("notes", JSON.stringify([pin, canEdit]), tools => {
+        tools.innerHTML = `<strong>Nota in evidenza</strong>${pin ? `<p>${escapeHtml(pin)}</p>` : ""}
+          ${canEdit ? '<button class="button secondary" type="button">Modifica nota in evidenza</button>' : ""}`;
+        tools.querySelector("button")?.addEventListener("click", () => {
+          openModal("Nota in evidenza", `<label>Testo <textarea maxlength="1500">${escapeHtml(pin)}</textarea></label>
+            <p>Lascia vuoto per rimuoverla.</p><button class="pv-ux-primary" type="button">Salva</button>`, {
+            onMount: body => {
+              const button = body.querySelector("button");
+              button.onclick = () => void saveMeta(button, "pinnedNote", () => body.querySelector("textarea").value.trim());
+            },
+          });
+        });
+      });
+    }
+
+    if (section === "bookings" || section === "documents") {
+      const bookings = trip.bookings || [];
+      const documents = meta.bookingDocuments || {};
+      const cards = [...panel.querySelectorAll(":scope > .booking-card")];
+      if (section === "bookings") {
+        const today = new Date().toLocaleDateString("sv-SE");
+        const order = [...bookings].sort((a,b) => {
+          const rank = date => !date ? 2 : date >= today ? 0 : 1;
+          const diff = rank(a.date) - rank(b.date);
+          return diff || (rank(a.date) === 1 ? String(b.date).localeCompare(a.date) : String(a.date || "").localeCompare(b.date || ""));
+        });
+        panel.classList.add("pv-bookings-ordered");
+        cards.forEach((card, index) => {
+          const booking = bookings[index];
+          if (!booking || card.querySelector("h3")?.textContent !== booking.title) return;
+          const position = String(order.indexOf(booking) + 1);
+          if (card.style.order !== position) card.style.order = position;
+          const group = card.querySelector(".grow");
+          if (!group) return;
+          const linked = Array.isArray(documents[booking.id]) ? documents[booking.id] : [];
+          const signature = JSON.stringify([booking.id, linked, canEdit]);
+          if (group.dataset.pvBookingDocs === signature) return;
+          group.dataset.pvBookingDocs = signature;
+          group.querySelector(".pv-booking-docs")?.remove();
+          const links = document.createElement("div");
+          links.className = "pv-booking-docs";
+          links.innerHTML = linked.filter(item => /^https?:\/\//i.test(item.url)).map(item =>
+            `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>`).join("") +
+            (canEdit ? '<button class="button secondary" type="button">Collega documento</button>' : "");
+          group.append(links);
+          links.querySelector("button")?.addEventListener("click", () => {
+            openModal("Collega documento", `<label>Titolo <input name="title" maxlength="100" placeholder="Biglietto o voucher"></label>
+              <label>Link <input name="url" type="url" maxlength="2000" placeholder="https://…"></label>
+              <button class="pv-ux-primary" type="button">Collega</button>`, {
+              onMount: body => {
+                const button = body.querySelector("button");
+                button.onclick = () => {
+                  const url = body.querySelector('[name="url"]').value.trim();
+                  const title = body.querySelector('[name="title"]').value.trim() || "Documento";
+                  try {
+                    if (!["http:", "https:"].includes(new URL(url).protocol)) throw new Error();
+                  } catch { toast("Inserisci un link HTTP o HTTPS valido", "warn"); return; }
+                  void saveMeta(button, "bookingDocuments", (prior, latest) => {
+                    if (!latest.bookings?.some(item => item.id === booking.id)) throw new Error("Prenotazione rimossa");
+                    const current = prior?.[booking.id] || [];
+                    return { ...prior, [booking.id]: [...current.filter(item => item.url !== url), { title, url }].slice(-20) };
+                  });
+                };
+              },
+            });
+          });
+        });
+      } else {
+        const links = bookings.flatMap(booking => (Array.isArray(documents[booking.id]) ? documents[booking.id] : [])
+          .filter(item => /^https?:\/\//i.test(item.url)).map(item => ({ ...item, booking: booking.title })));
+        if (links.length || panel.querySelector('[data-pv-planning="linked"]')) {
+          mount("linked", JSON.stringify(links), tools => {
+            tools.hidden = !links.length;
+            tools.innerHTML = '<strong>Documenti delle prenotazioni</strong><ul>' + links.map(item =>
+              `<li><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a> · ${escapeHtml(item.booking)}</li>`).join("") + "</ul>";
+          });
+        }
+      }
+    }
+  }
+
   function injectEventImportRail() {
     const auth = tripAuth();
     const tabs = document.querySelector("#root .main-tabs");
@@ -3223,6 +3461,7 @@
     const items = (section === "explore" ? row.trip.meta?.eventExplore :
       section === "documents" ? row.trip.meta?.eventDocumentLinks : []) || [];
     const canEdit = row.canEdit !== false && (row.key === auth.key || !row.key);
+    injectTripPlanningTools(panel, section, auth, row, canEdit);
     let rail = panel.querySelector(".pv-event-section");
     if (!rail) {
       rail = document.createElement("div");
@@ -3231,17 +3470,27 @@
       if (heading?.parentElement === panel) heading.after(rail);
       else panel.prepend(rail);
     }
-    const signature = JSON.stringify([section, canEdit, items]);
+    const signature = JSON.stringify([section, canEdit, items, section === "explore" ? row.trip.stops?.map(stop => stop.title) : null]);
     if (rail.dataset.render === signature) return;
     rail.dataset.render = signature;
     const links = items.map(item => {
       const url = section === "explore"
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query + " " + (row.trip.destination || ""))}`
         : item.url;
-      return /^https?:\/\//i.test(url || "") ? `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a></li>` : "";
+      const saved = section === "explore" && (row.trip.stops || []).some(stop =>
+        stop.title?.trim().toLowerCase() === item.title?.trim().toLowerCase());
+      return /^https?:\/\//i.test(url || "") ? `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>
+        ${saved ? '<span>Già salvato</span>' : section === "explore" && canEdit
+          ? `<button type="button" class="button secondary" data-pv-save-explore="${items.indexOf(item)}">Salva in Luoghi</button>` : ""}</li>` : "";
     }).join("");
     rail.innerHTML = `${canEdit ? '<button type="button" class="button secondary" data-pv-event-add>Aggiungi da evento</button>' : ""}
       ${links ? `<ul aria-label="Materiali importati">${links}</ul>` : ""}`;
+    rail.querySelectorAll("[data-pv-save-explore]").forEach(button => {
+      button.onclick = () => {
+        const item = items[Number(button.dataset.pvSaveExplore)];
+        if (item) void window.__pvSaveSuggestedPlace?.({ title: item.title, address: item.query }, button);
+      };
+    });
     rail.querySelector("[data-pv-event-add]")?.addEventListener("click", () => {
       void openEventImportWizard({ mode: "add", section });
     });

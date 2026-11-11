@@ -854,7 +854,6 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         ["today", "Oggi", "☀️"],
         ["cal", "Calendario", "📅"],
         ["archive", "Ricordi", "📸"],
-        ["backup", "Backup", "💾"],
         ["settings", "Impostazioni", "⚙️"],
       ],
     },
@@ -1103,6 +1102,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="today">☀️ Oggi</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">🧳 Preparazione</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">🗳️ Votazioni</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="access">Inviti</button>
+          <button type="button" class="pv-plat-btn" data-trip-notifications>Notifiche</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="settings">Sincronizzazione</button>
           <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">🗺️ Mappa</a>
           <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">🔀 Riordina tappe</button>
         </div>
@@ -1662,7 +1664,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       </fieldset>`).join("") || "<p>Le due versioni hanno gli stessi dati.</p>";
   }
 
-  function renderSettings() {
+  async function renderSettings() {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
@@ -1712,7 +1714,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         </p>
       </details>
       <p class="pv-plat-muted" style="margin-top:10px;font-size:11px">Hub ${VER}</p>
-    </div>`;
+    </div><details class="pv-plat-card"><summary>Backup e ripristino</summary>${await renderBackup()}</details>`;
   }
 
   function download(filename, text, type = "application/json") {
@@ -2311,6 +2313,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       roleForTrip,
       canRole,
       open: () => togglePanel(true),
+      openSettings: () => { activeTab = "settings"; togglePanel(true); },
     };
   }
 

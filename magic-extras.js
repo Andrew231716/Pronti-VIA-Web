@@ -748,7 +748,7 @@
       .trim()
       .toLowerCase();
     if (!key) return null;
-    return (trip.stops || []).find((s) => String(s.title || "").toLowerCase() === key) || null;
+    return (trip.stops || []).find((s) => String(s.title || "").trim().toLowerCase() === key) || null;
   }
 
   function chooseDayDialog({ title, days, trip, currentDay = "", message = "", confirmLabel = "Conferma" }) {
@@ -1815,14 +1815,14 @@
 
   function renderPlaceCards(host, places, startIdx = 0, opts = {}) {
     host.innerHTML = "";
-    const addable = places.filter((p) => !p.webOnly);
+    const addable = places.filter((p) => !p.webOnly && !findStopByTitle(magicTripCache || {}, p.title));
     if (places.length) {
       const title = document.createElement("div");
       title.className = "pv-results-title";
       title.textContent = opts.itineraryMode ? "Itinerario suggerito · con foto" : "Posti consigliati · con foto";
       host.appendChild(title);
     }
-    if (addable.length > 1) {
+    if (addable.length > 1 && tripAuth()) {
       const bar = document.createElement("div");
       bar.className = "pv-card-actions";
       bar.style.margin = "0 0 12px";
@@ -1831,14 +1831,15 @@
         <button type="button" class="ghost" id="pv-spread-days">Distribuisci sui giorni</button>
       `;
       host.appendChild(bar);
-      bar.querySelector("#pv-add-all-places").onclick = () => void addManyPlaces(addable, false);
-      bar.querySelector("#pv-spread-days").onclick = () => void addManyPlaces(addable, true);
+      bar.querySelector("#pv-add-all-places").onclick = () => void confirmSuggestedPlaces(addable, false);
+      bar.querySelector("#pv-spread-days").onclick = () => void confirmSuggestedPlaces(addable, true);
     }
     places.forEach((poi, i) => {
       const idx = startIdx + i;
       const card = document.createElement("div");
       card.className = "pv-place-card";
       const isWeb = Boolean(poi.webOnly);
+      const saved = Boolean(findStopByTitle(magicTripCache || {}, poi.title));
       const meta = placeKindMeta(isWeb ? "web" : poi.kind || poi.category);
       const extract = tidyExtract(poi.extract || poi.notes || poi.address || "");
       const dayLabel = poi.dayHint ? `Giorno ${poi.dayHint}` : poi.dayLabel || "";
@@ -1852,9 +1853,10 @@
           <p class="pv-extract">${escapeHtml(extract || "Scegli il giorno e aggiungilo all’itinerario.")}</p>
           <div class="pv-card-actions">
             ${
-              isWeb
+              isWeb || !tripAuth()
                 ? ""
-                : `<button type="button" class="primary" data-add="${idx}">Aggiungi all’itinerario</button>`
+                : `${saved ? '<span class="pv-kind-tag">Già salvato</span>' : `<button type="button" class="ghost" data-save-place="${idx}">Salva in Luoghi</button>`}
+                  <button type="button" class="primary" data-add="${idx}">${saved ? "Cambia giorno" : "Scegli giorno"}</button>`
             }
             ${
               poi.tripadvisorUrl
@@ -1877,6 +1879,10 @@
         </div>
       `;
       host.appendChild(card);
+    });
+    host.querySelectorAll("[data-save-place]").forEach(button => {
+      const place = places[Number(button.dataset.savePlace) - startIdx];
+      button.onclick = () => void window.__pvSaveSuggestedPlace(place, button);
     });
     host.querySelectorAll("[data-add]").forEach((btn) => {
       btn.onclick = () => void addSinglePlace(Number(btn.dataset.add), btn);
@@ -1938,6 +1944,58 @@
     };
   }
 
+  window.__pvSaveSuggestedPlace = async (place, button) => {
+    if (!place || place.webOnly) return;
+    button.disabled = true;
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const trip = { ...data.trip, stops: [...(data.trip.stops || [])] };
+      if (!findStopByTitle(trip, place.title)) {
+        trip.stops.push(buildStopFromPoi(place, ""));
+        await saveTrip(auth, trip, data.revision);
+      }
+      magicTripCache = trip;
+      button.textContent = "Salvato in Luoghi";
+    } catch (error) {
+      button.disabled = false;
+      alert(error.message);
+    }
+  };
+
+  window.__pvAssignSavedPlace = async (id, button) => {
+    button.disabled = true;
+    try {
+      const { auth, data } = await loadTrip({ force: true });
+      const stop = data.trip.stops?.find(item => item.id === id);
+      if (!stop) throw new Error("Luogo non disponibile");
+      const day = await chooseDayDialog({ title: stop.title, days: tripDays(data.trip),
+        trip: data.trip, currentDay: stop.day || "", confirmLabel: "Salva giorno" });
+      if (day === null || day === (stop.day || "")) return;
+      const trip = { ...data.trip, stops: data.trip.stops.map(item => item.id === id ? { ...item, day } : item) };
+      await saveTrip(auth, trip, data.revision);
+      sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section: "places" }));
+      location.reload();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      button.disabled = false;
+    }
+  };
+
+  function confirmSuggestedPlaces(places, spreadDays) {
+    const preview = document.createElement("dialog");
+    preview.className = "pv-trip-push pv-itinerary-preview";
+    preview.innerHTML = `<form method="dialog"><h2>Anteprima tappe</h2><p>${spreadDays ? "Le tappe saranno distribuite sui giorni del viaggio." : "Potrai cambiare il giorno delle tappe dopo averle aggiunte."}</p>
+      <ul>${places.map(place => `<li>${escapeHtml(place.title)}${place.dayHint ? ` · Giorno ${escapeHtml(place.dayHint)}` : ""}</li>`).join("")}</ul>
+      <div><button value="cancel">Annulla</button><button value="confirm" class="pv-trip-push-primary">Aggiungi tappe</button></div></form>`;
+    document.body.append(preview);
+    preview.addEventListener("close", () => {
+      if (preview.returnValue === "confirm") void addManyPlaces(places, spreadDays);
+      preview.remove();
+    }, { once: true });
+    preview.showModal();
+  }
+
   async function addManyPlaces(pois, spreadDays) {
     const list = (pois || []).filter((p) => p && !p.webOnly);
     if (!list.length) return;
@@ -1977,12 +2035,13 @@
       if (!added) {
         alert(
           skipped
-            ? `Questi posti sono già nell’itinerario (${skipped}). Usa «Aggiungi all’itinerario» su uno solo per spostarlo di giorno.`
+            ? `Questi posti sono già nell’itinerario (${skipped}). Usa «Cambia giorno» su uno solo per spostarlo di giorno.`
             : "Nessun posto da aggiungere."
         );
         return;
       }
       await saveTrip(auth, trip, data.revision);
+      magicTripCache = trip;
       alert(
         spreadDays
           ? `Aggiunti ${added} posti distribuiti sui giorni.${skipped ? ` ${skipped} già presenti saltati.` : ""}`
@@ -2055,6 +2114,7 @@
       }
       trip.stops.push(buildStopFromPoi(poi, chosen));
       await saveTrip(auth, trip, data.revision);
+      magicTripCache = trip;
       btn.textContent = "Aggiunto ✓";
     } catch (err) {
       btn.disabled = false;

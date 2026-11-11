@@ -354,3 +354,42 @@ html {
   #root .day-strip { scroll-behavior: auto; }
   #pv-primary-nav .pv-nav-item { transition: none; }
 }
+
+#root .pv-home-resume {
+  padding: 1rem;
+  border-inline-start: 4px solid var(--diary-accent);
+}
+#root .pv-home-resume .button { width: fit-content; min-height: 44px; }
+#root .pv-trip-sync { font-weight: 700; color: var(--diary-accent); }
+#root .pv-planning-tools {
+  display: grid;
+  gap: .55rem;
+  margin-block: .65rem;
+  padding: .75rem;
+  border-radius: .75rem;
+  background: var(--diary-wash);
+}
+#root .pv-planning-tools[hidden],
+#root .check-row[hidden],
+#root article.booking-card button[hidden] { display: none !important; }
+#root .pv-planning-tools p { white-space: pre-wrap; overflow-wrap: anywhere; }
+#root .pv-planning-tools ul { margin: 0; padding-inline-start: 1.2rem; }
+#root .pv-planning-tools select, #root .pv-packing-owner {
+  min-height: 44px;
+  max-width: 100%;
+  padding: .4rem;
+  border: 1px solid var(--diary-line);
+  border-radius: .5rem;
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+}
+#root .pv-planning-tools label { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
+#root .check-row:has(.pv-packing-owner) { flex-wrap: wrap; }
+#root .pv-packing-owner { margin-inline-start: auto; }
+#root .pv-bookings-ordered:not([hidden]) { display: flex; flex-direction: column; }
+#root .pv-booking-docs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .6rem; }
+#root :is(.pv-booking-docs, .pv-planning-tools) a { color: var(--diary-accent); text-decoration: underline; }
+#root .pv-plan-place { margin-block: .2rem .65rem; }
+#root .pv-explore-saved { display: inline-block; margin-top: .5rem; color: var(--diary-accent); font-weight: 700; }
+#root .pv-event-section li > :is(button, span) { margin-inline-start: .5rem; }
+.pv-itinerary-preview ul { padding-inline-start: 1.2rem; }

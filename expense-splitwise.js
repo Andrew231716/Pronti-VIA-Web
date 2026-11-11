@@ -729,6 +729,10 @@
         </div>
       </div>
       <div class="pv-sw-me ${me.className}">${escapeHtml(me.text)}</div>
+      <div class="pv-sw-section">
+        <h4>Chi deve a chi</h4>
+        <div class="pv-sw-settle">${settleRows}</div>
+      </div>
       <div class="pv-sw-filters">
         <input data-sw-filter="q" type="search" placeholder="Cerca spesa…" value="${escapeHtml(filterState.q)}" />
         <select data-sw-filter="member">
@@ -757,10 +761,6 @@
       <div class="pv-sw-section">
         <h4>Il saldo di ciascuno</h4>
         <div class="pv-sw-bal">${balRows || '<p class="pv-sw-muted">Nessun membro.</p>'}</div>
-      </div>
-      <div class="pv-sw-section">
-        <h4>Come pareggiare i conti</h4>
-        <div class="pv-sw-settle">${settleRows}</div>
       </div>
       <div class="pv-sw-section">
         <h4>Attività recente</h4>
