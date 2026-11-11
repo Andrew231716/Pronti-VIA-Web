@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261111f";
+  const VER = "20261112c";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const OUTBOX_KEY = "viavia-platform-outbox-v1";
@@ -944,7 +944,12 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
     if (open && typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("hub");
     if (!open && typeof window.__pvSetPrimaryNav === "function") {
-      window.__pvSetPrimaryNav(document.body.classList.contains("pv-trip-open") ? "trips" : "home");
+      const lock = window.__pvPrimaryNavLock;
+      if (lock?.tab && Date.now() < Number(lock.until || 0)) {
+        window.__pvSetPrimaryNav(lock.tab);
+      } else {
+        window.__pvSetPrimaryNav(document.body.classList.contains("pv-trip-open") ? "trips" : "home");
+      }
     }
     if (open) {
       if (!wasOpen) playPanelEnter(panel);
