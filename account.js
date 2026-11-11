@@ -316,6 +316,15 @@ function ensureUi() {
   }
   window.__pvSetPrimaryNav = setNavCurrent;
 
+  nav.addEventListener("click", event => {
+    const target = event.target.closest(".pv-nav-item")?.dataset.nav;
+    if (!target) return;
+    if (target !== "profile") document.querySelector("#pv-ux-modal.pv-open .pv-ux-close")?.click();
+    if (target !== "ai") document.querySelector("#pv-magic-root.pv-open .pv-magic-close")?.click();
+    if (target !== "hub") document.querySelector("#pv-plat-panel.open [data-plat=close]")?.click();
+    if (target !== "budget") document.querySelector('#pv-preventivo-root.open .pv-prev-top [data-act="close"]')?.click();
+  }, true);
+
   // Hub open/close is owned by pv-platform (bindHubTrigger). Fallback only if unbound.
   nav.querySelector("#pv-hub-nav").addEventListener("click", () => {
     setNavCurrent("hub");

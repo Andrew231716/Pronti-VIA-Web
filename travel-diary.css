@@ -591,3 +591,62 @@ html #pv-preventivo-root .pv-prev-actions .primary {
   }
   #pv-preventivo-root .pv-prev-sub { display: none !important; }
 }
+
+/* Reserve the same space below the main panels as below Preventivo. */
+body.pv-primary-nav-ready {
+  --pv-panel-nav-space: calc(82px + env(safe-area-inset-bottom, 0px));
+}
+body.pv-primary-nav-ready #pv-plat-status {
+  top: calc(54px + env(safe-area-inset-top, 0px));
+  pointer-events: none;
+}
+body.pv-primary-nav-ready:not(:has([role="dialog"][data-state="open"], [role="listbox"])):is(
+  .pv-magic-open, .pv-plat-open, :has(#pv-account-menu[aria-expanded="true"])
+) #pv-primary-nav {
+  z-index: 125500;
+}
+body.pv-magic-open #pv-primary-nav #pv-hub-nav { opacity: 1; }
+body.pv-primary-nav-ready #pv-plat-panel.open {
+  bottom: var(--pv-panel-nav-space);
+  max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
+  padding-bottom: 16px;
+}
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"]) #pv-ux-modal {
+  padding-bottom: var(--pv-panel-nav-space);
+}
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"]) #pv-ux-modal .pv-ux-sheet {
+  max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
+  padding-bottom: 20px;
+}
+@media (max-width: 640px) {
+  body.pv-primary-nav-ready #pv-magic-root #pv-magic-panel {
+    bottom: calc(var(--pv-panel-nav-space) + var(--pv-chat-keyboard, 0px)) !important;
+    height: min(82dvh, calc(var(--pv-chat-viewport, 100dvh) - var(--pv-panel-nav-space) - 8px));
+  }
+}
+
+html #pv-magic-root .pv-magic-panel,
+html #pv-ux-modal .pv-ux-sheet,
+html #pv-plat-panel {
+  background: var(--diary-wash);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-magic-root :is(.pv-panel-head, .pv-panel-foot, .pv-place-card),
+html #pv-ux-modal :is(.pv-menu-grid button, .pv-menu-context),
+html #pv-plat-panel .pv-plat-card {
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  border-color: var(--diary-line);
+}
+html #pv-magic-root :is(.pv-magic-panel h3, .pv-lead, .pv-bubble.bot, .pv-place-card p),
+html #pv-ux-modal :is(.pv-menu-grid button span, .pv-menu-context p),
+html #pv-plat-panel .pv-plat-muted { color: var(--diary-ink); }
+html #pv-magic-root .pv-bubble.bot { background: var(--diary-paper); border-color: var(--diary-line); }
+html #pv-magic-root :is(.pv-bubble.user, .pv-chat-form button, .pv-card-actions .primary),
+html #pv-ux-modal .pv-ux-primary,
+html #pv-plat-panel .pv-plat-btn.primary {
+  background: var(--pv-dest-teal-deep, #16564b);
+  border-color: var(--pv-dest-teal-deep, #16564b);
+  color: white;
+}
