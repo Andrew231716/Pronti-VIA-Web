@@ -934,7 +934,7 @@
       const row = card.closest(".pv-recent-row") || card;
       row.hidden = mode !== "all" && mode !== when;
       const label = overview?.status || "Stato da verificare";
-      choices.push({ card, start, when, label, next: overview?.next });
+      choices.push({ card, start, when, label, next: overview?.next, destination: overview?.destination || meta?.destination || saved?.destination });
       let badge = card.querySelector(".pv-trip-sync");
       if (!badge && card.querySelector(".pv-trip-body")) {
         badge = document.createElement("span");
@@ -955,7 +955,7 @@
     if (!resume) {
       resume = document.createElement("section");
       resume.className = "pv-home-resume";
-      resume.innerHTML = '<h3></h3><p></p><small></small><a class="button">Riprendi viaggio</a>';
+      resume.innerHTML = '<div class="pv-resume-top"><span></span><small></small></div><h3></h3><p></p><a class="button">Riprendi viaggio</a>';
       host.prepend(resume);
     }
     const heading = featured.card.querySelector("strong")?.textContent || "Viaggio";
@@ -963,7 +963,7 @@
     const detail = next
       ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
       : featured.start ? `Partenza · ${featured.start.split("-").reverse().join("/")}` : "Apri l’itinerario e le prenotazioni.";
-    for (const [selector, value] of [["h3", heading], ["p", detail], ["small", featured.label]]) {
+    for (const [selector, value] of [["h3", heading], ["p", detail], ["small", featured.label], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
       const node = resume.querySelector(selector);
       if (node.textContent !== value) node.textContent = value;
     }
@@ -3237,13 +3237,16 @@
     if (section === "itinerary") {
       const strip = panel.querySelector(".day-strip");
       const days = [...(strip?.querySelectorAll("button") || [])];
-      if (days.length < 5) return;
+      if (!days.length) return;
+      panel.classList.add("pv-itinerary-timeline");
       const active = days.findIndex(day => day.classList.contains("selected"));
       const labels = days.map(day => day.querySelector("strong")?.textContent || day.textContent);
       const controls = mount("days", JSON.stringify(labels), tools => {
         tools.innerHTML = `<label>Vai al giorno <select aria-label="Vai al giorno">${labels.map((label, index) =>
           `<option value="${index}">${escapeHtml(label)} · Giorno ${index + 1}</option>`).join("")}</select></label>`;
       });
+      const today = panel.querySelector(".pv-today-shortcut");
+      if (today && today.parentElement !== controls) controls.prepend(today);
       controls.querySelector("select").onchange = event => {
         strip.querySelectorAll("button")[Number(event.currentTarget.value)]?.click();
       };
@@ -3251,6 +3254,7 @@
     }
 
     if (section === "explore") {
+      panel.classList.add("pv-explore-layout");
       const stops = trip.stops || [];
       for (const card of panel.querySelectorAll("article.booking-card")) {
         const title = card.querySelector("h3")?.textContent;
@@ -3282,11 +3286,27 @@
       });
     }
 
-    if (section === "places" && canEdit) {
+    if (section === "places") {
+      panel.classList.add("pv-places-layout");
       const rows = [...panel.querySelectorAll(".stops-list > div")];
       rows.forEach((element, index) => {
         const stop = trip.stops?.[index];
         if (!stop || element.querySelector("strong,h3,h4")?.textContent !== stop.title) return;
+        const body = element.querySelector(".stop-body");
+        if (body) {
+          let badge = body.querySelector(".pv-place-status");
+          if (!badge) {
+            badge = document.createElement("span");
+            badge.className = "pv-place-status";
+            body.append(badge);
+          }
+          const date = /^\d{4}-\d{2}-\d{2}$/.test(stop.day || "") ? new Date(`${stop.day}T12:00:00`) : null;
+          const status = date
+            ? `In itinerario · ${date.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" })}`
+            : "Salvato · da pianificare";
+          if (badge.textContent !== status) badge.textContent = status;
+        }
+        if (!canEdit) return;
         let button = element.querySelector(".pv-plan-place");
         if (!button) {
           button = document.createElement("button");
@@ -3380,18 +3400,20 @@
         cards.forEach((card, index) => {
           const booking = bookings[index];
           if (!booking || card.querySelector("h3")?.textContent !== booking.title) return;
+          const next = booking === order[0] && booking.date >= today;
+          card.classList.toggle("pv-booking-next", next);
           const position = String(order.indexOf(booking) + 1);
           if (card.style.order !== position) card.style.order = position;
           const group = card.querySelector(".grow");
           if (!group) return;
           const linked = Array.isArray(documents[booking.id]) ? documents[booking.id] : [];
-          const signature = JSON.stringify([booking.id, linked, canEdit]);
+          const signature = JSON.stringify([booking.id, linked, canEdit, next]);
           if (group.dataset.pvBookingDocs === signature) return;
           group.dataset.pvBookingDocs = signature;
           group.querySelector(".pv-booking-docs")?.remove();
           const links = document.createElement("div");
           links.className = "pv-booking-docs";
-          links.innerHTML = linked.filter(item => /^https?:\/\//i.test(item.url)).map(item =>
+          links.innerHTML = (next ? '<span class="pv-next-booking-label">Prossima prenotazione</span>' : "") + linked.filter(item => /^https?:\/\//i.test(item.url)).map(item =>
             `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>`).join("") +
             (canEdit ? '<button class="button secondary" type="button">Collega documento</button>' : "");
           group.append(links);

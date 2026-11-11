@@ -393,3 +393,115 @@ html {
 #root .pv-explore-saved { display: inline-block; margin-top: .5rem; color: var(--diary-accent); font-weight: 700; }
 #root .pv-event-section li > :is(button, span) { margin-inline-start: .5rem; }
 .pv-itinerary-preview ul { padding-inline-start: 1.2rem; }
+
+/* Mobile hierarchy shared across destinations. */
+:root {
+  --diary-action: #16564b;
+  --diary-action-hover: #114437;
+  --diary-status: #315e52;
+}
+html[data-pv-theme="dark"] { --diary-status: #b9dfd2; }
+#root .pv-home-resume {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: .65rem;
+  padding: clamp(1rem, 4vw, 1.65rem);
+  background: linear-gradient(135deg, var(--diary-paper), var(--diary-wash));
+  border: 1px solid var(--diary-line);
+  border-inline-start: 4px solid var(--diary-accent);
+}
+#root .pv-home-resume h3 {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  line-height: 1.16;
+}
+#root .pv-resume-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .35rem .8rem;
+}
+#root .pv-resume-top span { color: var(--diary-muted); font-weight: 650; overflow-wrap: anywhere; }
+#root .pv-resume-top small, #root .pv-trip-sync { color: var(--diary-status); font-weight: 650; }
+#root .pv-recent-row .pv-trip-card { padding-block: .5rem; }
+#root .pv-home-resume .button,
+#root .app-shell .button:not(.secondary):not(.danger) {
+  background: var(--diary-action);
+  border-color: var(--diary-action);
+}
+#root .pv-home-resume .button:hover,
+#root .app-shell .button:not(.secondary):not(.danger):hover {
+  background: var(--diary-action-hover);
+}
+
+#root .pv-itinerary-timeline [data-pv-planning="days"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+#root .pv-itinerary-timeline [data-pv-planning="days"] label { flex: 1 1 12rem; }
+#root .pv-itinerary-timeline .stops-list {
+  border-inline-start: 2px solid var(--diary-line);
+  padding-inline-start: .75rem;
+  margin-inline-start: .35rem;
+}
+#root .pv-itinerary-timeline .stop-card { position: relative; }
+#root .pv-itinerary-timeline .stop-card::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -1.14rem;
+  top: 1.2rem;
+  width: .65rem;
+  height: .65rem;
+  border-radius: 50%;
+  background: var(--diary-accent);
+}
+#root .pv-itinerary-timeline .time-pill { font-weight: 750; font-variant-numeric: tabular-nums; }
+#root .pv-itinerary-timeline .address { min-height: 44px; display: inline-flex; align-items: center; gap: .35rem; }
+
+#root .pv-explore-layout .booking-card,
+#root .pv-places-layout .stop-card {
+  border-radius: 1rem;
+  padding: .9rem;
+}
+#root :is(.pv-place-status, .pv-explore-saved, .pv-next-booking-label) {
+  display: inline-flex;
+  width: fit-content;
+  margin-block: .45rem;
+  padding: .3rem .55rem;
+  border-radius: .55rem;
+  background: var(--diary-wash);
+  color: var(--diary-ink);
+  font-size: .8rem;
+  font-weight: 700;
+}
+#root .pv-booking-next { border-inline-start: 4px solid var(--diary-accent) !important; }
+#root .pv-booking-docs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: .65rem;
+  border: 1px solid var(--diary-line);
+  border-radius: .6rem;
+  background: var(--diary-wash);
+}
+.pv-sw-me > span { display: block; font-size: .8rem; margin-bottom: .25rem; }
+.pv-sw-me > strong { display: block; font-size: clamp(1rem, 4.5vw, 1.4rem); }
+.pv-budget-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: .8rem 0; }
+.pv-budget-comparison > div { border: 1px solid #d6e4e1; border-radius: .65rem; padding: .65rem; }
+.pv-budget-comparison dt { font-size: .8rem; }
+.pv-budget-comparison dd { margin: .2rem 0 0; font-weight: 750; font-size: clamp(.95rem, 4.5vw, 1.3rem); overflow-wrap: anywhere; }
+
+#pv-magic-panel .pv-bubble.bot { font-size: 1rem; line-height: 1.6; }
+#pv-magic-panel #pv-chat-results:not(:empty) { margin-top: .9rem; border-top: 1px solid #d6e4e1; }
+:is(#pv-plat-panel, #pv-magic-panel, .pv-ux-sheet) :is(h2,h3) { line-height: 1.2; }
+:is(#pv-plat-panel, #pv-magic-panel, .pv-ux-sheet) :is(.pv-plat-btn,.pv-ux-primary,.pv-magic-close) { min-height: 44px; }
+@media (max-width: 640px) {
+  #root .pv-itinerary-timeline .day-strip {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  #root .pv-itinerary-timeline .day-strip > button { flex: 0 0 6.25rem; scroll-snap-align: start; }
+}

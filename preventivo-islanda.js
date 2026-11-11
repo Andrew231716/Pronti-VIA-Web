@@ -2262,8 +2262,13 @@
           </select>
         </h2>
         <p class="pv-callout">I totali sotto includono voci <strong>STIMA</strong>. Non sono un preventivo esaustivo di mercato. Scenario iniziale: Economico (no ostelli).</p>
-        <p><strong>Gruppo:</strong> ${fmtMoney(tot.group)} · <strong>/persona:</strong> ${fmtMoney(tot.pp)} · <strong>/giorno pp:</strong> ${fmtMoney(tot.perDay)}</p>
-        ${actual ? `<p><strong>Spese registrate:</strong> ${fmtMoney(actual.group)} · media ${fmtMoney(actual.pp)} per persona (${actual.count} viaggiatori)</p>` : ""}
+        <dl class="pv-budget-comparison">
+          <div><dt>Stimato · gruppo</dt><dd>${fmtMoney(tot.group)}</dd></div>
+          <div><dt>Speso · gruppo</dt><dd>${actual ? fmtMoney(actual.group) : "—"}</dd></div>
+          <div><dt>Stimato · per persona</dt><dd>${fmtMoney(tot.pp)}</dd></div>
+          <div><dt>Speso · media per persona</dt><dd>${actual ? fmtMoney(actual.pp) : "—"}</dd></div>
+        </dl>
+        ${actual ? `<p class="pv-prev-muted">Media delle spese registrate su ${actual.count} viaggiatori.</p>` : ""}
         <p class="pv-prev-muted">VERIFICATO ${fmtMoney(tot.byStatus.VERIFICATO)} · STIMA ${fmtMoney(tot.byStatus.STIMA)} · DA VERIFICARE ${fmtMoney(tot.byStatus["DA VERIFICARE"])}</p>
         <div style="overflow:auto">
           <table>

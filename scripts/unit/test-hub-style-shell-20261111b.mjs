@@ -23,7 +23,7 @@ test("stamps 20261111d wired", () => {
   assert.match(index, /pv-platform-20261111n\.js/);
   assert.match(index, /destination-theme-20261111k\.js/);
   assert.match(index, /account\.css\?v=20261111c/);
-  assert.match(index, /expense-splitwise-20261111n\.js/);
+  assert.match(index, /expense-splitwise-20261111o\.js/);
 });
 
 test("Hub tokens alias into app shell", () => {

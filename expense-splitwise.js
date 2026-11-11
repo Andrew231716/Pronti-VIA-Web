@@ -728,7 +728,7 @@
           <h3>Come Splitwise, nel viaggio</h3>
         </div>
       </div>
-      <div class="pv-sw-me ${me.className}">${escapeHtml(me.text)}</div>
+      <div class="pv-sw-me ${me.className}"><span>Il tuo saldo</span><strong>${escapeHtml(me.text)}</strong></div>
       <div class="pv-sw-section">
         <h4>Chi deve a chi</h4>
         <div class="pv-sw-settle">${settleRows}</div>
