@@ -505,3 +505,39 @@ html[data-pv-theme="dark"] { --diary-status: #b9dfd2; }
   }
   #root .pv-itinerary-timeline .day-strip > button { flex: 0 0 6.25rem; scroll-snap-align: start; }
 }
+
+/* Keep labels and form controls usable on compact mobile viewports. */
+@media (max-width: 380px) {
+  #pv-primary-nav { padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right)); }
+  #pv-primary-nav:has(#pv-nav-budget) .pv-nav-label {
+    font-size: .625rem;
+    letter-spacing: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  #root .pv-itinerary-timeline [data-pv-planning="days"] label {
+    flex-basis: 9rem;
+    min-width: 0;
+  }
+  #root .pv-itinerary-timeline [data-pv-planning="days"] select { width: 100%; }
+}
+@media (max-width: 640px) {
+  #root .app-shell :is(input, select, textarea),
+  .pv-ux-sheet :is(input, select, textarea),
+  #pv-plat-panel :is(input, select, textarea) {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .pv-ux-modal .pv-ux-sheet {
+    max-height: min(78dvh, 840px);
+  }
+}
+@media (max-height: 420px) and (pointer: coarse) {
+  #pv-magic-panel:not([hidden]) {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  #pv-magic-panel .pv-panel-body { flex: 0 0 auto; }
+  #pv-magic-panel .pv-panel-foot { position: sticky; bottom: 0; }
+}
