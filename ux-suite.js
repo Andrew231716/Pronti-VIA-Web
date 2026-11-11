@@ -569,6 +569,100 @@
       @media print{
         #pv-account-chip,#pv-primary-nav,#pv-magic-root,#pv-ux-toast,#pv-offline-chip,.pv-prev-launch{display:none!important}
       }
+      /* Prenotazioni: personale vs condivisa */
+      .pv-book-scope{
+        margin:10px 0 14px;padding:14px 14px 12px;border-radius:18px;
+        border:1px solid rgba(0,125,130,.16);background:linear-gradient(165deg,#f7fbfb,#eef6f6);
+        color:#12343c
+      }
+      .pv-book-scope.shared{
+        background:linear-gradient(165deg,#fff,#f5f8f9);border-color:rgba(20,52,58,.12)
+      }
+      .pv-book-scope-head{
+        display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 12px;margin:0 0 8px
+      }
+      .pv-book-scope-head strong{
+        font:800 .78rem/1.2 inherit;letter-spacing:.05em;text-transform:uppercase;color:#0f5a5e
+      }
+      .pv-book-scope.shared .pv-book-scope-head strong{color:#3f5860}
+      .pv-book-scope-head span{font:550 .82rem/1.35 inherit;color:#3f5860}
+      .pv-book-flight-form{
+        display:grid;gap:8px;margin:0 0 12px
+      }
+      .pv-book-flight-form .pv-book-row{
+        display:grid;grid-template-columns:1fr 1fr;gap:8px
+      }
+      .pv-book-flight-form label{
+        display:grid;gap:4px;font:700 .72rem/1.2 inherit;letter-spacing:.04em;text-transform:uppercase;color:#3f5860
+      }
+      .pv-book-flight-form input,.pv-book-flight-form select{
+        width:100%;box-sizing:border-box;border:1px solid rgba(20,52,58,.16);border-radius:12px;
+        padding:10px 12px;font:650 .92rem/1.3 inherit;color:#12343c;background:#fff
+      }
+      .pv-book-flight-form .pv-book-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+      .pv-book-flight-form .pv-book-actions button[disabled]{opacity:.55;cursor:wait}
+      .pv-book-personal-list{display:grid;gap:12px;margin:0}
+      .pv-flight-card{
+        position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(20,52,58,.12);
+        background:#fff;box-shadow:0 10px 28px rgba(16,42,48,.08);color:#12343c
+      }
+      .pv-flight-card-banner{
+        display:flex;justify-content:space-between;gap:10px;align-items:center;
+        padding:12px 14px;color:#fff;background:var(--pv-flight-color,#0b2c5e)
+      }
+      .pv-flight-card-banner strong{font:800 1rem/1.2 inherit}
+      .pv-flight-card-banner small{display:block;opacity:.9;font:650 .75rem/1.3 inherit;margin-top:2px}
+      .pv-flight-badge{
+        display:inline-flex;align-items:center;padding:4px 9px;border-radius:999px;
+        background:rgba(255,255,255,.18);font:750 .68rem/1 inherit;letter-spacing:.04em;text-transform:uppercase
+      }
+      .pv-flight-card-body{padding:14px}
+      .pv-flight-route{
+        display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin:0 0 12px
+      }
+      .pv-flight-route .code{font:800 1.35rem/1 inherit;letter-spacing:.02em}
+      .pv-flight-route .meta{font:550 .78rem/1.3 inherit;color:#3f5860}
+      .pv-flight-route .arrow{font:800 1.1rem/1 inherit;color:#007d82;text-align:center}
+      .pv-flight-route .to{text-align:right}
+      .pv-flight-pnr{
+        display:flex;flex-wrap:wrap;gap:8px 14px;align-items:baseline;margin:0 0 10px;
+        padding:10px 12px;border-radius:14px;background:#f4f8f8;border:1px dashed rgba(0,125,130,.22)
+      }
+      .pv-flight-pnr .label{font:750 .68rem/1 inherit;letter-spacing:.05em;text-transform:uppercase;color:#3f5860}
+      .pv-flight-pnr .value{font:800 1.15rem/1 inherit;letter-spacing:.12em;color:#0f3a42}
+      .pv-flight-facts{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+      .pv-flight-facts span{
+        display:inline-flex;padding:5px 9px;border-radius:999px;background:#eef5f5;
+        font:650 .78rem/1.2 inherit;color:#16353b
+      }
+      .pv-flight-card-actions{display:flex;flex-wrap:wrap;gap:8px}
+      .pv-book-shared-label{
+        order:-1;margin:4px 0 8px;padding:8px 12px;border-radius:12px;background:#f4f7f8;
+        border:1px solid rgba(20,52,58,.1);font:650 .82rem/1.35 inherit;color:#3f5860
+      }
+      .pv-book-shared-label strong{color:#12343c;font-weight:800}
+      #root .booking-card{position:relative}
+      #root .booking-card .pv-shared-pill{
+        display:inline-flex;margin:0 0 6px;padding:3px 8px;border-radius:999px;
+        background:#e8f0f1;color:#3f5860;font:750 .65rem/1 inherit;letter-spacing:.04em;text-transform:uppercase
+      }
+      html[data-pv-theme="dark"] .pv-book-scope{
+        background:linear-gradient(165deg,#1a2c30,#152428);border-color:rgba(231,242,243,.12);color:#eef6f7
+      }
+      html[data-pv-theme="dark"] .pv-book-scope.shared{background:linear-gradient(165deg,#1c3034,#16262a)}
+      html[data-pv-theme="dark"] .pv-book-scope-head span,
+      html[data-pv-theme="dark"] .pv-book-flight-form label,
+      html[data-pv-theme="dark"] .pv-book-shared-label{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-book-scope-head strong{color:#5eead4}
+      html[data-pv-theme="dark"] .pv-book-flight-form input,
+      html[data-pv-theme="dark"] .pv-book-flight-form select,
+      html[data-pv-theme="dark"] .pv-flight-card{
+        background:#fff;color:#12343c;border-color:#dfe7eb
+      }
+      html[data-pv-theme="dark"] .pv-book-shared-label{background:rgba(231,242,243,.06);border-color:rgba(231,242,243,.12)}
+      @media (max-width:560px){
+        .pv-book-flight-form .pv-book-row{grid-template-columns:1fr}
+      }
     `;
   }
 
@@ -610,6 +704,328 @@
   }
   function writeJson(key, value) {
     localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  const PRIVATE_BOOKINGS_KEY = "viavia-private-bookings-v1";
+  const FLIGHT_AIRLINES = [
+    ["AZ", "ITA Airways", "#0b2c5e", "https://www.ita-airways.com/it_it/manage-booking.html"],
+    ["FR", "Ryanair", "#073590", "https://www.ryanair.com/it/it/trip/manage"],
+    ["U2", "easyJet", "#ff6600", "https://www.easyjet.com/it/manage"],
+    ["W6", "Wizz Air", "#c6007e", "https://www.wizzair.com/it-it/gestione-prenotazione"],
+    ["VY", "Vueling", "#ffcc00", "https://tickets.vueling.com/Search.aspx"],
+    ["LH", "Lufthansa", "#05164d", "https://www.lufthansa.com/it/it/my-bookings"],
+    ["AF", "Air France", "#002157", "https://wwws.airfrance.it/trip"],
+    ["KL", "KLM", "#00a1e4", "https://www.klm.it/trip"],
+    ["BA", "British Airways", "#075aaa", "https://www.britishairways.com/travel/managebooking/public/it_it"],
+    ["EK", "Emirates", "#d71a21", "https://www.emirates.com/it/italian/manage-booking/"],
+    ["TK", "Turkish Airlines", "#c70a0c", "https://www.turkishairlines.com/it-int/any-questions/manage-booking/"],
+    ["IB", "Iberia", "#d7192d", "https://www.iberia.com/it/gestisci-prenotazione/"],
+    ["TP", "TAP Air Portugal", "#008c45", "https://www.flytap.com/it-it/gestisci-prenotazione"],
+    ["LX", "SWISS", "#e60000", "https://www.swiss.com/it/it/manage-booking"],
+    ["DY", "Norwegian", "#d81939", "https://www.norwegian.com/it/gestione-prenotazione/"],
+    ["AA", "American Airlines", "#0078d2", "https://www.aa.com/reservation/view/find-your-reservation"],
+    ["DL", "Delta Air Lines", "#003366", "https://www.delta.com/mytrips/findPnr.action"],
+    ["UA", "United Airlines", "#002244", "https://www.united.com/en/us/manageres"],
+  ];
+
+  function privateBookingOwner() {
+    try {
+      const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return String(session?.user?.username || "anon").trim().toLowerCase() || "anon";
+    } catch {
+      return "anon";
+    }
+  }
+
+  function privateBookingSlot(tripId) {
+    return `${privateBookingOwner()}::${tripId}`;
+  }
+
+  function readPrivateBookings(tripId) {
+    const db = readJson(PRIVATE_BOOKINGS_KEY, {});
+    const rows = db[privateBookingSlot(tripId)];
+    return Array.isArray(rows) ? rows : [];
+  }
+
+  function writePrivateBookings(tripId, rows) {
+    const db = readJson(PRIVATE_BOOKINGS_KEY, {});
+    db[privateBookingSlot(tripId)] = (Array.isArray(rows) ? rows : []).slice(0, 40);
+    writeJson(PRIVATE_BOOKINGS_KEY, db);
+  }
+
+  function localFlightFallback(input) {
+    const airlineRaw = String(input.airline || "").trim();
+    const pnr = String(input.pnr || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
+    const lastName = String(input.lastName || "").trim().slice(0, 80);
+    const flightRaw = String(input.flightNumber || "").toUpperCase().replace(/\s+/g, "");
+    if (pnr.length < 5) throw new Error("Il numero prenotazione (PNR) deve avere tra 5 e 12 caratteri.");
+    const q = airlineRaw.toLowerCase();
+    const hit =
+      FLIGHT_AIRLINES.find((a) => a[0] === airlineRaw.toUpperCase()) ||
+      FLIGHT_AIRLINES.find((a) => a[1].toLowerCase() === q || a[1].toLowerCase().includes(q) || q.includes(a[1].toLowerCase()));
+    if (!hit) throw new Error("Compagnia non riconosciuta. Prova il nome o il codice IATA (es. AZ, Ryanair).");
+    const fm = flightRaw.match(/^([A-Z0-9]{2})?(\d{1,4}[A-Z]?)$/);
+    const flightIata = fm ? `${fm[1] || hit[0]}${(fm[2] || "").replace(/^0+/, "") || fm[2]}` : "";
+    let manage = hit[3];
+    try {
+      const u = new URL(hit[3]);
+      u.searchParams.set("pnr", pnr);
+      if (lastName) u.searchParams.set("lastName", lastName);
+      manage = u.toString();
+    } catch { /* keep */ }
+    const title = flightIata ? `${hit[1]} ${flightIata}` : `${hit[1]} · ${pnr}`;
+    return {
+      ok: true,
+      live: false,
+      hint: flightIata
+        ? "Salvata offline. Con connessione e chiave AviationStack arricchisco rotta e orari."
+        : "Salvata offline. Aggiungi il numero volo per dettagli più ricchi.",
+      booking: {
+        id: `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+        kind: "flight",
+        visibility: "personal",
+        title,
+        type: "Volo",
+        airline: hit[1],
+        airlineCode: hit[0],
+        color: hit[2],
+        pnr,
+        reference: pnr,
+        lastName,
+        flightNumber: flightIata,
+        date: "",
+        departTime: "",
+        arriveTime: "",
+        from: "",
+        to: "",
+        status: "Da verificare sulla compagnia",
+        notes: `Prenotazione personale · ${hit[1]} (${hit[0]})\nPNR / codice: ${pnr}\nVisibile solo a te — non condivisa con il gruppo.`,
+        url: manage,
+        source: "offline",
+        enriched: false,
+        updatedAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  async function lookupPersonalFlight(input) {
+    try {
+      const res = await fetch("/api/flight-booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(input),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.booking) return data;
+      if (res.status >= 400 && res.status < 500 && data?.error) throw new Error(data.error);
+    } catch (err) {
+      if (err?.message && /Compagnia|PNR|prenotazione/.test(err.message)) throw err;
+    }
+    return localFlightFallback(input);
+  }
+
+  function renderPersonalFlightCard(booking) {
+    const color = booking.color || "#0b2c5e";
+    const route = booking.from && booking.to
+      ? `<div class="pv-flight-route">
+          <div><div class="code">${escapeHtml(booking.from)}</div><div class="meta">${escapeHtml(booking.departTime || "Partenza")}</div></div>
+          <div class="arrow" aria-hidden="true">→</div>
+          <div class="to"><div class="code">${escapeHtml(booking.to)}</div><div class="meta">${escapeHtml(booking.arriveTime || "Arrivo")}</div></div>
+        </div>`
+      : `<p class="meta" style="margin:0 0 10px;color:#3f5860;font:550 .86rem/1.4 inherit">Rotta non ancora disponibile — apri Gestisci prenotazione sulla compagnia${booking.flightNumber ? ` o verifica il volo ${escapeHtml(booking.flightNumber)}` : ""}.</p>`;
+    const facts = [
+      booking.flightNumber && `Volo ${booking.flightNumber}`,
+      booking.date && booking.date,
+      booking.status && booking.status,
+      booking.airlineCode && booking.airlineCode,
+    ].filter(Boolean);
+    return `<article class="pv-flight-card" data-pv-personal-booking="${escapeHtml(booking.id)}" style="--pv-flight-color:${escapeHtml(color)}">
+      <div class="pv-flight-card-banner">
+        <div>
+          <strong>${escapeHtml(booking.airline || booking.title || "Volo")}</strong>
+          <small>${escapeHtml(booking.title || "")}</small>
+        </div>
+        <span class="pv-flight-badge">Personale</span>
+      </div>
+      <div class="pv-flight-card-body">
+        ${route}
+        <div class="pv-flight-pnr">
+          <div><div class="label">Numero prenotazione</div><div class="value">${escapeHtml(booking.pnr || booking.reference || "")}</div></div>
+          ${booking.lastName ? `<div><div class="label">Cognome</div><div class="value" style="letter-spacing:0;font-size:1rem">${escapeHtml(booking.lastName)}</div></div>` : ""}
+        </div>
+        ${facts.length ? `<div class="pv-flight-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join("")}</div>` : ""}
+        <div class="pv-flight-card-actions">
+          ${booking.url ? `<a class="button" href="${escapeHtml(booking.url)}" target="_blank" rel="noopener noreferrer">Gestisci su ${escapeHtml(booking.airline || "compagnia")}</a>` : ""}
+          <button type="button" class="button secondary" data-pv-share-personal="${escapeHtml(booking.id)}">Copia in condivise</button>
+          <button type="button" class="button secondary" data-pv-delete-personal="${escapeHtml(booking.id)}">Rimuovi</button>
+        </div>
+      </div>
+    </article>`;
+  }
+
+  function bindPersonalBookingActions(personal, panel, auth, canEdit) {
+    personal.querySelectorAll("[data-pv-delete-personal]").forEach((button) => {
+      button.onclick = () => {
+        const id = button.getAttribute("data-pv-delete-personal");
+        writePrivateBookings(auth.id, readPrivateBookings(auth.id).filter((b) => b.id !== id));
+        toast("Prenotazione personale rimossa", "ok");
+        ensureBookingsScopeChrome(panel, auth, canEdit, true);
+      };
+    });
+    personal.querySelectorAll("[data-pv-share-personal]").forEach((button) => {
+      button.onclick = async () => {
+        if (!canEdit) {
+          toast("Serve accesso in modifica per copiare nelle condivise", "warn");
+          return;
+        }
+        const id = button.getAttribute("data-pv-share-personal");
+        const booking = readPrivateBookings(auth.id).find((b) => b.id === id);
+        if (!booking) return;
+        button.disabled = true;
+        try {
+          const { data } = await loadTripByAuth(auth);
+          if (data.canEdit === false) throw new Error("Viaggio in sola lettura");
+          const shared = {
+            id: `b-${Date.now().toString(36)}`,
+            title: booking.title || `${booking.airline} ${booking.pnr}`,
+            type: "Volo",
+            date: booking.date || data.trip.start || "",
+            reference: booking.pnr || booking.reference || "",
+            notes: [
+              "Condivisa dal personale",
+              booking.flightNumber && `Volo ${booking.flightNumber}`,
+              booking.from && booking.to && `${booking.from}→${booking.to}`,
+              booking.notes,
+            ]
+              .filter(Boolean)
+              .join(" · ")
+              .slice(0, 1500),
+            url: booking.url || "",
+          };
+          const trip = { ...data.trip, bookings: [...(data.trip.bookings || []), shared].slice(0, 200) };
+          await saveTrip(auth, trip, data.revision);
+          toast("Copiata nelle prenotazioni condivise", "ok");
+          window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip } }));
+        } catch (err) {
+          toast(err.message || "Copia non riuscita", "err");
+        } finally {
+          button.disabled = false;
+        }
+      };
+    });
+  }
+
+  function ensureBookingsScopeChrome(panel, auth, canEdit, force = false) {
+    let personal = panel.querySelector('[data-pv-planning="personal-bookings"]');
+    if (!personal) {
+      personal = document.createElement("div");
+      personal.dataset.pvPlanning = "personal-bookings";
+      personal.className = "pv-book-scope personal";
+      const heading = panel.querySelector(".section-heading");
+      if (heading?.parentElement === panel) heading.after(personal);
+      else panel.prepend(personal);
+    }
+    const rows = readPrivateBookings(auth.id);
+    const signature = JSON.stringify([auth.id, canEdit, rows.map((b) => [b.id, b.updatedAt, b.pnr, b.from, b.to])]);
+    if (!force && personal.dataset.signature === signature) {
+      let sharedLabel = panel.querySelector(".pv-book-shared-label");
+      if (!sharedLabel) {
+        sharedLabel = document.createElement("div");
+        sharedLabel.className = "pv-book-shared-label";
+        sharedLabel.innerHTML =
+          `<strong>Condivise</strong> — visibili a chi ha il link del viaggio (hotel, treni, voli di gruppo…).`;
+        const firstCard = panel.querySelector(":scope > .booking-card, :scope > .empty-state, :scope > .edit-form");
+        if (firstCard) firstCard.before(sharedLabel);
+        else personal.after(sharedLabel);
+      }
+      return;
+    }
+    personal.dataset.signature = signature;
+    const airlineOptions = FLIGHT_AIRLINES.map(
+      ([code, name]) => `<option value="${escapeHtml(name)}">${escapeHtml(name)} (${escapeHtml(code)})</option>`
+    ).join("");
+    const prevAirline = personal.querySelector('[name="airline"]')?.value || "";
+    const prevPnr = personal.querySelector('[name="pnr"]')?.value || "";
+    const prevLast = personal.querySelector('[name="lastName"]')?.value || "";
+    const prevFlight = personal.querySelector('[name="flightNumber"]')?.value || "";
+    personal.innerHTML = `
+      <div class="pv-book-scope-head">
+        <strong>Personali</strong>
+        <span>Solo sul tuo dispositivo — non finiscono nel link di condivisione.</span>
+      </div>
+      <form class="pv-book-flight-form" data-pv-flight-form>
+        <div class="pv-book-row">
+          <label>Compagnia
+            <input name="airline" list="pv-airline-list" placeholder="Es. ITA Airways / AZ" required maxlength="80" autocomplete="off">
+            <datalist id="pv-airline-list">${airlineOptions}</datalist>
+          </label>
+          <label>N° prenotazione (PNR)
+            <input name="pnr" placeholder="Es. ABC12D" required maxlength="12" autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+        <div class="pv-book-row">
+          <label>Cognome passeggero (opz.)
+            <input name="lastName" placeholder="Come sul biglietto" maxlength="80" autocomplete="family-name">
+          </label>
+          <label>N° volo (opz.)
+            <input name="flightNumber" placeholder="Es. AZ123" maxlength="12" autocomplete="off" spellcheck="false">
+          </label>
+        </div>
+        <div class="pv-book-actions">
+          <button type="submit" class="button">Cerca e carica</button>
+          <span class="meta" style="font:550 .8rem/1.3 inherit;color:#3f5860">Inserisci compagnia + codice: preparo la card e apro i dettagli disponibili.</span>
+        </div>
+      </form>
+      <div class="pv-book-personal-list">${rows.length ? rows.map(renderPersonalFlightCard).join("") : '<p style="margin:0;color:#3f5860;font:550 .86rem/1.4 inherit">Nessuna prenotazione personale ancora.</p>'}</div>`;
+    const form = personal.querySelector("[data-pv-flight-form]");
+    if (prevAirline) form.airline.value = prevAirline;
+    if (prevPnr) form.pnr.value = prevPnr;
+    if (prevLast) form.lastName.value = prevLast;
+    if (prevFlight) form.flightNumber.value = prevFlight;
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const fd = new FormData(form);
+      const input = {
+        airline: String(fd.get("airline") || "").trim(),
+        pnr: String(fd.get("pnr") || "").trim(),
+        lastName: String(fd.get("lastName") || "").trim(),
+        flightNumber: String(fd.get("flightNumber") || "").trim(),
+      };
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      try {
+        const result = await lookupPersonalFlight(input);
+        const next = [
+          result.booking,
+          ...readPrivateBookings(auth.id).filter(
+            (b) => b.pnr !== result.booking.pnr || b.airlineCode !== result.booking.airlineCode
+          ),
+        ];
+        writePrivateBookings(auth.id, next);
+        form.reset();
+        toast(
+          result.live ? "Prenotazione caricata con dettagli live" : result.hint || "Prenotazione personale salvata",
+          result.live ? "ok" : "warn"
+        );
+        ensureBookingsScopeChrome(panel, auth, canEdit, true);
+      } catch (err) {
+        toast(err.message || "Ricerca non riuscita", "err");
+      } finally {
+        btn.disabled = false;
+      }
+    };
+    bindPersonalBookingActions(personal, panel, auth, canEdit);
+
+    let sharedLabel = panel.querySelector(".pv-book-shared-label");
+    if (!sharedLabel) {
+      sharedLabel = document.createElement("div");
+      sharedLabel.className = "pv-book-shared-label";
+      const firstCard = panel.querySelector(":scope > .booking-card, :scope > .empty-state, :scope > .edit-form");
+      if (firstCard) firstCard.before(sharedLabel);
+      else personal.after(sharedLabel);
+    }
+    sharedLabel.innerHTML =
+      `<strong>Condivise</strong> — visibili a chi ha il link del viaggio (hotel, treni, voli di gruppo…).`;
   }
 
   function logActivity(tripId, text) {
@@ -3558,6 +3974,7 @@
       const documents = meta.bookingDocuments || {};
       const cards = [...panel.querySelectorAll(":scope > .booking-card")];
       if (section === "bookings") {
+        ensureBookingsScopeChrome(panel, auth, canEdit);
         const today = new Date().toLocaleDateString("sv-SE");
         const order = [...bookings].sort((a,b) => {
           const rank = date => !date ? 2 : date >= today ? 0 : 1;
@@ -3574,6 +3991,12 @@
           if (card.style.order !== position) card.style.order = position;
           const group = card.querySelector(".grow");
           if (!group) return;
+          if (!group.querySelector(".pv-shared-pill")) {
+            const pill = document.createElement("span");
+            pill.className = "pv-shared-pill";
+            pill.textContent = "Condivisa";
+            group.prepend(pill);
+          }
           const linked = Array.isArray(documents[booking.id]) ? documents[booking.id] : [];
           const signature = JSON.stringify([booking.id, linked, canEdit, next]);
           if (group.dataset.pvBookingDocs === signature) return;

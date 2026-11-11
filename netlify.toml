@@ -95,6 +95,18 @@
   status = 200
   force = true
 
+[[redirects]]
+  from = "/api/flight-booking"
+  to = "/.netlify/functions/flight-booking"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/flight-booking/*"
+  to = "/.netlify/functions/flight-booking"
+  status = 200
+  force = true
+
 # CORS-safe proxy for remaining /api routes (never raw-proxy Supabase: no ACAO).
 [[redirects]]
   from = "/api/*"
