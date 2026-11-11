@@ -280,6 +280,8 @@
     }
     root.dataset.pvTheme = dark ? "dark" : "light";
     root.style.colorScheme = dark ? "dark" : "light";
+    // Keep Tailwind `.dark` utilities in sync with Hub theme.
+    root.classList.toggle("dark", dark);
   }
 
   /* ---------- styles ---------- */
@@ -383,6 +385,25 @@ body.pv-account-ready{
   background: var(--pv-plat-group-on-bg) !important;
   box-shadow: 0 4px 14px rgba(16,42,48,.1);
   font-weight: 800 !important;
+}
+/* Dark chrome: brand + muted SPA headings must not keep light-theme ink */
+html[data-pv-theme="dark"] #root .brand,
+html[data-pv-theme="dark"] #root .topbar .brand,
+html[data-pv-theme="dark"] #root h1,
+html[data-pv-theme="dark"] #root h2,
+html[data-pv-theme="dark"] #root .section-heading,
+html[data-pv-theme="dark"] #root .workspace{ color: var(--pv-plat-ink) !important; }
+html[data-pv-theme="dark"] #root .link-reminder,
+html[data-pv-theme="dark"] #root .footer,
+html[data-pv-theme="dark"] #root .muted,
+html[data-pv-theme="dark"] #root .explore-links span{ color: var(--pv-plat-muted) !important; }
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active{
+  color: var(--pv-plat-accent) !important;
+}
+html[data-pv-theme="dark"] #pv-account-chip{
+  background: linear-gradient(180deg, rgba(22,40,44,.94), rgba(15,28,31,.9)) !important;
+  border-bottom-color: rgba(231,242,243,.1) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,.06) inset !important;
 }
 /* Active icon = Hub tab fill */
 #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,

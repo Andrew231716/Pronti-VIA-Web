@@ -608,6 +608,27 @@
         --pv-plat-border: var(--pv-dest-line);
         --pv-plat-panel-bg: linear-gradient(180deg, color-mix(in srgb, var(--pv-dest-sand) 88%, #fff), color-mix(in srgb, var(--pv-dest-wash) 35%, var(--pv-dest-sand)) 42%, var(--pv-dest-sand));
       }
+      /* Dark mode: keep destination accents, but force readable light ink on dark chrome */
+      html[data-pv-theme="dark"][data-pv-dest]{
+        --pv-account-ink: #eef6f7;
+        --pv-account-muted: #c5d6da;
+        --pv-account-sand: #0f1c1f;
+        --pv-account-line: rgba(231,242,243,.16);
+        --pv-ink: #eef6f7;
+        --pv-muted: #c5d6da;
+        --pv-line: rgba(231,242,243,.16);
+        --pv-plat-ink: #eef6f7;
+        --pv-plat-muted: #c5d6da;
+        --pv-plat-bg: #0f1c1f;
+        --pv-plat-card: #1a2d32;
+        --pv-plat-border: rgba(231,242,243,.16);
+        --pv-plat-glass: rgba(22,40,44,.9);
+        --pv-plat-group-track: rgba(231,242,243,.12);
+        --pv-plat-group-on-bg: #24383d;
+        --pv-plat-panel-edge: rgba(255,255,255,.08);
+        --pv-plat-panel-bg: linear-gradient(180deg, rgba(18,34,38,.96), #121f23 40%, #0e191c);
+        --pv-plat-shadow: 0 12px 32px rgba(0,0,0,.4);
+      }
       body.pv-account-ready{
         background:
           radial-gradient(1100px 520px at 0% -10%, color-mix(in srgb, var(--pv-dest-teal) 28%, transparent), transparent 58%),
@@ -615,8 +636,12 @@
           var(--pv-plat-panel-bg, linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%)) !important;
         background-attachment: fixed;
         transition: background .45s ease;
+        color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
       /* Bottom nav + chip follow Hub/destination accents */
+      body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item{
+        color: var(--pv-plat-muted) !important;
+      }
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico,
       body.pv-dest-theme-ready #pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
       body.pv-dest-theme-ready #pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico{
@@ -624,10 +649,22 @@
         color: #fff !important;
       }
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active{
-        color: var(--pv-dest-teal-deep) !important;
+        color: var(--pv-plat-accent-deep, var(--pv-dest-teal-deep)) !important;
+        background: var(--pv-plat-group-on-bg, #fff) !important;
+      }
+      body.pv-dest-theme-ready #pv-account-chip .pv-account-chip-who{
+        color: var(--pv-plat-muted) !important;
+      }
+      body.pv-dest-theme-ready #pv-account-chip strong{
+        color: var(--pv-plat-ink) !important;
       }
       body.pv-dest-theme-ready #pv-account-chip .pv-account-chip-hint{
         color: var(--pv-dest-teal) !important;
+      }
+      html[data-pv-theme="dark"] #pv-dest-theme-badge{
+        color: #eef6f7;
+        background: color-mix(in srgb, var(--pv-dest-teal, #2dd4bf) 22%, #1a2d32);
+        border-color: rgba(231,242,243,.14);
       }
       #pv-dest-atmosphere{
         position:fixed; inset:0; z-index:1; pointer-events:none;
