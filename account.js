@@ -2,6 +2,7 @@ const SESSION_KEY = "viavia-account-v1";
 const USERS_KEY = "viavia-accounts-db-v1";
 const TRIPS_KEY = "viavia-recent-links-v1";
 const THEME_KEY = "viavia-theme-v1";
+const PENDING_SHARE_KEY = "pv-pending-share-v1";
 const THEME_CYCLE = ["system", "light", "dark"];
 const API = "/api/account";
 /** Client-side session ceiling (matches server 30d sliding). Local tokens keep 30d too. */
@@ -209,6 +210,160 @@ function mergeTrips(remote = [], local = []) {
   }
   return [...map.values()].slice(0, 40);
 }
+
+function readPendingShare() {
+  try {
+    const raw = JSON.parse(sessionStorage.getItem(PENDING_SHARE_KEY) || "null");
+    if (!raw || typeof raw !== "object") return null;
+    const trip = String(raw.trip || "").trim();
+    const key = String(raw.key || "").trim();
+    const inviteId = String(raw.inviteId || "").trim();
+    if ((!trip || !key) && !inviteId) return null;
+    return {
+      trip,
+      key,
+      s: String(raw.s || "").trim(),
+      title: String(raw.title || "").trim(),
+      inviteId,
+      at: Number(raw.at) || Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePendingShare(next) {
+  try {
+    if (!next) return;
+    const trip = String(next.trip || "").trim();
+    const key = String(next.key || "").trim();
+    const inviteId = String(next.inviteId || "").trim();
+    if ((!trip || !key) && !inviteId) return;
+    const prev = readPendingShare() || {};
+    sessionStorage.setItem(
+      PENDING_SHARE_KEY,
+      JSON.stringify({
+        trip: trip || prev.trip || "",
+        key: key || prev.key || "",
+        s: String(next.s || prev.s || "").trim(),
+        title: String(next.title || prev.title || "").trim(),
+        inviteId: inviteId || prev.inviteId || "",
+        at: Date.now(),
+      })
+    );
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function clearPendingShare() {
+  try {
+    sessionStorage.removeItem(PENDING_SHARE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Capture share context before hash/path is cleared (logout, soft leave, invite hop). */
+function capturePendingShareFromLocation() {
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    const trip = String(params.get("trip") || "").trim();
+    const key = String(params.get("key") || "").trim();
+    if (trip && key) {
+      writePendingShare({
+        trip,
+        key,
+        s: String(params.get("s") || "").trim(),
+        title: "",
+        inviteId: String(params.get("s") || "").replace(/^n:/, "").trim(),
+      });
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const inviteMatch = String(location.pathname || "").match(/\/invito\/([^/]+)\/?$/i);
+    if (inviteMatch?.[1]) {
+      const existing = readPendingShare();
+      if (existing?.inviteId === decodeURIComponent(inviteMatch[1])) return Boolean(existing);
+      // Stash invite id; api-shim / invite HTML will fill trip+key shortly.
+      try {
+        sessionStorage.setItem(
+          PENDING_SHARE_KEY,
+          JSON.stringify({
+            trip: existing?.trip || "",
+            key: existing?.key || "",
+            s: `n:${decodeURIComponent(inviteMatch[1])}`,
+            title: existing?.title || "",
+            inviteId: decodeURIComponent(inviteMatch[1]),
+            at: Date.now(),
+          })
+        );
+      } catch {
+        /* ignore */
+      }
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return Boolean(readPendingShare());
+}
+
+function restorePendingShareHash() {
+  const pending = readPendingShare();
+  if (!pending?.trip || !pending?.key) return false;
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    if (params.get("trip") === pending.trip && params.get("key") === pending.key) return true;
+  } catch {
+    /* ignore */
+  }
+  const next = new URLSearchParams();
+  next.set("trip", pending.trip);
+  next.set("key", pending.key);
+  if (pending.s) next.set("s", pending.s);
+  const hash = next.toString();
+  try {
+    if (location.hash.replace(/^#/, "") === hash) return true;
+    location.hash = hash;
+  } catch {
+    try {
+      location.replace(`${location.pathname}${location.search}#${hash}`);
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+const PREFER_ACCOUNT_GATE_KEY = "pv-prefer-account-gate-v1";
+
+function preferAccountGate() {
+  try {
+    return sessionStorage.getItem(PREFER_ACCOUNT_GATE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setPreferAccountGate(on) {
+  try {
+    if (on) sessionStorage.setItem(PREFER_ACCOUNT_GATE_KEY, "1");
+    else sessionStorage.removeItem(PREFER_ACCOUNT_GATE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+window.__pvCapturePendingShare = capturePendingShareFromLocation;
+window.__pvRestorePendingShare = restorePendingShareHash;
+window.__pvReadPendingShare = readPendingShare;
+window.__pvWritePendingShare = writePendingShare;
+window.__pvClearPendingShare = clearPendingShare;
+window.__pvSetPreferAccountGate = setPreferAccountGate;
 
 function bufferToHex(buffer) {
   return [...new Uint8Array(buffer)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -484,7 +639,10 @@ function ensureUi() {
       window.__pvNavHome();
       return;
     }
-    if (location.hash) location.hash = "";
+    if (location.hash) {
+      capturePendingShareFromLocation();
+      location.hash = "";
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
@@ -698,6 +856,7 @@ async function onSubmit(event) {
 }
 
 async function onLogout() {
+  capturePendingShareFromLocation();
   try {
     if (state.token && !String(state.token).startsWith("local:")) {
       await api("logout", { token: state.token });
@@ -709,6 +868,7 @@ async function onLogout() {
   state.user = null;
   writeSession(null);
   showGate();
+  // Keep pending share in sessionStorage; clear visible hash so gate shows cleanly.
   location.hash = "";
   location.reload();
 }
@@ -763,6 +923,7 @@ async function onDeleteAccount(opts = {}) {
       return;
     }
   }
+  capturePendingShareFromLocation();
   wipeLocalUser(username);
   try {
     localStorage.removeItem("viavia-preventivo-v2");
@@ -780,6 +941,9 @@ async function onDeleteAccount(opts = {}) {
 }
 
 async function activateSession(data, { bootApp = true } = {}) {
+  capturePendingShareFromLocation();
+  // Real account (not guest) completes the upgrade flow from a shared link.
+  if (!data.guest) setPreferAccountGate(false);
   state.token = data.token;
   state.user = data.user;
   const expiresAt =
@@ -797,25 +961,50 @@ async function activateSession(data, { bootApp = true } = {}) {
   const ownerKey = "viavia-recent-owner-v1";
   const previousOwner = readJson(ownerKey, "");
   const nextOwner = String(data.token || "").startsWith("pvacct:") ? data.user.username : "";
+  const pending = readPendingShare();
   if (previousOwner !== nextOwner) {
-    writeJson(`viavia-recent-owner:${previousOwner}`, readLocalTrips());
-    writeLocalTrips(readJson(`viavia-recent-owner:${nextOwner}`, []));
+    const prevTrips = readLocalTrips();
+    writeJson(`viavia-recent-owner:${previousOwner}`, prevTrips);
+    const storedNext = readJson(`viavia-recent-owner:${nextOwner}`, []);
+    const carry = [];
+    if (pending?.trip && pending?.key) {
+      carry.push({
+        id: pending.trip,
+        key: pending.key,
+        title: pending.title || "Viaggio condiviso",
+      });
+    }
+    // Guest/anon → real account: keep recent so the SPA can reopen the shared trip
+    // instead of falling back to the Creta sample.
+    if (!previousOwner) carry.push(...prevTrips);
+    writeLocalTrips(mergeTrips(storedNext, carry));
     writeJson(ownerKey, nextOwner);
   }
   const merged = mergeTrips(data.trips || [], readLocalTrips());
-  writeLocalTrips(merged);
+  if (pending?.trip && pending?.key) {
+    writeLocalTrips(
+      mergeTrips(merged, [
+        { id: pending.trip, key: pending.key, title: pending.title || "Viaggio condiviso" },
+      ])
+    );
+  } else {
+    writeLocalTrips(merged);
+  }
 
   if (state.token && !String(state.token).startsWith("local:")) {
     try {
       await api("save-trips", {
         method: "PUT",
         token: state.token,
-        body: { trips: merged },
+        body: { trips: readLocalTrips() },
       });
     } catch {
       /* offline / blobs unavailable */
     }
   }
+
+  // Re-open the shared trip after signup/login (before SPA empty-state → Creta).
+  restorePendingShareHash();
 
   hideGate();
   showChip();
@@ -823,6 +1012,8 @@ async function activateSession(data, { bootApp = true } = {}) {
   if (bootApp) {
     try {
       await loadApp();
+      // SPA may have mounted before hash restore; nudge it once more.
+      restorePendingShareHash();
     } catch {
       // Session is already active — don't bounce back to the login form.
       showAppBootFallback(
@@ -1008,10 +1199,12 @@ function startMemberJoinSync() {
   run();
   window.addEventListener("hashchange", () => {
     joinedTrips.clear();
+    capturePendingShareFromLocation();
     // Leaving a shared link while guest → back to login gate (free, no sticky ospite).
     if (!hashHasSharedTrip()) {
       const session = readSession();
       if (session?.guest) {
+        // If we still have a pending share (e.g. mid signup), keep gate but don't wipe pending.
         clearGuestSession();
         showGate();
         return;
@@ -1058,10 +1251,18 @@ function startTripSync() {
 function hashHasSharedTrip() {
   try {
     const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
-    return Boolean(params.get("trip") && params.get("key"));
+    if (params.get("trip") && params.get("key")) return true;
   } catch {
-    return false;
+    /* ignore */
   }
+  const pending = readPendingShare();
+  if (pending?.trip && pending?.key) return true;
+  try {
+    if (/\/invito\/[^/]+/i.test(String(location.pathname || ""))) return true;
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 function makeGuestSession() {
@@ -1095,8 +1296,15 @@ function clearGuestSession() {
 
 async function boot() {
   ensureUi();
+  capturePendingShareFromLocation();
+  restorePendingShareHash();
   const session = readSession();
   if (!session?.user?.username) {
+    // User asked to upgrade from ospite → show gate but keep the shared trip hash.
+    if (preferAccountGate()) {
+      showGate("Accedi o crea un account: riapriremo il viaggio condiviso subito dopo.");
+      return;
+    }
     // Shared trip links should open without forcing registration.
     if (hashHasSharedTrip()) {
       const guest = makeGuestSession();
@@ -1108,6 +1316,11 @@ async function boot() {
   }
 
   // Guest sessions are only for shared links — do not stick around on the home page.
+  if (session.guest && preferAccountGate()) {
+    clearGuestSession();
+    showGate("Accedi o crea un account: riapriremo il viaggio condiviso subito dopo.");
+    return;
+  }
   if (session.guest && !hashHasSharedTrip()) {
     clearGuestSession();
     showGate();
@@ -1165,7 +1378,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261112j";
+const SHELL_VER = "20261112o";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
