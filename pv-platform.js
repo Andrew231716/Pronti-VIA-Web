@@ -4,7 +4,7 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112j";
+  const VER = "20261112k";
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const THEME_CYCLE = ["system", "light", "dark"];
@@ -451,6 +451,31 @@ html[data-pv-theme="dark"] #root .share-box input{
   color: #254555 !important;
   background: #fff !important;
   border-color: #d6e1e6 !important;
+}
+/* Light paper surfaces (notes, etc.) keep dark ink — workspace inherits Hub light text */
+html[data-pv-theme="dark"] #root .notes-paper,
+html[data-pv-theme="dark"] .notes-paper{
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #dfe7eb !important;
+}
+html[data-pv-theme="dark"] #root .workspace .notes-paper,
+html[data-pv-theme="dark"] #root .notes-paper :is(p, span, div, li, label){
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .notes-paper textarea,
+html[data-pv-theme="dark"] #root .notes-paper input:not([type="checkbox"]):not([type="radio"]):not([type="range"]){
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #d6e1e6 !important;
+  caret-color: #007d82;
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item{
+  color: #c5d6da !important;
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner{
+  background: rgba(22, 40, 44, 0.94) !important;
+  border-color: rgba(231, 242, 243, 0.16) !important;
 }
 html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active{
   color: var(--pv-plat-accent) !important;

@@ -61,7 +61,7 @@ test("renderFab only skips spinner, not trip-error main.loading", () => {
 });
 
 test("stamp shell wired (platform 20261110b + magic 20261107l)", () => {
-  assert.match(index, /pv-platform-20261112j\.js/);
+  assert.match(index, /pv-platform-20261112k\.js/);
   assert.match(index, /magic-extras-20261112b\.js/);
   assert.match(index, /ux-suite-20261112i\.js/);
   assert.match(index, /expense-splitwise-20261111o\.js/);

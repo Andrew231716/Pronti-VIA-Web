@@ -654,6 +654,13 @@
         color: var(--pv-plat-accent-deep, var(--pv-dest-teal-deep)) !important;
         background: var(--pv-plat-group-on-bg, #fff) !important;
       }
+      html[data-pv-theme="dark"] body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item{
+        color: #c5d6da !important;
+      }
+      html[data-pv-theme="dark"] body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item.is-active{
+        color: var(--pv-plat-accent, #5eead4) !important;
+        background: #24383d !important;
+      }
       body.pv-dest-theme-ready #pv-account-chip .pv-account-chip-who{
         color: var(--pv-plat-muted) !important;
       }
