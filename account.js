@@ -996,6 +996,39 @@ async function boot() {
   }
 }
 
+const SHELL_VER = "20261111c";
+const SHELL_VER_KEY = "pv-shell-ver-v1";
+
+async function ensureFreshShell() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.register(`./sw.js?v=${SHELL_VER}`);
+      // Ask waiting worker to activate immediately when present.
+      reg?.waiting?.postMessage?.({ type: "SKIP_WAITING" });
+      if (reg?.update) await reg.update().catch(() => {});
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const prev = localStorage.getItem(SHELL_VER_KEY);
+    if (prev && prev !== SHELL_VER) {
+      localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
+      // One hard reload so iOS/PWA drop the old precache.
+      if (!sessionStorage.getItem("pv-shell-reloaded")) {
+        sessionStorage.setItem("pv-shell-reloaded", "1");
+        location.reload();
+        return;
+      }
+    } else {
+      localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 boot().finally(() => {
   watchAppMount();
+  void ensureFreshShell();
 });

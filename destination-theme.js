@@ -590,8 +590,8 @@
       }
       body.pv-account-ready{
         background:
-          radial-gradient(900px 420px at 0% -8%, var(--pv-dest-wash, rgba(0,125,130,.07)), transparent 55%),
-          radial-gradient(700px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 18%, transparent), transparent 50%),
+          radial-gradient(1100px 520px at 0% -10%, color-mix(in srgb, var(--pv-dest-teal) 28%, transparent), transparent 58%),
+          radial-gradient(900px 480px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 26%, transparent), transparent 52%),
           var(--pv-plat-panel-bg, linear-gradient(180deg, var(--pv-dest-sand, #f7fbfb) 0%, #f3f7f8 100%)) !important;
         background-attachment: fixed;
         transition: background .45s ease;
