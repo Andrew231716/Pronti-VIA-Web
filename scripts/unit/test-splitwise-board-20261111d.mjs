@@ -15,8 +15,8 @@ function ok(name, cond, detail = "") {
 }
 
 const index = readFileSync("index.html", "utf8");
-ok("index loads expense-splitwise stamp", /expense-splitwise-20261111d\.js/.test(index));
-ok("asset file exists", existsSync("assets/expense-splitwise-20261111d.js"));
+ok("index loads expense-splitwise stamp", /expense-splitwise-20261111e\.js/.test(index));
+ok("asset file exists", existsSync("assets/expense-splitwise-20261111e.js"));
 ok("source file exists", existsSync("expense-splitwise.js"));
 
 const src = readFileSync("expense-splitwise.js", "utf8");
@@ -27,7 +27,7 @@ ok("filters", src.includes("data-sw-filter"));
 ok("comments", src.includes("expenseComments"));
 
 const sw = readFileSync("sw.js", "utf8");
-ok("sw precaches splitwise", /expense-splitwise-20261111d\.js/.test(sw));
+ok("sw precaches splitwise", /expense-splitwise-20261111e\.js/.test(sw));
 
 const plat = readFileSync("pv-platform.js", "utf8");
 ok("Hub Numeri shows saldi", /Spese condivise · saldi/.test(plat));
@@ -56,3 +56,50 @@ if (failed) {
   process.exit(1);
 }
 console.log("\nOK");
+
+// Verify the actual script's fetch wrapper and observer with an open Spese tab.
+const { runInNewContext } = await import("node:vm");
+let timers = 0;
+let observer;
+const location = { hash: "#trip=alpha&key=test" };
+const board = { isConnected: true, innerHTML: "" };
+const document = {
+  documentElement: {},
+  getElementById: (id) => id === "pv-splitwise-board" ? board : {},
+  querySelector: () => ({ textContent: "Spese" }),
+  querySelectorAll: () => [],
+};
+let responses = [];
+const window = { fetch: async () => responses.shift() ?? { ok: true } };
+runInNewContext(src, {
+  window, document, location, URLSearchParams,
+  MutationObserver: class {
+    constructor(callback) { observer = callback; }
+    observe() {}
+  },
+  addEventListener() {},
+  clearTimeout() {},
+  setTimeout() { timers++; },
+});
+
+const initialTimers = timers;
+await window.fetch("/api/trips/alpha");
+await window.fetch("/api/trips/beta", { method: "PUT" });
+ok("reads and writes to other trips never schedule a refresh", timers === initialTimers);
+await window.fetch("/api/trips/alpha", { method: "PUT" });
+ok("a successful write to the active trip schedules a refresh", timers === initialTimers + 1);
+observer([{ target: { nodeType: 1, closest: () => board }, addedNodes: [{ nodeType: 3 }], removedNodes: [] }]);
+ok("updates inside the expenses board never schedule a refresh", timers === initialTimers + 1);
+
+const trip = {
+  members: [{ id: "a", name: "A" }, { id: "b", name: "B" }],
+  expenses: [{ amount: 1000, payer: "a", shares: [{ member: "b", amount: 1000 }] }],
+};
+responses.push({ ok: true, json: async () => ({ trip, canEdit: false }) });
+await window.__pvSplitwise.renderBoard(true);
+ok("read-only guests see refresh but no edit shortcuts", board.innerHTML.includes('data-sw="refresh"') &&
+  !/data-sw="(?:settle|goto-add|goto-transfer)"/.test(board.innerHTML));
+responses.push({ ok: false, json: async () => ({ error: "Temporaneamente non disponibile" }) });
+await window.__pvSplitwise.renderBoard(true);
+ok("a failed request leaves a retry button", board.innerHTML.includes("Riprova"));
+if (failed) process.exitCode = 1;

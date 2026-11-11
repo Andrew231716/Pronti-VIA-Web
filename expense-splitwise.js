@@ -6,10 +6,11 @@
 (() => {
   const STYLE_ID = "pv-splitwise-css";
   const BOARD_ID = "pv-splitwise-board";
-  const ASSET_VER = "20261111d";
+  const ASSET_VER = "20261111e";
   const ACTIVITY_MAX = 80;
 
   let lastTripSnap = null;
+  let renderVersion = 0;
   let renderBusy = false;
   let filterState = { member: "", category: "", q: "" };
 
@@ -23,6 +24,11 @@
     } catch {
       return null;
     }
+  }
+
+  function sameTrip(auth) {
+    const current = tripAuth();
+    return current?.id === auth.id && current?.key === auth.key;
   }
 
   function escapeHtml(s) {
@@ -140,13 +146,12 @@
       cache: "no-store",
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
-    return { auth, data, trip: data.trip || {} };
+    if (!res.ok || !data.trip) throw new Error(data.error || "Viaggio non disponibile");
+    return { auth, data, trip: data.trip };
   }
 
-  async function putTrip(trip, revision, actorMemberId) {
-    const auth = tripAuth();
-    if (!auth) throw new Error("Apri un viaggio");
+  async function putTrip(auth, trip, revision, actorMemberId) {
+    if (!sameTrip(auth)) throw new Error("Il viaggio aperto è cambiato");
     const headers = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${auth.key}`,
@@ -251,11 +256,17 @@
     window.__pvSplitwiseHook = true;
     const prevFetch = window.fetch.bind(window);
     window.fetch = async (input, init = {}) => {
+      const url = String(typeof input === "string" ? input : input?.url || "");
+      const method = String(init?.method || input?.method || "GET").toUpperCase();
+      const tripId = url.match(/\/api\/trips\/([^/?#]+)$/)?.[1];
+      const auth = tripAuth();
+      if (method !== "PUT" || !auth || tripId !== encodeURIComponent(auth.id)) {
+        return prevFetch(input, init);
+      }
       let nextInit = init;
+      let savedSnapshot;
       try {
-        const url = String(typeof input === "string" ? input : input?.url || "");
-        const method = String(init?.method || "GET").toUpperCase();
-        if (method === "PUT" && /\/api\/trips\/[^/?#]+$/.test(url) && init?.body) {
+        if (init?.body) {
           const body = typeof init.body === "string" ? JSON.parse(init.body) : null;
           if (body?.trip) {
             const actor =
@@ -264,16 +275,19 @@
               currentIdentity() ||
               "qualcuno";
             const snap = snapshotExpenses(body.trip);
-            const events = lastTripSnap ? diffActivity(lastTripSnap, snap, actor) : [];
-            if (events.length) {
+            const events = lastTripSnap?.id === auth.id ? diffActivity(lastTripSnap.snapshot, snap, actor) : [];
+            const recentActivity = body.trip.meta?.expenseActivity;
+            const newEvents = events.filter((event) => !event.transferId || !Array.isArray(recentActivity) ||
+              !recentActivity.some((entry) => entry?.transferId === event.transferId && entry.type === event.type));
+            if (newEvents.length) {
               body.trip.meta = body.trip.meta && typeof body.trip.meta === "object" ? body.trip.meta : {};
               const prev = Array.isArray(body.trip.meta.expenseActivity)
                 ? body.trip.meta.expenseActivity
                 : [];
-              body.trip.meta.expenseActivity = [...prev, ...events].slice(-ACTIVITY_MAX);
+              body.trip.meta.expenseActivity = [...prev, ...newEvents].slice(-ACTIVITY_MAX);
               nextInit = { ...init, body: JSON.stringify(body) };
             }
-            lastTripSnap = snap;
+            savedSnapshot = snap;
           }
         }
       } catch {
@@ -281,7 +295,10 @@
       }
       const res = await prevFetch(input, nextInit);
       try {
-        if (expensesSectionVisible()) scheduleRender();
+        if (res.ok && sameTrip(auth)) {
+          if (savedSnapshot) lastTripSnap = { id: auth.id, snapshot: savedSnapshot };
+          if (expensesSectionVisible()) scheduleRender();
+        }
       } catch {
         /* ignore */
       }
@@ -397,7 +414,7 @@
     if (!mount) return null;
     board = document.createElement("section");
     board.id = BOARD_ID;
-    board.setAttribute("aria-label", "Spese condivise stile Splitwise");
+    board.setAttribute("aria-label", "Spese condivise");
     if (mount.before) mount.before.parentElement.insertBefore(board, mount.before);
     else mount.after.insertAdjacentElement("afterend", board);
     board.addEventListener("click", onBoardClick);
@@ -499,8 +516,7 @@
           }`,
         },
       ].slice(-ACTIVITY_MAX);
-      lastTripSnap = snapshotExpenses(trip);
-      await putTrip(trip, bundle.data.revision, actor);
+      await putTrip(bundle.auth, trip, bundle.data.revision, actor);
       toast("Rimborso registrato — saldi aggiornati", "ok");
       // Soft refresh SPA: hash poke or reload trip view
       try {
@@ -552,7 +568,7 @@
           summary: `Nota su «${expenseTitle || "spesa"}»`,
         },
       ].slice(-ACTIVITY_MAX);
-      await putTrip(trip, bundle.data.revision, actor);
+      await putTrip(bundle.auth, trip, bundle.data.revision, actor);
       toast("Nota salvata", "ok");
       await renderBoard(true);
       decorateExpenseRows(trip);
@@ -561,36 +577,47 @@
     }
   }
 
-  function decorateExpenseRows(trip) {
+  function decorateExpenseRows(trip, canEdit = true) {
     const comments = trip?.meta?.expenseComments || {};
     const items = document.querySelectorAll(".expense-columns li, .expense-list li");
     for (const li of items) {
       if (li.closest(`#${BOARD_ID}`)) continue;
-      if (li.querySelector(".pv-sw-expense-tools")) continue;
+      const currentTools = li.querySelector(".pv-sw-expense-tools");
       const titleEl = li.querySelector("strong, h4, .title") || li;
-      const title = (titleEl.textContent || "").trim().slice(0, 80);
-      // Match expense by title + amount text when id not in DOM
-      const match = (trip.expenses || []).find((e) => {
-        const t = String(e.title || "");
-        return t && title.includes(t);
-      });
-      if (!match) continue;
+      const title = (titleEl.textContent || "").trim();
+      // The legacy list has no expense ID. Avoid attaching a note to an
+      // arbitrary expense when two rows share a title.
+      const matches = (trip.expenses || []).filter((e) => String(e.title || "").trim() === title);
+      if (matches.length !== 1) {
+        currentTools?.remove();
+        continue;
+      }
+      const [match] = matches;
+      const count = (comments[match.id] || []).length;
+      const label = count ? `💬 ${count}` : "💬 Nota";
+      if (currentTools && canEdit && li.dataset.pvSwExpenseId === match.id) {
+        const currentButton = currentTools.querySelector("button");
+        if (currentButton && currentButton.textContent !== label) currentButton.textContent = label;
+        continue;
+      }
+      currentTools?.remove();
       const tools = document.createElement("span");
       tools.className = "pv-sw-expense-tools";
-      const n = (comments[match.id] || []).length;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.textContent = n ? `💬 ${n}` : "💬 Nota";
-      btn.title = "Aggiungi nota (stile Splitwise)";
+      btn.textContent = label;
+      btn.title = "Aggiungi nota alla spesa";
       btn.addEventListener("click", (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
         void addExpenseComment(match.id, match.title);
       });
-      tools.appendChild(btn);
+      if (canEdit) tools.appendChild(btn);
       const anchor = li.querySelector("strong, h4") || li.firstChild;
-      if (anchor?.parentElement) anchor.parentElement.appendChild(tools);
-      else li.appendChild(tools);
+      if (canEdit) {
+        if (anchor?.parentElement) anchor.parentElement.appendChild(tools);
+        else li.appendChild(tools);
+      }
       li.dataset.pvSwExpenseId = match.id;
       li.dataset.pvSwCategory = match.category || "";
       li.dataset.pvSwPayer = match.payer || "";
@@ -630,7 +657,7 @@
     return { className: "ok", text: "Tu: in pari con il gruppo" };
   }
 
-  function renderHtml(trip) {
+  function renderHtml(trip, canEdit) {
     const bal = computeShareBalances(trip);
     const me = meSummary(trip, bal);
     const maxAbs = Math.max(1, ...Object.values(bal).map((v) => Math.abs(v)));
@@ -662,8 +689,8 @@
           <p><strong>${escapeHtml(nameOf(trip, t.from))}</strong> deve
             <strong>${euro(t.amount)}</strong> a
             <strong>${escapeHtml(nameOf(trip, t.to))}</strong></p>
-          <button type="button" data-sw="settle" data-from="${escapeHtml(t.from)}"
-            data-to="${escapeHtml(t.to)}" data-amount="${t.amount}">Registra rimborso</button>
+          ${canEdit ? `<button type="button" data-sw="settle" data-from="${escapeHtml(t.from)}"
+            data-to="${escapeHtml(t.to)}" data-amount="${t.amount}">Registra rimborso</button>` : ""}
         </div>`
           )
           .join("")
@@ -725,8 +752,8 @@
         <ul class="pv-sw-activity">${actRows}</ul>
       </div>
       <div class="pv-sw-actions">
-        <button type="button" data-sw="goto-add">Aggiungi spesa</button>
-        <button type="button" class="ghost" data-sw="goto-transfer">Altro rimborso</button>
+        ${canEdit ? `<button type="button" data-sw="goto-add">Aggiungi spesa</button>
+        <button type="button" class="ghost" data-sw="goto-transfer">Altro rimborso</button>` : ""}
         <button type="button" class="ghost" data-sw="refresh">Aggiorna saldi</button>
       </div>
       <p class="pv-sw-muted" style="margin-top:10px">
@@ -742,32 +769,43 @@
       return;
     }
     if (renderBusy && !force) return;
+    const version = ++renderVersion;
     renderBusy = true;
+    const board = ensureBoard();
+    const auth = tripAuth();
+    if (!board || !auth) {
+      renderBusy = false;
+      return;
+    }
+    const isCurrent = () =>
+      version === renderVersion && board.isConnected && sameTrip(auth) && expensesSectionVisible();
     try {
-      const board = ensureBoard();
-      if (!board) return;
-      if (!tripAuth()) {
-        board.innerHTML = `<p class="pv-sw-muted">Apri un viaggio per gestire le spese condivise.</p>`;
-        return;
-      }
       const bundle = await fetchTripBundle();
-      if (!bundle) return;
-      lastTripSnap = snapshotExpenses(bundle.trip);
-      board.innerHTML = renderHtml(bundle.trip);
-      decorateExpenseRows(bundle.trip);
+      if (!bundle || !isCurrent()) return;
+      lastTripSnap = { id: auth.id, snapshot: snapshotExpenses(bundle.trip) };
+      const canEdit = bundle.data.canEdit !== false;
+      const html = renderHtml(bundle.trip, canEdit);
+      if (board.renderedHtml !== html) {
+        board.innerHTML = html;
+        board.renderedHtml = html;
+      }
+      decorateExpenseRows(bundle.trip, canEdit);
     } catch (err) {
-      const board = document.getElementById(BOARD_ID);
-      if (board) {
-        board.innerHTML = `<p class="pv-sw-muted">${escapeHtml(err?.message || "Saldi non disponibili")}</p>`;
+      if (!isCurrent()) return;
+      const html = `<p class="pv-sw-muted" role="status">${escapeHtml(err?.message || "Saldi non disponibili")}</p>
+        <button type="button" data-sw="refresh">Riprova</button>`;
+      if (board.renderedHtml !== html) {
+        board.innerHTML = html;
+        board.renderedHtml = html;
       }
     } finally {
-      renderBusy = false;
+      if (version === renderVersion) renderBusy = false;
     }
   }
 
-  function scheduleRender() {
+  function scheduleRender(force = false) {
     clearTimeout(scheduleRender._t);
-    scheduleRender._t = setTimeout(() => void renderBoard(false), 280);
+    scheduleRender._t = setTimeout(() => void renderBoard(force), 280);
   }
 
   // Expose helpers for Hub Numeri / tests
@@ -780,9 +818,16 @@
   };
 
   installActivityHook();
-  const obs = new MutationObserver(() => scheduleRender());
+  const obs = new MutationObserver((records) => {
+    const ownChanges = `#${BOARD_ID}, .pv-sw-expense-tools, #${STYLE_ID}`;
+    const isOwn = (node) => node.nodeType === 1 && node.closest(ownChanges);
+    if (records.some((record) => !isOwn(record.target) &&
+      [...record.addedNodes, ...record.removedNodes].some((node) => !isOwn(node)))) {
+      scheduleRender();
+    }
+  });
   obs.observe(document.documentElement, { childList: true, subtree: true });
-  addEventListener("hashchange", () => scheduleRender());
+  addEventListener("hashchange", () => scheduleRender(true));
   setTimeout(() => void renderBoard(true), 700);
   setTimeout(() => void renderBoard(true), 1800);
 })();
