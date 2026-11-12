@@ -663,6 +663,29 @@
       @media (max-width:560px){
         .pv-book-flight-form .pv-book-row{grid-template-columns:1fr}
       }
+      /* Share dialog: clarify edit vs read */
+      .share-content .share-box{position:relative}
+      .share-content .pv-share-mode-pill{
+        display:inline-flex;align-items:center;margin:0 0 8px;padding:4px 10px;border-radius:999px;
+        font:750 .68rem/1 inherit;letter-spacing:.04em;text-transform:uppercase
+      }
+      .share-content .pv-share-mode-pill.edit{background:#fde8e6;color:#8a1f1a}
+      .share-content .pv-share-mode-pill.read{background:#e7f4f4;color:#0f5a5e}
+      .share-content .pv-share-edit-warn{
+        margin:0 0 10px;padding:10px 12px;border-radius:12px;background:#fff6e8;border:1px solid rgba(122,75,0,.22);
+        color:#7a4b00;font:650 .84rem/1.4 inherit
+      }
+      .share-content .share-box[data-pv-share-mode="edit"]{
+        border:1px solid rgba(138,31,26,.22);box-shadow:0 0 0 1px rgba(138,31,26,.06)
+      }
+      .share-content .share-box[data-pv-share-mode="read"]{
+        border:1px solid rgba(0,125,130,.16)
+      }
+      html[data-pv-theme="dark"] .share-content .pv-share-edit-warn{
+        background:#2a2418;border-color:rgba(245,200,120,.25);color:#f3d9a4
+      }
+      html[data-pv-theme="dark"] .share-content .pv-share-mode-pill.edit{background:#3a1f1c;color:#f5c4bf}
+      html[data-pv-theme="dark"] .share-content .pv-share-mode-pill.read{background:#1a3034;color:#5eead4}
     `;
   }
 
@@ -4331,6 +4354,55 @@
   window.addEventListener("pv-save-status", enhanceHomeTripCards);
   window.addEventListener("pv-save-status", renderHomeResume);
 
+  function enhanceShareDialogClarity() {
+    const boxes = [...document.querySelectorAll(".share-content .share-box")];
+    if (!boxes.length) return;
+    for (const box of boxes) {
+      const label = String(
+        box.querySelector('input[aria-label]')?.getAttribute("aria-label") ||
+          box.querySelector("button")?.textContent ||
+          ""
+      ).toLowerCase();
+      const isEdit = /modifica/.test(label) && !/lettura|sguardo/.test(label);
+      const isRead = /lettura|sguardo/.test(label) || (/sola lettura/.test(box.textContent || "") && !isEdit);
+      if (!isEdit && !isRead) continue;
+      const mode = isEdit ? "edit" : "read";
+      if (box.dataset.pvShareMode === mode && box.querySelector(".pv-share-mode-pill")) continue;
+      box.dataset.pvShareMode = mode;
+      box.querySelector(".pv-share-mode-pill")?.remove();
+      box.querySelector(".pv-share-edit-warn")?.remove();
+      const pill = document.createElement("span");
+      pill.className = `pv-share-mode-pill ${mode}`;
+      pill.textContent = mode === "edit" ? "Link di modifica" : "Sola lettura";
+      const heading = box.querySelector("h3");
+      if (heading) heading.before(pill);
+      else box.prepend(pill);
+      if (mode === "edit") {
+        const warn = document.createElement("p");
+        warn.className = "pv-share-edit-warn";
+        warn.textContent =
+          "Chi riceve questo link può modificare itinerario, spese e prenotazioni condivise. Non usare il link di lettura per sbaglio.";
+        const p = box.querySelector("p");
+        if (p) p.after(warn);
+        else pill.after(warn);
+        const btn = box.querySelector("button");
+        if (btn && !/modifica/i.test(btn.textContent || "")) {
+          btn.append(document.createTextNode(" (modifica)"));
+        }
+      }
+    }
+  }
+
+  window.addEventListener("pv-share-copied", (ev) => {
+    const detail = ev?.detail || {};
+    const msg =
+      detail.message ||
+      (detail.mode === "edit"
+        ? "Link di modifica copiato: chi lo apre può cambiare il viaggio."
+        : "Link di sola lettura copiato.");
+    toast(msg, detail.mode === "edit" ? "warn" : "ok");
+  });
+
   function tick() {
     if (document.hidden) return;
     const run = (fn) => {
@@ -4363,6 +4435,7 @@
     run(injectHomeImportEntry);
     run(injectEventImportRail);
     run(polishLocalOnlyBanner);
+    run(enhanceShareDialogClarity);
     run(syncPrimaryNavState);
 
   }
