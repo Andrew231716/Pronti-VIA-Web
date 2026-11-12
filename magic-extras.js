@@ -651,14 +651,16 @@
     }
   }
 
-  async function saveTrip(auth, trip, revision) {
+  async function saveTrip(auth, trip, revision, { memberId } = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${auth.key}`,
+    };
+    if (memberId) headers["X-Pronti-Member-Id"] = memberId;
     const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${auth.key}`,
-      },
-      body: JSON.stringify({ trip, revision }),
+      headers,
+      body: JSON.stringify({ trip, revision, actorMemberId: memberId || undefined }),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Salvataggio non riuscito");
@@ -6162,6 +6164,48 @@ Regole pv-places:
     );
   }
 
+  function normalizeCompanionRole(role) {
+    const r = String(role || "")
+      .trim()
+      .toLowerCase();
+    if (r === "readonly" || r === "visualizzatore" || r === "viewer") return "readonly";
+    return "member";
+  }
+
+  async function setMemberRole(memberId, role) {
+    const id = String(memberId || "").trim();
+    if (!id) throw new Error("Partecipante non valido.");
+    const nextRole = normalizeCompanionRole(role);
+    const { auth, data } = await loadTrip({ force: true });
+    const trip = { ...(data.trip || {}) };
+    const members = Array.isArray(trip.members) ? trip.members : [];
+    if (!isTripCreator(members)) throw new Error("Solo chi ha creato il viaggio può cambiare i permessi.");
+    const creator = members[0];
+    if (creator?.id === id) throw new Error("Il creatore mantiene sempre i permessi completi.");
+    const target = members.find((m) => m?.id === id);
+    if (!target) throw new Error("Persona non trovata.");
+    const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
+    const roles = { ...(meta.roles && typeof meta.roles === "object" ? meta.roles : {}) };
+    if (creator?.id) roles[creator.id] = "owner";
+    roles[id] = nextRole;
+    meta.roles = roles;
+    const nextTrip = { ...trip, meta };
+    await saveTrip(auth, nextTrip, data.revision, { memberId: creator?.id });
+    try {
+      const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
+      const slot = db[auth.id] || { id: auth.id, key: auth.key };
+      slot.trip = nextTrip;
+      slot.revision = (Number(data.revision) || 1) + 1;
+      slot.key = auth.key;
+      slot.updated = new Date().toISOString();
+      db[auth.id] = slot;
+      localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+    } catch {
+      /* ignore */
+    }
+    return { role: nextRole, memberId: id, name: target.name };
+  }
+
   async function removeSharedMemberByName(name) {
     const want = String(name || "").trim();
     if (!want) return;
@@ -6188,8 +6232,13 @@ Regole pv-places:
         blocked.push({ name: want, blockedAt: new Date().toISOString() });
       }
       meta.blockedMembers = blocked.slice(-50);
+      if (meta.roles && typeof meta.roles === "object" && target.id) {
+        const nextRoles = { ...meta.roles };
+        delete nextRoles[target.id];
+        meta.roles = nextRoles;
+      }
       nextTrip.meta = meta;
-      await saveTrip(auth, nextTrip, data.revision);
+      await saveTrip(auth, nextTrip, data.revision, { memberId: creator?.id });
       try {
         const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}");
         const slot = db[auth.id] || { id: auth.id, key: auth.key };
@@ -6278,6 +6327,7 @@ Regole pv-places:
 
   // Used by ux-suite "Gestione compagni" modal.
   window.__pvRemoveSharedMemberByName = removeSharedMemberByName;
+  window.__pvSetMemberRole = setMemberRole;
   window.__pvOpenCompanionsSheet = function openCompanionsSheet() {
     const btn = [...document.querySelectorAll("button")].find((el) =>
       /\d+\s+viaggiator/i.test((el.textContent || "").replace(/\s+/g, " "))

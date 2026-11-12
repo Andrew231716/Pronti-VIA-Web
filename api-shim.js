@@ -517,6 +517,50 @@
     return init;
   }
 
+  function accountIdentityNames() {
+    try {
+      const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return [
+        String(session?.user?.displayName || "").trim(),
+        String(session?.user?.username || "").trim(),
+      ].filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Soft RBAC: trip.meta.roles → canEdit false when current account matches a readonly member. */
+  function softRoleBlocksEdit(trip) {
+    if (!trip) return false;
+    const members = Array.isArray(trip.members) ? trip.members : [];
+    if (!members.length) return false;
+    const names = accountIdentityNames().map((n) => n.toLowerCase());
+    if (!names.length) return false;
+    const me = members.find((m) => {
+      const name = String(m?.name || "")
+        .trim()
+        .toLowerCase();
+      const uname = String(m?.username || "")
+        .trim()
+        .toLowerCase();
+      return (name && names.includes(name)) || (uname && names.includes(uname));
+    });
+    if (!me?.id) return false;
+    if (members[0]?.id && me.id === members[0].id) return false;
+    const roles = trip.meta?.roles && typeof trip.meta.roles === "object" ? trip.meta.roles : {};
+    const role = String(roles[me.id] || "member")
+      .trim()
+      .toLowerCase();
+    return role === "readonly" || role === "visualizzatore" || role === "viewer";
+  }
+
+  function applySoftMemberCanEdit(payload) {
+    if (!payload || !payload.trip) return payload;
+    if (payload.canEdit === false) return payload;
+    if (!softRoleBlocksEdit(payload.trip)) return payload;
+    return { ...payload, canEdit: false, softReadonly: true };
+  }
+
   async function withPrivateBudgetResponse(res, tripIdHint) {
     if (!res || !res.ok) return res;
     try {
@@ -536,8 +580,10 @@
         data.trip = applyPrivateBudgetView(id, data.trip);
         changed = true;
       }
+      const next = applySoftMemberCanEdit(data);
+      if (next !== data) changed = true;
       if (!changed) return res;
-      return jsonResponse(res.status, data);
+      return jsonResponse(res.status, next);
     } catch {
       return res;
     }
@@ -1501,18 +1547,26 @@
 
     if (method === "GET") {
       if (!canView) return jsonResponse(403, { error: "Link non valido" });
-      return jsonResponse(200, {
-        trip: applyPrivateBudgetView(id, record.trip),
-        revision: record.revision || 1,
-        updated: record.updated,
-        canEdit: canEdit && !isPersonalKey(key),
-        viewToken: isPersonalKey(key) ? "" : record.viewToken || "",
-        local: Boolean(record.local),
-      });
+      return jsonResponse(
+        200,
+        applySoftMemberCanEdit({
+          trip: applyPrivateBudgetView(id, record.trip),
+          revision: record.revision || 1,
+          updated: record.updated,
+          canEdit: canEdit && !isPersonalKey(key),
+          viewToken: isPersonalKey(key) ? "" : record.viewToken || "",
+          local: Boolean(record.local),
+        })
+      );
     }
 
     if (method === "PUT" || method === "PATCH") {
       if (!canEdit) return jsonResponse(403, { error: "Link non valido" });
+      if (softRoleBlocksEdit(record.trip)) {
+        return jsonResponse(403, {
+          error: "Il creatore ti ha impostato in sola lettura su questo viaggio.",
+        });
+      }
       let body;
       try {
         body = typeof init.body === "string" ? JSON.parse(init.body) : init.body || {};

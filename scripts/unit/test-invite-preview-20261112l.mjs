@@ -27,7 +27,7 @@ const vercel = readFileSync("vercel.json", "utf8");
 const share = readFileSync("netlify/functions/share.mjs", "utf8");
 
 test("api-shim stamp + OG defaults wired", () => {
-  assert.match(index, /api-shim-20261112o\.js/);
+  assert.match(index, /api-shim-20261112q\.js/);
   assert.match(index, /og:title/);
   assert.match(index, /og:description/);
 });
