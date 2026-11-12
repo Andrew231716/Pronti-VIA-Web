@@ -64,7 +64,7 @@ test("Pages retries the newest offline edit with its original server revision", 
   const localResult = await window.__pvFlushOutbox();
   assert.equal(localResult.left, 1);
   assert.deepEqual(uploads[0], {
-    trip: { title: "Latest edit", budget: 0 }, revision: 3, actorMemberId: "member-1",
+    trip: { title: "Latest edit", budget: 0, checklist: [] }, revision: 3, actorMemberId: "member-1",
   });
   assert.equal(events.some(event => event.detail.local === false), false);
 
@@ -192,7 +192,7 @@ test("new offline trips retain their link and publish the latest draft once", as
   assert.equal(requests.length, 1);
   assert.equal(requests[0].pvPublish.id, created.id);
   assert.equal(requests[0].pvPublish.viewToken, created.viewToken);
-  assert.deepEqual(requests[0].trip, { title: "Latest draft", budget: 0 });
+  assert.deepEqual(requests[0].trip, { title: "Latest draft", budget: 0, checklist: [] });
   assert.equal(window.__pvReadOutbox().length, 0);
 });
 

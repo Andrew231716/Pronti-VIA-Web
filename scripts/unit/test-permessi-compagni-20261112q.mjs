@@ -28,22 +28,22 @@ ok("soft canEdit from roles", /applySoftMemberCanEdit/.test(shim) && /softRoleBl
 ok("soft readonly blocks PUT", /sola lettura su questo viaggio/.test(shim));
 ok(
   "stamps wired",
-  /api-shim-20261112q\.js/.test(index) &&
-    /magic-extras-20261112q\.js/.test(index) &&
-    /ux-suite-20261112q\.js/.test(index)
+  /api-shim-20261112r\.js/.test(index) &&
+    /magic-extras-20261112r\.js/.test(index) &&
+    /ux-suite-20261112r\.js/.test(index)
 );
 ok(
   "sw precache matches",
-  /api-shim-20261112q\.js/.test(sw) &&
-    /magic-extras-20261112q\.js/.test(sw) &&
-    /ux-suite-20261112q\.js/.test(sw) &&
-    /20261112q/.test(sw)
+  /api-shim-20261112r\.js/.test(sw) &&
+    /magic-extras-20261112r\.js/.test(sw) &&
+    /ux-suite-20261112r\.js/.test(sw) &&
+    /20261112r/.test(sw)
 );
 ok(
   "assets exist",
-  existsSync("assets/api-shim-20261112q.js") &&
-    existsSync("assets/magic-extras-20261112q.js") &&
-    existsSync("assets/ux-suite-20261112q.js")
+  existsSync("assets/api-shim-20261112r.js") &&
+    existsSync("assets/magic-extras-20261112r.js") &&
+    existsSync("assets/ux-suite-20261112r.js")
 );
 
 if (failed) {

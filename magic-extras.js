@@ -82,12 +82,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261107j") return;
+    if (style && style.dataset.pvReady === "20261112r") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
+    style.dataset.pvReady = "20261112r";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -210,6 +211,13 @@
       .pv-extras-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
       .pv-extras-bar button,.pv-budget-box button,.pv-chart-box button{appearance:none;border:1px solid #c9dbdb;background:#fff;color:#184047;border-radius:999px;padding:7px 12px;font:600 12px inherit;cursor:pointer}
       .pv-extras-bar button:hover,.pv-budget-box button:hover{background:#eef7f7}
+      #${ROOT_ID} .pv-pack-cards,#${ROOT_ID} .pv-ai-actions{margin:10px 0;padding:12px;border:1px solid #d5e8e8;border-radius:14px;background:#f7fbfb}
+      #${ROOT_ID} .pv-pack-lead{margin:0 0 8px;font-size:.86rem;color:#2f4e55}
+      #${ROOT_ID} .pv-pack-list{list-style:none;margin:0;padding:0}
+      #${ROOT_ID} .pv-pack-list li{margin:0;padding:6px 0;border-top:1px solid #e8f0f0}
+      #${ROOT_ID} .pv-pack-list label{display:flex;gap:8px;align-items:flex-start;border:0;padding:0}
+      #${ROOT_ID} .pv-ai-actions{display:flex;flex-direction:column;gap:8px;align-items:stretch}
+      #${ROOT_ID} .pv-ai-actions .ghost{text-align:left}
       .pv-budget-box,.pv-chart-box{margin:12px 0;padding:12px 14px;border:1px solid #d9e7e7;border-radius:16px;background:linear-gradient(180deg,#f7fbfb,#fff);color:#12343c}
       .pv-budget-box strong,.pv-chart-box strong{display:block;margin-bottom:8px;color:#16353b}
       .pv-budget-box .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -2163,6 +2171,7 @@
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
           <button type="button" data-q="Cosa non perdere: musei, monumenti e posti iconici">Cosa vedere</button>
           <button type="button" data-q="Idee per una giornata con natura e panorami">Natura</button>
+          <button type="button" data-q="Cosa mettere in valigia per questa destinazione?">Valigia</button>
           <button type="button" data-q="Consigli pratici per gestire il viaggio oggi (soldi, trasporti, orari)">Gestisci oggi</button>
           <button type="button" data-q="Come organizzare bagagli, budget e checklist prima di partire?">Prima di partire</button>
         </div>
@@ -2223,11 +2232,292 @@
   function formatChatDisplay(text) {
     return String(text || "")
       .replace(/```pv-places[\s\S]*?```/gi, "")
+      .replace(/```pv-pack[\s\S]*?```/gi, "")
+      .replace(/```pv-actions[\s\S]*?```/gi, "")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/\*([^*]+)\*/g, "$1")
       .replace(/`([^`]+)`/g, "$1")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
+  }
+
+  function packingSuggestionsForDestination(trip) {
+    const dest = String(trip?.destination || trip?.title || "").toLowerCase();
+    const items = [
+      { title: "Documento d’identità / passaporto", section: "Documenti" },
+      { title: "Caricabatterie e cavi", section: "Elettronica" },
+      { title: "Medicine di base", section: "Farmaci" },
+      { title: "Assicurazione viaggio (offline)", section: "Documenti" },
+    ];
+    if (/island|norveg|svezia|finland|canada|alpi|montagna|patagon|scozia/.test(dest)) {
+      items.push(
+        { title: "Giacca antivento / impermeabile", section: "Abbigliamento" },
+        { title: "Strati termici", section: "Abbigliamento" },
+        { title: "Scarponcini comodi", section: "Abbigliamento" }
+      );
+    }
+    if (/mare|spiaggia|maldives|sardegna|sicilia|grecia|bali|canarie|caraib/.test(dest)) {
+      items.push(
+        { title: "Costume e asciugamano", section: "Abbigliamento" },
+        { title: "Crema solare", section: "Igiene" },
+        { title: "Occhiali da sole", section: "Abbigliamento" }
+      );
+    }
+    if (/etiop|kenya|tanzania|thailand|india|vietnam|senegal|ghana|marocco/.test(dest)) {
+      items.push(
+        { title: "Repellente zanzare", section: "Farmaci" },
+        { title: "Cappello sole", section: "Abbigliamento" },
+        { title: "Adattatore prese", section: "Elettronica" }
+      );
+    }
+    if (/giappone|corea|cina|hong kong|singapore/.test(dest)) {
+      items.push(
+        { title: "Suica / IC card o app trasporto", section: "Documenti" },
+        { title: "Adattatore prese (tipo A/C)", section: "Elettronica" }
+      );
+    }
+    if (/città|city|roma|parigi|londra|barcellona|berlino|madrid|amsterdam/.test(dest)) {
+      items.push(
+        { title: "Scarpe comode da camminata", section: "Abbigliamento" },
+        { title: "Power bank", section: "Elettronica" },
+        { title: "Ombrello leggero", section: "Abbigliamento" }
+      );
+    }
+    return items;
+  }
+
+  function parseAiPackBlock(text) {
+    const m = String(text || "").match(/```pv-pack\s*([\s\S]*?)```/i);
+    if (!m) return [];
+    try {
+      const raw = JSON.parse(m[1].trim());
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .map((p) => ({
+          title: String(p.title || p.name || p.item || "")
+            .trim()
+            .slice(0, 120),
+          section: String(p.section || p.bag || "")
+            .trim()
+            .slice(0, 40),
+        }))
+        .filter((p) => p.title)
+        .slice(0, 12);
+    } catch {
+      return [];
+    }
+  }
+
+  function parseAiActionBlock(text) {
+    const m = String(text || "").match(/```pv-actions\s*([\s\S]*?)```/i);
+    if (!m) return [];
+    try {
+      const raw = JSON.parse(m[1].trim());
+      if (!Array.isArray(raw)) return [];
+      return raw
+        .map((a) => ({
+          type: String(a.type || a.action || "")
+            .trim()
+            .toLowerCase(),
+          title: String(a.title || a.name || a.text || "")
+            .trim()
+            .slice(0, 200),
+          section: String(a.section || "").trim().slice(0, 40),
+          day: Number(a.day) || null,
+          amount: Number(a.amount) || null,
+          note: String(a.note || a.why || "").trim().slice(0, 240),
+        }))
+        .filter((a) => a.type && a.title)
+        .slice(0, 10);
+    } catch {
+      return [];
+    }
+  }
+
+  async function addPackingItems(items, { reload = false } = {}) {
+    const list = (Array.isArray(items) ? items : [])
+      .map((it) =>
+        typeof it === "string"
+          ? { title: it, section: "" }
+          : { title: String(it?.title || "").trim(), section: String(it?.section || "").trim() }
+      )
+      .filter((it) => it.title);
+    if (!list.length) return { added: 0 };
+    const { auth, data } = await loadTrip({ force: true });
+    const trip = structuredClone(data.trip);
+    if (!Array.isArray(trip.checklist)) trip.checklist = [];
+    const existing = new Set(trip.checklist.map((c) => String(c.title || "").toLowerCase()));
+    let added = 0;
+    for (const it of list) {
+      const key = it.title.toLowerCase();
+      if (existing.has(key)) continue;
+      trip.checklist.push({
+        id: uid(),
+        title: it.title,
+        done: false,
+        section: it.section || "",
+      });
+      existing.add(key);
+      added += 1;
+    }
+    if (added) await saveTrip(auth, trip, data.revision);
+    if (reload && added) setTimeout(() => location.reload(), 450);
+    return { added, total: trip.checklist.length };
+  }
+
+  async function appendTripNote(text) {
+    const note = String(text || "").trim();
+    if (!note) return { ok: false };
+    const { auth, data } = await loadTrip({ force: true });
+    const trip = structuredClone(data.trip);
+    const prev = String(trip.notes || "").trim();
+    const stamp = new Date().toLocaleString("it-IT", { dateStyle: "short", timeStyle: "short" });
+    trip.notes = prev ? `${prev}\n\n— ${stamp} (Pronty)\n${note}` : `— ${stamp} (Pronty)\n${note}`;
+    await saveTrip(auth, trip, data.revision);
+    return { ok: true };
+  }
+
+  function renderPackCards(host, items) {
+    if (!host || !items?.length) return;
+    const wrap = document.createElement("div");
+    wrap.className = "pv-pack-cards";
+    wrap.innerHTML = `
+      <p class="pv-pack-lead">Suggerimenti valigia <strong>personale</strong> (solo tu):</p>
+      <ul class="pv-pack-list">
+        ${items
+          .map(
+            (it, i) => `<li>
+              <label>
+                <input type="checkbox" data-pack-idx="${i}" checked />
+                <span><strong>${escapeHtml(it.title)}</strong>${
+                  it.section ? ` · <em>${escapeHtml(it.section)}</em>` : ""
+                }</span>
+              </label>
+            </li>`
+          )
+          .join("")}
+      </ul>
+      <div class="pv-actions" style="margin-top:8px">
+        <button type="button" class="primary" data-pack-add>Aggiungi alla mia valigia</button>
+      </div>
+      <p class="pv-status" data-pack-status></p>
+    `;
+    host.appendChild(wrap);
+    wrap.querySelector("[data-pack-add]")?.addEventListener("click", async () => {
+      const status = wrap.querySelector("[data-pack-status]");
+      const btn = wrap.querySelector("[data-pack-add]");
+      const selected = [...wrap.querySelectorAll("input[data-pack-idx]:checked")].map((el) =>
+        items[Number(el.dataset.packIdx)]
+      );
+      if (!selected.length) {
+        if (status) status.textContent = "Seleziona almeno una voce.";
+        return;
+      }
+      if (btn) btn.disabled = true;
+      if (status) status.textContent = "Aggiungo alla valigia personale…";
+      try {
+        const { added } = await addPackingItems(selected, { reload: true });
+        if (status) {
+          status.textContent = added
+            ? `Aggiunte ${added} voci alla tua valigia. Aggiorno…`
+            : "Erano già in lista.";
+        }
+      } catch (err) {
+        if (status) status.textContent = err?.message || "Aggiunta non riuscita";
+        if (btn) btn.disabled = false;
+      }
+    });
+  }
+
+  async function tryDirectSectionCommands(text, results, statusEl) {
+    const q = String(text || "").trim();
+    if (!q) return null;
+
+    const packMatch =
+      q.match(/^(?:aggiungi|metti)\s+(.+?)\s+(?:alla|nella|in)\s+valigia\s*$/i) ||
+      q.match(/^(?:aggiungi|metti)\s+(.+?)\s+(?:alla|nella)\s+checklist\s*$/i);
+    if (packMatch) {
+      const title = packMatch[1].replace(/^["«]|["»]$/g, "").trim();
+      if (!title) return null;
+      try {
+        const { added } = await addPackingItems([{ title }], { reload: true });
+        const reply = added
+          ? `Ho aggiunto «${title}» alla tua valigia personale.`
+          : `«${title}» era già nella tua valigia.`;
+        if (statusEl) statusEl.textContent = "Valigia personale aggiornata";
+        return reply;
+      } catch (err) {
+        return err?.message || "Non riesco ad aggiornare la valigia.";
+      }
+    }
+
+    const noteMatch =
+      q.match(/^(?:aggiungi|scrivi)\s+(?:una\s+)?nota\s*[:\-–]?\s*(.+)$/i) ||
+      q.match(/^(?:annota|nota)\s*[:\-–]\s*(.+)$/i);
+    if (noteMatch) {
+      const note = noteMatch[1].trim();
+      try {
+        await appendTripNote(note);
+        if (statusEl) statusEl.textContent = "Nota aggiunta";
+        return `Ho aggiunto la nota al viaggio: «${note.slice(0, 120)}${note.length > 120 ? "…" : ""}».`;
+      } catch (err) {
+        return err?.message || "Non riesco ad aggiungere la nota.";
+      }
+    }
+
+    const stopMatch = q.match(
+      /^(?:aggiungi|metti)\s+(.+?)\s+(?:all['’]?itinerario|alle tappe|come tappa)\s*$/i
+    );
+    if (stopMatch) {
+      const title = stopMatch[1].replace(/^["«]|["»]$/g, "").trim();
+      if (!title || !tripAuth()) return null;
+      try {
+        const { auth, data } = await loadTrip({ force: true });
+        const trip = structuredClone(data.trip);
+        if (!Array.isArray(trip.stops)) trip.stops = [];
+        if (trip.stops.some((s) => String(s.title || "").toLowerCase() === title.toLowerCase())) {
+          return `«${title}» è già nell’itinerario.`;
+        }
+        const days = tripDays(trip);
+        let day = days[0] || "";
+        if (days.length) {
+          const chosen = await chooseDayDialog({
+            title: `Aggiungi «${title}»`,
+            message: "Scegli il giorno per questa tappa.",
+            days,
+            trip,
+            currentDay: day,
+            confirmLabel: "Aggiungi",
+          });
+          if (chosen === null) return "Aggiunta annullata.";
+          day = chosen;
+        }
+        trip.stops.push(
+          buildStopFromPoi(
+            {
+              title,
+              category: "Visita",
+              kind: "attraction",
+              lat: null,
+              lng: null,
+              address: "",
+              extract: "Aggiunto da Pronty",
+              notes: "Aggiunto da Pronty",
+              source: "ai-command",
+            },
+            day
+          )
+        );
+        await saveTrip(auth, trip, data.revision);
+        if (statusEl) statusEl.textContent = "Itinerario aggiornato";
+        setTimeout(() => location.reload(), 500);
+        return `Ho aggiunto «${title}» all’itinerario${day ? ` (${day})` : ""}.`;
+      } catch (err) {
+        return err?.message || "Non riesco ad aggiungere la tappa.";
+      }
+    }
+
+    return null;
   }
 
   function appendBubble(log, role, text) {
@@ -2257,6 +2547,11 @@
       ? "Il viaggio è aperto: aiuta sia nella gestione pratica di oggi sia nei piani delle prossime giornate."
       : "Siamo in fase di preparazione: aiuta a pianificare, preventivare e organizzarsi prima della partenza.";
     const expenseSummary = summarizeTripExpenses(safeTrip);
+    const packing = (safeTrip.checklist || [])
+      .slice(0, 16)
+      .map((c) => c.title)
+      .filter(Boolean)
+      .join("; ");
     return `Sei ${AI_NAME}, la Bacchetta magica di Pronti? VIA! — companion AI per GESTIRE il viaggio (non solo chiacchiere).
 Rispondi SEMPRE in italiano: tono cordiale, concreto, actionable. 2–6 frasi + elenco breve se serve. Niente markdown pesante.
 ${phase}
@@ -2267,24 +2562,35 @@ Contesto viaggio:
 - Date: ${safeTrip.start || "?"} → ${safeTrip.end || "?"}
 - Compagni: ${members}
 - Tappe già in itinerario: ${stops || "nessuna ancora"}
+- Valigia personale (solo utente): ${packing || "vuota"}
 - Spese di gruppo (Splitpay): ${expenseSummary}
 
 Compiti:
-1) Aiuta a pianificare e gestire: posti, cibo, natura, itinerari giorno-per-giorno, budget, bagagli, trasporti, lingua, spese condivise.
-1b) Se chiedono delle spese già registrate, usa i totali/categorie del contesto; per modificare quote o rimborsi indica la tab Spese (Importi personalizzati / Registra rimborso).
-2) Quando proponi cose da fare/vedere/mangiare, dai nomi REALI e specifici della zona.
-3) Se la domanda riguarda posti, itinerario, cosa vedere/fare/mangiare, natura o tappe, DEVI chiudere con questo blocco (obbligatorio):
+1) Aiuta a pianificare e gestire: posti, cibo, natura, itinerari, budget, valigia personale, trasporti, lingua, note, spese.
+1b) Se chiedono delle spese già registrate, usa i totali/categorie del contesto; per modificare quote o rimborsi indica la tab Spese.
+2) Quando proponi cose da fare/vedere/mangiare, dai nomi REALI e specifici della zona (${city || where}).
+3) Se la domanda riguarda posti, itinerario, cosa vedere/fare/mangiare, natura o tappe, DEVI chiudere con:
 
 \`\`\`pv-places
 [{"title":"Nome posto reale","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché","day":1}]
 \`\`\`
 
-Regole pv-places:
-- 3–5 posti massimi, nomi reali (non il paese intero).
-- "day" = numero giorno del viaggio (opzionale ma utile per itinerari).
-- kind obbligatorio tra quelli elencati.
-- Solo per domande NON legate a luoghi (es. solo lingua/fraseario) ometti il blocco.
-- Non inventare indirizzi; il JSON resta solo nel fence.`;
+4) Se la domanda riguarda valigia, bagagli, packing o cosa mettere, DEVI chiudere con:
+
+\`\`\`pv-pack
+[{"title":"Oggetto concreto","section":"Documenti|Abbigliamento|Elettronica|Igiene|Farmaci"}]
+\`\`\`
+
+5) Se proponi azioni concrete da eseguire subito (aggiungere in valigia, nota, tappa), puoi anche aggiungere:
+
+\`\`\`pv-actions
+[{"type":"packing|note|stop","title":"...","section":"opzionale","day":1}]
+\`\`\`
+
+Regole:
+- pv-places: 3–5 posti reali della zona; ometti se la domanda non è su luoghi.
+- pv-pack: 4–8 oggetti utili per QUESTA destinazione/clima; evita duplicati già in valigia.
+- Non inventare indirizzi; i JSON restano solo nei fence.`;
   }
 
   function parseAiPlaceBlock(text) {
@@ -2526,6 +2832,11 @@ Regole pv-places:
     if (/vedere|visit|muse|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato/i.test(q)) {
       return `Cerco cose da vedere ${where}. Sotto i posti trovati: aggiungili all’itinerario o aprili sulle guide.`;
     }
+    if (/valigia|bagagl|packing|cosa mettere|checklist|da portare|cosa portar/i.test(q)) {
+      const suggestions = packingSuggestionsForDestination(trip);
+      const lines = suggestions.map((s) => `• ${s.title}${s.section ? ` (${s.section})` : ""}`).join("\n");
+      return `Per la valigia personale ${where} ti consiglio:\n\n${lines}\n\nSotto puoi selezionare e aggiungere le voci alla tua lista (solo tu la vedi). Puoi anche scrivermi «aggiungi X alla valigia».`;
+    }
     return "";
   }
 
@@ -2662,6 +2973,13 @@ Regole pv-places:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
+      const direct = await tryDirectSectionCommands(text, results, status);
+      if (direct) {
+        thinking.textContent = formatChatDisplay(direct);
+        chatHistory.push({ role: "assistant", content: direct });
+        return;
+      }
+
       let trip = magicTripCache;
       if (!trip && tripAuth()) {
         try {
@@ -2679,6 +2997,7 @@ Regole pv-places:
           end: draft?.end || "",
           members: [],
           stops: [],
+          checklist: [],
           _draftOnly: true,
         };
       }
@@ -2688,15 +3007,21 @@ Regole pv-places:
       let usedLocal = false;
       let reply = "";
       let aiPlaces = [];
-      const preferLocal = /spesa|budget|cost|quanto\b|euro|€|prezzi|econom|consigli pratic/i.test(text);
+      let aiPack = [];
+      let aiActions = [];
+      const packingAsk =
+        /valigia|bagagl|packing|cosa mettere|da portare|cosa portar|checklist packing/i.test(text);
+      const preferLocal =
+        packingAsk ||
+        /spesa|budget|cost|quanto\b|euro|€|prezzi|econom|consigli pratic/i.test(text);
       const localPrefetch = preferLocal ? localTravelReply(trip, text) : "";
 
       if (localPrefetch) {
-        // Budget/practical answers: respond immediately with local estimate.
-        // Cloud AI is often rate-limited and was surfacing credit errors raw.
+        // Budget/practical/packing answers: respond immediately with local estimate.
         reply = localPrefetch;
         usedLocal = true;
         chatHistory.push({ role: "assistant", content: localPrefetch });
+        if (packingAsk) aiPack = packingSuggestionsForDestination(trip);
       } else {
         try {
           aiText = await askTravelAI(trip, chatHistory);
@@ -2707,6 +3032,8 @@ Regole pv-places:
 
         if (aiText) {
           ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
+          aiPack = parseAiPackBlock(aiText);
+          aiActions = parseAiActionBlock(aiText);
           if (!aiPlaces.length) {
             aiPlaces = extractPlacesFromFreeText(aiText, trip.destination || cityHint);
           }
@@ -2717,6 +3044,7 @@ Regole pv-places:
             reply = local;
             usedLocal = true;
             chatHistory.push({ role: "assistant", content: local });
+            if (packingAsk) aiPack = packingSuggestionsForDestination(trip);
           }
         }
       }
@@ -2729,7 +3057,7 @@ Regole pv-places:
       const placeAsk =
         /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato|cose da fare|da fare|programma|giorni/i.test(
           text
-        );
+        ) && !packingAsk;
       const needPlaces = placeAsk || aiPlaces.length > 0;
       if (needPlaces) {
         try {
@@ -2786,22 +3114,88 @@ Regole pv-places:
       thinking.textContent = formatChatDisplay(reply);
       if (!aiText && !usedLocal) chatHistory.push({ role: "assistant", content: reply });
 
+      // Merge packing suggestions from actions without duplicates.
+      for (const act of aiActions) {
+        if (act.type === "packing" || act.type === "pack" || act.type === "checklist") {
+          if (!aiPack.some((p) => p.title.toLowerCase() === act.title.toLowerCase())) {
+            aiPack.push({ title: act.title, section: act.section || "" });
+          }
+        }
+      }
+      if (packingAsk && !aiPack.length) aiPack = packingSuggestionsForDestination(trip);
+
       const showWeb = needPlaces || cards.some((c) => c.webOnly);
       const webLinks = showWeb ? reliableWebSearches(cityHint, intent, trip.destination) : [];
       const combined = [...cards.filter((c) => !c.webOnly), ...webLinks];
       chatPlaces = combined;
       if (combined.length) {
         renderPlaceCards(results, combined, 0, { itineraryMode: placeAsk || aiPlaces.length > 0 });
+      }
+      if (aiPack.length) {
+        renderPackCards(results, aiPack);
+      }
+      // Notes / stops from AI actions: one-click apply buttons.
+      const noteActs = aiActions.filter((a) => a.type === "note");
+      const stopActs = aiActions.filter((a) => a.type === "stop" || a.type === "tappa");
+      if (noteActs.length || stopActs.length) {
+        const box = document.createElement("div");
+        box.className = "pv-ai-actions";
+        box.innerHTML = `<p class="pv-pack-lead">Azioni proposte da ${AI_NAME}:</p>`;
+        for (const act of noteActs.slice(0, 3)) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ghost";
+          btn.textContent = `Aggiungi nota: ${act.title.slice(0, 48)}`;
+          btn.onclick = async () => {
+            btn.disabled = true;
+            try {
+              await appendTripNote(act.title);
+              btn.textContent = "Nota aggiunta ✓";
+            } catch (err) {
+              btn.disabled = false;
+              btn.textContent = err?.message || "Errore";
+            }
+          };
+          box.appendChild(btn);
+        }
+        for (const act of stopActs.slice(0, 3)) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ghost";
+          btn.textContent = `Aggiungi tappa: ${act.title.slice(0, 48)}`;
+          btn.onclick = async () => {
+            btn.disabled = true;
+            try {
+              const done = await tryDirectSectionCommands(
+                `aggiungi ${act.title} all'itinerario`,
+                results,
+                status
+              );
+              btn.textContent = done?.includes("aggiunto") || done?.includes("Aggiunto")
+                ? "Tappa aggiunta ✓"
+                : done || "Fatto";
+            } catch (err) {
+              btn.disabled = false;
+              btn.textContent = err?.message || "Errore";
+            }
+          };
+          box.appendChild(btn);
+        }
+        results.appendChild(box);
+      }
+      if (combined.length || aiPack.length || noteActs.length || stopActs.length) {
         results.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
-      status.textContent = combined.some((c) => !c.webOnly)
-        ? `${combined.filter((c) => !c.webOnly).length} luoghi trovati su mappe e guide · verifica orari e disponibilità`
-        : aiText
-          ? "Suggerimento IA · verifica orari e disponibilità"
-          : usedLocal
-            ? "Suggerimento generico · dati dal viaggio o stima locale"
-            : "Prova un chip o riformula la domanda";
-      if (needPlaces && !combined.some(c => !c.webOnly)) addRetry();
+      status.textContent = aiPack.length
+        ? `${aiPack.length} suggerimenti valigia per ${cityHint || trip.destination || "la destinazione"}`
+        : combined.some((c) => !c.webOnly)
+          ? `${combined.filter((c) => !c.webOnly).length} luoghi trovati su mappe e guide · verifica orari e disponibilità`
+          : aiText
+            ? "Suggerimento IA · verifica orari e disponibilità"
+            : usedLocal
+              ? "Suggerimento generico · dati dal viaggio o stima locale"
+              : "Prova un chip o riformula la domanda";
+      if (needPlaces && !combined.some(c => !c.webOnly) && !aiPack.length) addRetry();
     } catch (err) {
       if (thinking.textContent === "Sto pensando…") {
         thinking.textContent = err instanceof Error ? err.message : "Qualcosa è andato storto.";
@@ -3340,14 +3734,25 @@ Regole pv-places:
 
   function injectPackingTemplates() {
     const heading = [...document.querySelectorAll("h2")].find((el) =>
-      /cose da portare/i.test(el.textContent || "")
+      /cose da portare|valigia/i.test(el.textContent || "")
     );
     if (!heading) return;
     const host = heading.closest(".section-heading")?.parentElement || heading.parentElement;
-    if (!host || host.querySelector(".pv-extras-bar")) return;
+    if (!host) return;
+    if (!host.querySelector(".pv-pack-privacy")) {
+      const note = document.createElement("p");
+      note.className = "pv-pack-privacy";
+      note.style.cssText = "margin:0 0 8px;font-size:.84rem;color:#5b7076";
+      note.textContent =
+        "Valigia personale: la lista resta solo su questo account (come il budget privato). I compagni non la vedono.";
+      const progress = host.querySelector(".packing-progress");
+      if (progress) host.insertBefore(note, progress);
+      else heading.after(note);
+    }
+    if (host.querySelector(".pv-extras-bar")) return;
     const bar = document.createElement("div");
     bar.className = "pv-extras-bar";
-    bar.innerHTML = `<span style="width:100%;font-size:.8rem;color:#5b7076;margin-bottom:2px">Template valigia</span>`;
+    bar.innerHTML = `<span style="width:100%;font-size:.8rem;color:#5b7076;margin-bottom:2px">Template valigia personale</span>`;
     for (const name of Object.keys(PACKING_TEMPLATES)) {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -3355,8 +3760,24 @@ Regole pv-places:
       btn.onclick = () => void applyPackingTemplate(name);
       bar.appendChild(btn);
     }
+    const ask = document.createElement("button");
+    ask.type = "button";
+    ask.textContent = "Chiedi a Pronty";
+    ask.onclick = () => {
+      const fab = document.getElementById("pv-magic-open");
+      if (fab) fab.click();
+      setTimeout(() => {
+        const chip = [...document.querySelectorAll("#pv-chat-chips button")].find((b) =>
+          /valigia/i.test(b.textContent || "")
+        );
+        chip?.click();
+      }, 350);
+    };
+    bar.appendChild(ask);
     const progress = host.querySelector(".packing-progress");
+    const privacy = host.querySelector(".pv-pack-privacy");
     if (progress) host.insertBefore(bar, progress);
+    else if (privacy) privacy.after(bar);
     else host.appendChild(bar);
   }
 
@@ -6328,6 +6749,9 @@ Regole pv-places:
   // Used by ux-suite "Gestione compagni" modal.
   window.__pvRemoveSharedMemberByName = removeSharedMemberByName;
   window.__pvSetMemberRole = setMemberRole;
+  window.__pvAddPackingItems = addPackingItems;
+  window.__pvAppendTripNote = appendTripNote;
+  window.__pvPackingSuggestionsForDestination = packingSuggestionsForDestination;
   window.__pvOpenCompanionsSheet = function openCompanionsSheet() {
     const btn = [...document.querySelectorAll("button")].find((el) =>
       /\d+\s+viaggiator/i.test((el.textContent || "").replace(/\s+/g, " "))
