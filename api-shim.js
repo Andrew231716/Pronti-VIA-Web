@@ -1049,14 +1049,29 @@
     return a || b || "";
   }
 
+  /** True when the hash key is the trip edit key (not viewToken). */
+  function isEditShareKey(tripId, key) {
+    if (!tripId || !key) return false;
+    try {
+      const rec = readLocalTrips()[tripId];
+      return Boolean(rec?.key && String(rec.key) === String(key));
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Prefer /invito/:id so messengers can show an Open Graph card.
-   * Falls back to the hash URL when the snapshot is not a Netlify ref.
+   * Edit links keep the full hash URL: /invito strips the edit key and would
+   * open recipients in sola lettura.
    */
   function toInvitePreviewUrl(enrichedUrl) {
     try {
       const url = new URL(String(enrichedUrl || ""));
       const params = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const tripId = params.get("trip");
+      const key = params.get("key");
+      if (isEditShareKey(tripId, key)) return url.toString();
       const s = String(params.get("s") || "");
       if (!s.startsWith("n:")) return url.toString();
       const id = s.slice(2).trim();
@@ -1072,19 +1087,50 @@
       const url = new URL(String(enrichedUrl || ""));
       const params = new URLSearchParams(url.hash.replace(/^#/, ""));
       const tripId = params.get("trip");
+      const key = params.get("key");
       const rec = tripId ? readLocalTrips()[tripId] : null;
       const title = String(rec?.trip?.title || "un viaggio").trim() || "un viaggio";
       const destination = String(rec?.trip?.destination || "").trim();
       const when = formatInviteRange(rec?.trip?.start, rec?.trip?.end);
       const bits = [destination, when].filter(Boolean).join(" · ");
-      const inviteUrl = toInvitePreviewUrl(url.toString());
-      // Keep a self-contained hash URL as backup so recipients still open the
-      // real trip if /invito preview fails or signup clears the path.
       const hashUrl = url.toString();
-      const lines = [`Sei invitato a «${title}»`];
+      const edit = isEditShareKey(tripId, key);
+
+      if (edit) {
+        // Never route edit capability through /invito (public GET strips edit key).
+        const text = [
+          `Link di MODIFICA · «${title}»`,
+          ...(bits ? [bits] : []),
+          "",
+          "Chi apre questo link può modificare tutto il viaggio (itinerario, spese, prenotazioni condivise…).",
+          "Condividilo solo con persone fidate. Non serve un account.",
+          "",
+          "Apri Pronti? VIA!:",
+          hashUrl,
+        ].join("\n");
+        return {
+          title: `Modifica · ${title}`,
+          text,
+          url: hashUrl,
+          hashUrl,
+          mode: "edit",
+          description: bits
+            ? `Link di modifica per «${title}» · ${bits}. Chi lo apre può cambiare il viaggio.`
+            : `Link di modifica per «${title}». Chi lo apre può cambiare il viaggio.`,
+        };
+      }
+
+      const inviteUrl = toInvitePreviewUrl(url.toString());
+      const lines = [`Sei invitato a «${title}» (sola lettura)`];
       if (bits) lines.push(bits);
-      lines.push("", "Apri l'invito su Pronti? VIA!:", inviteUrl);
-      if (inviteUrl !== hashUrl && params.get("trip") && params.get("key")) {
+      lines.push(
+        "",
+        "Puoi consultare il viaggio senza modificarlo. Non serve un account.",
+        "",
+        "Apri l'invito su Pronti? VIA!:",
+        inviteUrl
+      );
+      if (inviteUrl !== hashUrl && tripId && key) {
         lines.push("", "Link diretto:", hashUrl);
       }
       return {
@@ -1092,9 +1138,10 @@
         text: lines.join("\n"),
         url: inviteUrl,
         hashUrl,
+        mode: "read",
         description: bits
-          ? `Sei invitato a «${title}» · ${bits}.`
-          : `Sei invitato a «${title}».`,
+          ? `Sei invitato a «${title}» · ${bits} (sola lettura).`
+          : `Sei invitato a «${title}» (sola lettura).`,
       };
     } catch {
       return {
@@ -1102,6 +1149,7 @@
         text: String(enrichedUrl || ""),
         url: String(enrichedUrl || ""),
         hashUrl: String(enrichedUrl || ""),
+        mode: "read",
         description: "Sei invitato a un viaggio su Pronti? VIA!",
       };
     }
@@ -1109,6 +1157,7 @@
 
   window.__pvBuildInviteShare = buildInviteSharePayload;
   window.__pvToInvitePreviewUrl = toInvitePreviewUrl;
+  window.__pvIsEditShareKey = isEditShareKey;
 
   function shareUrlHasSnapshot(text) {
     try {
@@ -1164,7 +1213,24 @@
           throw new Error(msg);
         }
         // Copy invite message + preview URL (OG card) instead of a bare hash link.
+        // Edit links keep the hash URL (never /invito) so recipients retain canEdit.
         const invite = buildInviteSharePayload(enriched);
+        try {
+          const mode = invite.mode === "edit" ? "edit" : "read";
+          window.dispatchEvent(
+            new CustomEvent("pv-share-copied", {
+              detail: {
+                mode,
+                message:
+                  mode === "edit"
+                    ? "Link di modifica copiato: chi lo apre può cambiare il viaggio."
+                    : "Link di sola lettura copiato: si può consultare, non modificare.",
+              },
+            })
+          );
+        } catch {
+          /* ignore */
+        }
         return originalWriteText(invite.text || enriched);
       }
       return originalWriteText(text);

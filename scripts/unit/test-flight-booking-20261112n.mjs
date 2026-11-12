@@ -47,8 +47,8 @@ ok("ux personal scope", /Personali/.test(ux) && /viavia-private-bookings-v1/.tes
 ok("ux shared label", /Condivise/.test(ux) && /pv-book-shared-label/.test(ux));
 ok("ux flight form", /Cerca e carica/.test(ux) && /lookupPersonalFlight/.test(ux));
 ok("netlify route", /\/api\/flight-booking/.test(toml) && existsSync("netlify/functions/flight-booking.mjs"));
-ok("stamp ux n", /ux-suite-20261112o\.js/.test(index));
-ok("asset exists", existsSync("assets/ux-suite-20261112o.js"));
+ok("stamp ux n", /ux-suite-20261112p\.js/.test(index));
+ok("asset exists", existsSync("assets/ux-suite-20261112p.js"));
 
 assert.equal(failed, 0, `${failed} failed`);
 console.log("\nOK");

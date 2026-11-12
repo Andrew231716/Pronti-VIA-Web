@@ -27,7 +27,7 @@ const vercel = readFileSync("vercel.json", "utf8");
 const share = readFileSync("netlify/functions/share.mjs", "utf8");
 
 test("api-shim stamp + OG defaults wired", () => {
-  assert.match(index, /api-shim-20261112o\.js/);
+  assert.match(index, /api-shim-20261112p\.js/);
   assert.match(index, /og:title/);
   assert.match(index, /og:description/);
 });
@@ -173,14 +173,24 @@ test("shim invite URL helper prefers /invito for n: refs", () => {
   sandbox.self = sandbox;
   vm.createContext(sandbox);
   vm.runInContext(shim, sandbox);
-  const enriched = "https://example.test/#trip=trip-1&key=edit&s=n:shareXYZ";
-  const preview = sandbox.window.__pvToInvitePreviewUrl(enriched);
-  assert.equal(preview, "https://example.test/invito/shareXYZ");
-  const payload = sandbox.window.__pvBuildInviteShare(enriched);
-  assert.match(payload.title, /Invito · Roma/);
-  assert.match(payload.text, /Sei invitato a «Roma»/);
-  assert.match(payload.text, /https:\/\/example\.test\/invito\/shareXYZ/);
-  assert.equal(payload.url, "https://example.test/invito/shareXYZ");
+  const editUrl = "https://example.test/#trip=trip-1&key=edit&s=n:shareXYZ";
+  const readUrl = "https://example.test/#trip=trip-1&key=view&s=n:shareXYZ";
+  // Edit links must NOT go through /invito (that strips edit key → sola lettura).
+  assert.equal(sandbox.window.__pvToInvitePreviewUrl(editUrl), editUrl);
+  const editPayload = sandbox.window.__pvBuildInviteShare(editUrl);
+  assert.match(editPayload.title, /Modifica · Roma/);
+  assert.match(editPayload.text, /Link di MODIFICA/);
+  assert.match(editPayload.text, /può modificare/);
+  assert.equal(editPayload.mode, "edit");
+  assert.equal(editPayload.url, editUrl);
+  // Read links still prefer the OG /invito preview.
+  assert.equal(sandbox.window.__pvToInvitePreviewUrl(readUrl), "https://example.test/invito/shareXYZ");
+  const readPayload = sandbox.window.__pvBuildInviteShare(readUrl);
+  assert.match(readPayload.title, /Invito · Roma/);
+  assert.match(readPayload.text, /sola lettura/i);
+  assert.match(readPayload.text, /https:\/\/example\.test\/invito\/shareXYZ/);
+  assert.equal(readPayload.mode, "read");
+  assert.equal(readPayload.url, "https://example.test/invito/shareXYZ");
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
