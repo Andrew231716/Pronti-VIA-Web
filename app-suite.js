@@ -1317,10 +1317,11 @@
     const { panel, fresh } = mountSectionPanel(
       "pv-as-panel-pack",
       `<div class="pv-as-card pv-as-pack">
-        <strong>Valigia smart</strong>
+        <strong>Valigia personale</strong>
+        <p class="pv-as-hint" style="margin:4px 0 8px">Solo tu vedi questa lista su questo account. I compagni hanno la loro.</p>
         <div class="pv-as-row">
-          <button type="button" class="pv-as-chip" data-gen>Suggerisci da meteo/destinazione</button>
-          <button type="button" class="pv-as-chip" data-assign>Assegna oggetti</button>
+          <button type="button" class="pv-as-chip" data-gen>Suggerisci da destinazione</button>
+          <button type="button" class="pv-as-chip" data-pronty>Chiedi a Pronty</button>
         </div>
         <div class="pv-as-progress" title="Progresso"><span id="pv-as-pack-bar" style="width:0%"></span></div>
         <p class="pv-as-hint" id="pv-as-pack-hint"></p>
@@ -1335,20 +1336,24 @@
       const bar = panel.querySelector("#pv-as-pack-bar");
       if (bar) bar.style.width = `${pct}%`;
       const hint = panel.querySelector("#pv-as-pack-hint");
-      const assign = readJson(PACK_ASSIGN_KEY, {})[auth.id] || {};
-      const assigned = Object.entries(assign)
-        .slice(0, 8)
-        .map(([title, who]) => `${who}: ${title}`)
-        .join(" · ");
       if (hint) {
         hint.textContent = list.length
-          ? `${done}/${list.length} pronti (${pct}%)${assigned ? ` · ${assigned}` : ""}`
-          : "Lista vuota";
+          ? `${done}/${list.length} pronti (${pct}%) · personale`
+          : "Lista personale vuota — chiedi suggerimenti";
       }
     };
     if (fresh) {
       panel.querySelector("[data-gen]")?.addEventListener("click", () => void generatePacking());
-      panel.querySelector("[data-assign]")?.addEventListener("click", () => void assignPacking());
+      panel.querySelector("[data-pronty]")?.addEventListener("click", () => {
+        const fab = document.getElementById("pv-magic-open");
+        if (fab) fab.click();
+        setTimeout(() => {
+          const chip = [...document.querySelectorAll("#pv-chat-chips button")].find((b) =>
+            /valigia/i.test(b.textContent || "")
+          );
+          chip?.click();
+        }, 350);
+      });
     }
     void refresh();
     showOnlyPanel("pv-as-panel-pack");

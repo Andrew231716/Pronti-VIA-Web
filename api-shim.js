@@ -416,6 +416,71 @@
     }
   }
 
+  const PRIVATE_PACKING_KEY = "viavia-private-packing-v1";
+
+  function readPrivatePackingDb() {
+    try {
+      return JSON.parse(localStorage.getItem(PRIVATE_PACKING_KEY) || "{}") || {};
+    } catch {
+      return {};
+    }
+  }
+
+  function writePrivatePackingDb(db) {
+    try {
+      localStorage.setItem(PRIVATE_PACKING_KEY, JSON.stringify(db));
+    } catch {
+      /* quota */
+    }
+  }
+
+  function privatePackingSlot(tripId) {
+    return `${budgetOwner()}::${tripId}`;
+  }
+
+  function normalizePrivatePacking(rows) {
+    return (Array.isArray(rows) ? rows : [])
+      .map((r) => ({
+        id: String(r?.id || randomHex(4)),
+        title: String(r?.title || r?.text || "")
+          .trim()
+          .slice(0, 120),
+        done: Boolean(r?.done || r?.checked),
+        section: String(r?.section || "")
+          .trim()
+          .slice(0, 40),
+      }))
+      .filter((r) => r.title)
+      .slice(0, 300);
+  }
+
+  function getPrivatePacking(tripId) {
+    if (!tripId) return null;
+    const rows = readPrivatePackingDb()[privatePackingSlot(tripId)];
+    return Array.isArray(rows) ? normalizePrivatePacking(rows) : null;
+  }
+
+  function setPrivatePacking(tripId, rows) {
+    if (!tripId) return;
+    const db = readPrivatePackingDb();
+    db[privatePackingSlot(tripId)] = normalizePrivatePacking(rows);
+    writePrivatePackingDb(db);
+  }
+
+  function clearPrivatePacking(tripId) {
+    if (!tripId) return;
+    try {
+      const db = readPrivatePackingDb();
+      const slot = privatePackingSlot(tripId);
+      if (slot in db) {
+        delete db[slot];
+        writePrivatePackingDb(db);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
   function removeRecentLink(tripId) {
     if (!tripId) return;
     try {
@@ -438,6 +503,7 @@
       writeLocalTrips(db);
     }
     clearPrivateBudget(tripId);
+    clearPrivatePacking(tripId);
     replayedRevisions.delete(tripId);
     clearOutboxTrip(tripId);
     removeRecentLink(tripId);
@@ -484,6 +550,43 @@
     return next;
   }
 
+  /** Valigia / checklist is personal (on-device); shared trip always stores []. */
+  function applyPrivatePackingView(tripId, trip) {
+    if (!trip || !tripId) return trip;
+    const next = { ...trip };
+    const shared = Array.isArray(next.checklist) ? next.checklist : [];
+    const priv = getPrivatePacking(tripId);
+    if (priv == null) {
+      if (shared.length) {
+        setPrivatePacking(tripId, shared);
+        next.checklist = normalizePrivatePacking(shared);
+      } else {
+        next.checklist = [];
+      }
+      return next;
+    }
+    next.checklist = priv;
+    return next;
+  }
+
+  function takePackingPrivate(tripId, trip) {
+    if (!trip || !tripId) return trip;
+    const next = { ...trip };
+    if (Array.isArray(next.checklist)) {
+      setPrivatePacking(tripId, next.checklist);
+    }
+    next.checklist = [];
+    return next;
+  }
+
+  function applyPrivateTripView(tripId, trip) {
+    return applyPrivatePackingView(tripId, applyPrivateBudgetView(tripId, trip));
+  }
+
+  function takePrivateTripFields(tripId, trip) {
+    return takePackingPrivate(tripId, takeBudgetPrivate(tripId, trip));
+  }
+
   async function rewriteTripWriteInit(pathname, init = {}) {
     const method = (init.method || "GET").toUpperCase();
     if (method !== "POST" && method !== "PUT" && method !== "PATCH") return init;
@@ -496,16 +599,17 @@
     }
     const idFromPath = decodeURIComponent(pathname.replace(/^\/api\/trips\/?/, "").split("/")[0] || "");
     if (method === "POST" && body && !body.trip) {
-      // create: body is the trip itself — stash budget privately after we know the id
+      // create: body is the trip itself — stash budget/packing privately after we know the id
       rewriteTripWriteInit._pendingBudget =
         typeof body.budget === "number" && Number.isFinite(body.budget) && body.budget > 0
           ? body.budget
           : null;
-      return { ...init, body: JSON.stringify({ ...body, budget: 0 }) };
+      rewriteTripWriteInit._pendingPacking = Array.isArray(body.checklist) ? body.checklist : null;
+      return { ...init, body: JSON.stringify({ ...body, budget: 0, checklist: [] }) };
     }
     if (body?.trip) {
       const id = idFromPath || body.id || "";
-      const trip = takeBudgetPrivate(id, body.trip);
+      const trip = takePrivateTripFields(id, body.trip);
       const replayed = replayedRevisions.get(id);
       // An open editor can still hold the last local revision after replay.
       if (replayed && replayed.key === bearerKey(init) && body.revision === replayed.localRevision &&
@@ -577,7 +681,11 @@
           setPrivateBudget(data.id, rewriteTripWriteInit._pendingBudget);
           rewriteTripWriteInit._pendingBudget = null;
         }
-        data.trip = applyPrivateBudgetView(id, data.trip);
+        if (id && data.id && Array.isArray(rewriteTripWriteInit._pendingPacking)) {
+          setPrivatePacking(data.id, rewriteTripWriteInit._pendingPacking);
+          rewriteTripWriteInit._pendingPacking = null;
+        }
+        data.trip = applyPrivateTripView(id, data.trip);
         changed = true;
       }
       const next = applySoftMemberCanEdit(data);
@@ -1493,7 +1601,10 @@
         body?.trip && typeof body.trip === "object" && !Array.isArray(body.trip)
           ? body.trip
           : body;
-      const sharedTrip = { ...tripBody, budget: 0 };
+      if (Array.isArray(tripBody?.checklist) && tripBody.checklist.length) {
+        setPrivatePacking(newId, tripBody.checklist);
+      }
+      const sharedTrip = { ...tripBody, budget: 0, checklist: [] };
       const record = {
         id: newId,
         key: editKey,
@@ -1513,7 +1624,7 @@
         id: newId,
         key: editKey,
         viewToken,
-        trip: applyPrivateBudgetView(newId, sharedTrip),
+        trip: applyPrivateTripView(newId, sharedTrip),
         revision: 1,
         canEdit: true,
         updated: record.updated,
@@ -1550,7 +1661,7 @@
       return jsonResponse(
         200,
         applySoftMemberCanEdit({
-          trip: applyPrivateBudgetView(id, record.trip),
+          trip: applyPrivateTripView(id, record.trip),
           revision: record.revision || 1,
           updated: record.updated,
           canEdit: canEdit && !isPersonalKey(key),
@@ -1573,13 +1684,13 @@
       } catch {
         return jsonResponse(400, { error: "Dati viaggio non validi." });
       }
-      const nextTrip = takeBudgetPrivate(id, body.trip || body);
+      const nextTrip = takePrivateTripFields(id, body.trip || body);
       const serverRev = Number(record.revision) || 1;
       const clientRev = Number(body.revision);
       if (Number.isFinite(clientRev) && clientRev !== serverRev) {
         return jsonResponse(409, {
           error: "Versione non aggiornata. Ricarica e riprova.",
-          trip: applyPrivateBudgetView(id, record.trip),
+          trip: applyPrivateTripView(id, record.trip),
           revision: serverRev,
           updated: record.updated,
           canEdit: true,
@@ -1595,7 +1706,7 @@
       void resolveShareRef(id, record.key);
       if (record.viewToken) void resolveShareRef(id, record.viewToken);
       return jsonResponse(200, {
-        trip: applyPrivateBudgetView(id, record.trip),
+        trip: applyPrivateTripView(id, record.trip),
         revision: record.revision,
         updated: record.updated,
         canEdit: true,
@@ -1986,7 +2097,7 @@
         if (res.ok) {
           const data = await res.json();
           if (method === "GET" && pending.lastError === "conflict") {
-            data.trip = applyPrivateBudgetView(tripIdHint, pending.payload);
+            data.trip = applyPrivateTripView(tripIdHint, pending.payload);
           }
           if (method !== "GET") {
             trackTripWriteResult(method, tripIdHint, writeInit, data);

@@ -2559,6 +2559,7 @@
               ? `Partenza tra <strong>${days}</strong> giorni.`
               : `Partiti da ${Math.abs(days)} giorni.`
         }</p>
+         <p style="color:#5b7380;font-size:.85rem;margin:0 0 8px">Le voci della valigia sono <strong>personali</strong> (solo su questo account).</p>
          <ul class="pv-ux-list">${
            packing
              .slice(0, 12)
