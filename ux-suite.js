@@ -2281,6 +2281,7 @@
       const { data } = await loadTrip();
       const trip = data.trip || {};
       const members = Array.isArray(trip.members) ? trip.members : [];
+      const roles = trip.meta?.roles && typeof trip.meta.roles === "object" ? trip.meta.roles : {};
       const me = (() => {
         try {
           const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
@@ -2301,38 +2302,65 @@
           (n) => n && String(creator.name || "").trim().toLowerCase() === n.toLowerCase()
         );
       const canEdit = data.canEdit !== false;
+      const canManage = isCreator && canEdit;
       openModal(
         "Gestione compagni",
         `<p style="margin:0 0 10px;color:#3d5a62;font-size:.9rem">
-          Qui gestisci chi è <strong>nel viaggio</strong> (incluso Ospite dal link).<br>
+          Qui gestisci chi è <strong>nel viaggio</strong> e i relativi <strong>permessi</strong> (incluso Ospite dal link).<br>
           Il tuo login personale si gestisce in alto con <strong>Esci</strong> / <strong>Elimina account</strong>.
          </p>
          <ul class="pv-ux-list">${
            members
              .map((m, i) => {
                const name = escapeHtml(m.name || "—");
-               const role =
+               const joinLabel =
                  i === 0 ? "Creatore" : /^ospite/i.test(m.name || "") ? "Dal link" : "Partecipante";
-               const canDelete = isCreator && canEdit && i > 0;
+               const rawRole = String(roles[m.id] || (i === 0 ? "owner" : "member"))
+                 .trim()
+                 .toLowerCase();
+               const isReadonly =
+                 rawRole === "readonly" || rawRole === "visualizzatore" || rawRole === "viewer";
+               const canDelete = canManage && i > 0;
+               const mid = escapeHtml(m.id || "");
+               const permControl =
+                 i === 0
+                   ? `<span style="color:#5b7380;font-size:.8rem">permessi completi</span>`
+                   : canManage
+                     ? `<label style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:#3d5a62">
+                          <span>Permesso</span>
+                          <select data-role-id="${mid}" data-role-prev="${isReadonly ? "readonly" : "member"}" style="font:inherit;padding:4px 8px;border-radius:8px;border:1px solid #c5d4da;background:#fff;color:#123">
+                            <option value="member"${isReadonly ? "" : " selected"}>Può modificare</option>
+                            <option value="readonly"${isReadonly ? " selected" : ""}>Solo lettura</option>
+                          </select>
+                        </label>`
+                     : `<span style="color:#5b7380;font-size:.8rem">${
+                         isReadonly ? "Solo lettura" : "Può modificare"
+                       }</span>`;
                return `<li style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between">
-                 <div><strong>${name}</strong> · ${role}</div>
-                 ${
-                   canDelete
-                     ? `<button type="button" class="pv-ux-danger" data-rm-name="${escapeHtml(m.name || "")}">Elimina</button>`
-                     : i === 0
-                       ? `<span style="color:#5b7380;font-size:.8rem">non eliminabile</span>`
-                       : ""
-                 }
+                 <div><strong>${name}</strong> · ${joinLabel}</div>
+                 <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+                   ${permControl}
+                   ${
+                     canDelete
+                       ? `<button type="button" class="pv-ux-danger" data-rm-name="${escapeHtml(m.name || "")}">Elimina</button>`
+                       : i === 0
+                         ? `<span style="color:#5b7380;font-size:.8rem">non eliminabile</span>`
+                         : ""
+                   }
+                 </div>
                </li>`;
              })
              .join("") || "<li>Nessun partecipante.</li>"
          }</ul>
          ${
            !isCreator
-             ? `<p style="color:#7a4b00;font-size:.88rem">Solo il creatore del viaggio può eliminare gli ospiti.</p>`
+             ? `<p style="color:#7a4b00;font-size:.88rem">Solo il creatore del viaggio può cambiare i permessi o eliminare gli ospiti.</p>`
              : !canEdit
                ? `<p style="color:#7a4b00;font-size:.88rem">Serve il link di modifica (non solo lettura).</p>`
-               : `<p style="color:#5b7380;font-size:.82rem">Puoi anche aprire «N viaggiatori» nella copertina del viaggio.</p>`
+               : `<p style="color:#5b7380;font-size:.82rem">
+                    «Solo lettura» si applica quando quella persona apre il viaggio con lo stesso nome.
+                    Per un blocco totale usa il link di sola lettura o un invito personale in sola lettura.
+                  </p>`
          }
          <div class="pv-ux-actions">
            <button type="button" class="pv-ux-ghost" id="pv-ux-open-native-members">Apri elenco nel viaggio</button>
@@ -2346,6 +2374,35 @@
                 typeof window.__pvOpenCompanionsSheet === "function" && window.__pvOpenCompanionsSheet();
               if (!opened) toast("Tocca il pulsante «N viaggiatori» sulla copertina", "warn");
               else toast("Usa Elimina accanto all’ospite", "ok");
+            });
+            body.querySelectorAll("select[data-role-id]").forEach((sel) => {
+              sel.addEventListener("change", () => {
+                const id = sel.getAttribute("data-role-id") || "";
+                const role = sel.value === "readonly" ? "readonly" : "member";
+                const prev = sel.getAttribute("data-role-prev") || "member";
+                sel.disabled = true;
+                const run =
+                  typeof window.__pvSetMemberRole === "function"
+                    ? window.__pvSetMemberRole(id, role)
+                    : Promise.reject(new Error("Funzione permessi non disponibile"));
+                void run
+                  .then(() => {
+                    sel.setAttribute("data-role-prev", role);
+                    toast(
+                      role === "readonly"
+                        ? "Impostato in sola lettura (vale al prossimo caricamento)"
+                        : "Può modificare di nuovo",
+                      "ok"
+                    );
+                  })
+                  .catch((err) => {
+                    sel.value = prev;
+                    toast(err?.message || "Cambio permesso non riuscito", "err");
+                  })
+                  .finally(() => {
+                    sel.disabled = false;
+                  });
+              });
             });
             body.querySelectorAll("[data-rm-name]").forEach((btn) => {
               btn.addEventListener("click", () => {
