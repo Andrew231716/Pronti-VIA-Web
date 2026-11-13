@@ -993,6 +993,10 @@
   let chatPlaces = [];
   let magicTripCache = null;
   let chatHistory = []; // { role: 'user'|'assistant', content: string }
+  /** Last user topic in Chiedi: packing | places | budget | other — used for «altri» follow-ups. */
+  let lastChatTopic = "";
+  /** Titles already suggested in this chat for packing (so «altri» returns new items). */
+  let suggestedPackTitles = new Set();
 
   function magicTabsHtml(active) {
     return `
@@ -2210,6 +2214,8 @@
     panel.querySelector("#pv-chat-reset").onclick = () => {
       chatHistory = [];
       chatPlaces = [];
+      lastChatTopic = "";
+      suggestedPackTitles = new Set();
       void renderChatTab(panel);
     };
     panel.querySelectorAll("#pv-chat-chips button").forEach((btn) => {
@@ -2241,49 +2247,104 @@
       .trim();
   }
 
-  function packingSuggestionsForDestination(trip) {
+  function isPackingQuestion(text) {
+    const q = String(text || "").trim();
+    if (!q) return false;
+    if (
+      /valigia|bagagl|packing|cosa mettere|da portare|cosa portar|checklist packing|da mettere in valigia|cosa metto/i.test(
+        q
+      )
+    ) {
+      return true;
+    }
+    // Follow-ups like «altri», «ancora», «ne voglio altri» after a packing turn.
+    if (lastChatTopic === "packing") {
+      if (
+        /^(altri|altre|ancora|di più|più|ok altri|altri suggeriment|ne (?:vorrei|voglio|chied[oi])\s+altr)/i.test(
+          q
+        ) ||
+        /\b(altri|altre|ancora|di più|più suggeriment|ne voglio altri|ne chied[oi] altri)\b/i.test(q)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function packingSuggestionsForDestination(trip, { exclude = [], limit = 8 } = {}) {
     const dest = String(trip?.destination || trip?.title || "").toLowerCase();
-    const items = [
+    const owned = new Set(
+      (Array.isArray(trip?.checklist) ? trip.checklist : [])
+        .map((c) => String(c?.title || "").trim().toLowerCase())
+        .filter(Boolean)
+    );
+    for (const t of exclude) owned.add(String(t || "").trim().toLowerCase());
+
+    const pool = [
       { title: "Documento d’identità / passaporto", section: "Documenti" },
       { title: "Caricabatterie e cavi", section: "Elettronica" },
       { title: "Medicine di base", section: "Farmaci" },
       { title: "Assicurazione viaggio (offline)", section: "Documenti" },
+      { title: "Copia prenotazioni offline", section: "Documenti" },
+      { title: "Power bank", section: "Elettronica" },
+      { title: "Adattatore prese", section: "Elettronica" },
+      { title: "Borraccia", section: "Altro" },
+      { title: "Snack da viaggio", section: "Altro" },
+      { title: "Occhiali / lenti a contatto", section: "Igiene" },
+      { title: "Kit igiene (spazzolino, dentifricio)", section: "Igiene" },
+      { title: "Cerotti e antinfiammatorio", section: "Farmaci" },
     ];
     if (/island|norveg|svezia|finland|canada|alpi|montagna|patagon|scozia/.test(dest)) {
-      items.push(
+      pool.push(
         { title: "Giacca antivento / impermeabile", section: "Abbigliamento" },
         { title: "Strati termici", section: "Abbigliamento" },
-        { title: "Scarponcini comodi", section: "Abbigliamento" }
+        { title: "Scarponcini comodi", section: "Abbigliamento" },
+        { title: "Berretto e guanti leggeri", section: "Abbigliamento" },
+        { title: "Torcia / frontale", section: "Altro" }
       );
     }
     if (/mare|spiaggia|maldives|sardegna|sicilia|grecia|bali|canarie|caraib/.test(dest)) {
-      items.push(
+      pool.push(
         { title: "Costume e asciugamano", section: "Abbigliamento" },
         { title: "Crema solare", section: "Igiene" },
-        { title: "Occhiali da sole", section: "Abbigliamento" }
+        { title: "Occhiali da sole", section: "Abbigliamento" },
+        { title: "Ciabatte / infradito", section: "Abbigliamento" },
+        { title: "Cappello / cappellino", section: "Abbigliamento" }
       );
     }
     if (/etiop|kenya|tanzania|thailand|india|vietnam|senegal|ghana|marocco/.test(dest)) {
-      items.push(
+      pool.push(
         { title: "Repellente zanzare", section: "Farmaci" },
         { title: "Cappello sole", section: "Abbigliamento" },
-        { title: "Adattatore prese", section: "Elettronica" }
+        { title: "Abbigliamento leggero e coprente", section: "Abbigliamento" },
+        { title: "Sacchetti zip / organizer", section: "Altro" }
       );
     }
     if (/giappone|corea|cina|hong kong|singapore/.test(dest)) {
-      items.push(
+      pool.push(
         { title: "Suica / IC card o app trasporto", section: "Documenti" },
-        { title: "Adattatore prese (tipo A/C)", section: "Elettronica" }
+        { title: "Adattatore prese (tipo A/C)", section: "Elettronica" },
+        { title: "Mascherina di ricambio", section: "Igiene" }
       );
     }
     if (/città|city|roma|parigi|londra|barcellona|berlino|madrid|amsterdam/.test(dest)) {
-      items.push(
+      pool.push(
         { title: "Scarpe comode da camminata", section: "Abbigliamento" },
-        { title: "Power bank", section: "Elettronica" },
-        { title: "Ombrello leggero", section: "Abbigliamento" }
+        { title: "Ombrello leggero", section: "Abbigliamento" },
+        { title: "Borsa a tracolla antifurto", section: "Altro" }
       );
     }
-    return items;
+
+    const out = [];
+    const seen = new Set();
+    for (const it of pool) {
+      const key = it.title.toLowerCase();
+      if (owned.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+      if (out.length >= limit) break;
+    }
+    return out;
   }
 
   function parseAiPackBlock(text) {
@@ -2575,21 +2636,24 @@ Compiti:
 [{"title":"Nome posto reale","kind":"restaurant|cafe|museum|nature|attraction|shop","why":"perché","day":1}]
 \`\`\`
 
-4) Se la domanda riguarda valigia, bagagli, packing o cosa mettere, DEVI chiudere con:
+4) Se la domanda riguarda valigia, bagagli, packing, cosa mettere o «altri» oggetti da portare, DEVI chiudere SOLO con:
 
 \`\`\`pv-pack
 [{"title":"Oggetto concreto","section":"Documenti|Abbigliamento|Elettronica|Igiene|Farmaci"}]
 \`\`\`
 
-5) Se proponi azioni concrete da eseguire subito (aggiungere in valigia, nota, tappa), puoi anche aggiungere:
+In quel caso NON emettere pv-places e NON proporre tappe/itinerario.
+
+5) Se proponi azioni concrete da eseguire subito (aggiungere in valigia o nota), puoi anche aggiungere:
 
 \`\`\`pv-actions
-[{"type":"packing|note|stop","title":"...","section":"opzionale","day":1}]
+[{"type":"packing|note","title":"...","section":"opzionale"}]
 \`\`\`
 
 Regole:
 - pv-places: 3–5 posti reali della zona; ometti se la domanda non è su luoghi.
-- pv-pack: 4–8 oggetti utili per QUESTA destinazione/clima; evita duplicati già in valigia.
+- pv-pack: 4–8 oggetti utili per QUESTA destinazione/clima; evita duplicati già in valigia; se chiedono «altri», proponi oggetti DIVERSI.
+- Domanda valigia ⇒ zero itinerario/posti.
 - Non inventare indirizzi; i JSON restano solo nei fence.`;
   }
 
@@ -2832,10 +2896,19 @@ Regole:
     if (/vedere|visit|muse|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato/i.test(q)) {
       return `Cerco cose da vedere ${where}. Sotto i posti trovati: aggiungili all’itinerario o aprili sulle guide.`;
     }
-    if (/valigia|bagagl|packing|cosa mettere|checklist|da portare|cosa portar/i.test(q)) {
-      const suggestions = packingSuggestionsForDestination(trip);
+    if (isPackingQuestion(q)) {
+      const suggestions = packingSuggestionsForDestination(trip, {
+        exclude: [...suggestedPackTitles],
+        limit: 8,
+      });
+      if (!suggestions.length) {
+        return `Per la valigia personale ${where} ho già proposto le voci principali. Aggiungi quelle utili, oppure dimmi una categoria (Documenti, Abbigliamento, Elettronica, Farmaci).`;
+      }
       const lines = suggestions.map((s) => `• ${s.title}${s.section ? ` (${s.section})` : ""}`).join("\n");
-      return `Per la valigia personale ${where} ti consiglio:\n\n${lines}\n\nSotto puoi selezionare e aggiungere le voci alla tua lista (solo tu la vedi). Puoi anche scrivermi «aggiungi X alla valigia».`;
+      const more = suggestedPackTitles.size
+        ? `Altre idee per la valigia personale ${where}:\n\n${lines}`
+        : `Per la valigia personale ${where} ti consiglio:\n\n${lines}`;
+      return `${more}\n\nSotto puoi selezionare e aggiungere le voci alla tua lista (solo tu la vedi). Puoi anche scrivermi «aggiungi X alla valigia».`;
     }
     return "";
   }
@@ -3009,8 +3082,7 @@ Regole:
       let aiPlaces = [];
       let aiPack = [];
       let aiActions = [];
-      const packingAsk =
-        /valigia|bagagl|packing|cosa mettere|da portare|cosa portar|checklist packing/i.test(text);
+      const packingAsk = isPackingQuestion(text);
       const preferLocal =
         packingAsk ||
         /spesa|budget|cost|quanto\b|euro|€|prezzi|econom|consigli pratic/i.test(text);
@@ -3021,7 +3093,12 @@ Regole:
         reply = localPrefetch;
         usedLocal = true;
         chatHistory.push({ role: "assistant", content: localPrefetch });
-        if (packingAsk) aiPack = packingSuggestionsForDestination(trip);
+        if (packingAsk) {
+          aiPack = packingSuggestionsForDestination(trip, {
+            exclude: [...suggestedPackTitles],
+            limit: 8,
+          });
+        }
       } else {
         try {
           aiText = await askTravelAI(trip, chatHistory);
@@ -3034,7 +3111,7 @@ Regole:
           ({ reply, places: aiPlaces } = parseAiPlaceBlock(aiText));
           aiPack = parseAiPackBlock(aiText);
           aiActions = parseAiActionBlock(aiText);
-          if (!aiPlaces.length) {
+          if (!aiPlaces.length && !packingAsk) {
             aiPlaces = extractPlacesFromFreeText(aiText, trip.destination || cityHint);
           }
           chatHistory.push({ role: "assistant", content: aiText });
@@ -3044,9 +3121,31 @@ Regole:
             reply = local;
             usedLocal = true;
             chatHistory.push({ role: "assistant", content: local });
-            if (packingAsk) aiPack = packingSuggestionsForDestination(trip);
+            if (packingAsk) {
+              aiPack = packingSuggestionsForDestination(trip, {
+                exclude: [...suggestedPackTitles],
+                limit: 8,
+              });
+            }
           }
         }
+      }
+
+      // Packing answers must never mix itinerary/place cards (follow-ups included).
+      if (packingAsk) {
+        aiPlaces = [];
+        aiActions = aiActions.filter(
+          (a) => a.type === "packing" || a.type === "pack" || a.type === "checklist" || a.type === "note"
+        );
+        lastChatTopic = "packing";
+      } else if (
+        /mangiar|ristor|cibo|muse|natur|vedere|visit|itinerar|tappa|attraz|posto|dove/i.test(text)
+      ) {
+        lastChatTopic = "places";
+      } else if (/spesa|budget|cost|euro|€|prezzi/i.test(text)) {
+        lastChatTopic = "budget";
+      } else if (lastChatTopic !== "packing") {
+        lastChatTopic = "other";
       }
 
       if (reply) thinking.textContent = formatChatDisplay(reply);
@@ -3058,7 +3157,7 @@ Regole:
         /mangiar|ristor|cibo|cena|pranzo|muse|natur|vedere|visit|caff|bar|dove|posto|itinerar|tappa|attraz|cosa non perdere|cosa vedere|shopping|abiti|clothes|mercato|cose da fare|da fare|programma|giorni/i.test(
           text
         ) && !packingAsk;
-      const needPlaces = placeAsk || aiPlaces.length > 0;
+      const needPlaces = !packingAsk && (placeAsk || aiPlaces.length > 0);
       if (needPlaces) {
         try {
           place = await geocodeDestination(
@@ -3122,11 +3221,30 @@ Regole:
           }
         }
       }
-      if (packingAsk && !aiPack.length) aiPack = packingSuggestionsForDestination(trip);
+      if (packingAsk && !aiPack.length) {
+        aiPack = packingSuggestionsForDestination(trip, {
+          exclude: [...suggestedPackTitles],
+          limit: 8,
+        });
+      }
+      // Deduplicate pack suggestions against already proposed titles in this chat.
+      if (aiPack.length) {
+        aiPack = aiPack.filter((p) => !suggestedPackTitles.has(String(p.title || "").toLowerCase()));
+        if (packingAsk && !aiPack.length) {
+          aiPack = packingSuggestionsForDestination(trip, {
+            exclude: [...suggestedPackTitles],
+            limit: 8,
+          });
+        }
+        for (const p of aiPack) {
+          const key = String(p.title || "").toLowerCase();
+          if (key) suggestedPackTitles.add(key);
+        }
+      }
 
-      const showWeb = needPlaces || cards.some((c) => c.webOnly);
+      const showWeb = !packingAsk && (needPlaces || cards.some((c) => c.webOnly));
       const webLinks = showWeb ? reliableWebSearches(cityHint, intent, trip.destination) : [];
-      const combined = [...cards.filter((c) => !c.webOnly), ...webLinks];
+      const combined = packingAsk ? [] : [...cards.filter((c) => !c.webOnly), ...webLinks];
       chatPlaces = combined;
       if (combined.length) {
         renderPlaceCards(results, combined, 0, { itineraryMode: placeAsk || aiPlaces.length > 0 });
@@ -3136,7 +3254,10 @@ Regole:
       }
       // Notes / stops from AI actions: one-click apply buttons.
       const noteActs = aiActions.filter((a) => a.type === "note");
-      const stopActs = aiActions.filter((a) => a.type === "stop" || a.type === "tappa");
+      // Never surface itinerary-stop actions on a packing turn.
+      const stopActs = packingAsk
+        ? []
+        : aiActions.filter((a) => a.type === "stop" || a.type === "tappa");
       if (noteActs.length || stopActs.length) {
         const box = document.createElement("div");
         box.className = "pv-ai-actions";
@@ -6844,6 +6965,8 @@ Regole:
     tripLoadInflight = null;
     chatPlaces = [];
     chatHistory = [];
+    lastChatTopic = "";
+    suggestedPackTitles = new Set();
     chatAskBusy = false;
     pendingPois = [];
     delete document.documentElement.dataset.pvDistAttempted;
