@@ -1,0 +1,972 @@
+:root {
+  /* Aligned with Hub (--pv-plat-*) so shell matches before/after platform CSS */
+  --pv-account-ink: #102f36;
+  --pv-account-muted: #3a545b;
+  --pv-account-teal: #007d82;
+  --pv-account-teal-deep: #00656a;
+  --pv-account-teal-soft: rgba(0, 125, 130, 0.12);
+  --pv-account-sand: #f4f7f8;
+  --pv-account-line: rgba(20, 52, 58, 0.14);
+  --pv-account-danger: #b42318;
+  --pv-ease: cubic-bezier(0.22, 0.8, 0.22, 1);
+  --pv-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --pv-nav-h: 66px;
+  --pv-nav-gap: 10px;
+  --pv-glass: rgba(255, 255, 255, 0.86);
+  --pv-shadow-soft: 0 10px 30px rgba(16, 42, 48, 0.08);
+}
+
+body.pv-account-ready {
+  padding-top: calc(48px + env(safe-area-inset-top, 0px));
+  background:
+    radial-gradient(900px 420px at 0% -8%, rgba(0, 125, 130, 0.07), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(0, 125, 130, 0.04), transparent 50%),
+    linear-gradient(180deg, #f7fbfb 0%, #f3f7f8 100%);
+  background-attachment: fixed;
+}
+
+body.pv-primary-nav-ready {
+  padding-bottom: calc(var(--pv-nav-h) + var(--pv-nav-gap) + env(safe-area-inset-bottom, 0px));
+}
+
+#pv-account-chip,
+#pv-account-chip button {
+  transition: transform 0.16s var(--pv-ease), background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+#pv-account-chip button:active {
+  transform: scale(0.97);
+}
+
+#pv-account-gate .pv-account-card {
+  animation: pv-account-rise 0.42s var(--pv-ease) both;
+}
+
+@keyframes pv-account-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pv-account-gate .pv-account-card {
+    animation: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar {
+    height: auto !important;
+    min-height: 64px;
+    padding: 10px 14px !important;
+    flex-wrap: wrap;
+    gap: 10px !important;
+  }
+  .section-heading {
+    flex-wrap: wrap !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .section-heading .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Login gate — fully scoped so trip/UX global CSS cannot break the stack */
+#pv-account-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: max(20px, env(safe-area-inset-top, 0px)) 16px max(24px, env(safe-area-inset-bottom, 0px));
+  box-sizing: border-box;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0, 125, 130, 0.18), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(71, 112, 177, 0.14), transparent 50%),
+    linear-gradient(160deg, #eef6f6 0%, #f7fafb 45%, #e8f1f2 100%);
+  color: var(--pv-account-ink);
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+}
+
+#pv-account-gate[hidden] {
+  display: none !important;
+}
+
+#pv-account-gate .pv-account-card {
+  display: block;
+  width: min(420px, 100%);
+  margin: 12px auto 28px;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(21, 59, 71, 0.08);
+  border-radius: 22px;
+  box-shadow: 0 24px 60px rgba(21, 59, 71, 0.12);
+  padding: 26px 22px 20px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#pv-account-gate .pv-account-hero {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 18px;
+  text-align: left;
+}
+
+#pv-account-gate .pv-account-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+.pv-account-mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+}
+
+.pv-mark-pin {
+  fill: color-mix(in srgb, var(--pv-dest-accent, #ffb36e) 48%, var(--diary-paper, #fff));
+  stroke: var(--diary-accent, #00656a);
+  stroke-width: 1.5;
+}
+
+.pv-mark-case {
+  fill: none;
+  stroke: var(--diary-ink, #12343c);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+#pv-account-chip .pv-account-chip-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+}
+
+#pv-account-chip .pv-account-mark {
+  width: 22px;
+  height: 22px;
+}
+
+#pv-account-gate .pv-account-brand strong {
+  font-size: 1.28rem;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--pv-account-ink);
+}
+
+#pv-account-gate .pv-account-card h1,
+#pv-account-gate #pv-account-title {
+  display: block;
+  margin: 0;
+  font-size: clamp(1.35rem, 5vw, 1.6rem);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+  color: var(--pv-account-ink);
+}
+
+#pv-account-gate .pv-account-card p,
+#pv-account-gate #pv-account-intro {
+  display: block;
+  margin: 0;
+  color: var(--pv-account-muted);
+  line-height: 1.45;
+  font-size: 0.95rem;
+}
+
+#pv-account-gate .pv-account-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 16px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--pv-account-sand);
+  overflow: hidden;
+}
+
+#pv-account-gate .pv-account-tabs button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 10px 12px;
+  margin: 0;
+  width: auto;
+  min-height: 42px;
+  font: inherit;
+  font-weight: 650;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  color: var(--pv-account-muted);
+  cursor: pointer;
+  transform: none !important;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+#pv-account-gate .pv-account-tabs button[aria-pressed="true"],
+#pv-account-gate .pv-account-tabs button[aria-selected="true"] {
+  background: #fff;
+  color: var(--pv-account-ink);
+  box-shadow: 0 1px 3px rgba(21, 59, 71, 0.08);
+}
+
+#pv-account-gate .pv-account-form {
+  display: block;
+  width: 100%;
+  margin: 0;
+}
+
+#pv-account-gate .pv-account-field {
+  display: grid !important;
+  gap: 6px !important;
+  width: 100%;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  box-sizing: border-box;
+}
+
+/* Beat React global `label { display:flex; letter-spacing… }` */
+#pv-account-gate .pv-account-field label,
+#pv-account-gate label {
+  display: block !important;
+  align-items: unset !important;
+  gap: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+  font-size: 0.85rem !important;
+  font-weight: 650 !important;
+  line-height: 1.3 !important;
+  color: var(--pv-account-ink) !important;
+  cursor: default !important;
+}
+
+#pv-account-gate .pv-account-field input,
+#pv-account-gate input {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  border: 1px solid var(--pv-account-line) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  margin: 0 !important;
+  min-height: 46px !important;
+  font: inherit !important;
+  font-size: 16px !important; /* iOS: avoid focus zoom that breaks the card */
+  letter-spacing: normal !important;
+  color: var(--pv-account-ink) !important;
+  background: #fff !important;
+  opacity: 1 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  appearance: none !important;
+  -webkit-appearance: none !important;
+}
+
+#pv-account-gate .pv-account-field input:focus {
+  outline: 2px solid rgba(0, 125, 130, 0.25);
+  border-color: var(--pv-account-teal);
+}
+
+#pv-account-gate .pv-account-error {
+  min-height: 1.2em;
+  margin: 4px 0 12px;
+  color: var(--pv-account-danger);
+  font-size: 0.9rem;
+}
+
+#pv-account-gate .pv-account-submit {
+  appearance: none;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 999px;
+  padding: 13px 16px;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(180deg, var(--pv-account-teal), var(--pv-account-teal-deep));
+  cursor: pointer;
+  transform: none !important;
+}
+
+#pv-account-gate .pv-account-submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+#pv-account-gate .pv-account-recovery-link {
+  appearance: none;
+  display: block;
+  width: 100%;
+  margin: 12px 0 0;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--pv-account-teal-deep);
+  font: 650 0.88rem/1.3 inherit;
+  text-align: center;
+  cursor: pointer;
+  transform: none !important;
+}
+
+#pv-account-gate .pv-account-note {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--pv-account-muted);
+  line-height: 1.4;
+}
+
+#pv-account-gate #pv-recovery-issued {
+  margin-top: 8px;
+}
+
+#pv-account-gate #pv-recovery-issued p {
+  margin: 0 0 12px;
+  color: var(--pv-account-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  #pv-account-gate {
+    align-items: center;
+    padding: 32px 24px;
+  }
+  #pv-account-gate .pv-account-card {
+    margin: 0 auto;
+    padding: 30px 28px 24px;
+  }
+}
+
+#pv-account-chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 99990;
+  display: block;
+  height: calc(48px + env(safe-area-inset-top, 0px));
+  padding: env(safe-area-inset-top, 0px) 14px 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 255, 255, 0.86));
+  border-bottom: 1px solid rgba(21, 59, 71, 0.06);
+  color: var(--pv-account-ink);
+  font: 650 0.85rem/1 "Segoe UI", "Helvetica Neue", sans-serif;
+  backdrop-filter: blur(14px) saturate(1.15);
+  -webkit-backdrop-filter: blur(14px) saturate(1.15);
+  box-sizing: border-box;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+#pv-account-chip[hidden] {
+  display: none !important;
+}
+
+#pv-account-chip .pv-account-chip-main {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+#pv-account-chip .pv-account-chip-who {
+  color: var(--pv-account-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pv-account-chip strong {
+  color: var(--pv-account-ink);
+  font-weight: 700;
+}
+
+#pv-account-chip .pv-account-chip-hint {
+  flex: 0 0 auto;
+  font: 700 0.78rem/1 inherit;
+  letter-spacing: 0.01em;
+  color: var(--pv-account-teal);
+}
+
+/* Theme toggle — in SPA topbar next to brand; floats only on login gate */
+#pv-theme-toggle.pv-theme-toggle {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 6px 10px;
+  margin: 0;
+  border-radius: 999px;
+  border: 1px solid var(--pv-account-line);
+  background: color-mix(in srgb, var(--pv-account-sand, #f3f8f8) 72%, #fff);
+  color: var(--pv-account-ink);
+  box-shadow: 0 6px 18px rgba(16, 42, 48, 0.1);
+  cursor: pointer;
+  font: 700 0.72rem/1 inherit;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(10px) saturate(1.15);
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+}
+
+#pv-theme-toggle.pv-theme-toggle:active {
+  transform: scale(0.96);
+}
+
+#pv-theme-toggle .pv-theme-toggle-label {
+  max-width: 4.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pv-theme-toggle.pv-theme-toggle--float {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  z-index: 99996;
+}
+
+#pv-theme-toggle.pv-theme-toggle--topbar {
+  position: static;
+  z-index: auto;
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  order: 20;
+}
+
+html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle {
+  background: rgba(36, 56, 61, 0.92);
+  border-color: rgba(231, 242, 243, 0.16);
+  color: var(--pv-account-ink);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle--topbar {
+  background: color-mix(in srgb, var(--diary-paper, #17272c) 88%, #24383d);
+  box-shadow: none;
+}
+
+@media (max-width: 380px) {
+  #pv-theme-toggle .pv-theme-toggle-label {
+    display: none;
+  }
+  #pv-theme-toggle.pv-theme-toggle {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+}
+
+/* Primary bottom nav — Home · Viaggi · HUB · IA · Preventivo · Impostazioni · Profilo */
+#pv-primary-nav {
+  position: fixed;
+  z-index: 99995;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0 max(14px, env(safe-area-inset-left)) calc(10px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-right));
+  pointer-events: none;
+}
+
+#pv-primary-nav[hidden] {
+  display: none !important;
+}
+
+#pv-primary-nav .pv-primary-nav-inner {
+  pointer-events: auto;
+  max-width: 560px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  padding: 6px;
+  border-radius: 22px;
+  background: rgba(16, 47, 54, 0.08);
+  border: 1px solid var(--pv-account-line);
+  box-shadow:
+    0 12px 32px rgba(16, 42, 48, 0.12),
+    0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  backdrop-filter: blur(18px) saturate(1.25);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  animation: pv-nav-rise 0.45s var(--pv-ease-out) both;
+}
+
+@keyframes pv-nav-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #pv-primary-nav .pv-primary-nav-inner {
+    animation: none;
+  }
+}
+
+#pv-primary-nav .pv-nav-item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--pv-account-muted);
+  border-radius: 18px;
+  min-height: 52px;
+  padding: 6px 4px;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  cursor: pointer;
+  font: 650 0.62rem/1.1 inherit;
+  letter-spacing: 0.01em;
+  transition:
+    background 0.22s var(--pv-ease),
+    color 0.22s ease,
+    transform 0.18s var(--pv-ease-out);
+}
+
+#pv-primary-nav .pv-nav-item:active {
+  transform: scale(0.94);
+}
+
+#pv-primary-nav .pv-nav-ico {
+  width: 30px;
+  height: 30px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  transition: background 0.22s var(--pv-ease), color 0.22s ease, transform 0.22s var(--pv-ease-out);
+}
+
+#pv-primary-nav .pv-nav-item.is-active {
+  color: var(--pv-account-teal-deep);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(16, 42, 48, 0.1);
+  font-weight: 800;
+}
+
+#pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
+  background: var(--pv-account-teal);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--pv-account-teal) 32%, transparent);
+}
+
+/* Hub / IA match Hub tab active fill (accent pill) */
+#pv-primary-nav .pv-nav-hub.is-active .pv-nav-ico,
+#pv-primary-nav #pv-hub-nav[aria-expanded="true"] .pv-nav-ico,
+#pv-primary-nav .pv-nav-ai.is-active .pv-nav-ico,
+#pv-primary-nav #pv-nav-ai[aria-expanded="true"] .pv-nav-ico {
+  background: var(--pv-account-teal);
+  color: #fff;
+}
+
+#pv-primary-nav .pv-nav-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+  Dialog / Select Radix: la capsule (z≈99995) stava SOPRA i dialog Tailwind z-50,
+  rubando tap su Salva / Come dividiamo / quote. Portiamo overlay+dialog+select sopra la nav.
+*/
+body:has([role="dialog"][data-state="open"]) #pv-primary-nav,
+body:has([data-radix-select-content][data-state="open"]) #pv-primary-nav,
+body:has([role="listbox"]) #pv-primary-nav,
+body:has(.pv-ux-modal.pv-open) #pv-primary-nav,
+body.pv-magic-open #pv-primary-nav,
+body.pv-plat-open #pv-primary-nav {
+  pointer-events: none;
+}
+
+[data-slot="dialog-overlay"],
+[data-radix-dialog-overlay] {
+  z-index: 120180 !important;
+}
+
+[role="dialog"][data-slot="dialog-content"],
+[role="dialog"][data-state="open"],
+[data-radix-dialog-content] {
+  z-index: 120200 !important;
+}
+
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[role="listbox"],
+[data-slot="select-content"] {
+  z-index: 130050 !important;
+}
+
+/*
+  Con la nav primaria:
+  - Hub FAB già nascosto (pv-hub-nav-ready)
+  - Bacchetta nascosta: IA è nella capsule (resta fallback se nav assente)
+  - Preventivo solo, sollevato sopra la capsule
+*/
+body.pv-primary-nav-ready #pv-magic-open {
+  display: none !important;
+}
+
+body.pv-primary-nav-ready .pv-prev-launch {
+  bottom: calc(var(--pv-nav-h) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+body.pv-primary-nav-ready #pv-plat-fab {
+  bottom: calc(var(--pv-nav-h) + 18px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Trip cards in manage sheet */
+.pv-trip-manage-row {
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 4px 14px rgba(16, 42, 48, 0.05);
+}
+.pv-trip-manage-row .pv-trip-meta {
+  display: block;
+  font-size: 0.78rem;
+  color: #5b7380;
+  margin-top: 2px;
+}
+
+/* Tablet */
+@media (min-width: 768px) {
+  #pv-account-chip {
+    height: calc(52px + env(safe-area-inset-top, 0px));
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  #pv-account-chip .pv-account-chip-main {
+    max-width: 1100px;
+    gap: 12px;
+  }
+  body.pv-account-ready {
+    padding-top: calc(52px + env(safe-area-inset-top, 0px));
+  }
+  #pv-primary-nav {
+    padding-left: max(24px, env(safe-area-inset-left));
+    padding-right: max(24px, env(safe-area-inset-right));
+  }
+  #pv-primary-nav .pv-primary-nav-inner {
+    max-width: 640px;
+    padding: 8px 8px;
+    gap: 4px;
+  }
+  #pv-primary-nav .pv-nav-item {
+    font-size: 0.7rem;
+    min-height: 54px;
+    gap: 4px;
+  }
+  #pv-primary-nav .pv-nav-ico {
+    width: 32px;
+    height: 32px;
+  }
+  #pv-local-only-banner {
+    max-width: min(640px, calc(100% - 48px)) !important;
+    margin-top: 12px !important;
+  }
+  #pv-dest-theme-badge {
+    margin-left: 10px;
+  }
+}
+
+/* Desktop / large tablet landscape */
+@media (min-width: 1100px) {
+  #pv-account-chip .pv-account-chip-main {
+    max-width: 1390px;
+    padding-inline: 4px;
+  }
+  #pv-primary-nav .pv-primary-nav-inner {
+    max-width: 720px;
+    box-shadow:
+      0 14px 40px rgba(16, 42, 48, 0.12),
+      0 1px 0 rgba(255, 255, 255, 0.75) inset;
+  }
+  #pv-primary-nav .pv-nav-item {
+    font-size: 0.74rem;
+    letter-spacing: 0.01em;
+  }
+  #pv-local-only-banner {
+    max-width: min(720px, calc(100% - 64px)) !important;
+  }
+  /* Keep content chrome aligned with React .app-shell (1390) */
+  body.pv-account-ready #root {
+    --pv-desktop-gutter: 28px;
+  }
+}
+
+@media (min-width: 1500px) {
+  #pv-primary-nav .pv-primary-nav-inner {
+    max-width: 760px;
+  }
+}
+
+.share-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.share-inputs input {
+  width: 88px;
+  box-sizing: border-box;
+}
+
+.share-inputs span {
+  color: #5b7380;
+  font-size: 0.85rem;
+}
+
+.route-hop {
+  margin: 2px 0 10px 28px;
+  color: #5b7380;
+  font-size: 0.85rem;
+}
+
+/* Unified chrome under account chip */
+#pv-local-only-banner,
+#pv-cloud-status-banner {
+  position: relative !important;
+  top: auto !important;
+  margin: 0 !important;
+  z-index: 1 !important;
+}
+
+/* Local-only banner: quiet chip */
+#pv-local-only-banner {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 10px 14px 0 !important;
+  padding: 8px 10px 8px 12px !important;
+  max-width: min(480px, calc(100% - 28px)) !important;
+  width: auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(180, 130, 50, 0.16) !important;
+  border-bottom: 1px solid rgba(180, 130, 50, 0.16) !important;
+  background: rgba(255, 250, 240, 0.92) !important;
+  color: #6e4a12 !important;
+  font: 600 12px/1.35 inherit !important;
+  box-shadow: 0 6px 18px rgba(90, 60, 20, 0.05);
+  text-align: left !important;
+  justify-content: flex-start !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+#pv-local-only-banner.pv-banner-compact span {
+  flex: 1;
+  min-width: 0;
+}
+#pv-local-only-banner [data-pv-local-dismiss] {
+  width: 28px !important;
+  height: 28px !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border: 1px solid rgba(180, 130, 50, 0.2) !important;
+  border-radius: 999px !important;
+}
+
+/* Dark mode safety net (even before/without destination remaps) */
+html[data-pv-theme="dark"] {
+  --pv-account-ink: #eef6f7;
+  --pv-account-muted: #c5d6da;
+  --pv-account-teal: #2dd4bf;
+  --pv-account-teal-deep: #5eead4;
+  --pv-account-teal-soft: rgba(45, 212, 191, 0.16);
+  --pv-account-sand: #0f1c1f;
+  --pv-account-line: rgba(231, 242, 243, 0.16);
+  --pv-glass: rgba(22, 40, 44, 0.9);
+  --pv-shadow-soft: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+html[data-pv-theme="dark"] body.pv-account-ready {
+  background:
+    radial-gradient(900px 420px at 0% -8%, rgba(45, 212, 191, 0.12), transparent 55%),
+    radial-gradient(700px 380px at 100% 0%, rgba(45, 212, 191, 0.08), transparent 50%),
+    linear-gradient(180deg, #121f23 0%, #0e191c 100%);
+  color: var(--pv-account-ink);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip {
+  background: linear-gradient(180deg, rgba(22, 40, 44, 0.96), rgba(15, 28, 31, 0.92));
+  border-bottom-color: rgba(231, 242, 243, 0.1);
+  color: var(--pv-account-ink);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-who {
+  color: var(--pv-account-muted);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip strong {
+  color: var(--pv-account-ink);
+}
+
+html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-hint {
+  color: var(--pv-account-teal);
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner {
+  background: rgba(22, 40, 44, 0.94);
+  border-color: rgba(231, 242, 243, 0.16);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: #c5d6da !important;
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item .pv-nav-label,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item .pv-nav-label {
+  color: inherit !important;
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active,
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active {
+  color: var(--pv-account-teal) !important;
+  background: #24383d !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.28);
+}
+
+html[data-pv-theme="dark"] #pv-primary-nav .pv-nav-item.is-active .pv-nav-ico {
+  background: var(--pv-account-teal);
+  color: #072422;
+}
+
+/* Login gate: white surfaces must not inherit light ink in dark mode */
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-card {
+  background: linear-gradient(180deg, rgba(26, 45, 50, 0.98), #152428);
+  border-color: rgba(231, 242, 243, 0.14);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  color: var(--pv-account-ink);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-brand strong,
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-card h1,
+html[data-pv-theme="dark"] #pv-account-gate #pv-account-title,
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-field label,
+html[data-pv-theme="dark"] #pv-account-gate label {
+  color: var(--pv-account-ink) !important;
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-card p,
+html[data-pv-theme="dark"] #pv-account-gate #pv-account-intro,
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-note {
+  color: var(--pv-account-muted);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-tabs {
+  background: rgba(231, 242, 243, 0.08);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-tabs button {
+  color: var(--pv-account-muted);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-tabs button[aria-pressed="true"],
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-tabs button[aria-selected="true"] {
+  background: #24383d;
+  color: var(--pv-account-ink);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-field input,
+html[data-pv-theme="dark"] #pv-account-gate input {
+  background: #0f1c1f !important;
+  color: var(--pv-account-ink) !important;
+  border-color: rgba(231, 242, 243, 0.18) !important;
+  caret-color: var(--pv-account-teal);
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-account-field input::placeholder,
+html[data-pv-theme="dark"] #pv-account-gate input::placeholder {
+  color: #8aa3a8 !important;
+  opacity: 1 !important;
+}
+
+html[data-pv-theme="dark"] #pv-account-gate .pv-mark-case {
+  stroke: var(--pv-account-ink);
+}
+
+/* Print / PDF friendly */
+@media print {
+  #pv-account-chip,
+  #pv-primary-nav,
+  #pv-account-gate,
+  #pv-magic-root,
+  #pv-ux-toolbar,
+  #pv-ux-toast,
+  #pv-offline-chip,
+  #pv-link-role-chip,
+  .pv-prev-launch,
+  button,
+  .main-tabs {
+    display: none !important;
+  }
+  body {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+  a[href]::after {
+    content: none !important;
+  }
+  .trip-hero,
+  .workspace {
+    break-inside: avoid;
+  }
+}
+
+#pv-account-gate [hidden] { display: none !important; }
+#pv-recovery-issued .pv-account-field { margin-bottom: 10px; }
+#pv-recovery-issued-code { font-family: ui-monospace, monospace; font-size: 13px; }
