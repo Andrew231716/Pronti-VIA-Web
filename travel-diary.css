@@ -973,3 +973,18 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
     opacity: .38;
   }
 }
+.pv-trip-workflow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-block: .65rem;
+}
+.pv-trip-workflow > button {
+  flex: 1 1 8rem;
+  min-height: 44px;
+  font-weight: 700;
+}
+#pv-day-sheet .pv-plat-list > li {
+  padding-block: .55rem;
+  overflow-wrap: anywhere;
+}

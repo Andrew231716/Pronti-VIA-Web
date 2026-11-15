@@ -1371,8 +1371,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     return `
       <div class="pv-plat-card">
         <h3>Prima di partire</h3>
+        <p><strong>${dep.filter(item => item.done).length}/${dep.length}</strong> attività di partenza completate</p>
+        <progress aria-label="Avanzamento della preparazione" value="${dep.filter(item => item.done).length}" max="${Math.max(1, dep.length)}"></progress>
         <ul class="pv-plat-list">${missing.map(item => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Checklist completata.</li>"}</ul>
-        <h3>Documenti</h3>
+        <details>
+        <summary>Documenti · ${docs.length}</summary>
         <p class="pv-plat-muted">Link e note (i file restano nella tab Documenti; non finiscono nei link pubblici).</p>
         <ul class="pv-plat-list">${docs
           .map(
@@ -1391,6 +1394,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           </select>
         </label>
         <button type="button" class="pv-plat-btn" data-plat="doc-add">Aggiungi</button>
+        </details>
       </div>
       <div class="pv-plat-card">
         <h3>Checklist partenza</h3>
@@ -1701,9 +1705,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           ? `${item.lat},${item.lng}` : [item.address || item.location || item.title, trip.destination].filter(Boolean).join(", ");
         const maps = directions && point
           ? `<div><a href="https://www.google.com/maps/dir/?api=1&amp;destination=${encodeURIComponent(point)}" target="_blank" rel="noopener">Indicazioni</a></div>` : "";
+        const bookingLink = !directions && /^https?:\/\//i.test(item.url || "")
+          ? `<div><a href="${escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer">Apri prenotazione</a></div>` : "";
         return `<li><strong>${escapeHtml(when ? `${when} · ${title}` : title)}</strong>
           ${[item.address || item.location, item.reference || item.confirmation, item.notes]
-            .filter(Boolean).map(value => `<div>${escapeHtml(value)}</div>`).join("")}${maps}</li>`;
+            .filter(Boolean).map(value => `<div>${escapeHtml(value)}</div>`).join("")}${maps}${bookingLink}</li>`;
       }).join("") || "<li>Nessuna voce per questa data.</li>";
     }
     return `<div class="pv-plat-card">
@@ -1718,9 +1724,10 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
       <p>${escapeHtml([day.split("-").reverse().join("/"), trip.destination].filter(Boolean).join(" · "))}</p>
       ${syncLabel ? `<p class="pv-plat-muted">${escapeHtml(syncLabel)}</p>` : ""}
+      <p><strong>${stops.length}</strong> tappe · <strong>${bookings.length}</strong> prenotazioni</p>
       <h4>Tappe e indicazioni</h4><ol class="pv-plat-list">${rows(stops, true)}</ol>
       <h4>Prenotazioni</h4><ul class="pv-plat-list">${rows(bookings)}</ul>
-      ${docs.length ? `<h4>Documenti del giorno</h4><ul class="pv-plat-list">${docs.map(doc =>
+      ${docs.length ? `<h4>Documenti del giorno</h4><p class="pv-plat-muted">I link esterni richiedono connessione.</p><ul class="pv-plat-list">${docs.map(doc =>
         `<li>${escapeHtml(doc.title)}${/^https?:\/\//i.test(doc.url || "") ? ` · <a href="${escapeHtml(doc.url)}" target="_blank" rel="noopener">Apri</a>` : ""}</li>`
       ).join("")}</ul>` : ""}
     </article>`;
@@ -2424,20 +2431,27 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   function ensureTodayShortcut() {
-    const strip = document.querySelector(".day-strip");
-    if (!strip || !tripAuth() || strip.parentElement.querySelector(".pv-today-shortcut")) return;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "pv-plat-btn pv-today-shortcut";
-    button.textContent = "Oggi";
-    button.addEventListener("click", () => {
-      const auth = tripAuth();
-      if (!auth) return;
-      daySelections.set(auth.id, { day: "", index: -1 });
-      activeTab = "today";
-      togglePanel(true);
-    });
-    strip.before(button);
+    const anchor = document.querySelector("#root .trip-cover") || document.querySelector(".day-strip");
+    if (!anchor || !tripAuth() || document.querySelector(".pv-trip-workflow")) return;
+    const bar = document.createElement("nav");
+    bar.className = "pv-trip-workflow";
+    bar.setAttribute("aria-label", "Organizza il viaggio");
+    for (const [tab, label] of [["prep", "Preparazione"], ["today", "Oggi"]]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "pv-plat-btn" + (tab === "today" ? " pv-today-shortcut" : "");
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        const auth = tripAuth();
+        if (!auth) return;
+        if (tab === "today") daySelections.set(auth.id, { day: "", index: -1 });
+        activeTab = tab;
+        togglePanel(true);
+      });
+      bar.append(button);
+    }
+    if (anchor.matches(".trip-cover")) anchor.after(bar);
+    else anchor.before(bar);
   }
 
   function boot() {

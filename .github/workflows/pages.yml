@@ -20,7 +20,7 @@ jobs:
           mkdir -p site
           for f in index.html 404.html account.js account.css api-shim.js ios-form-fix.js places-suggest.js \
                    magic-extras.js expense-suite.js app-suite.js preventivo-islanda.js ux-suite.js pv-platform.js sw.js \
-                   favicon.svg logo.png coast.jpg iceland.svg manifest.webmanifest map.html \
+                   favicon.svg logo.png coast.jpg iceland.svg manifest.webmanifest map.html travel-diary.css trip-notifications.js \
                    vercel.json _redirects _headers README.md AUDIT.md ROADMAP.md ARCHITECTURE.md CHANGELOG.md \
                    SECURITY.md BACKUP.md DEPLOYMENT.md COSTS.md pronti-via-logo.png; do
             [ -f "$f" ] && cp -a "$f" site/
@@ -52,6 +52,8 @@ jobs:
               "/sw.js",
               "/ios-form-fix.js",
               "/account.css",
+              "/travel-diary.css",
+              "/trip-notifications.js",
               "/account.js",
               "/manifest.webmanifest",
               "/pronti-via-logo.png",
