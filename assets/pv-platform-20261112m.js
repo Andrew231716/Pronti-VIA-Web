@@ -1356,9 +1356,19 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       <div id="pv-poll-voter" hidden data-voter="${escapeHtml(voter)}"></div>`;
   }
 
+  async function offlineDocuments(auth) {
+    const bytes = new TextEncoder().encode(JSON.stringify([auth.id, auth.key]));
+    const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+      .map(byte => byte.toString(16).padStart(2, "0")).join("");
+    const cache = await caches.open("pv-private-documents-v1");
+    const prefix = new URL(`./offline-files/${hash}/`, document.baseURI).href;
+    return { cache, prefix, files: (await cache.keys()).filter(request => request.url.startsWith(prefix)) };
+  }
+
   async function renderPrep() {
     if (!tripAuth()) return `<div class="pv-plat-card"><p class="pv-plat-muted">Apri un viaggio.</p></div>`;
-    const { trip } = await fetchTrip();
+    const { trip, auth } = await fetchTrip();
+    const local = await offlineDocuments(auth).catch(() => null);
     const prep = trip.meta?.preparation || {};
     const docs = prep.docs || [];
     const missing = [];
@@ -1373,6 +1383,11 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         <h3>Prima di partire</h3>
         <p><strong>${dep.filter(item => item.done).length}/${dep.length}</strong> attività di partenza completate</p>
         <progress aria-label="Avanzamento della preparazione" value="${dep.filter(item => item.done).length}" max="${Math.max(1, dep.length)}"></progress>
+        <div class="pv-trip-workflow">
+          <button type="button" class="pv-plat-btn" data-trip-section="prenotazioni">Prenotazioni e check-in</button>
+          <button type="button" class="pv-plat-btn" data-trip-section="documenti">Documenti del viaggio</button>
+          <button type="button" class="pv-plat-btn" data-trip-section="valigia">Valigia</button>
+        </div>
         <ul class="pv-plat-list">${missing.map(item => `<li>${escapeHtml(item)}</li>`).join("") || "<li>Checklist completata.</li>"}</ul>
         <details>
         <summary>Documenti · ${docs.length}</summary>
@@ -1395,6 +1410,15 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         </label>
         <button type="button" class="pv-plat-btn" data-plat="doc-add">Aggiungi</button>
         </details>
+        ${local ? `<details><summary>File offline su questo dispositivo · ${local.files.length}</summary>
+          <label>Salva un file dal dispositivo <input type="file" id="pv-offline-doc"></label>
+          <p class="pv-plat-muted">I file salvati qui sono disponibili offline su questo dispositivo.</p>
+          <ul class="pv-plat-list">${local.files.map((request, index) => {
+            const name = decodeURIComponent(request.url.slice(local.prefix.length));
+            return `<li>${escapeHtml(name)}
+              <button type="button" class="pv-plat-btn" data-offline-file="${index}">Scarica</button>
+              <button type="button" class="pv-plat-btn" data-offline-file="${index}" data-remove-file>Rimuovi</button></li>`;
+          }).join("")}</ul></details>` : ""}
       </div>
       <div class="pv-plat-card">
         <h3>Checklist partenza</h3>
@@ -1718,6 +1742,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       </label>
       <button type="button" class="pv-plat-btn" data-plat="map-day">Mappa del giorno</button>
       <button type="button" class="pv-plat-btn" data-plat="print-day">Stampa o salva come PDF</button>
+      ${data.canEdit !== false ? '<button type="button" class="pv-plat-btn" data-trip-section="spese">Aggiungi spesa</button>' : ''}
     </div>
     <div id="pv-day-map-host"></div>
     <article class="pv-plat-card" id="pv-day-sheet">
@@ -1907,6 +1932,51 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   function wireBody(body) {
+    const bindLocalFiles = async () => {
+      const auth = tripAuth();
+      const input = body.querySelector("#pv-offline-doc");
+      if (!auth || !input) return;
+      const local = await offlineDocuments(auth);
+      input.addEventListener("change", async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          await local.cache.put(local.prefix + encodeURIComponent(file.name), new Response(file));
+          await renderPanel();
+        } catch { showStatus("Spazio locale insufficiente o archiviazione non disponibile.", "warn"); }
+      });
+      body.querySelectorAll("[data-offline-file]").forEach(button => {
+        button.addEventListener("click", async () => {
+          const request = local.files[Number(button.dataset.offlineFile)];
+          if (!request) return;
+          if (button.hasAttribute("data-remove-file")) {
+            await local.cache.delete(request);
+            await renderPanel();
+            return;
+          }
+          const response = await local.cache.match(request);
+          if (response) download(decodeURIComponent(request.url.slice(local.prefix.length)), await response.blob());
+        });
+      });
+    };
+    void bindLocalFiles().catch(() => {});
+    body.querySelectorAll("[data-trip-section]").forEach(button => {
+      button.addEventListener("click", () => {
+        const section = button.dataset.tripSection;
+        const tab = [...document.querySelectorAll("#root .main-tabs [role=tab]")]
+          .find(item => item.textContent.trim().toLowerCase().includes(section));
+        if (!tab || tab.disabled || tab.getAttribute("aria-disabled") === "true") {
+          showStatus("Sezione non disponibile per questo accesso.", "warn");
+          return;
+        }
+        togglePanel(false);
+        tab.click();
+        requestAnimationFrame(() => {
+          if (section === "spese") window.__pvExpenseSuite?.reopenDock?.();
+          tab.scrollIntoView({ block: "nearest" });
+        });
+      });
+    });
     body.querySelector("[data-plat=retry-panel]")?.addEventListener("click", () => void renderPanel());
     body.querySelector("#pv-today-date")?.addEventListener("change", async event => {
       const auth = tripAuth();

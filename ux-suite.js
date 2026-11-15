@@ -1398,7 +1398,7 @@
       const start = overview?.start || trip?.start || meta?.start || recent.start || "";
       const end = overview?.end || trip?.end || meta?.end || recent.end || "";
       return {
-        ...recent, start,
+        ...recent, start, end,
         title: trip?.title || recent.title || "Viaggio",
         destination: trip?.destination || meta?.destination || recent.destination || "",
         next: overview?.next,
@@ -1420,9 +1420,11 @@
     }
     resume.classList.toggle("pv-resume-accra", /\b(?:accra|ghana)\b/i.test(`${featured.destination} ${featured.title}`));
     const next = featured.next;
-    const detail = next
+    const dates = [featured.start, featured.end].filter(Boolean).map(date => date.split("-").reverse().join("/")).join(" – ");
+    const action = next
       ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
-      : featured.start ? `Partenza · ${featured.start.split("-").reverse().join("/")}` : "Apri l’itinerario e le prenotazioni.";
+      : featured.priority === 1 ? "Controlla la preparazione" : "Apri l’itinerario e le prenotazioni.";
+    const detail = [dates, action].filter(Boolean).join(" · ");
     for (const [selector, value] of [["h3", featured.title], ["p", detail], ["small", featured.status], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
       const node = resume.querySelector(selector);
       const text = selector === "small" && value === "Sincronizzato" ? "" : value;
