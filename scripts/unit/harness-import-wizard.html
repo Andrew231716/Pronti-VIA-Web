@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <title>Import wizard harness</title>
+</head>
+<body>
+  <script src="/assets/preventivo-islanda-20261117c.js"></script>
+  <script>
+    (async () => {
+      const report = { ok: true, steps: [] };
+      const step = (name, cond, detail) => {
+        report.steps.push({ name, ok: !!cond, detail: detail || "" });
+        if (!cond) report.ok = false;
+      };
+      try {
+        step("exports", typeof window.__pvOpenPreventivoImport === "function");
+        await window.__pvOpenPreventivoImport();
+        const host = document.getElementById("pv-prev-import");
+        step("host exists", !!host);
+        step("mounted on body", host && host.parentElement === document.body, host?.parentElement?.id || "");
+        step("open class", host?.classList.contains("open"));
+        // Force a Preventivo re-render like tab switch / status update
+        if (typeof window.__pvOpenPreventivoSection === "function") {
+          await window.__pvOpenPreventivoSection("budget");
+        }
+        const host2 = document.getElementById("pv-prev-import");
+        step("survives render", !!host2 && host2.parentElement === document.body && host2.classList.contains("open"));
+        const paste = host2.querySelector("#pv-prev-imp-paste");
+        paste.value = "tipologia\tcosto\tnote\tconfermati\nAlloggio\t915\tInclusa tassa\t✓\nVolo\t987\t\t✓\nvaccini\t50\tsolo 1\t-";
+        host2.querySelector("#pv-prev-imp-run").click();
+        // wait for analyze
+        await new Promise((r) => setTimeout(r, 200));
+        const preview = host2.querySelector("#pv-prev-imp-preview");
+        step("preview rows", /voci riconosciute/.test(preview?.textContent || ""), preview?.textContent?.slice(0, 80) || "");
+        const apply = host2.querySelector("#pv-prev-imp-apply");
+        step("apply button", !!apply);
+        apply?.click();
+        await new Promise((r) => setTimeout(r, 200));
+        const host3 = document.getElementById("pv-prev-import");
+        step("closed after apply", host3 && !host3.classList.contains("open"));
+        const root = document.getElementById("pv-preventivo-root");
+        step("budget shows Alloggio", /Alloggio/.test(root?.textContent || ""), (root?.textContent || "").slice(0, 120));
+      } catch (err) {
+        report.ok = false;
+        report.error = String(err && err.stack || err);
+      }
+      document.body.setAttribute("data-harness", JSON.stringify(report));
+      console.log("HARNESS_RESULT", JSON.stringify(report));
+    })();
+  </script>
+</body>
+</html>

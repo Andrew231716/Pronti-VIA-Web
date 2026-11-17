@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261117b";
+  const VERSION = "20261117c";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -3003,84 +3003,64 @@
     return parsePreventivoTableText(text, { sourceName });
   }
 
-  async function extractPreventivoFromImage(file) {
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error("Immagine non leggibile."));
-      reader.readAsDataURL(file);
-    });
-    const prompt = `Sei un estrattore di preventivi viaggio. Analizza l'immagine di un foglio (Excel/Sheets) e restituisci SOLO JSON valido, senza markdown:
-{"lines":[{"title":"Alloggio","costo":915,"costoAlt":915,"note":"...","confermati":true}]}
-Regole:
-- title = tipologia/voce
-- costo = primo importo numerico in euro (numero, non stringa); se c'è "x" o vuoto usa null
-- costoAlt = secondo importo se presente, altrimenti null
-- note = testo note
-- confermati = true se c'è spunta/check, false se "-" o assente
-- Ignora la riga Totale
-- Massimo 40 voci`;
-    const body = {
-      model: "openai",
-      temperature: 0.1,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
-      ],
-    };
-    const res = await fetch("https://text.pollinations.ai/openai", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(25000),
-    });
-    if (!res.ok) throw new Error("Lettura immagine non disponibile al momento. Prova CSV/Excel o incolla la tabella.");
-    const data = await res.json();
-    const content = String(data?.choices?.[0]?.message?.content || "").trim();
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Non ho riconosciuto una tabella nel file. Prova un CSV/Excel più chiaro.");
-    const parsed = JSON.parse(jsonMatch[0]);
-    const rows = Array.isArray(parsed?.lines) ? parsed.lines : [];
-    return rows
-      .map((l) => {
-        const title = String(l.title || "").trim();
-        if (!title || isTotalRow(title)) return null;
-        const unit =
-          l.costo == null
-            ? 0
-            : parseEuroLoose(l.costo) ??
-              (Number.isFinite(Number(l.costo)) ? Math.round(Number(l.costo) * 100) : 0);
-        const alt =
-          l.costoAlt == null
-            ? null
-            : parseEuroLoose(l.costoAlt) ??
-              (Number.isFinite(Number(l.costoAlt)) ? Math.round(Number(l.costoAlt) * 100) : null);
-        const note = String(l.note || "").trim();
-        const confirmed = Boolean(l.confermati);
-        const sourceParts = [];
-        if (note) sourceParts.push(note);
-        if (alt != null && alt !== unit) sourceParts.push(`Costo alt: ${fmtMoney(alt)}`);
-        sourceParts.push(`Import foto: ${file.name || "immagine"}`);
-        return {
-          id: uid(),
-          key: guessPreventivoKey(title),
-          title: title.slice(0, 120),
-          mode: "group",
-          unitCents: unit,
-          qty: 1,
-          status: confirmed ? "VERIFICATO" : unit > 0 ? "DA VERIFICARE" : "STIMA",
-          source: sourceParts.join(" · ").slice(0, 400),
-          url: "",
-          verifiedAt: confirmed ? nowIso() : "",
-        };
-      })
+  function normalizeOcrTableText(text) {
+    return String(text || "")
+      .replace(/\u00a0/g, " ")
+      .split(/\r?\n/)
+      .map((line) =>
+        String(line || "")
+          .replace(/\s{2,}/g, "\t")
+          .replace(/\t{2,}/g, "\t")
+          .trim()
+      )
       .filter(Boolean)
-      .slice(0, 80);
+      .join("\n");
+  }
+
+  async function extractTextFromImageOcr(file) {
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js", "Tesseract");
+    if (!window.Tesseract?.recognize) throw new Error("OCR non disponibile.");
+    const result = await window.Tesseract.recognize(file, "ita+eng", {
+      logger: () => {},
+    });
+    return String(result?.data?.text || "").trim();
+  }
+
+  async function extractPreventivoFromImage(file) {
+    const name = String(file?.name || "immagine");
+    const lower = name.toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (/\.heic$/i.test(lower) || type.includes("heic") || type.includes("heif")) {
+      throw new Error("Formato HEIC non supportato nel browser. Salva in JPG/PNG oppure usa CSV/Excel.");
+    }
+
+    // Client-side OCR: Pollinations Classic free API no longer exposes vision models
+    // (`openai` / `openai-fast` are text-only), so photo import must not depend on them.
+    let ocrText = "";
+    try {
+      ocrText = await extractTextFromImageOcr(file);
+    } catch (err) {
+      throw new Error(
+        err?.message?.includes("OCR")
+          ? err.message
+          : "Lettura foto non riuscita. Prova CSV/Excel o incolla la tabella."
+      );
+    }
+    if (!ocrText) {
+      throw new Error("Foto senza testo leggibile. Prova un’immagine più nitida, CSV/Excel o incolla.");
+    }
+    const normalized = normalizeOcrTableText(ocrText);
+    let lines = parsePreventivoTableText(normalized, { sourceName: name });
+    if (!lines.length) lines = parsePreventivoTableText(ocrText, { sourceName: name });
+    if (!lines.length) {
+      throw new Error(
+        "Ho letto la foto ma non riconosco colonne tipologia/costo. Esporta CSV/Excel o incolla le righe."
+      );
+    }
+    return lines.map((l) => ({
+      ...l,
+      source: [l.source, `OCR foto: ${name}`].filter(Boolean).join(" · ").slice(0, 400),
+    }));
   }
 
   async function readPreventivoImportFile(file) {
@@ -3243,10 +3223,15 @@ Regole:
     if (preview) preview.innerHTML = "";
     try {
       const collected = [];
+      const fileErrors = [];
       const files = [...(fileInput?.files || [])];
       for (const f of files) {
-        const rows = await readPreventivoImportFile(f);
-        collected.push(...rows);
+        try {
+          const rows = await readPreventivoImportFile(f);
+          collected.push(...rows);
+        } catch (err) {
+          fileErrors.push(`${f?.name || "file"}: ${err?.message || "non letto"}`);
+        }
       }
       const pasted = String(paste?.value || "").trim();
       if (pasted) collected.push(...parsePreventivoTableText(pasted, { sourceName: "Incolla" }));
@@ -3254,7 +3239,13 @@ Regole:
       const byTitle = new Map();
       for (const row of collected) byTitle.set(String(row.title || "").toLowerCase(), row);
       const lines = [...byTitle.values()];
-      if (!lines.length) throw new Error("Nessuna voce riconosciuta. Controlla colonne tipologia/costo/note/confermati.");
+      if (!lines.length) {
+        throw new Error(
+          fileErrors.length
+            ? fileErrors.join(" · ")
+            : "Nessuna voce riconosciuta. Controlla colonne tipologia/costo/note/confermati."
+        );
+      }
       if (preview) {
         preview.innerHTML = `
           <p><strong>${lines.length}</strong> voci riconosciute · modalità «${mode === "replace" ? "sostituisci" : "unisci"}»</p>
@@ -3297,7 +3288,11 @@ Regole:
           }
         });
       }
-      if (status) status.textContent = "Controlla le voci e conferma l’import.";
+      if (status) {
+        status.textContent = fileErrors.length
+          ? `Controlla le voci e conferma l’import. File saltati: ${fileErrors.join(" · ")}`
+          : "Controlla le voci e conferma l’import.";
+      }
     } catch (err) {
       if (status) status.textContent = err?.message || "Analisi non riuscita";
     }

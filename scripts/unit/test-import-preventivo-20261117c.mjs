@@ -17,7 +17,14 @@ const sw = readFileSync("sw.js", "utf8");
 
 ok("parse table helper", /function parsePreventivoTableText/.test(prev));
 ok("file reader", /async function readPreventivoImportFile/.test(prev));
-ok("image vision path", /extractPreventivoFromImage/.test(prev) && /image_url/.test(prev));
+ok(
+  "image OCR path (no broken Pollinations vision)",
+  /extractPreventivoFromImage/.test(prev) &&
+    /tesseract\.js@5/.test(prev) &&
+    /normalizeOcrTableText/.test(prev) &&
+    !/image_url/.test(prev) &&
+    !/text\.pollinations\.ai\/openai/.test(prev.slice(prev.indexOf("extractPreventivoFromImage")))
+);
 ok("xlsx/docx/pdf paths", /extractSheetMatrix/.test(prev) && /extractTextFromDocx/.test(prev) && /extractTextFromPdf/.test(prev));
 ok("import wizard UI", /openPreventivoImportWizard/.test(prev) && /Importa foglio \/ PDF \/ foto/.test(prev));
 ok("window export", /__pvOpenPreventivoImport/.test(prev) && /__pvParsePreventivoImport/.test(prev));
@@ -31,14 +38,15 @@ ok(
     /Legacy mounts lived inside/.test(prev)
 );
 ok("open after hydrate/render", /async function openPreventivoImportWizard/.test(prev) && /await openPreventivo\(\)/.test(prev));
+ok("per-file errors isolated", /fileErrors\.push/.test(prev) && /File saltati/.test(prev));
 ok(
   "stamps",
-  /preventivo-islanda-20261117b\.js/.test(index) &&
+  /preventivo-islanda-20261117c\.js/.test(index) &&
     /magic-extras-20261117a\.js/.test(index) &&
-    existsSync("assets/preventivo-islanda-20261117b.js") &&
+    existsSync("assets/preventivo-islanda-20261117c.js") &&
     existsSync("assets/magic-extras-20261117a.js")
 );
-ok("sw cache", /20261117b/.test(sw) && /preventivo-islanda-20261117b\.js/.test(sw));
+ok("sw cache", /20261117c/.test(sw) && /preventivo-islanda-20261117c\.js/.test(sw));
 
 // Runtime parse of the user's sheet shape
 const start = prev.indexOf("function guessPreventivoKey");
