@@ -306,6 +306,38 @@
       html[data-pv-theme="dark"] .pv-account-field dd{color:#eef6f7}
       html[data-pv-theme="dark"] .pv-account-field button{color:#5eead4}
       html[data-pv-theme="dark"] .pv-menu-section h3{color:#c5d6da}
+      .pv-pass-form{display:grid;gap:10px;margin:4px 0 0}
+      .pv-pass-hint{margin:0 0 8px;font:500 .82rem/1.4 inherit;color:var(--pv-muted,#5b7380)}
+      .pv-pass-label{display:grid;gap:6px;font:650 .78rem/1.2 inherit;color:#3f5860}
+      .pv-pass-wrap{position:relative;display:block}
+      .pv-pass-wrap input{
+        width:100%;box-sizing:border-box;min-height:44px;padding:11px 5.2rem 11px 12px;
+        border:1px solid var(--pv-line,#d0e0e0);border-radius:12px;font:600 .95rem inherit;
+        color:var(--pv-ink,#12343c);background:#fff
+      }
+      .pv-pass-reveal{
+        position:absolute;top:50%;right:8px;transform:translateY(-50%);
+        appearance:none;border:0;background:transparent;color:var(--pv-teal-deep,#007d82);
+        font:750 .75rem/1 inherit;padding:8px 10px;border-radius:10px;cursor:pointer
+      }
+      .pv-pass-reveal[aria-pressed="true"],.pv-pass-reveal:hover{background:rgba(0,125,130,.1)}
+      .pv-pass-submit{
+        appearance:none;border:0;border-radius:12px;padding:12px 14px;min-height:44px;
+        background:#007d82;color:#fff;font:750 .92rem/1 inherit;cursor:pointer
+      }
+      .pv-pass-submit:disabled{opacity:.65;cursor:wait}
+      .pv-pass-status{min-height:1.2em;margin:0;font:600 .82rem/1.3 inherit;color:#5b7380}
+      .pv-pass-status.is-ok{color:#0f5a30}
+      .pv-pass-status.is-err{color:#8a1f1f}
+      html[data-pv-theme="dark"] .pv-pass-hint{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-pass-label{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-pass-wrap input{
+        background:#1a2d32;border-color:rgba(231,242,243,.14);color:#eef6f7
+      }
+      html[data-pv-theme="dark"] .pv-pass-reveal{color:#5eead4}
+      html[data-pv-theme="dark"] .pv-pass-status{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-pass-status.is-ok{color:#86efac}
+      html[data-pv-theme="dark"] .pv-pass-status.is-err{color:#fca5a5}
       .pv-trip-manage-list{display:grid;gap:10px;margin:4px 0 12px}
       .pv-trip-manage-row{
         display:flex;align-items:center;gap:10px;padding:12px;
@@ -1910,6 +1942,115 @@
             </div>`;
   }
 
+  function renderPasswordChangeBlock() {
+    return `<div class="pv-menu-section" id="pv-password-section">
+         <h3>Password</h3>
+         <p class="pv-pass-hint">Mostra i caratteri mentre digiti e aggiorna la password. Quella salvata non si può rileggere: è protetta.</p>
+         <form id="pv-change-password-form" class="pv-pass-form" autocomplete="off">
+           <label class="pv-pass-label" for="pv-pass-current">Password attuale
+             <span class="pv-pass-wrap">
+               <input id="pv-pass-current" name="current" type="password" autocomplete="current-password" required minlength="8" maxlength="72" />
+               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-current" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+             </span>
+           </label>
+           <label class="pv-pass-label" for="pv-pass-new">Nuova password
+             <span class="pv-pass-wrap">
+               <input id="pv-pass-new" name="next" type="password" autocomplete="new-password" required minlength="8" maxlength="72" placeholder="Min. 8 caratteri, lettera e numero" />
+               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-new" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+             </span>
+           </label>
+           <label class="pv-pass-label" for="pv-pass-confirm">Conferma nuova password
+             <span class="pv-pass-wrap">
+               <input id="pv-pass-confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72" />
+               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-confirm" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+             </span>
+           </label>
+           <p class="pv-pass-status" id="pv-pass-status" aria-live="polite"></p>
+           <button type="submit" class="pv-pass-submit">Aggiorna password</button>
+         </form>
+       </div>`;
+  }
+
+  function wirePasswordChangeForm(body) {
+    if (typeof window.__pvWirePasswordReveal === "function") {
+      window.__pvWirePasswordReveal(body);
+    } else {
+      body.querySelectorAll("[data-pv-reveal]").forEach((btn) => {
+        if (btn.dataset.pvRevealBound === "1") return;
+        btn.dataset.pvRevealBound = "1";
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          const wrap = btn.closest(".pv-pass-wrap");
+          const input = wrap?.querySelector("input");
+          if (!input) return;
+          const show = input.type === "password";
+          input.type = show ? "text" : "password";
+          btn.setAttribute("aria-pressed", String(show));
+          btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
+          btn.textContent = show ? "Nascondi" : "Mostra";
+        });
+      });
+    }
+    const form = body.querySelector("#pv-change-password-form");
+    if (!form || form.dataset.pvBound === "1") return;
+    form.dataset.pvBound = "1";
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const status = body.querySelector("#pv-pass-status");
+      const submit = form.querySelector(".pv-pass-submit");
+      const currentPassword = String(form.current?.value || "");
+      const newPassword = String(form.next?.value || "");
+      const confirmPassword = String(form.confirm?.value || "");
+      if (status) {
+        status.textContent = "";
+        status.classList.remove("is-ok", "is-err");
+      }
+      if (newPassword !== confirmPassword) {
+        if (status) {
+          status.textContent = "La conferma non coincide con la nuova password.";
+          status.classList.add("is-err");
+        }
+        toast("Conferma password diversa", "warn");
+        return;
+      }
+      if (typeof window.__pvChangePassword !== "function") {
+        if (status) {
+          status.textContent = "Cambio password non disponibile in questa sessione.";
+          status.classList.add("is-err");
+        }
+        return;
+      }
+      if (submit) submit.disabled = true;
+      try {
+        await window.__pvChangePassword({ currentPassword, newPassword });
+        form.reset();
+        body.querySelectorAll("#pv-change-password-form input").forEach((input) => {
+          input.type = "password";
+        });
+        body.querySelectorAll("#pv-change-password-form [data-pv-reveal]").forEach((btn) => {
+          btn.setAttribute("aria-pressed", "false");
+          btn.setAttribute("aria-label", "Mostra password");
+          btn.textContent = "Mostra";
+        });
+        if (status) {
+          status.textContent = "Password aggiornata.";
+          status.classList.add("is-ok");
+        }
+        toast("Password aggiornata", "ok");
+      } catch (err) {
+        const msg = err?.message || "Aggiornamento non riuscito.";
+        if (status) {
+          status.textContent = msg;
+          status.classList.add("is-err");
+        }
+        toast(msg, "warn");
+      } finally {
+        if (submit) submit.disabled = false;
+      }
+    });
+  }
+
   function wireUxMenuActions(body, menuBtn) {
     body.querySelector("[data-ux-copy-user]")?.addEventListener("click", async (ev) => {
       ev.preventDefault();
@@ -1923,6 +2064,7 @@
         toast(user, "ok");
       }
     });
+    wirePasswordChangeForm(body);
     body.querySelectorAll("button[data-ux]").forEach((b) => {
       b.addEventListener("click", () => {
         const act = b.getAttribute("data-ux");
@@ -2068,6 +2210,7 @@
       ? `<button type="button" data-ux="upgrade-account"><strong>Accedi o crea account</strong><span>Tieni aperto questo viaggio e passa al tuo login</span></button>
            <button type="button" data-ux="logout"><strong>Esci da ospite</strong><span>Chiudi la sessione ospite (il viaggio resta in memoria)</span></button>`
       : `<button type="button" data-ux="logout"><strong>Esci</strong><span>Torna alla schermata di accesso</span></button>`;
+    const passwordSection = hasOwnAccount ? renderPasswordChangeBlock() : "";
     const modal = openModal(
       "Profilo e account",
       `<div class="pv-menu-section">
@@ -2077,6 +2220,7 @@
            ${accountActions}
          </div>
        </div>
+       ${passwordSection}
        ${dangerSection}`,
       {
         onMount: (body) => wireUxMenuActions(body, menuBtn),

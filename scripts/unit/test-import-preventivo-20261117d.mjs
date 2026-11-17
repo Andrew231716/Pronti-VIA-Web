@@ -49,7 +49,7 @@ ok(
     existsSync("assets/preventivo-islanda-20261117d.js") &&
     existsSync("assets/magic-extras-20261117a.js")
 );
-ok("sw cache", /20261117d/.test(sw) && /preventivo-islanda-20261117d\.js/.test(sw));
+ok("sw cache", /20261117e/.test(sw) && /preventivo-islanda-20261117d\.js/.test(sw));
 
 // Runtime parse of the user's sheet shape
 const start = prev.indexOf("function guessPreventivoKey");

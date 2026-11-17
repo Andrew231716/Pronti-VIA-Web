@@ -410,6 +410,86 @@ async function verifyPassword(password, salt, hash) {
   return next.hash === hash;
 }
 
+function validateNewPassword(password) {
+  if (typeof password !== "string" || password.length < 8 || password.length > 72) {
+    return "La password deve avere tra 8 e 72 caratteri.";
+  }
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return "Usa almeno una lettera e un numero nella password.";
+  }
+  return "";
+}
+
+function setPasswordRevealState(input, btn, show) {
+  if (!input || !btn) return;
+  input.type = show ? "text" : "password";
+  btn.setAttribute("aria-pressed", String(show));
+  btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
+  btn.textContent = show ? "Nascondi" : "Mostra";
+}
+
+function wirePasswordReveal(root = document) {
+  if (!root?.querySelectorAll) return;
+  root.querySelectorAll("[data-pv-reveal]").forEach((btn) => {
+    if (btn.dataset.pvRevealBound === "1") return;
+    btn.dataset.pvRevealBound = "1";
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      const wrap = btn.closest(".pv-pass-wrap");
+      const input =
+        wrap?.querySelector("input") ||
+        (btn.getAttribute("aria-controls")
+          ? document.getElementById(btn.getAttribute("aria-controls"))
+          : null);
+      if (!input) return;
+      setPasswordRevealState(input, btn, input.type === "password");
+    });
+  });
+}
+
+async function changePassword({ currentPassword, newPassword } = {}) {
+  const passError = validateNewPassword(newPassword);
+  if (passError) throw new Error(passError);
+  if (!currentPassword) throw new Error("Inserisci la password attuale.");
+  if (currentPassword === newPassword) {
+    throw new Error("La nuova password deve essere diversa da quella attuale.");
+  }
+  const sess = readSession();
+  if (!sess?.user?.username || sess.guest) {
+    throw new Error("Accedi con il tuo account per cambiare la password.");
+  }
+  const username = normalizeUsername(sess.user.username);
+  const token = String(sess.token || state.token || "");
+
+  if (token.startsWith("local:")) {
+    const users = readUsers();
+    const user = users[username];
+    if (!user?.salt || !user?.hash || !(await verifyPassword(currentPassword, user.salt, user.hash))) {
+      throw new Error("Password attuale non corretta.");
+    }
+    const { salt, hash } = await hashPassword(newPassword);
+    users[username] = {
+      ...user,
+      salt,
+      hash,
+      updatedAt: new Date().toISOString(),
+    };
+    writeUsers(users);
+    return { ok: true, local: true };
+  }
+
+  await api("change-password", {
+    token,
+    body: { currentPassword, newPassword },
+  });
+  try {
+    await upsertLocalUser(username, newPassword, sess.user.displayName || username);
+  } catch {
+    /* local mirror optional */
+  }
+  return { ok: true };
+}
+
 async function api(action, { method = "POST", body, token } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -465,7 +545,13 @@ async function api(action, { method = "POST", body, token } = {}) {
 
 function ensureUi() {
   ensureThemeToggle();
-  if (document.getElementById("pv-account-gate")) return;
+  window.__pvChangePassword = changePassword;
+  window.__pvWirePasswordReveal = wirePasswordReveal;
+  const existingGate = document.getElementById("pv-account-gate");
+  if (existingGate) {
+    wirePasswordReveal(existingGate);
+    return;
+  }
 
   const brandMark = `<svg class="pv-account-mark" viewBox="0 0 40 40" aria-hidden="true" focusable="false">
     <path class="pv-mark-pin" d="M20 3a13 13 0 0 0-13 13c0 8 8 15 12 19a1.4 1.4 0 0 0 2 0c4-4 12-11 12-19A13 13 0 0 0 20 3Z"/>
@@ -495,7 +581,10 @@ function ensureUi() {
         </div>
         <div class="pv-account-field">
           <label for="pv-password">Password</label>
-          <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
+          <div class="pv-pass-wrap">
+            <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
+            <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-password" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+          </div>
         </div>
         <div class="pv-account-field" id="pv-recovery-field" hidden>
           <label for="pv-recovery-code">Codice di recupero</label>
@@ -686,6 +775,9 @@ function ensureUi() {
   // Kept for programmatic use / older hooks.
   window.__pvAccountLogout = onLogout;
   window.__pvAccountDelete = onDeleteAccount;
+  window.__pvChangePassword = changePassword;
+  window.__pvWirePasswordReveal = wirePasswordReveal;
+  wirePasswordReveal(gate);
 }
 
 function setMode(mode) {
@@ -1378,7 +1470,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261112o";
+const SHELL_VER = "20261117e";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
