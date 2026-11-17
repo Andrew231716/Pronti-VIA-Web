@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261117a";
+  const VERSION = "20261117b";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -1759,6 +1759,7 @@
       setTimeout(park, 120);
       setTimeout(park, 400);
     } else {
+      document.getElementById("pv-prev-import")?.classList.remove("open");
       const magicOpen = document.getElementById("pv-magic-root")?.classList.contains("pv-open");
       if (!magicOpen && typeof window.__pvRestoreFabsFromPark === "function") {
         window.__pvRestoreFabsFromPark();
@@ -2608,7 +2609,7 @@
         return;
       }
       if (act === "import-budget") {
-        openPreventivoImportWizard();
+        void openPreventivoImportWizard();
         return;
       }
       if (act === "sync-preventivo") {
@@ -3141,74 +3142,95 @@ Regole:
     return state.lines.length;
   }
 
-  function openPreventivoImportWizard() {
-    const root = rootEl();
-    if (!root) return;
-    let host = root.querySelector("#pv-prev-import");
-    if (!host) {
-      host = document.createElement("div");
-      host.id = "pv-prev-import";
-      host.innerHTML = `
-        <div class="pv-prev-import-scrim" data-imp-close></div>
-        <div class="pv-prev-import-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-prev-imp-title">
-          <header>
-            <div>
-              <p class="pv-prev-eyebrow">Budget</p>
-              <h3 id="pv-prev-imp-title">Importa nel Preventivo</h3>
-            </div>
-            <button type="button" class="ghost" data-imp-close aria-label="Chiudi">×</button>
-          </header>
-          <p class="pv-prev-muted">Carica una foto del foglio, PDF, Word, Excel/CSV oppure incolla la tabella (tipologia, costo, note, confermati).</p>
-          <div class="pv-prev-import-row">
-            <input id="pv-prev-imp-file" type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.docx,.pdf,image/*,.png,.jpg,.jpeg,.webp" multiple />
-            <select id="pv-prev-imp-mode">
-              <option value="merge">Unisci alle voci esistenti</option>
-              <option value="replace">Sostituisci tutto il budget</option>
-            </select>
-          </div>
-          <label class="pv-prev-muted" for="pv-prev-imp-paste">Incolla tabella</label>
-          <textarea id="pv-prev-imp-paste" rows="6" placeholder="tipologia\tcosto\tcosto\tnote\tconfermati&#10;Alloggio\t915\t915\tInclusa tassa\t✓"></textarea>
-          <div class="pv-prev-actions">
-            <button type="button" class="primary" id="pv-prev-imp-run">Analizza</button>
-            <button type="button" class="ghost" data-imp-close>Annulla</button>
-          </div>
-          <p class="pv-prev-import-status" id="pv-prev-imp-status"></p>
-          <div id="pv-prev-imp-preview"></div>
-        </div>`;
-      root.appendChild(host);
-      if (!document.getElementById("pv-prev-import-css")) {
-        const style = document.createElement("style");
-        style.id = "pv-prev-import-css";
-        style.textContent = `
-          #pv-prev-import{position:absolute;inset:0;z-index:30;display:none;place-items:center;padding:16px}
-          #pv-prev-import.open{display:grid}
-          #pv-prev-import .pv-prev-import-scrim{position:absolute;inset:0;background:rgba(10,28,34,.45)}
-          #pv-prev-import .pv-prev-import-sheet{position:relative;z-index:1;width:min(560px,100%);max-height:min(86vh,760px);overflow:auto;background:#fff;border-radius:18px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);color:#123}
-          #pv-prev-import header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}
-          #pv-prev-import h3{margin:0;font-size:1.15rem}
-          #pv-prev-import .pv-prev-eyebrow{margin:0;font-size:.72rem;font-weight:700;color:#007d82;text-transform:uppercase;letter-spacing:.04em}
-          #pv-prev-import textarea,#pv-prev-import input[type=file],#pv-prev-import select{width:100%;box-sizing:border-box;margin:6px 0 10px;border:1px solid #d5e3e5;border-radius:12px;padding:10px;font:inherit}
-          #pv-prev-import .pv-prev-import-row{display:grid;gap:8px}
-          #pv-prev-import .pv-prev-import-status{min-height:1.2em;font-size:.86rem;color:#5b7380}
-          #pv-prev-import .pv-prev-imp-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
-          #pv-prev-import .pv-prev-imp-list li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;padding:8px;border:1px solid #e4eeee;border-radius:12px}
-          #pv-prev-import .pv-prev-imp-list small{display:block;color:#5b7380}
-        `;
-        document.head.appendChild(style);
-      }
-      host.addEventListener("click", (ev) => {
-        if (ev.target?.closest?.("[data-imp-close]")) host.classList.remove("open");
-      });
-      host.querySelector("#pv-prev-imp-run")?.addEventListener("click", () => void runPreventivoImportAnalyze(host));
+  function ensureImportWizardHost() {
+    let host = document.getElementById("pv-prev-import");
+    // Legacy mounts lived inside #pv-preventivo-root and were wiped by render().
+    if (host && host.parentElement !== document.body) {
+      host.remove();
+      host = null;
     }
+    if (host) return host;
+    host = document.createElement("div");
+    host.id = "pv-prev-import";
+    host.innerHTML = `
+      <div class="pv-prev-import-scrim" data-imp-close></div>
+      <div class="pv-prev-import-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-prev-imp-title">
+        <header>
+          <div>
+            <p class="pv-prev-eyebrow">Budget</p>
+            <h3 id="pv-prev-imp-title">Importa nel Preventivo</h3>
+          </div>
+          <button type="button" class="ghost" data-imp-close aria-label="Chiudi">×</button>
+        </header>
+        <p class="pv-prev-muted">Carica una foto del foglio, PDF, Word, Excel/CSV oppure incolla la tabella (tipologia, costo, note, confermati).</p>
+        <div class="pv-prev-import-row">
+          <input id="pv-prev-imp-file" type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.docx,.pdf,image/*,.png,.jpg,.jpeg,.webp" multiple />
+          <select id="pv-prev-imp-mode">
+            <option value="merge">Unisci alle voci esistenti</option>
+            <option value="replace">Sostituisci tutto il budget</option>
+          </select>
+        </div>
+        <label class="pv-prev-muted" for="pv-prev-imp-paste">Incolla tabella</label>
+        <textarea id="pv-prev-imp-paste" rows="6" placeholder="tipologia\tcosto\tcosto\tnote\tconfermati&#10;Alloggio\t915\t915\tInclusa tassa\t✓"></textarea>
+        <div class="pv-prev-actions">
+          <button type="button" class="primary" id="pv-prev-imp-run">Analizza</button>
+          <button type="button" class="ghost" data-imp-close>Annulla</button>
+        </div>
+        <p class="pv-prev-import-status" id="pv-prev-imp-status"></p>
+        <div id="pv-prev-imp-preview"></div>
+      </div>`;
+    if (!document.getElementById("pv-prev-import-css")) {
+      const style = document.createElement("style");
+      style.id = "pv-prev-import-css";
+      style.textContent = `
+        #pv-prev-import{position:fixed;inset:0;z-index:130050;display:none;place-items:center;padding:16px;pointer-events:auto}
+        #pv-prev-import.open{display:grid}
+        #pv-prev-import .pv-prev-import-scrim{position:absolute;inset:0;background:rgba(10,28,34,.45)}
+        #pv-prev-import .pv-prev-import-sheet{position:relative;z-index:1;width:min(560px,100%);max-height:min(86vh,760px);overflow:auto;background:#fff;border-radius:18px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);color:#123}
+        #pv-prev-import header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}
+        #pv-prev-import h3{margin:0;font-size:1.15rem}
+        #pv-prev-import .pv-prev-eyebrow{margin:0;font-size:.72rem;font-weight:700;color:#007d82;text-transform:uppercase;letter-spacing:.04em}
+        #pv-prev-import textarea,#pv-prev-import input[type=file],#pv-prev-import select{width:100%;box-sizing:border-box;margin:6px 0 10px;border:1px solid #d5e3e5;border-radius:12px;padding:10px;font:inherit}
+        #pv-prev-import .pv-prev-import-row{display:grid;gap:8px}
+        #pv-prev-import .pv-prev-import-status{min-height:1.2em;font-size:.86rem;color:#5b7380}
+        #pv-prev-import .pv-prev-imp-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+        #pv-prev-import .pv-prev-imp-list li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;padding:8px;border:1px solid #e4eeee;border-radius:12px}
+        #pv-prev-import .pv-prev-imp-list small{display:block;color:#5b7380}
+        #pv-prev-import .pv-prev-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+        #pv-prev-import button.primary{appearance:none;border:0;background:#007d82;color:#fff;border-radius:12px;padding:10px 14px;font:600 14px inherit;cursor:pointer}
+        #pv-prev-import button.ghost{appearance:none;border:1px solid #c5d8da;background:#fff;color:#184047;border-radius:12px;padding:10px 14px;font:600 14px inherit;cursor:pointer}
+        #pv-prev-import .pv-prev-muted{color:#5b7380;font-size:.9rem}
+      `;
+      document.head.appendChild(style);
+    }
+    host.addEventListener("click", (ev) => {
+      if (ev.target?.closest?.("[data-imp-close]")) host.classList.remove("open");
+    });
+    host.querySelector("#pv-prev-imp-run")?.addEventListener("click", () => void runPreventivoImportAnalyze(host));
+    document.body.appendChild(host);
+    return host;
+  }
+
+  async function openPreventivoImportWizard() {
+    ensureStyles();
+    const auth = tripAuth();
+    // Hydrate trip/draft state before showing the wizard so apply writes to the right store.
+    if (!state.open || (auth && state.tripId !== auth.id) || (!auth && state.tripId)) {
+      await openPreventivo();
+    }
+    state.section = "budget";
+    if (state.open) render();
+    const host = ensureImportWizardHost();
     host.classList.add("open");
     const status = host.querySelector("#pv-prev-imp-status");
     const preview = host.querySelector("#pv-prev-imp-preview");
     if (status) status.textContent = "";
     if (preview) preview.innerHTML = "";
-    setOpen(true);
-    state.section = "budget";
-    render();
+    try {
+      host.querySelector("#pv-prev-imp-paste")?.focus?.();
+    } catch {
+      /* ignore */
+    }
   }
 
   async function runPreventivoImportAnalyze(host) {
