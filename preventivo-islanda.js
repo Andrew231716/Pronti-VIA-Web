@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261029a";
+  const VERSION = "20261117a";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -2280,6 +2280,7 @@
         </div>
         <div class="pv-prev-actions">
           <button type="button" class="primary" data-act="save-local">Salva budget</button>
+          <button type="button" class="ghost" data-act="import-budget">Importa foglio / PDF / foto</button>
           <button type="button" class="ghost" data-act="reset-budget">Ricarica template scenario</button>
           <button type="button" class="ghost" data-act="sync-expenses">Copia stime in Spese di gruppo</button>
           ${
@@ -2606,6 +2607,10 @@
         render();
         return;
       }
+      if (act === "import-budget") {
+        openPreventivoImportWizard();
+        return;
+      }
       if (act === "sync-preventivo") {
         await syncPreventivoIntoTrip();
         render();
@@ -2721,6 +2726,561 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
+  /* ---------- Import foglio / PDF / Word / Excel / foto → budget lines ---------- */
+
+  function guessPreventivoKey(title) {
+    const t = String(title || "").toLowerCase();
+    if (/volo|flight|aereo|bigliett/.test(t)) return "flights";
+    if (/allogg|hotel|airbnb|appart|ostello|bnb/.test(t)) return "stay";
+    if (/cibo|food|mangiar|ristor|aliment/.test(t)) return "food";
+    if (/assicur/.test(t)) return "insurance";
+    if (/bagagl|luggage/.test(t)) return "bags";
+    if (/noleggio|auto|macchina|car\b/.test(t)) return "car";
+    if (/carbur|fuel|benzina/.test(t)) return "fuel";
+    if (/parcheg/.test(t)) return "parking";
+    if (/trasport|transit|metro|bus/.test(t)) return "transit";
+    if (/escursion|tour|attivit|parch/.test(t)) return "tours";
+    if (/ingress|ticket|bigliett/.test(t)) return "tickets";
+    if (/imprevist|buffer|fondo/.test(t)) return "buffer";
+    if (/internet|esim|hotspot|sim|vaccin|visto|visa|passaport/.test(t)) return "misc";
+    return "";
+  }
+
+  function parseEuroLoose(raw) {
+    const s = String(raw ?? "").trim();
+    if (!s || /^x$/i.test(s) || s === "-" || s === "—" || s === "–" || /^n\/?a$/i.test(s)) return null;
+    let t = s.replace(/€/g, "").replace(/\s/g, "");
+    if (!t) return null;
+    if (/^\d{1,3}(\.\d{3})+,\d{1,2}$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
+    else if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
+    else if (/^\d{1,3}(,\d{3})+\.\d{1,2}$/.test(t)) t = t.replace(/,/g, "");
+    else t = t.replace(/[^\d.-]/g, "");
+    const n = Number(t);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return Math.round(n * 100);
+  }
+
+  function parseConfirmedCell(raw) {
+    const s = String(raw ?? "").trim().toLowerCase();
+    if (!s || s === "-" || s === "—" || s === "–" || s === "no" || s === "false" || s === "0") return false;
+    return /✓|✔|☑|✅|true|si|sì|yes|ok|conferm|verificat|check/.test(s);
+  }
+
+  function isPreventivoHeaderRow(cols) {
+    const joined = cols.map((c) => String(c || "").toLowerCase()).join(" ");
+    return /tipolog|voce|categori/.test(joined) && /costo|importo|euro|€|prezzo/.test(joined);
+  }
+
+  function isTotalRow(title) {
+    return /^(totale|total|sum|subtotale|grand total)\b/i.test(String(title || "").trim());
+  }
+
+  function splitTableLine(line) {
+    const raw = String(line || "").replace(/\r$/, "");
+    if (!raw.trim()) return [];
+    if (raw.includes("\t")) return raw.split("\t").map((c) => c.trim());
+    if (/;/.test(raw) && raw.split(";").length >= 2) {
+      return raw.split(";").map((c) => c.replace(/^"|"$/g, "").trim());
+    }
+    if (/,/.test(raw)) {
+      const cols = [];
+      let cur = "";
+      let q = false;
+      for (const ch of raw) {
+        if (ch === '"') {
+          q = !q;
+          continue;
+        }
+        if (ch === "," && !q) {
+          cols.push(cur.trim());
+          cur = "";
+          continue;
+        }
+        cur += ch;
+      }
+      cols.push(cur.trim());
+      return cols;
+    }
+    return [raw.trim()];
+  }
+
+  function mapHeaderIndexes(headerCols) {
+    const norm = headerCols.map((c) => String(c || "").trim().toLowerCase());
+    const find = (...preds) => norm.findIndex((c) => preds.some((p) => p.test(c)));
+    const titleIdx = find(/tipolog|voce|categori|descr|item|voce/);
+    const costIdxs = [];
+    norm.forEach((c, i) => {
+      if (/costo|importo|euro|€|prezzo|price|amount/.test(c)) costIdxs.push(i);
+    });
+    const noteIdx = find(/^note/, /note/, /comment/, /dettagl/);
+    const confIdx = find(/conferm/, /verificat/, /status|stato|check/);
+    return {
+      titleIdx: titleIdx >= 0 ? titleIdx : 0,
+      costIdxs: costIdxs.length ? costIdxs : [1],
+      noteIdx: noteIdx >= 0 ? noteIdx : -1,
+      confIdx: confIdx >= 0 ? confIdx : -1,
+    };
+  }
+
+  function rowToPreventivoLine(cols, map, sourceName = "") {
+    const title = String(cols[map.titleIdx] || "").trim();
+    if (!title || isTotalRow(title) || isPreventivoHeaderRow(cols)) return null;
+    const costs = map.costIdxs
+      .map((i) => parseEuroLoose(cols[i]))
+      .filter((n) => n != null);
+    const note = map.noteIdx >= 0 ? String(cols[map.noteIdx] || "").trim() : "";
+    const confirmed = map.confIdx >= 0 ? parseConfirmedCell(cols[map.confIdx]) : false;
+    // Skip empty placeholder rows like "Alloggio istanbul | x | x"
+    if (!costs.length && !note && !confirmed) {
+      const rawCosts = map.costIdxs.map((i) => String(cols[i] || "").trim());
+      if (rawCosts.every((c) => !c || /^x$/i.test(c) || c === "-")) return null;
+    }
+    const unitCents = costs[0] != null ? costs[0] : 0;
+    const alt = costs[1] != null && costs[1] !== unitCents ? costs[1] : null;
+    const sourceParts = [];
+    if (note) sourceParts.push(note);
+    if (alt != null) sourceParts.push(`Costo alt: ${fmtMoney(alt)}`);
+    if (sourceName) sourceParts.push(`Import: ${sourceName}`);
+    return {
+      id: uid(),
+      key: guessPreventivoKey(title),
+      title: title.slice(0, 120),
+      mode: "group",
+      unitCents,
+      qty: 1,
+      status: confirmed ? "VERIFICATO" : unitCents > 0 ? "DA VERIFICARE" : "STIMA",
+      source: sourceParts.join(" · ").slice(0, 400),
+      url: "",
+      verifiedAt: confirmed ? nowIso() : "",
+    };
+  }
+
+  function parsePreventivoTableText(text, { sourceName = "" } = {}) {
+    const lines = String(text || "")
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map((l) => l.trimEnd())
+      .filter((l) => l.trim());
+    if (!lines.length) return [];
+    let map = { titleIdx: 0, costIdxs: [1], noteIdx: -1, confIdx: -1 };
+    let start = 0;
+    const firstCols = splitTableLine(lines[0]);
+    if (firstCols.length >= 2 && isPreventivoHeaderRow(firstCols)) {
+      map = mapHeaderIndexes(firstCols);
+      start = 1;
+    } else if (firstCols.length === 1) {
+      // Freeform "Alloggio 915" lines
+      const out = [];
+      for (const line of lines) {
+        const m = line.match(/^(.+?)\s+[€$]?([\d.]+,\d{2}|\d+(?:[.,]\d{1,2})?)\s*(.*)$/);
+        if (!m) continue;
+        const title = m[1].trim();
+        if (isTotalRow(title)) continue;
+        const cents = parseEuroLoose(m[2]);
+        if (cents == null) continue;
+        out.push({
+          id: uid(),
+          key: guessPreventivoKey(title),
+          title: title.slice(0, 120),
+          mode: "group",
+          unitCents: cents,
+          qty: 1,
+          status: "DA VERIFICARE",
+          source: [m[3].trim(), sourceName ? `Import: ${sourceName}` : ""].filter(Boolean).join(" · ").slice(0, 400),
+          url: "",
+          verifiedAt: "",
+        });
+      }
+      return out.slice(0, 80);
+    }
+    const out = [];
+    for (const line of lines.slice(start)) {
+      const cols = splitTableLine(line);
+      if (cols.length < 1) continue;
+      const row = rowToPreventivoLine(cols, map, sourceName);
+      if (row) out.push(row);
+    }
+    return out.slice(0, 80);
+  }
+
+  function parsePreventivoJsonPayload(text) {
+    try {
+      const data = JSON.parse(text);
+      const arr = Array.isArray(data) ? data : Array.isArray(data?.lines) ? data.lines : null;
+      if (!arr) return [];
+      return arr
+        .map((l) => {
+          const title = String(l.title || l.tipologia || l.name || "").trim();
+          if (!title || isTotalRow(title)) return null;
+          const unit =
+            parseEuroLoose(l.unitCents != null ? Number(l.unitCents) / 100 : l.costo ?? l.amount ?? l.euros) ??
+            (Number.isFinite(Number(l.unitCents)) ? Math.round(Number(l.unitCents)) : 0);
+          const confirmed = Boolean(l.confirmed || l.confermati || /VERIFICATO/i.test(String(l.status || "")));
+          return {
+            id: l.id || uid(),
+            key: l.key || guessPreventivoKey(title),
+            title: title.slice(0, 120),
+            mode: l.mode || "group",
+            unitCents: unit,
+            qty: Number(l.qty) > 0 ? Number(l.qty) : 1,
+            status: confirmed ? "VERIFICATO" : l.status || (unit > 0 ? "DA VERIFICARE" : "STIMA"),
+            source: String(l.source || l.note || l.notes || "").slice(0, 400),
+            url: l.url || "",
+            verifiedAt: confirmed ? nowIso() : "",
+          };
+        })
+        .filter(Boolean)
+        .slice(0, 80);
+    } catch {
+      return [];
+    }
+  }
+
+  function loadScriptOnce(src, globalName) {
+    if (globalName && window[globalName]) return Promise.resolve(window[globalName]);
+    const existing = document.querySelector(`script[data-pv-lib="${src}"]`);
+    if (existing) {
+      return new Promise((resolve, reject) => {
+        existing.addEventListener("load", () => resolve(globalName ? window[globalName] : true));
+        existing.addEventListener("error", () => reject(new Error(`Lib non caricata: ${src}`)));
+      });
+    }
+    return new Promise((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.dataset.pvLib = src;
+      s.onload = () => resolve(globalName ? window[globalName] : true);
+      s.onerror = () => reject(new Error(`Lib non caricata: ${src}`));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function extractTextFromDocx(file) {
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js", "JSZip");
+    const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+    const xml = await zip.file("word/document.xml")?.async("string");
+    if (!xml) throw new Error("Documento Word non leggibile.");
+    return xml
+      .replace(/<w:tab\/>/g, "\t")
+      .replace(/<w:br\/>/g, "\n")
+      .replace(/<\/w:p>/g, "\n")
+      .replace(/<[^>]+>/g, "")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/\n{3,}/g, "\n\n");
+  }
+
+  async function extractTextFromPdf(file) {
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js", "pdfjsLib");
+    const pdfjsLib = window.pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
+    const doc = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    const parts = [];
+    for (let i = 1; i <= Math.min(doc.numPages, 12); i++) {
+      const page = await doc.getPage(i);
+      const content = await page.getTextContent();
+      parts.push(content.items.map((it) => it.str).join(" "));
+    }
+    return parts.join("\n");
+  }
+
+  async function extractSheetMatrix(file) {
+    await loadScriptOnce("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js", "XLSX");
+    const wb = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return window.XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+  }
+
+  function matrixToPreventivoLines(matrix, sourceName) {
+    const rows = (matrix || []).filter((r) => Array.isArray(r) && r.some((c) => String(c || "").trim()));
+    if (!rows.length) return [];
+    const text = rows.map((r) => r.map((c) => String(c ?? "").trim()).join("\t")).join("\n");
+    return parsePreventivoTableText(text, { sourceName });
+  }
+
+  async function extractPreventivoFromImage(file) {
+    const dataUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("Immagine non leggibile."));
+      reader.readAsDataURL(file);
+    });
+    const prompt = `Sei un estrattore di preventivi viaggio. Analizza l'immagine di un foglio (Excel/Sheets) e restituisci SOLO JSON valido, senza markdown:
+{"lines":[{"title":"Alloggio","costo":915,"costoAlt":915,"note":"...","confermati":true}]}
+Regole:
+- title = tipologia/voce
+- costo = primo importo numerico in euro (numero, non stringa); se c'è "x" o vuoto usa null
+- costoAlt = secondo importo se presente, altrimenti null
+- note = testo note
+- confermati = true se c'è spunta/check, false se "-" o assente
+- Ignora la riga Totale
+- Massimo 40 voci`;
+    const body = {
+      model: "openai",
+      temperature: 0.1,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: dataUrl } },
+          ],
+        },
+      ],
+    };
+    const res = await fetch("https://text.pollinations.ai/openai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25000),
+    });
+    if (!res.ok) throw new Error("Lettura immagine non disponibile al momento. Prova CSV/Excel o incolla la tabella.");
+    const data = await res.json();
+    const content = String(data?.choices?.[0]?.message?.content || "").trim();
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Non ho riconosciuto una tabella nel file. Prova un CSV/Excel più chiaro.");
+    const parsed = JSON.parse(jsonMatch[0]);
+    const rows = Array.isArray(parsed?.lines) ? parsed.lines : [];
+    return rows
+      .map((l) => {
+        const title = String(l.title || "").trim();
+        if (!title || isTotalRow(title)) return null;
+        const unit =
+          l.costo == null
+            ? 0
+            : parseEuroLoose(l.costo) ??
+              (Number.isFinite(Number(l.costo)) ? Math.round(Number(l.costo) * 100) : 0);
+        const alt =
+          l.costoAlt == null
+            ? null
+            : parseEuroLoose(l.costoAlt) ??
+              (Number.isFinite(Number(l.costoAlt)) ? Math.round(Number(l.costoAlt) * 100) : null);
+        const note = String(l.note || "").trim();
+        const confirmed = Boolean(l.confermati);
+        const sourceParts = [];
+        if (note) sourceParts.push(note);
+        if (alt != null && alt !== unit) sourceParts.push(`Costo alt: ${fmtMoney(alt)}`);
+        sourceParts.push(`Import foto: ${file.name || "immagine"}`);
+        return {
+          id: uid(),
+          key: guessPreventivoKey(title),
+          title: title.slice(0, 120),
+          mode: "group",
+          unitCents: unit,
+          qty: 1,
+          status: confirmed ? "VERIFICATO" : unit > 0 ? "DA VERIFICARE" : "STIMA",
+          source: sourceParts.join(" · ").slice(0, 400),
+          url: "",
+          verifiedAt: confirmed ? nowIso() : "",
+        };
+      })
+      .filter(Boolean)
+      .slice(0, 80);
+  }
+
+  async function readPreventivoImportFile(file) {
+    const name = String(file?.name || "file");
+    const lower = name.toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (/\.(png|jpe?g|webp|gif|heic)$/i.test(lower) || type.startsWith("image/")) {
+      return extractPreventivoFromImage(file);
+    }
+    if (/\.pdf$/i.test(lower) || type === "application/pdf") {
+      const text = await extractTextFromPdf(file);
+      const lines = parsePreventivoTableText(text, { sourceName: name });
+      if (lines.length) return lines;
+      throw new Error("PDF letto, ma senza tabella riconoscibile. Esporta in CSV/Excel o incolla le righe.");
+    }
+    if (/\.docx$/i.test(lower)) {
+      const text = await extractTextFromDocx(file);
+      return parsePreventivoTableText(text, { sourceName: name });
+    }
+    if (/\.xlsx?$/i.test(lower) || /spreadsheet|excel/.test(type)) {
+      const matrix = await extractSheetMatrix(file);
+      return matrixToPreventivoLines(matrix, name);
+    }
+    if (/\.json$/i.test(lower) || type.includes("json")) {
+      const text = await file.text();
+      const fromJson = parsePreventivoJsonPayload(text);
+      return fromJson.length ? fromJson : parsePreventivoTableText(text, { sourceName: name });
+    }
+    const text = await file.text();
+    return parsePreventivoTableText(text, { sourceName: name });
+  }
+
+  function applyImportedPreventivoLines(lines, { mode = "merge" } = {}) {
+    const incoming = Array.isArray(lines) ? lines.filter((l) => l?.title) : [];
+    if (!incoming.length) throw new Error("Nessuna voce da importare.");
+    ensureBudgetLines();
+    if (mode === "replace") {
+      state.lines = incoming.map((l) => ({ ...l, id: l.id || uid() }));
+    } else {
+      const byTitle = new Map(state.lines.map((l) => [String(l.title || "").toLowerCase(), l]));
+      for (const row of incoming) {
+        const key = String(row.title || "").toLowerCase();
+        const existing = byTitle.get(key);
+        if (existing) {
+          existing.unitCents = row.unitCents;
+          existing.qty = row.qty || 1;
+          existing.status = row.status || existing.status;
+          existing.source = row.source || existing.source;
+          if (row.key) existing.key = row.key;
+          if (row.verifiedAt) existing.verifiedAt = row.verifiedAt;
+        } else {
+          const next = { ...row, id: row.id || uid() };
+          state.lines.push(next);
+          byTitle.set(key, next);
+        }
+      }
+    }
+    persistState();
+    return state.lines.length;
+  }
+
+  function openPreventivoImportWizard() {
+    const root = rootEl();
+    if (!root) return;
+    let host = root.querySelector("#pv-prev-import");
+    if (!host) {
+      host = document.createElement("div");
+      host.id = "pv-prev-import";
+      host.innerHTML = `
+        <div class="pv-prev-import-scrim" data-imp-close></div>
+        <div class="pv-prev-import-sheet" role="dialog" aria-modal="true" aria-labelledby="pv-prev-imp-title">
+          <header>
+            <div>
+              <p class="pv-prev-eyebrow">Budget</p>
+              <h3 id="pv-prev-imp-title">Importa nel Preventivo</h3>
+            </div>
+            <button type="button" class="ghost" data-imp-close aria-label="Chiudi">×</button>
+          </header>
+          <p class="pv-prev-muted">Carica una foto del foglio, PDF, Word, Excel/CSV oppure incolla la tabella (tipologia, costo, note, confermati).</p>
+          <div class="pv-prev-import-row">
+            <input id="pv-prev-imp-file" type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.docx,.pdf,image/*,.png,.jpg,.jpeg,.webp" multiple />
+            <select id="pv-prev-imp-mode">
+              <option value="merge">Unisci alle voci esistenti</option>
+              <option value="replace">Sostituisci tutto il budget</option>
+            </select>
+          </div>
+          <label class="pv-prev-muted" for="pv-prev-imp-paste">Incolla tabella</label>
+          <textarea id="pv-prev-imp-paste" rows="6" placeholder="tipologia\tcosto\tcosto\tnote\tconfermati&#10;Alloggio\t915\t915\tInclusa tassa\t✓"></textarea>
+          <div class="pv-prev-actions">
+            <button type="button" class="primary" id="pv-prev-imp-run">Analizza</button>
+            <button type="button" class="ghost" data-imp-close>Annulla</button>
+          </div>
+          <p class="pv-prev-import-status" id="pv-prev-imp-status"></p>
+          <div id="pv-prev-imp-preview"></div>
+        </div>`;
+      root.appendChild(host);
+      if (!document.getElementById("pv-prev-import-css")) {
+        const style = document.createElement("style");
+        style.id = "pv-prev-import-css";
+        style.textContent = `
+          #pv-prev-import{position:absolute;inset:0;z-index:30;display:none;place-items:center;padding:16px}
+          #pv-prev-import.open{display:grid}
+          #pv-prev-import .pv-prev-import-scrim{position:absolute;inset:0;background:rgba(10,28,34,.45)}
+          #pv-prev-import .pv-prev-import-sheet{position:relative;z-index:1;width:min(560px,100%);max-height:min(86vh,760px);overflow:auto;background:#fff;border-radius:18px;padding:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);color:#123}
+          #pv-prev-import header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:8px}
+          #pv-prev-import h3{margin:0;font-size:1.15rem}
+          #pv-prev-import .pv-prev-eyebrow{margin:0;font-size:.72rem;font-weight:700;color:#007d82;text-transform:uppercase;letter-spacing:.04em}
+          #pv-prev-import textarea,#pv-prev-import input[type=file],#pv-prev-import select{width:100%;box-sizing:border-box;margin:6px 0 10px;border:1px solid #d5e3e5;border-radius:12px;padding:10px;font:inherit}
+          #pv-prev-import .pv-prev-import-row{display:grid;gap:8px}
+          #pv-prev-import .pv-prev-import-status{min-height:1.2em;font-size:.86rem;color:#5b7380}
+          #pv-prev-import .pv-prev-imp-list{list-style:none;margin:8px 0;padding:0;display:grid;gap:6px}
+          #pv-prev-import .pv-prev-imp-list li{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:start;padding:8px;border:1px solid #e4eeee;border-radius:12px}
+          #pv-prev-import .pv-prev-imp-list small{display:block;color:#5b7380}
+        `;
+        document.head.appendChild(style);
+      }
+      host.addEventListener("click", (ev) => {
+        if (ev.target?.closest?.("[data-imp-close]")) host.classList.remove("open");
+      });
+      host.querySelector("#pv-prev-imp-run")?.addEventListener("click", () => void runPreventivoImportAnalyze(host));
+    }
+    host.classList.add("open");
+    const status = host.querySelector("#pv-prev-imp-status");
+    const preview = host.querySelector("#pv-prev-imp-preview");
+    if (status) status.textContent = "";
+    if (preview) preview.innerHTML = "";
+    setOpen(true);
+    state.section = "budget";
+    render();
+  }
+
+  async function runPreventivoImportAnalyze(host) {
+    const status = host.querySelector("#pv-prev-imp-status");
+    const preview = host.querySelector("#pv-prev-imp-preview");
+    const fileInput = host.querySelector("#pv-prev-imp-file");
+    const paste = host.querySelector("#pv-prev-imp-paste");
+    const mode = host.querySelector("#pv-prev-imp-mode")?.value || "merge";
+    if (status) status.textContent = "Analisi in corso…";
+    if (preview) preview.innerHTML = "";
+    try {
+      const collected = [];
+      const files = [...(fileInput?.files || [])];
+      for (const f of files) {
+        const rows = await readPreventivoImportFile(f);
+        collected.push(...rows);
+      }
+      const pasted = String(paste?.value || "").trim();
+      if (pasted) collected.push(...parsePreventivoTableText(pasted, { sourceName: "Incolla" }));
+      // Deduplicate by title keeping last
+      const byTitle = new Map();
+      for (const row of collected) byTitle.set(String(row.title || "").toLowerCase(), row);
+      const lines = [...byTitle.values()];
+      if (!lines.length) throw new Error("Nessuna voce riconosciuta. Controlla colonne tipologia/costo/note/confermati.");
+      if (preview) {
+        preview.innerHTML = `
+          <p><strong>${lines.length}</strong> voci riconosciute · modalità «${mode === "replace" ? "sostituisci" : "unisci"}»</p>
+          <ul class="pv-prev-imp-list">
+            ${lines
+              .map(
+                (l, i) => `<li>
+                  <input type="checkbox" data-imp-idx="${i}" checked />
+                  <div><strong>${escapeHtml(l.title)}</strong>
+                    <small>${escapeHtml(l.status)} · ${fmtMoney(l.unitCents)}${l.source ? ` · ${escapeHtml(l.source)}` : ""}</small>
+                  </div>
+                </li>`
+              )
+              .join("")}
+          </ul>
+          <div class="pv-prev-actions">
+            <button type="button" class="primary" id="pv-prev-imp-apply">Importa selezionate</button>
+          </div>`;
+        preview.querySelector("#pv-prev-imp-apply")?.addEventListener("click", async () => {
+          const selected = [...preview.querySelectorAll("input[data-imp-idx]:checked")].map(
+            (el) => lines[Number(el.dataset.impIdx)]
+          );
+          try {
+            const n = applyImportedPreventivoLines(selected, { mode });
+            host.classList.remove("open");
+            state.section = "budget";
+            state.status = `Importate ${selected.length} voci nel budget (${n} totali).`;
+            render();
+            if (state.tripId && tripAuth()) {
+              try {
+                await syncPreventivoIntoTrip();
+                state.status = `Importate ${selected.length} voci e salvate nel viaggio.`;
+                render();
+              } catch {
+                /* local already saved */
+              }
+            }
+          } catch (err) {
+            if (status) status.textContent = err?.message || "Import non riuscito";
+          }
+        });
+      }
+      if (status) status.textContent = "Controlla le voci e conferma l’import.";
+    } catch (err) {
+      if (status) status.textContent = err?.message || "Analisi non riuscita";
+    }
+  }
+
   async function exportSummary() {
     const tot = budgetTotals();
     const sourceTitles = (state.sources || []).map((s) => s.title).filter(Boolean).slice(0, 8);
@@ -2767,6 +3327,10 @@
           render();
         }
       };
+      window.__pvOpenPreventivoImport = openPreventivoImportWizard;
+      window.__pvParsePreventivoImport = parsePreventivoTableText;
+      window.__pvReadPreventivoImportFile = readPreventivoImportFile;
+      window.__pvApplyPreventivoImport = applyImportedPreventivoLines;
       window.__pvBuildEsimCatalog = buildEsimCatalog;
       window.__pvStripPreventivoNotes = stripPreventivoNotes;
       window.__pvEsimBlockHtml = (destination, start, end, opts) =>
