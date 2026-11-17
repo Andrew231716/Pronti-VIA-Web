@@ -7,11 +7,50 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261117g";
+  const STYLE_VER = "20261117h";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
   const INVITE_LOCAL_KEY = "viavia-invite-codes-v1";
+  const TRIP_PHASE_KEY = "pv-trip-phase-v1";
+  const TRIP_TAB_META = {
+    itinerary: { phase: "trip", label: "Itinerario" },
+    explore: { phase: "both", label: "Esplora" },
+    places: { phase: "both", label: "Luoghi" },
+    preventivo: { phase: "prep", label: "Preventivo" },
+    bookings: { phase: "both", label: "Prenotazioni" },
+    expenses: { phase: "trip", label: "Spese", icon: "spese" },
+    documents: { phase: "prep", label: "Documenti", icon: "docs" },
+    packing: { phase: "prep", label: "Valigia" },
+    notes: { phase: "trip", label: "Note" },
+  };
+  const TRIP_PHASE_COPY = {
+    prep: {
+      title: "Prepara",
+      hint: "Budget, prenotazioni, documenti e valigia — tutto prima di partire",
+    },
+    trip: {
+      title: "In viaggio",
+      hint: "Itinerario, spese e note — assistenza mentre sei fuori",
+    },
+  };
+  const SECTION_GUIDE = {
+    itinerary: "Giorno per giorno: tappe, orari e check-in mentre viaggi.",
+    explore: "Idee e posti da scoprire — salva i preferiti in Luoghi.",
+    places: "I tuoi posti salvati, a portata di mappa.",
+    preventivo: "Stima costi e budget prima di impegnare le prenotazioni.",
+    bookings: "Voli, hotel e biglietti: tieni tutto sotto controllo.",
+    expenses: "Spese condivise e saldi tra compagni, in tempo reale.",
+    documents: "Passaporti, voucher e PDF utili al check-in.",
+    packing: "Checklist valigia personale e condivisa.",
+    notes: "Appunti rapidi, liste e promemoria durante il viaggio.",
+  };
+  const ICON_SVG = {
+    spese:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5V6.5"/></svg>',
+    docs:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+  };
 
   const TEMPLATES = [
     {
@@ -82,15 +121,51 @@
       [data-radix-popper-content-wrapper],[data-radix-select-content],[role="listbox"],[data-slot="select-content"]{
         z-index:130050!important
       }
-      /* Compact + fluid mobile tabs — only trip UI inside #root (never login gate) */
+      /* Compact + fluid mobile tabs — only trip UI inside #root (never login gate).
+         Skip .main-tabs: that grid is phase-filtered and must not horizontal-scroll. */
       @media (max-width:720px){
-        #root [role="tablist"]{
+        #root [role="tablist"]:not(.main-tabs){
           scroll-behavior:smooth;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;
           overscroll-behavior-x:contain;
         }
-        #root [role="tablist"] [role="tab"]{
+        #root [role="tablist"]:not(.main-tabs) [role="tab"]{
           font-size:12px!important;padding-inline:10px!important;scroll-snap-align:start;
         }
+      }
+      .pv-trip-phase{
+        display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 0 10px;
+        padding:4px;border-radius:14px;border:1px solid color-mix(in srgb,var(--diary-line,#c5d4da) 85%,transparent);
+        background:color-mix(in srgb,var(--diary-wash,#eef4f6) 88%,transparent);
+      }
+      .pv-trip-phase button{
+        min-height:42px;border:0;border-radius:11px;padding:.55rem .7rem;
+        font:650 .9rem/1.2 system-ui,sans-serif;cursor:pointer;
+        color:var(--diary-muted,#5a727c);background:transparent;
+        transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+      }
+      .pv-trip-phase button[aria-pressed="true"]{
+        color:var(--diary-accent,#007d82);background:var(--diary-paper,#fff);
+        box-shadow:0 1px 6px rgba(16,42,48,.1);font-weight:750;
+      }
+      .pv-trip-phase-hint{
+        margin:0 0 10px;font-size:.82rem;line-height:1.35;font-weight:550;
+        color:var(--diary-muted,#5a727c);
+      }
+      .pv-section-guide{
+        margin:.15rem 0 .85rem;padding:.65rem .8rem;border-radius:.75rem;
+        border:1px solid color-mix(in srgb,var(--diary-line,#c5d4da) 80%,transparent);
+        background:color-mix(in srgb,var(--diary-wash,#eef4f6) 70%,transparent);
+        color:var(--diary-ink,#12343c);font-size:.88rem;line-height:1.4;font-weight:550;
+      }
+      html[data-pv-trip-phase="prep"] #root .main-tabs [role="tab"][data-pv-phase="trip"],
+      html[data-pv-trip-phase="trip"] #root .main-tabs [role="tab"][data-pv-phase="prep"]{
+        display:none!important;
+      }
+      #root .main-tabs [role="tab"][data-pv-tab-fixed="1"] svg{width:18px;height:18px;flex-shrink:0}
+      #root .trip-toolbar .travelers{cursor:pointer;border-radius:12px;padding:4px 6px 4px 2px}
+      #root .trip-toolbar .travelers:focus-visible{outline:2px solid var(--diary-accent,#007d82);outline-offset:2px}
+      @media (prefers-reduced-motion:reduce){
+        .pv-trip-phase button{transition:none}
       }
       /* Day cards / horizontal strips */
       .day-strip,[class*="day-strip"],[class*="DayStrip"]{
@@ -4349,6 +4424,228 @@
     }
   }
 
+  function tabSectionKey(tab) {
+    const controls = tab?.getAttribute?.("aria-controls") || "";
+    const match = controls.match(/-content-([a-z]+)$/i);
+    return match ? match[1] : "";
+  }
+
+  function resolveTripPhase(auth) {
+    try {
+      const saved = sessionStorage.getItem(TRIP_PHASE_KEY);
+      if (saved === "prep" || saved === "trip") return saved;
+    } catch { /* session may be unavailable */ }
+    try {
+      const row = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[auth?.id];
+      const raw = row?.trip?.startDate || row?.trip?.start || row?.trip?.from || "";
+      if (raw) {
+        const start = new Date(raw);
+        if (!Number.isNaN(+start)) {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          start.setHours(0, 0, 0, 0);
+          if (start <= today) return "trip";
+        }
+      }
+    } catch { /* trip row optional */ }
+    return "prep";
+  }
+
+  function setTabLabel(tab, label) {
+    let replaced = false;
+    for (const node of [...tab.childNodes]) {
+      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+        node.textContent = label;
+        replaced = true;
+      } else if (
+        node.nodeType === Node.ELEMENT_NODE &&
+        node.tagName !== "SVG" &&
+        !node.querySelector?.("svg") &&
+        (node.textContent || "").trim()
+      ) {
+        node.textContent = label;
+        replaced = true;
+      }
+    }
+    if (!replaced) {
+      tab.appendChild(document.createTextNode(label));
+    }
+  }
+
+  function applyTabIcon(tab, kind) {
+    const svgHtml = ICON_SVG[kind];
+    if (!svgHtml) return;
+    const existing = tab.querySelector("svg");
+    if (existing) {
+      const wrap = document.createElement("span");
+      wrap.innerHTML = svgHtml;
+      const next = wrap.firstElementChild;
+      if (next) existing.replaceWith(next);
+    } else {
+      tab.insertAdjacentHTML("afterbegin", svgHtml);
+    }
+    tab.dataset.pvTabFixed = "1";
+  }
+
+  function ensureVisiblePhaseTab(tabs, phase) {
+    const active = tabs.querySelector('[role="tab"][aria-selected="true"], [role="tab"][data-state="active"]');
+    const activeKey = tabSectionKey(active);
+    const meta = TRIP_TAB_META[activeKey];
+    const ok = meta && (meta.phase === "both" || meta.phase === phase);
+    if (ok) return;
+    const preferred =
+      phase === "trip"
+        ? ["itinerary", "expenses", "notes", "explore", "places", "bookings"]
+        : ["preventivo", "bookings", "documents", "packing", "places", "explore"];
+    for (const key of preferred) {
+      const tab = [...tabs.querySelectorAll('[role="tab"]')].find((el) => tabSectionKey(el) === key);
+      if (!tab || getComputedStyle(tab).display === "none") continue;
+      if (tab.getAttribute("aria-selected") === "true" || tab.getAttribute("data-state") === "active") return;
+      tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      tab.click();
+      return;
+    }
+  }
+
+  function injectSectionGuide(tabs) {
+    const active = tabs.querySelector('[role="tab"][aria-selected="true"], [role="tab"][data-state="active"]');
+    const key = tabSectionKey(active);
+    const guideText = SECTION_GUIDE[key];
+    const panel = document.getElementById(active?.getAttribute("aria-controls") || "");
+    if (!panel || panel.hidden || !guideText) return;
+    let guide = panel.querySelector(".pv-section-guide");
+    if (!guide) {
+      guide = document.createElement("p");
+      guide.className = "pv-section-guide";
+      const heading = panel.querySelector(".section-heading");
+      if (heading?.parentElement === panel) heading.after(guide);
+      else panel.prepend(guide);
+    }
+    if (guide.dataset.key !== key) {
+      guide.dataset.key = key;
+      guide.textContent = guideText;
+    }
+  }
+
+  function polishTripToolbar() {
+    const bar = document.querySelector("#root .trip-toolbar");
+    if (!bar || bar.dataset.pvToolbarReady === "1") return;
+    bar.dataset.pvToolbarReady = "1";
+    const travelers = bar.querySelector(".travelers");
+    const share = [...bar.querySelectorAll("button")].find((btn) =>
+      /condividi/i.test(btn.textContent || "")
+    );
+    if (travelers && share && !travelers.dataset.pvClickShare) {
+      travelers.dataset.pvClickShare = "1";
+      travelers.setAttribute("role", "button");
+      travelers.setAttribute("tabindex", "0");
+      travelers.setAttribute("aria-label", "Compagni di viaggio — apri condivisione");
+      const openShare = () => share.click();
+      travelers.addEventListener("click", openShare);
+      travelers.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          openShare();
+        }
+      });
+    }
+    bar.querySelectorAll(".icon-btn").forEach((btn) => {
+      if (!btn.getAttribute("aria-label")) {
+        const title = btn.getAttribute("title");
+        if (title) btn.setAttribute("aria-label", title);
+      }
+    });
+  }
+
+  function enhanceTripModeNav() {
+    const auth = tripAuth();
+    const tabs = document.querySelector("#root .main-tabs");
+    if (!auth || !tabs) {
+      document.documentElement.removeAttribute("data-pv-trip-phase");
+      document.querySelector(".pv-trip-phase")?.remove();
+      document.querySelector(".pv-trip-phase-hint")?.remove();
+      return;
+    }
+    const host = tabs.closest(".workspace-tabs") || tabs.parentElement;
+    if (!host) return;
+
+    const phase = resolveTripPhase(auth);
+    document.documentElement.dataset.pvTripPhase = phase;
+
+    let mode = host.querySelector(":scope > .pv-trip-phase");
+    if (!mode) {
+      mode = document.createElement("div");
+      mode.className = "pv-trip-phase";
+      mode.setAttribute("role", "group");
+      mode.setAttribute("aria-label", "Modalità viaggio");
+      mode.innerHTML = `
+        <button type="button" data-phase="prep">${TRIP_PHASE_COPY.prep.title}</button>
+        <button type="button" data-phase="trip">${TRIP_PHASE_COPY.trip.title}</button>
+      `;
+      host.insertBefore(mode, tabs);
+      mode.addEventListener("click", (ev) => {
+        const btn = ev.target?.closest?.("button[data-phase]");
+        if (!btn) return;
+        const next = btn.dataset.phase;
+        if (next !== "prep" && next !== "trip") return;
+        try { sessionStorage.setItem(TRIP_PHASE_KEY, next); } catch { /* ignore */ }
+        document.documentElement.dataset.pvTripPhase = next;
+        mode.querySelectorAll("button[data-phase]").forEach((el) => {
+          el.setAttribute("aria-pressed", el.dataset.phase === next ? "true" : "false");
+        });
+        const hint = host.querySelector(":scope > .pv-trip-phase-hint");
+        if (hint) hint.textContent = TRIP_PHASE_COPY[next].hint;
+        ensureVisiblePhaseTab(tabs, next);
+        injectSectionGuide(tabs);
+      });
+    }
+    mode.querySelectorAll("button[data-phase]").forEach((el) => {
+      el.setAttribute("aria-pressed", el.dataset.phase === phase ? "true" : "false");
+    });
+
+    let hint = host.querySelector(":scope > .pv-trip-phase-hint");
+    if (!hint) {
+      hint = document.createElement("p");
+      hint.className = "pv-trip-phase-hint";
+      mode.after(hint);
+    }
+    hint.textContent = TRIP_PHASE_COPY[phase].hint;
+
+    [...tabs.querySelectorAll('[role="tab"]')].forEach((tab) => {
+      const key = tabSectionKey(tab);
+      const meta = TRIP_TAB_META[key];
+      if (!meta) return;
+      tab.dataset.pvPhase = meta.phase;
+      tab.dataset.pvTab = key;
+      if (meta.label && !/^\s*$/.test(meta.label)) {
+        const current = (tab.textContent || "").replace(/\s+/g, " ").trim();
+        if (current !== meta.label) setTabLabel(tab, meta.label);
+      }
+      if (meta.icon && tab.dataset.pvIcon !== meta.icon) {
+        applyTabIcon(tab, meta.icon);
+        tab.dataset.pvIcon = meta.icon;
+      }
+      if (!tab.getAttribute("aria-label")) {
+        tab.setAttribute("aria-label", meta.label);
+      }
+    });
+
+    // Stable visual order: prep cluster then trip cluster within the 3-col grid.
+    const order =
+      phase === "trip"
+        ? ["itinerary", "explore", "places", "expenses", "bookings", "notes", "preventivo", "documents", "packing"]
+        : ["preventivo", "bookings", "documents", "packing", "places", "explore", "itinerary", "expenses", "notes"];
+    [...tabs.querySelectorAll('[role="tab"]')].forEach((tab) => {
+      const key = tabSectionKey(tab);
+      const idx = order.indexOf(key);
+      tab.style.order = idx >= 0 ? String(idx + 1) : "99";
+    });
+
+    ensureVisiblePhaseTab(tabs, phase);
+    injectSectionGuide(tabs);
+    polishTripToolbar();
+  }
+
   function injectEventImportRail() {
     const auth = tripAuth();
     const tabs = document.querySelector("#root .main-tabs");
@@ -4626,6 +4923,7 @@
     run(injectTripDeleteButton);
     run(injectHomeDeleteEntry);
     run(injectHomeImportEntry);
+    run(enhanceTripModeNav);
     run(injectEventImportRail);
     run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);

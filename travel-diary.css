@@ -408,6 +408,14 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
   border-radius: 1rem;
   background: var(--diary-paper);
   overflow-wrap: anywhere;
+  animation: pv-panel-in .22s ease-out;
+}
+@keyframes pv-panel-in {
+  from { opacity: .55; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .primary-panel > [role="tabpanel"]:not([hidden]) { animation: none; }
 }
 #root .workspace-tabs { background: transparent !important; }
 #root .pv-event-section { margin-bottom: .8rem; }
@@ -416,21 +424,36 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
   #root .app-shell .workspace-tabs .main-tabs {
     display: grid !important;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 3px !important;
+    gap: 6px !important;
     overflow: visible !important;
     height: auto !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
   }
   #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    justify-content: center;
     min-width: 0;
     width: 100%;
     height: auto;
-    padding: .4rem .2rem !important;
-    gap: .25rem;
+    min-height: 68px !important;
+    padding: .55rem .3rem !important;
+    gap: .35rem;
     white-space: normal;
     line-height: 1.15;
     overflow-wrap: anywhere;
+    text-align: center;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    border-radius: 12px !important;
   }
-  #root .workspace-tabs .main-tabs [role="tab"] svg { flex-shrink: 0; width: 14px; }
+  #root .workspace-tabs .main-tabs [role="tab"] svg {
+    flex-shrink: 0;
+    width: 20px !important;
+    height: 20px !important;
+  }
   #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
   #root .day-strip {
     display: grid;
@@ -987,4 +1010,89 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
 #pv-day-sheet .pv-plat-list > li {
   padding-block: .55rem;
   overflow-wrap: anywhere;
+}
+
+/* Trip workspace: prep vs in-viaggio menu + denser toolbar */
+#root .workspace-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+#root .workspace-tabs > .pv-trip-phase {
+  order: -2;
+}
+#root .workspace-tabs > .pv-trip-phase-hint {
+  order: -1;
+}
+#root .app-shell .main-tabs [role="tab"][data-state="active"],
+#root .app-shell .main-tabs [role="tab"][aria-selected="true"] {
+  font-weight: 750 !important;
+}
+#root .trip-toolbar {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--diary-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--diary-paper) 92%, transparent);
+}
+#root .trip-toolbar .travelers {
+  min-width: 0;
+  flex: 1 1 10rem;
+  gap: 10px;
+}
+#root .trip-toolbar .travelers > span:last-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--diary-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#root .trip-toolbar .toolbar-actions {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#root .trip-toolbar .toolbar-actions .button {
+  min-height: 44px;
+  padding-inline: 14px;
+  font-weight: 700;
+}
+#root .trip-toolbar .icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-paper);
+}
+@media (max-width: 640px) {
+  #root .trip-toolbar .toolbar-actions .button {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+@media (min-width: 641px) {
+  #root .app-shell .workspace-tabs .main-tabs {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    overflow: visible !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
+  }
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    flex: 1 1 7.5rem;
+    min-width: 7.2rem;
+    max-width: 11rem;
+    flex-direction: row !important;
+    justify-content: center;
+    gap: .45rem;
+    border-radius: 12px !important;
+    padding: .65rem .85rem !important;
+  }
+  #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
 }
