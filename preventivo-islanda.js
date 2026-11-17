@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261117c";
+  const VERSION = "20261117d";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -2750,7 +2750,7 @@
   function parseEuroLoose(raw) {
     const s = String(raw ?? "").trim();
     if (!s || /^x$/i.test(s) || s === "-" || s === "—" || s === "–" || /^n\/?a$/i.test(s)) return null;
-    let t = s.replace(/€/g, "").replace(/\s/g, "");
+    let t = s.replace(/[€£]/g, "").replace(/^E(?=\d)/i, "").replace(/\s/g, "");
     if (!t) return null;
     if (/^\d{1,3}(\.\d{3})+,\d{1,2}$/.test(t)) t = t.replace(/\./g, "").replace(",", ".");
     else if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(",", ".");
@@ -2773,7 +2773,11 @@
   }
 
   function isTotalRow(title) {
-    return /^(totale|total|sum|subtotale|grand total)\b/i.test(String(title || "").trim());
+    const s = String(title || "").trim();
+    if (/^(totale|total|tote|tot\.?|sum|subtotale|grand total)\b/i.test(s)) return true;
+    // OCR often prefixes totals: "i Totale", "3 Totale"
+    if (/^(?:[^\s]{1,2}\s+)?tot(?:ale|al|e)?\b/i.test(s) && s.length <= 18) return true;
+    return false;
   }
 
   function splitTableLine(line) {
@@ -2856,6 +2860,142 @@
     };
   }
 
+  // € and common OCR misreads (£ / E) before Italian money amounts.
+  const OCR_COST_TOKEN_RE =
+    /[€£E]\s*\d{1,3}(?:\.\d{3})+,\d{2}|[€£E]\s*\d+,\d{2}|[€£E]\s*\d{1,3}(?:\.\d{3})+(?!,)|[€£E]\s*\d+(?:[.,]\d{1,2})?|\b[xX]\b/g;
+
+  function isOcrHeaderLine(line) {
+    const s = String(line || "").toLowerCase();
+    return /tipolog|categori|voce/.test(s) && /costo|importo|prezzo|€|£/.test(s);
+  }
+
+  function isOcrNoiseLine(line) {
+    const s = String(line || "").trim();
+    if (!s) return true;
+    if (/^[A-E](?:\s*[|.]?\s*[A-E]){1,6}$/i.test(s)) return true;
+    if (/^[|.\-_—=]+$/u.test(s)) return true;
+    if (s.length <= 2 && !/[€£\d]/u.test(s)) return true;
+    return false;
+  }
+
+  function cleanOcrTitle(title) {
+    let t = String(title || "")
+      .replace(/^[^A-Za-zÀ-ÿ]+/u, "")
+      .replace(/\s*[|_—\-.=]{2,}.*$/u, "")
+      .replace(/\s+[€£E]\s*\d.*$/u, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    // Drop OCR glyph/letter prefixes: "È Volo", "i Assicurazione", ") parchi"
+    t = t.replace(/^[^\s]{1,2}\s+(?=[A-Za-zÀ-ÿ]{3,})/u, "");
+    return t.trim();
+  }
+
+  function scorePreventivoImportLines(lines) {
+    if (!Array.isArray(lines) || !lines.length) return -1;
+    let score = 0;
+    for (const l of lines) {
+      const title = String(l?.title || "");
+      if (!title || title.length < 2) continue;
+      if (/[|_—]{2,}/.test(title)) score -= 2;
+      if (isTotalRow(title)) {
+        score -= 5;
+        continue;
+      }
+      score += 2;
+      if (Number(l.unitCents) > 0) score += 3;
+      if (l.status === "VERIFICATO") score += 1;
+      if (/Import:|OCR foto:|Costo alt:/.test(String(l.source || ""))) score += 0;
+    }
+    return score;
+  }
+
+  function parseSpreadsheetOcrText(text, { sourceName = "" } = {}) {
+    const rawLines = String(text || "")
+      .replace(/^\uFEFF/, "")
+      .replace(/\u00a0/g, " ")
+      .split(/\r?\n/)
+      .map((l) =>
+        String(l || "")
+          .replace(/[|\[\]]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+      )
+      .filter(Boolean);
+    const pendingNotes = [];
+    const out = [];
+    for (const line of rawLines) {
+      if (isOcrNoiseLine(line)) continue;
+      if (isOcrHeaderLine(line)) {
+        pendingNotes.length = 0;
+        continue;
+      }
+      if (/^totale\b/i.test(line) || isTotalRow(line.split(/\s+/)[0] || "")) continue;
+
+      const matches = [...line.matchAll(new RegExp(OCR_COST_TOKEN_RE.source, "g"))];
+      if (!matches.length) {
+        if (/^(cibo|food|mangiare)$/i.test(line)) continue;
+        // Note cells often wrap onto lines above the next title (Sheets screenshots).
+        if (!isOcrNoiseLine(line)) pendingNotes.push(line);
+        continue;
+      }
+
+      let title = cleanOcrTitle(line.slice(0, matches[0].index));
+      if (!title || isTotalRow(title) || isOcrHeaderLine(title)) {
+        pendingNotes.length = 0;
+        continue;
+      }
+
+      const costTokens = [];
+      for (let i = 0; i < matches.length && costTokens.length < 2; i++) {
+        if (i > 0) {
+          const gap = matches[i].index - (matches[i - 1].index + matches[i - 1][0].length);
+          if (gap > 10) break;
+        }
+        costTokens.push(matches[i]);
+      }
+      const parsedCosts = costTokens.map((m) => (/^x$/i.test(String(m[0]).trim()) ? null : parseEuroLoose(m[0])));
+      if (parsedCosts.every((c) => c == null) && costTokens.every((m) => /^x$/i.test(String(m[0]).trim()))) {
+        pendingNotes.length = 0;
+        continue;
+      }
+      const unitCents = parsedCosts.find((c) => c != null) ?? 0;
+      const alt =
+        parsedCosts.length > 1 && parsedCosts[1] != null && parsedCosts[1] !== unitCents ? parsedCosts[1] : null;
+
+      const last = costTokens[costTokens.length - 1];
+      let rest = line.slice(last.index + last[0].length).trim();
+      let confirmed = false;
+      if (/(✓|✔|☑|✅)\s*$/.test(rest)) {
+        confirmed = true;
+        rest = rest.replace(/(✓|✔|☑|✅)\s*$/u, "").trim();
+      } else if (/\s*[=\-—–]\s*$/u.test(rest)) {
+        rest = rest.replace(/\s*[=\-—–]\s*$/u, "").trim();
+      }
+
+      const noteParts = pendingNotes.splice(0, pendingNotes.length).filter((n) => !isOcrNoiseLine(n));
+      if (rest && !isOcrNoiseLine(rest)) noteParts.push(rest);
+      const note = noteParts.join(" ").replace(/\s+/g, " ").trim();
+      const sourceParts = [];
+      if (note) sourceParts.push(note);
+      if (alt != null) sourceParts.push(`Costo alt: ${fmtMoney(alt)}`);
+      if (sourceName) sourceParts.push(`Import: ${sourceName}`);
+
+      out.push({
+        id: uid(),
+        key: guessPreventivoKey(title),
+        title: title.slice(0, 120),
+        mode: "group",
+        unitCents,
+        qty: 1,
+        status: confirmed ? "VERIFICATO" : unitCents > 0 ? "DA VERIFICARE" : "STIMA",
+        source: sourceParts.join(" · ").slice(0, 400),
+        url: "",
+        verifiedAt: confirmed ? nowIso() : "",
+      });
+    }
+    return out.slice(0, 80);
+  }
+
   function parsePreventivoTableText(text, { sourceName = "" } = {}) {
     const lines = String(text || "")
       .replace(/^\uFEFF/, "")
@@ -2863,20 +3003,29 @@
       .map((l) => l.trimEnd())
       .filter((l) => l.trim());
     if (!lines.length) return [];
+
+    // OCR / space-separated spreadsheet rows (common for Sheets screenshots).
+    const ocrParsed = parseSpreadsheetOcrText(lines.join("\n"), { sourceName });
+    const ocrScore = scorePreventivoImportLines(ocrParsed);
+
     let map = { titleIdx: 0, costIdxs: [1], noteIdx: -1, confIdx: -1 };
     let start = 0;
     const firstCols = splitTableLine(lines[0]);
+    const headerFromSpaces = isOcrHeaderLine(lines[0]);
     if (firstCols.length >= 2 && isPreventivoHeaderRow(firstCols)) {
       map = mapHeaderIndexes(firstCols);
       start = 1;
-    } else if (firstCols.length === 1) {
-      // Freeform "Alloggio 915" lines
+    } else if (headerFromSpaces || firstCols.length === 1) {
+      // Prefer structured OCR parse over naive "first number wins" freeform,
+      // which misreads notes like "15 giorni" as costs.
+      if (ocrScore >= 8) return ocrParsed;
       const out = [];
       for (const line of lines) {
-        const m = line.match(/^(.+?)\s+[€$]?([\d.]+,\d{2}|\d+(?:[.,]\d{1,2})?)\s*(.*)$/);
+        if (isOcrHeaderLine(line)) continue;
+        const m = line.match(/^(.+?)\s+(€\s*[\d.,]+|\d+[.,]\d{2})\s*(.*)$/);
         if (!m) continue;
         const title = m[1].trim();
-        if (isTotalRow(title)) continue;
+        if (isTotalRow(title) || isOcrHeaderLine(title)) continue;
         const cents = parseEuroLoose(m[2]);
         if (cents == null) continue;
         out.push({
@@ -2892,7 +3041,8 @@
           verifiedAt: "",
         });
       }
-      return out.slice(0, 80);
+      const freeScore = scorePreventivoImportLines(out);
+      return freeScore >= ocrScore ? out.slice(0, 80) : ocrParsed;
     }
     const out = [];
     for (const line of lines.slice(start)) {
@@ -2901,7 +3051,8 @@
       const row = rowToPreventivoLine(cols, map, sourceName);
       if (row) out.push(row);
     }
-    return out.slice(0, 80);
+    const tabScore = scorePreventivoImportLines(out);
+    return tabScore >= ocrScore ? out.slice(0, 80) : ocrParsed;
   }
 
   function parsePreventivoJsonPayload(text) {
@@ -3017,12 +3168,76 @@
       .join("\n");
   }
 
+  async function prepareImageBlobForOcr(file) {
+    try {
+      if (typeof createImageBitmap !== "function") return file;
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) return file;
+      ctx.drawImage(bitmap, 0, 0);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let sum = 0;
+      const n = img.data.length / 4;
+      for (let i = 0; i < img.data.length; i += 4) {
+        sum += (img.data[i] + img.data[i + 1] + img.data[i + 2]) / 3;
+      }
+      // Dark Sheets screenshots OCR much better when inverted to light text-on-paper.
+      if (sum / n < 120) {
+        for (let i = 0; i < img.data.length; i += 4) {
+          img.data[i] = 255 - img.data[i];
+          img.data[i + 1] = 255 - img.data[i + 1];
+          img.data[i + 2] = 255 - img.data[i + 2];
+        }
+        ctx.putImageData(img, 0, 0);
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        if (blob) return blob;
+      }
+      return file;
+    } catch {
+      return file;
+    }
+  }
+
   async function extractTextFromImageOcr(file) {
     await loadScriptOnce("https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js", "Tesseract");
-    if (!window.Tesseract?.recognize) throw new Error("OCR non disponibile.");
-    const result = await window.Tesseract.recognize(file, "ita+eng", {
-      logger: () => {},
-    });
+    if (!window.Tesseract?.createWorker && !window.Tesseract?.recognize) {
+      throw new Error("OCR non disponibile.");
+    }
+    const image = await prepareImageBlobForOcr(file);
+    // Prefer createWorker so we can force table-friendly page segmentation (PSM 4/6).
+    if (typeof window.Tesseract.createWorker === "function") {
+      const worker = await window.Tesseract.createWorker("ita+eng");
+      try {
+        let bestText = "";
+        let bestScore = -1;
+        for (const psm of ["4", "6"]) {
+          try {
+            await worker.setParameters({ tessedit_pageseg_mode: psm });
+            const result = await worker.recognize(image);
+            const text = String(result?.data?.text || "").trim();
+            if (!text) continue;
+            const scored = scorePreventivoImportLines(parseSpreadsheetOcrText(text, { sourceName: "ocr" }));
+            if (scored > bestScore) {
+              bestScore = scored;
+              bestText = text;
+            }
+          } catch {
+            /* try next psm */
+          }
+        }
+        return bestText;
+      } finally {
+        try {
+          await worker.terminate();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    const result = await window.Tesseract.recognize(image, "ita+eng", { logger: () => {} });
     return String(result?.data?.text || "").trim();
   }
 
@@ -3034,8 +3249,7 @@
       throw new Error("Formato HEIC non supportato nel browser. Salva in JPG/PNG oppure usa CSV/Excel.");
     }
 
-    // Client-side OCR: Pollinations Classic free API no longer exposes vision models
-    // (`openai` / `openai-fast` are text-only), so photo import must not depend on them.
+    // Client-side OCR tuned for spreadsheet screenshots (tipologia / costo / note / confermati).
     let ocrText = "";
     try {
       ocrText = await extractTextFromImageOcr(file);
@@ -3049,12 +3263,16 @@
     if (!ocrText) {
       throw new Error("Foto senza testo leggibile. Prova un’immagine più nitida, CSV/Excel o incolla.");
     }
-    const normalized = normalizeOcrTableText(ocrText);
-    let lines = parsePreventivoTableText(normalized, { sourceName: name });
-    if (!lines.length) lines = parsePreventivoTableText(ocrText, { sourceName: name });
-    if (!lines.length) {
+    const candidates = [
+      parseSpreadsheetOcrText(ocrText, { sourceName: name }),
+      parsePreventivoTableText(normalizeOcrTableText(ocrText), { sourceName: name }),
+      parsePreventivoTableText(ocrText, { sourceName: name }),
+    ];
+    candidates.sort((a, b) => scorePreventivoImportLines(b) - scorePreventivoImportLines(a));
+    const lines = candidates[0] || [];
+    if (!lines.length || scorePreventivoImportLines(lines) < 5) {
       throw new Error(
-        "Ho letto la foto ma non riconosco colonne tipologia/costo. Esporta CSV/Excel o incolla le righe."
+        "Ho letto la foto ma non riconosco bene le voci/costi. Esporta CSV/Excel o incolla le righe."
       );
     }
     return lines.map((l) => ({
@@ -3346,6 +3564,7 @@
       };
       window.__pvOpenPreventivoImport = openPreventivoImportWizard;
       window.__pvParsePreventivoImport = parsePreventivoTableText;
+      window.__pvParsePreventivoOcr = parseSpreadsheetOcrText;
       window.__pvReadPreventivoImportFile = readPreventivoImportFile;
       window.__pvApplyPreventivoImport = applyImportedPreventivoLines;
       window.__pvBuildEsimCatalog = buildEsimCatalog;
