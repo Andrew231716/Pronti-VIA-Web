@@ -6394,6 +6394,7 @@ Regole:
           <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
           <div class="pv-tp-actions">
             <button type="button" class="pv-tp-ghost" id="pv-tp-add-line">+ Aggiungi voce</button>
+            <button type="button" class="pv-tp-ghost" id="pv-tp-import">Importa foglio / PDF / foto</button>
             <button type="button" class="pv-tp-primary" id="pv-tp-save">Salva modifiche</button>
             <button type="button" class="pv-tp-ghost" id="pv-tp-open-smart">Apri Preventivo intelligente</button>
           </div>
@@ -6434,6 +6435,14 @@ Regole:
       body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
         if (document.getElementById("pv-trip-preventivo-panel") && !document.getElementById("pv-trip-preventivo-panel").hidden) {
           closeTripPreventivoSection();
+        }
+        if (typeof window.__pvOpenPreventivoSection === "function") window.__pvOpenPreventivoSection("budget");
+        else if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
+      });
+      body.querySelector("#pv-tp-import")?.addEventListener("click", () => {
+        if (typeof window.__pvOpenPreventivoImport === "function") {
+          window.__pvOpenPreventivoImport();
+          return;
         }
         if (typeof window.__pvOpenPreventivoSection === "function") window.__pvOpenPreventivoSection("budget");
         else if (typeof window.__pvOpenPreventivo === "function") window.__pvOpenPreventivo();
