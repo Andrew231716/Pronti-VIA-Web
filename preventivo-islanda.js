@@ -9,7 +9,7 @@
   const ROOT_ID = "pv-preventivo-root";
   const STORE_KEY = "viavia-preventivo-v2";
   const STORE_KEY_LEGACY = "viavia-preventivo-v1";
-  const VERSION = "20261117d";
+  const VERSION = "20261117e";
   const FAB_POS_KEY = "viavia-preventivo-fab-pos-v3";
   const FAB_SAFE = "max(48px, env(safe-area-inset-bottom, 0px) + 24px)";
   const FAB_DOCK_RIGHT = 18;
@@ -29,8 +29,48 @@
     ["budget", "Budget"],
     ["sources", "Fonti"],
     ["safety", "Sicurezza"],
-    ["export", "Esportazione"],
+    ["export", "Esporta"],
   ];
+
+  // Primary chrome: 4 areas instead of 11 equal pills.
+  const NAV_GROUPS = [
+    { id: "riepilogo", label: "Riepilogo", section: "overview" },
+    { id: "budget", label: "Budget", section: "budget" },
+    {
+      id: "organizza",
+      label: "Organizza",
+      sections: [
+        ["flights", "Voli"],
+        ["stays", "Alloggi"],
+        ["transport", "Mezzi"],
+        ["itinerary", "Tappe"],
+        ["activities", "Attività"],
+        ["esim", "eSIM"],
+      ],
+    },
+    {
+      id: "altro",
+      label: "Altro",
+      sections: [
+        ["sources", "Fonti"],
+        ["safety", "Sicurezza"],
+        ["export", "Esporta"],
+      ],
+    },
+  ];
+
+  function navGroupForSection(section) {
+    for (const g of NAV_GROUPS) {
+      if (g.section === section) return g.id;
+      if (g.sections?.some(([id]) => id === section)) return g.id;
+    }
+    return "riepilogo";
+  }
+
+  function sectionLabel(section) {
+    const hit = SECTIONS.find(([id]) => id === section);
+    return hit ? hit[1] : section;
+  }
 
   function isoDate(d) {
     return d.toISOString().slice(0, 10);
@@ -1605,43 +1645,145 @@
     style.textContent = `
       #${ROOT_ID}{position:fixed;inset:0;z-index:90;display:none;font-family:inherit;pointer-events:none}
       #${ROOT_ID}.open{display:block}
-      #${ROOT_ID} .pv-prev-scrim{position:fixed;inset:0;background:rgba(12,32,36,.22);pointer-events:auto}
+      #${ROOT_ID} .pv-prev-scrim{position:fixed;inset:0;background:rgba(8,24,28,.34);backdrop-filter:blur(2px);pointer-events:auto}
       #${ROOT_ID} .pv-prev-shell{
         position:fixed;right:16px;bottom:calc(${FAB_SAFE} + ${FAB_SIZE * 2 + 28}px);z-index:2;pointer-events:auto;
-        width:min(420px,calc(100vw - 24px));height:min(78vh,700px);
-        display:flex;flex-direction:column;background:#f4fafb;
-        border:1px solid #d0e0e0;border-radius:22px;
-        box-shadow:0 22px 60px rgba(12,40,48,.28);overflow:hidden;
+        width:min(430px,calc(100vw - 24px));height:min(80vh,720px);
+        display:flex;flex-direction:column;
+        background:linear-gradient(180deg,#f7fbfb 0%,#eef6f6 100%);
+        border:1px solid rgba(18,64,72,.12);border-radius:24px;
+        box-shadow:0 28px 70px rgba(8,30,36,.28);overflow:hidden;
       }
-      #${ROOT_ID} .pv-prev-top{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;background:#124048;color:#fff;cursor:grab;touch-action:none}
+      #${ROOT_ID} .pv-prev-top{
+        flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;
+        padding:14px 16px 12px;background:linear-gradient(135deg,#0f3a40 0%,#176068 55%,#0f8a8f 140%);
+        color:#fff;cursor:grab;touch-action:none
+      }
       #${ROOT_ID} .pv-prev-top:active{cursor:grabbing}
-      #${ROOT_ID} .pv-prev-top h1{margin:0;font-size:1rem;font-weight:700}
-      #${ROOT_ID} .pv-prev-top .pv-prev-sub{display:block;font-size:.72rem;font-weight:600;opacity:.8;margin-top:2px}
-      #${ROOT_ID} .pv-prev-top button{appearance:none;border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:10px;padding:8px 12px;font:600 13px inherit;cursor:pointer}
-      #${ROOT_ID} .pv-prev-tabs{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:10px 12px;background:#e7f2f2;-webkit-overflow-scrolling:touch}
-      #${ROOT_ID} .pv-prev-tabs button{flex:0 0 auto;appearance:none;border:1px solid #b7d0d0;background:#fff;color:#184047;border-radius:999px;padding:8px 12px;font:600 12px inherit;cursor:pointer;white-space:nowrap}
-      #${ROOT_ID} .pv-prev-tabs button.active{background:#007d82;border-color:#007d82;color:#fff}
-      #${ROOT_ID} .pv-prev-body{flex:1 1 auto;overflow:auto;padding:14px;width:100%;margin:0;box-sizing:border-box}
-      #${ROOT_ID} .pv-prev-card{background:#fff;border:1px solid #d9e7e7;border-radius:16px;padding:14px;margin:0 0 12px}
-      #${ROOT_ID} .pv-prev-card h2{margin:0 0 8px;font-size:1.05rem;color:#0f2c31}
-      #${ROOT_ID} .pv-prev-card p,#${ROOT_ID} .pv-prev-muted{margin:0 0 10px;color:#3d5960;font-size:.9rem;line-height:1.45}
+      #${ROOT_ID} .pv-prev-top h1{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+      #${ROOT_ID} .pv-prev-top .pv-prev-sub{display:block;font-size:.72rem;font-weight:600;opacity:.78;margin-top:3px}
+      #${ROOT_ID} .pv-prev-top button{
+        appearance:none;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:12px;
+        padding:9px 12px;font:700 13px inherit;cursor:pointer
+      }
+      #${ROOT_ID} .pv-prev-nav{
+        flex:0 0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;
+        padding:10px 12px 8px;background:rgba(255,255,255,.72);border-bottom:1px solid rgba(18,64,72,.08)
+      }
+      #${ROOT_ID} .pv-prev-nav button{
+        appearance:none;border:0;border-radius:14px;padding:10px 6px;min-height:44px;
+        background:transparent;color:#3d5960;font:750 .78rem/1.1 inherit;cursor:pointer
+      }
+      #${ROOT_ID} .pv-prev-nav button.active{background:#124048;color:#fff;box-shadow:0 8px 18px rgba(18,64,72,.2)}
+      #${ROOT_ID} .pv-prev-subnav{
+        flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;
+        background:transparent;-webkit-overflow-scrolling:touch
+      }
+      #${ROOT_ID} .pv-prev-subnav button{
+        flex:0 0 auto;appearance:none;border:1px solid rgba(18,64,72,.12);background:#fff;
+        color:#184047;border-radius:999px;padding:7px 12px;font:700 .75rem inherit;cursor:pointer;white-space:nowrap
+      }
+      #${ROOT_ID} .pv-prev-subnav button.active{background:#007d82;border-color:#007d82;color:#fff}
+      #${ROOT_ID} .pv-prev-body{flex:1 1 auto;overflow:auto;padding:12px 14px 18px;width:100%;margin:0;box-sizing:border-box}
+      #${ROOT_ID} .pv-prev-card{
+        background:#fff;border:1px solid rgba(18,64,72,.08);border-radius:18px;padding:14px;margin:0 0 12px;
+        box-shadow:0 1px 0 rgba(255,255,255,.8)
+      }
+      #${ROOT_ID} .pv-prev-card h2{margin:0 0 8px;font-size:1.02rem;font-weight:800;color:#0f2c31;letter-spacing:-.01em}
+      #${ROOT_ID} .pv-prev-card p,#${ROOT_ID} .pv-prev-muted{margin:0 0 10px;color:#4a646b;font-size:.9rem;line-height:1.45}
       #${ROOT_ID} .pv-prev-grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
-      #${ROOT_ID} label.pv-field{display:grid;gap:4px;font-size:.75rem;font-weight:700;color:#5b7076;letter-spacing:.04em;text-transform:uppercase}
-      #${ROOT_ID} label.pv-field input,#${ROOT_ID} label.pv-field select,#${ROOT_ID} label.pv-field textarea{font:600 .95rem inherit;text-transform:none;letter-spacing:normal;color:#122f34;border:1px solid #c9dbdb;border-radius:10px;padding:10px 12px;background:#f7fbfb}
-      #${ROOT_ID} .pv-prev-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-      #${ROOT_ID} .pv-prev-actions button{appearance:none;border:0;border-radius:12px;padding:11px 14px;font:600 13px inherit;cursor:pointer;min-height:42px}
+      #${ROOT_ID} label.pv-field{display:grid;gap:5px;font-size:.72rem;font-weight:750;color:#5b7076;letter-spacing:.03em;text-transform:uppercase}
+      #${ROOT_ID} label.pv-field input,#${ROOT_ID} label.pv-field select,#${ROOT_ID} label.pv-field textarea{
+        font:600 .95rem inherit;text-transform:none;letter-spacing:normal;color:#122f34;
+        border:1px solid #d0e0e0;border-radius:12px;padding:11px 12px;background:#f7fbfb
+      }
+      #${ROOT_ID} .pv-prev-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      #${ROOT_ID} .pv-prev-actions button,#${ROOT_ID} .pv-prev-actions a.ghost{
+        appearance:none;border:0;border-radius:12px;padding:11px 14px;font:700 13px inherit;cursor:pointer;min-height:42px
+      }
       #${ROOT_ID} .pv-prev-actions .primary{background:#007d82;color:#fff}
-      #${ROOT_ID} .pv-prev-actions .ghost{background:#eef5f5;color:#1d3338}
-      #${ROOT_ID} .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+      #${ROOT_ID} .pv-prev-actions .ghost,#${ROOT_ID} .pv-prev-actions a.ghost{
+        background:#eef5f5;color:#1d3338;text-decoration:none;display:inline-flex;align-items:center
+      }
+      #${ROOT_ID} .pv-prev-more{margin-top:8px}
+      #${ROOT_ID} .pv-prev-more > summary{
+        list-style:none;cursor:pointer;font:700 .82rem inherit;color:#0f5a5e;padding:6px 0
+      }
+      #${ROOT_ID} .pv-prev-more > summary::-webkit-details-marker{display:none}
+      #${ROOT_ID} .pv-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:.68rem;font-weight:750;letter-spacing:.03em;text-transform:uppercase}
       #${ROOT_ID} .pv-badge.STIMA{background:#fff3cd;color:#7a5b00}
       #${ROOT_ID} .pv-badge.DA\\ VERIFICARE,#${ROOT_ID} .pv-badge.WARN{background:#fde8e8;color:#8a1f1f}
       #${ROOT_ID} .pv-badge.VERIFICATO{background:#e3f6ea;color:#0f5a30}
       #${ROOT_ID} .pv-badge.SCADUTO{background:#eee;color:#555}
       #${ROOT_ID} table{width:100%;border-collapse:collapse;font-size:.86rem}
       #${ROOT_ID} th,#${ROOT_ID} td{border-bottom:1px solid #eef3f3;padding:8px 6px;text-align:left;vertical-align:top}
-      #${ROOT_ID} .pv-status{margin:8px 0 0;font-size:.82rem;color:#5b7076;min-height:1.2em}
-      #${ROOT_ID} .pv-callout{padding:10px 12px;border-radius:12px;background:#eaf5f5;border:1px solid #d5e8e8;color:#0f2c31;font-size:.88rem;margin:0 0 12px}
-      #${ROOT_ID} a{color:#007d82;font-weight:600}
+      #${ROOT_ID} .pv-status{margin:4px 0 0;font-size:.8rem;color:#5b7076;min-height:1.1em}
+      #${ROOT_ID} .pv-callout{padding:10px 12px;border-radius:14px;background:#eaf5f5;border:1px solid #d5e8e8;color:#0f2c31;font-size:.86rem;margin:0 0 12px;line-height:1.4}
+      #${ROOT_ID} a{color:#007d82;font-weight:700}
+      #${ROOT_ID} .pv-hero{
+        position:relative;overflow:hidden;border-radius:20px;padding:16px;margin:0 0 12px;
+        background:linear-gradient(145deg,#0f3a40 0%,#147078 48%,#1aa0a6 120%);color:#fff;
+        box-shadow:0 16px 36px rgba(15,58,64,.28)
+      }
+      #${ROOT_ID} .pv-hero::after{
+        content:"";position:absolute;right:-30px;top:-40px;width:140px;height:140px;border-radius:50%;
+        background:rgba(255,255,255,.08);pointer-events:none
+      }
+      #${ROOT_ID} .pv-hero .eyebrow{margin:0;font:750 .68rem/1 inherit;letter-spacing:.06em;text-transform:uppercase;opacity:.78}
+      #${ROOT_ID} .pv-hero .amount{margin:6px 0 2px;font:800 1.85rem/1.05 inherit;letter-spacing:-.03em}
+      #${ROOT_ID} .pv-hero .sub{margin:0;font:600 .82rem/1.35 inherit;opacity:.88}
+      #${ROOT_ID} .pv-hero-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+      #${ROOT_ID} .pv-chip{
+        display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:999px;
+        background:rgba(255,255,255,.14);font:700 .72rem/1 inherit
+      }
+      #${ROOT_ID} .pv-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+      #${ROOT_ID} .pv-stat{
+        background:#fff;border:1px solid rgba(18,64,72,.08);border-radius:16px;padding:12px
+      }
+      #${ROOT_ID} .pv-stat span{display:block;font:700 .68rem/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:#5b7380}
+      #${ROOT_ID} .pv-stat strong{display:block;margin-top:6px;font:800 1.05rem/1.1 inherit;color:#0f2c31}
+      #${ROOT_ID} .pv-quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+      #${ROOT_ID} .pv-quick button{
+        appearance:none;border:1px solid rgba(18,64,72,.1);background:#fff;border-radius:16px;
+        padding:14px 12px;text-align:left;cursor:pointer;min-height:72px
+      }
+      #${ROOT_ID} .pv-quick button strong{display:block;font:800 .92rem/1.2 inherit;color:#0f2c31}
+      #${ROOT_ID} .pv-quick button span{display:block;margin-top:4px;font:600 .75rem/1.3 inherit;color:#5b7380}
+      #${ROOT_ID} .pv-budget-hero{
+        display:grid;gap:10px;grid-template-columns:1.3fr .9fr;margin:0 0 12px
+      }
+      #${ROOT_ID} .pv-budget-hero .main,#${ROOT_ID} .pv-budget-hero .side{
+        border-radius:18px;padding:14px;border:1px solid rgba(18,64,72,.08);background:#fff
+      }
+      #${ROOT_ID} .pv-budget-hero .main{
+        background:linear-gradient(160deg,#f4fbfb,#e7f5f5);border-color:rgba(0,125,130,.16)
+      }
+      #${ROOT_ID} .pv-budget-hero .label{margin:0;font:750 .68rem/1 inherit;letter-spacing:.04em;text-transform:uppercase;color:#5b7380}
+      #${ROOT_ID} .pv-budget-hero .amount{margin:6px 0 0;font:800 1.55rem/1 inherit;color:#0f2c31;letter-spacing:-.02em}
+      #${ROOT_ID} .pv-budget-hero .side .row{display:flex;justify-content:space-between;gap:8px;margin:0 0 8px;font:650 .82rem inherit;color:#3d5960}
+      #${ROOT_ID} .pv-budget-bar{height:8px;border-radius:999px;background:#e3eeee;overflow:hidden}
+      #${ROOT_ID} .pv-budget-bar > i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#007d82,#2bb7bc)}
+      #${ROOT_ID} .pv-budget-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin:0 0 10px}
+      #${ROOT_ID} .pv-budget-toolbar select{border:1px solid #d0e0e0;border-radius:12px;padding:9px 12px;font:700 .85rem inherit;background:#fff;color:#122f34}
+      #${ROOT_ID} .pv-budget-list{display:grid;gap:8px}
+      #${ROOT_ID} .pv-budget-line{
+        display:grid;gap:8px;padding:12px;border-radius:16px;background:#fff;
+        border:1px solid rgba(18,64,72,.08)
+      }
+      #${ROOT_ID} .pv-budget-line-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+      #${ROOT_ID} .pv-budget-line-top strong{font:800 .95rem/1.25 inherit;color:#0f2c31}
+      #${ROOT_ID} .pv-budget-line-top .tot{font:800 .95rem/1 inherit;color:#0f5a5e;white-space:nowrap}
+      #${ROOT_ID} .pv-budget-line-edit{display:grid;grid-template-columns:1fr 70px 1fr auto;gap:8px;align-items:end}
+      #${ROOT_ID} .pv-budget-line-edit label{display:grid;gap:4px;font:700 .68rem/1 inherit;color:#5b7380;text-transform:uppercase}
+      #${ROOT_ID} .pv-budget-line-edit input,#${ROOT_ID} .pv-budget-line-edit select{
+        width:100%;box-sizing:border-box;min-height:40px;border:1px solid #d5e3e5;border-radius:10px;
+        padding:8px 10px;font:700 .88rem inherit;background:#f7fbfb;color:#122f34
+      }
+      #${ROOT_ID} .pv-budget-line-edit .del{
+        appearance:none;border:0;background:#fde8e8;color:#8a1f1f;border-radius:10px;
+        min-height:40px;min-width:40px;font:800 .9rem inherit;cursor:pointer
+      }
       #${ROOT_ID} .pv-esim-grid{display:grid;gap:10px;grid-template-columns:1fr}
       #${ROOT_ID} .pv-esim-card{border:1px solid #d9e7e7;border-radius:14px;padding:12px;background:#f7fbfb}
       #${ROOT_ID} .pv-esim-card header{display:grid;gap:2px;margin-bottom:8px}
@@ -1656,30 +1798,30 @@
         background:radial-gradient(circle at 30% 28%,#3a6b72 0%,#124048 58%,#0a2c32 100%);
         color:#fff;box-shadow:0 14px 32px rgba(0,40,50,.38),inset 0 1px 0 rgba(255,255,255,.2);
         cursor:grab;align-items:center;justify-content:center;touch-action:none;user-select:none;
-        animation:pv-fab-float 3.6s ease-in-out infinite;
-        animation-delay:.4s;
+        animation:pv-fab-float 3.6s ease-in-out infinite;animation-delay:.4s
       }
       .pv-prev-launch:active,.pv-prev-launch.pv-dragging{cursor:grabbing;animation:none;transform:scale(1.04)}
       .pv-prev-launch svg{width:28px;height:28px;display:block}
       .pv-prev-launch .pv-prev-fab-label{
         position:absolute;right:68px;bottom:14px;white-space:nowrap;
         background:#0f2c31;color:#fff;font:700 11px/1 inherit;padding:6px 10px;border-radius:999px;
-        box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s;
+        box-shadow:0 6px 16px rgba(0,0,0,.18);opacity:0;transform:translateX(6px);pointer-events:none;transition:opacity .15s,transform .15s
       }
       .pv-prev-launch:hover .pv-prev-fab-label,.pv-prev-launch:focus-visible .pv-prev-fab-label{opacity:1;transform:none}
-      /* Only on an open trip — avoids covering login/home layout */
       body.pv-account-ready.pv-trip-open .pv-prev-launch{display:inline-flex}
       @media (max-width:640px){
         .pv-prev-launch{
           right:16px;width:58px;height:58px;
-          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px));
+          bottom:calc(max(52px, env(safe-area-inset-bottom, 0px) + 28px))
         }
         .pv-prev-launch .pv-prev-fab-label{display:none}
         #${ROOT_ID} .pv-prev-shell{
           left:0!important;right:0!important;bottom:0!important;top:auto!important;
-          /* Leave room above for the two floating FABs (screenshot layout). */
-          width:100%;height:min(72dvh,72vh);border-radius:18px 18px 0 0;
+          width:100%;height:min(78dvh,78vh);border-radius:22px 22px 0 0
         }
+        #${ROOT_ID} .pv-budget-hero{grid-template-columns:1fr}
+        #${ROOT_ID} .pv-budget-line-edit{grid-template-columns:1fr 1fr; }
+        #${ROOT_ID} .pv-budget-line-edit .del{grid-column:1 / -1}
       }
     `;
     style.dataset.pvReady = VERSION;
@@ -1893,47 +2035,89 @@
     }
   }
 
+  function spentFromTrip() {
+    try {
+      const cached = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[tripAuth()?.id]?.trip;
+      if (!Array.isArray(cached?.expenses)) return null;
+      const count = cached.members?.length || Number(state.params.travelers) || 1;
+      const sum = cached.expenses.reduce((total, expense) => total + (Number(expense.amountCents ?? expense.amount) || 0), 0);
+      return { group: sum, pp: Math.round(sum / count), count };
+    } catch {
+      return null;
+    }
+  }
+
   function overviewHtml() {
+    ensureBudgetLines();
     const p = state.params;
+    const tot = budgetTotals();
+    const actual = spentFromTrip();
+    const dest = p.destination || p.title || "Nuovo viaggio";
+    const when =
+      p.start && p.end
+        ? `${p.start} → ${p.end}`
+        : "Date da impostare";
     return `
+      <div class="pv-hero">
+        <p class="eyebrow">Preventivo · ${escapeHtml(state.scenario)}</p>
+        <p class="amount">${fmtMoney(tot.group)}</p>
+        <p class="sub">${fmtMoney(tot.pp)} a persona · ${escapeHtml(String(p.travelers || 1))} adulti</p>
+        <div class="pv-hero-meta">
+          <span class="pv-chip">${escapeHtml(dest)}</span>
+          <span class="pv-chip">${escapeHtml(when)}</span>
+          ${actual ? `<span class="pv-chip">Speso ${fmtMoney(actual.group)}</span>` : ""}
+        </div>
+      </div>
+      <div class="pv-stat-grid">
+        <div class="pv-stat"><span>Verificato</span><strong>${fmtMoney(tot.byStatus.VERIFICATO || 0)}</strong></div>
+        <div class="pv-stat"><span>Da verificare</span><strong>${fmtMoney((tot.byStatus["DA VERIFICARE"] || 0) + (tot.byStatus.STIMA || 0))}</strong></div>
+      </div>
+      <div class="pv-quick">
+        <button type="button" data-section="budget"><strong>Apri budget</strong><span>Voci, import e scenari</span></button>
+        <button type="button" data-act="import-budget"><strong>Importa foglio</strong><span>CSV, Excel, PDF o foto</span></button>
+        <button type="button" data-section="flights"><strong>Voli</strong><span>Cerca e applica prezzi</span></button>
+        <button type="button" data-section="stays"><strong>Alloggi</strong><span>Hotel e case</span></button>
+      </div>
       <div class="pv-prev-card">
-        <h2>Panoramica</h2>
-        <p class="pv-callout">Modulo integrato in Pronti? VIA!. I prezzi partono come <span class="pv-badge STIMA">STIMA</span> o <span class="pv-badge WARN">DA VERIFICARE</span> — nessun importo è dichiarato VERIFICATO senza tua conferma da fonte ufficiale.</p>
+        <h2>Dati del viaggio</h2>
+        <p class="pv-prev-muted">I prezzi partono come stima: confermali tu dalle fonti ufficiali.</p>
         <div class="pv-prev-grid">
           ${field("title", "Nome viaggio", p.title)}
           ${field("destination", "Destinazione", p.destination)}
-          ${field("departureCity", "Partenza", p.departureCity)}
-          ${field("airportIn", "Aeroporto arrivo", p.airportIn)}
           ${field("start", "Andata", p.start, "date")}
           ${field("end", "Ritorno", p.end, "date")}
           ${field("travelers", "Adulti", p.travelers, "number")}
-          ${field("currency", "Valuta", p.currency)}
+          ${field("departureCity", "Partenza", p.departureCity)}
         </div>
-        <div class="pv-prev-grid" style="margin-top:10px">
-          <label class="pv-field">Aeroporti partenza
-            <input data-param="airportsOut" value="${escapeAttr((p.airportsOut || []).join(", "))}" />
-          </label>
-          <label class="pv-field">Max scali
-            <input data-param="maxStops" type="number" min="0" max="2" value="${p.prefs.maxStops}" />
-          </label>
-        </div>
+        <details class="pv-prev-more">
+          <summary>Dettagli extra</summary>
+          <div class="pv-prev-grid" style="margin-top:10px">
+            ${field("airportIn", "Aeroporto arrivo", p.airportIn)}
+            ${field("currency", "Valuta", p.currency)}
+            <label class="pv-field">Aeroporti partenza
+              <input data-param="airportsOut" value="${escapeAttr((p.airportsOut || []).join(", "))}" />
+            </label>
+            <label class="pv-field">Max scali
+              <input data-param="maxStops" type="number" min="0" max="2" value="${p.prefs.maxStops}" />
+            </label>
+          </div>
+        </details>
         <div class="pv-prev-actions">
           ${
             state.tripId
-              ? `<button type="button" class="primary" data-act="sync-preventivo">Salva preventivo nel viaggio</button>
-          <button type="button" class="ghost" data-act="save-local">Salva (anche nel viaggio)</button>`
-              : `<button type="button" class="primary" data-act="create-trip">Crea viaggio in Pronti? VIA!</button>
-          <button type="button" class="ghost" data-act="save-local">Salva parametri</button>`
+              ? `<button type="button" class="primary" data-act="sync-preventivo">Salva nel viaggio</button>`
+              : `<button type="button" class="primary" data-act="create-trip">Crea viaggio</button>`
           }
-          <button type="button" class="ghost" data-act="reset-blank">Nuovo preventivo vuoto</button>
-          <button type="button" class="ghost" data-act="load-iceland-example">Esempio Islanda</button>
-          <button type="button" class="ghost" data-act="clear-draft">Pulisci bozza salvata</button>
+          <button type="button" class="ghost" data-act="save-local">Salva qui</button>
         </div>
-        <p class="pv-prev-muted">Per qualsiasi destinazione: compilare destinazione/date/adulti, poi creare o sincronizzare il viaggio.${
-          state.tripId
-            ? " Le stime nel viaggio viaggiano con il link di condivisione (meta.preventivo)."
-            : ""
-        }</p>
+        <details class="pv-prev-more">
+          <summary>Altre azioni</summary>
+          <div class="pv-prev-actions">
+            <button type="button" class="ghost" data-act="reset-blank">Nuovo vuoto</button>
+            <button type="button" class="ghost" data-act="load-iceland-example">Esempio Islanda</button>
+            <button type="button" class="ghost" data-act="clear-draft">Pulisci bozza</button>
+          </div>
+        </details>
       </div>`;
   }
 
@@ -2226,71 +2410,106 @@
       </div>`;
   }
 
+  function refreshBudgetHeroDom(root) {
+    if (!root) return;
+    const tot = budgetTotals();
+    const actual = spentFromTrip();
+    const spentPct =
+      actual && tot.group > 0 ? Math.max(0, Math.min(100, Math.round((actual.group / tot.group) * 100))) : 0;
+    const amount = root.querySelector(".pv-budget-hero .amount");
+    if (amount) amount.textContent = fmtMoney(tot.group);
+    const pp = root.querySelector(".pv-budget-hero .main .pv-prev-muted");
+    if (pp) pp.textContent = `${fmtMoney(tot.pp)} a persona`;
+    const rows = root.querySelectorAll(".pv-budget-hero .side .row strong");
+    if (rows[0]) rows[0].textContent = actual ? fmtMoney(actual.group) : "—";
+    if (rows[1]) rows[1].textContent = fmtMoney(tot.byStatus.VERIFICATO || 0);
+    if (rows[2])
+      rows[2].textContent = fmtMoney((tot.byStatus.STIMA || 0) + (tot.byStatus["DA VERIFICARE"] || 0));
+    const bar = root.querySelector(".pv-budget-bar > i");
+    if (bar) bar.style.width = `${spentPct}%`;
+    const status = root.querySelector(".pv-status");
+    if (status && !state.status) status.textContent = "";
+  }
+
   function budgetHtml() {
     ensureBudgetLines();
     const tot = budgetTotals();
-    let actual = null;
-    try {
-      const cached = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[tripAuth()?.id]?.trip;
-      if (Array.isArray(cached?.expenses)) {
-        const count = cached.members?.length || Number(state.params.travelers) || 1;
-        const sum = cached.expenses.reduce((total, expense) => total + (Number(expense.amountCents ?? expense.amount) || 0), 0);
-        actual = { group: sum, pp: Math.round(sum / count), count };
-      }
-    } catch { /* the budget also works without a saved trip */ }
-    const rows = state.lines
+    const actual = spentFromTrip();
+    const spentPct =
+      actual && tot.group > 0 ? Math.max(0, Math.min(100, Math.round((actual.group / tot.group) * 100))) : 0;
+    const lines = state.lines
       .map(
-        (l) => `<tr>
-        <td>${escapeHtml(l.title)}<br/><span class="pv-badge ${escapeAttr(l.status)}">${escapeHtml(l.status)}</span></td>
-        <td><input data-line="${l.id}" data-k="unitEuros" type="number" min="0" step="1" value="${(l.unitCents / 100).toFixed(0)}" style="width:90px"/></td>
-        <td><input data-line="${l.id}" data-k="qty" type="number" min="0" step="1" value="${l.qty}" style="width:70px"/></td>
-        <td>${fmtMoney(lineTotal(l))}</td>
-        <td>
-          <select data-line="${l.id}" data-k="status">
-            ${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
-              .map((s) => `<option value="${s}" ${l.status === s ? "selected" : ""}>${s}</option>`)
-              .join("")}
-          </select>
-        </td>
-      </tr>`
+        (l) => `<article class="pv-budget-line" data-line-card="${escapeAttr(l.id)}">
+        <div class="pv-budget-line-top">
+          <div>
+            <strong>${escapeHtml(l.title)}</strong>
+            <div style="margin-top:4px"><span class="pv-badge ${escapeAttr(l.status)}">${escapeHtml(l.status)}</span></div>
+          </div>
+          <div class="tot">${fmtMoney(lineTotal(l))}</div>
+        </div>
+        <div class="pv-budget-line-edit">
+          <label>€ unit
+            <input data-line="${l.id}" data-k="unitEuros" type="number" min="0" step="1" value="${(l.unitCents / 100).toFixed(0)}" />
+          </label>
+          <label>Qty
+            <input data-line="${l.id}" data-k="qty" type="number" min="0" step="1" value="${l.qty}" />
+          </label>
+          <label>Stato
+            <select data-line="${l.id}" data-k="status">
+              ${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
+                .map((s) => `<option value="${s}" ${l.status === s ? "selected" : ""}>${s}</option>`)
+                .join("")}
+            </select>
+          </label>
+          <button type="button" class="del" data-del-line="${escapeAttr(l.id)}" aria-label="Elimina voce">×</button>
+        </div>
+      </article>`
       )
       .join("");
     return `
-      <div class="pv-prev-card">
-        <h2>Budget — scenario
+      <div class="pv-budget-hero">
+        <div class="main">
+          <p class="label">Totale stimato</p>
+          <p class="amount">${fmtMoney(tot.group)}</p>
+          <p class="pv-prev-muted" style="margin:6px 0 0">${fmtMoney(tot.pp)} a persona</p>
+        </div>
+        <div class="side">
+          <div class="row"><span>Speso</span><strong>${actual ? fmtMoney(actual.group) : "—"}</strong></div>
+          <div class="pv-budget-bar" aria-hidden="true"><i style="width:${spentPct}%"></i></div>
+          <div class="row" style="margin:8px 0 0"><span>Verificato</span><strong>${fmtMoney(tot.byStatus.VERIFICATO || 0)}</strong></div>
+          <div class="row"><span>Stima / check</span><strong>${fmtMoney((tot.byStatus.STIMA || 0) + (tot.byStatus["DA VERIFICARE"] || 0))}</strong></div>
+        </div>
+      </div>
+      <div class="pv-budget-toolbar">
+        <label class="pv-field" style="margin:0">Scenario
           <select data-scenario="1">
             <option value="economico" ${state.scenario === "economico" ? "selected" : ""}>Economico</option>
             <option value="intermedio" ${state.scenario === "intermedio" ? "selected" : ""}>Intermedio</option>
             <option value="comfort" ${state.scenario === "comfort" ? "selected" : ""}>Comfort</option>
           </select>
-        </h2>
-        <p class="pv-callout">I totali sotto includono voci <strong>STIMA</strong>. Non sono un preventivo esaustivo di mercato. Scenario iniziale: Economico (no ostelli).</p>
-        <dl class="pv-budget-comparison">
-          <div><dt>Stimato · gruppo</dt><dd>${fmtMoney(tot.group)}</dd></div>
-          <div><dt>Speso · gruppo</dt><dd>${actual ? fmtMoney(actual.group) : "—"}</dd></div>
-          <div><dt>Stimato · per persona</dt><dd>${fmtMoney(tot.pp)}</dd></div>
-          <div><dt>Speso · media per persona</dt><dd>${actual ? fmtMoney(actual.pp) : "—"}</dd></div>
-        </dl>
-        ${actual ? `<p class="pv-prev-muted">Media delle spese registrate su ${actual.count} viaggiatori.</p>` : ""}
-        <p class="pv-prev-muted">VERIFICATO ${fmtMoney(tot.byStatus.VERIFICATO)} · STIMA ${fmtMoney(tot.byStatus.STIMA)} · DA VERIFICARE ${fmtMoney(tot.byStatus["DA VERIFICARE"])}</p>
-        <div style="overflow:auto">
-          <table>
-            <thead><tr><th>Voce</th><th>€ unit</th><th>Qty</th><th>Totale</th><th>Stato</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
+        </label>
+        <div class="pv-prev-actions" style="margin:0">
+          <button type="button" class="primary" data-act="import-budget">Importa</button>
+          <button type="button" class="ghost" data-act="add-budget-line">+ Voce</button>
         </div>
+      </div>
+      <p class="pv-callout">Le voci in <strong>STIMA</strong> non sono prezzi confermati. Tocca lo stato per marcarle verificate.</p>
+      <div class="pv-budget-list">${lines || `<div class="pv-prev-card"><p class="pv-prev-muted">Nessuna voce. Importa un foglio o aggiungine una.</p></div>`}</div>
+      <div class="pv-prev-actions">
+        <button type="button" class="primary" data-act="save-local">Salva budget</button>
+        ${
+          state.tripId
+            ? `<button type="button" class="ghost" data-act="sync-preventivo">Salva nel viaggio</button>`
+            : ""
+        }
+      </div>
+      <details class="pv-prev-more">
+        <summary>Altre azioni budget</summary>
         <div class="pv-prev-actions">
-          <button type="button" class="primary" data-act="save-local">Salva budget</button>
-          <button type="button" class="ghost" data-act="import-budget">Importa foglio / PDF / foto</button>
-          <button type="button" class="ghost" data-act="reset-budget">Ricarica template scenario</button>
-          <button type="button" class="ghost" data-act="sync-expenses">Copia stime in Spese di gruppo</button>
-          ${
-            state.tripId
-              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
-              : ""
-          }
+          <button type="button" class="ghost" data-act="reset-budget">Ricarica template</button>
+          <button type="button" class="ghost" data-act="sync-expenses">Copia in Spese di gruppo</button>
         </div>
-      </div>`;
+      </details>`;
   }
 
   function sourcesHtml() {
@@ -2340,19 +2559,25 @@
   function exportHtml() {
     const tot = budgetTotals();
     return `
+      <div class="pv-hero">
+        <p class="eyebrow">Esporta · ${escapeHtml(state.scenario)}</p>
+        <p class="amount">${fmtMoney(tot.group)}</p>
+        <p class="sub">${fmtMoney(tot.pp)} a persona · ${escapeHtml(String(state.params.travelers || 1))} adulti</p>
+        <div class="pv-hero-meta">
+          <span class="pv-chip">${escapeHtml(state.params.title || "Preventivo")}</span>
+          <span class="pv-chip">${escapeHtml(state.params.start || "—")} → ${escapeHtml(state.params.end || "—")}</span>
+        </div>
+      </div>
       <div class="pv-prev-card">
-        <h2>Esportazione</h2>
-        <p>PDF via stampa browser. CSV spese del modulo. Il viaggio resta salvato e condividibile con i link Pronti? VIA!.</p>
-        <p><strong>${escapeHtml(state.params.title)}</strong><br/>
-        ${escapeHtml(state.params.start)} → ${escapeHtml(state.params.end)} · ${state.params.travelers} adulti<br/>
-        Totale scenario ${escapeHtml(state.scenario)}: ${fmtMoney(tot.group)} (${fmtMoney(tot.pp)}/persona)</p>
+        <h2>Condividi e scarica</h2>
+        <p class="pv-prev-muted">PDF dalla stampa del browser, CSV del budget, o copia testo. Il viaggio resta con i link Pronti? VIA!.</p>
         <div class="pv-prev-actions">
-          <button type="button" class="primary" data-act="export-print">Stampa / Salva PDF</button>
-          <button type="button" class="ghost" data-act="export-csv">Scarica CSV budget</button>
+          <button type="button" class="primary" data-act="export-print">Stampa / PDF</button>
+          <button type="button" class="ghost" data-act="export-csv">CSV budget</button>
           <button type="button" class="ghost" data-act="export-summary">Copia riepilogo</button>
           ${
             state.tripId
-              ? `<button type="button" class="ghost" data-act="sync-preventivo">Scrivi preventivo nel viaggio</button>`
+              ? `<button type="button" class="ghost" data-act="sync-preventivo">Salva nel viaggio</button>`
               : ""
           }
         </div>
@@ -2374,21 +2599,39 @@
     ensureStyles();
     const root = rootEl();
     if (!root) return;
-    const tabs = SECTIONS.map(
-      ([id, label]) =>
-        `<button type="button" data-section="${id}" class="${state.section === id ? "active" : ""}">${label}</button>`
-    ).join("");
+    const activeGroup = navGroupForSection(state.section);
+    const tabs = NAV_GROUPS.map((g) => {
+      const target = g.section || g.sections?.[0]?.[0] || "overview";
+      return `<button type="button" data-nav-group="${g.id}" data-section="${target}" class="${activeGroup === g.id ? "active" : ""}">${g.label}</button>`;
+    }).join("");
+    const group = NAV_GROUPS.find((g) => g.id === activeGroup);
+    const subnav =
+      group?.sections?.length
+        ? `<div class="pv-prev-subnav">${group.sections
+            .map(
+              ([id, label]) =>
+                `<button type="button" data-section="${id}" class="${state.section === id ? "active" : ""}">${label}</button>`
+            )
+            .join("")}</div>`
+        : "";
+    const title =
+      activeGroup === "riepilogo"
+        ? "Preventivo"
+        : activeGroup === "budget"
+          ? "Budget"
+          : sectionLabel(state.section);
     root.innerHTML = `
       <div class="pv-prev-scrim" data-act="close" aria-hidden="true"></div>
       <div class="pv-prev-shell" id="pv-prev-shell">
         <div class="pv-prev-top" id="pv-prev-drag">
           <div>
-            <h1>Preventivo intelligente</h1>
-            <span class="pv-prev-sub">Trascina per spostare</span>
+            <h1>${escapeHtml(title)}</h1>
+            <span class="pv-prev-sub">${escapeHtml(state.params?.destination || state.params?.title || "Trascina per spostare")}</span>
           </div>
           <button type="button" data-act="close">Chiudi</button>
         </div>
-        <div class="pv-prev-tabs">${tabs}</div>
+        <div class="pv-prev-nav">${tabs}</div>
+        ${subnav}
         <div class="pv-prev-body">${sectionHtml()}<p class="pv-status">${escapeHtml(state.status)}</p></div>
       </div>
     `;
@@ -2408,12 +2651,33 @@
   function bind(root) {
     root.querySelectorAll("[data-section]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.section = btn.getAttribute("data-section");
+        const groupId = btn.getAttribute("data-nav-group");
+        const next = btn.getAttribute("data-section");
+        if (groupId) {
+          const group = NAV_GROUPS.find((g) => g.id === groupId);
+          if (group?.sections?.length) {
+            const stillInGroup = group.sections.some(([id]) => id === state.section);
+            state.section = stillInGroup ? state.section : next;
+          } else {
+            state.section = group?.section || next;
+          }
+        } else {
+          state.section = next;
+        }
         render();
       });
     });
     root.querySelectorAll("[data-act]").forEach((btn) => {
       btn.addEventListener("click", () => void onAction(btn.getAttribute("data-act")));
+    });
+    root.querySelectorAll("[data-del-line]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-del-line");
+        state.lines = (state.lines || []).filter((l) => l.id !== id);
+        persistState();
+        state.status = "Voce rimossa.";
+        render();
+      });
     });
     root.querySelectorAll("[data-apply-flight]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -2484,7 +2748,7 @@
       });
     });
     root.querySelectorAll("[data-line]").forEach((el) => {
-      el.addEventListener("change", () => {
+      const applyLineEdit = () => {
         const id = el.getAttribute("data-line");
         const k = el.getAttribute("data-k");
         const row = state.lines.find((l) => l.id === id);
@@ -2493,8 +2757,22 @@
         else if (k === "qty") row.qty = Number(el.value) || 0;
         else if (k === "status") row.status = el.value;
         persistState();
-        render();
-      });
+        const card = root.querySelector(`[data-line-card="${CSS.escape(id)}"]`);
+        if (card) {
+          const totEl = card.querySelector(".tot");
+          if (totEl) totEl.textContent = fmtMoney(lineTotal(row));
+          if (k === "status") {
+            const badge = card.querySelector(".pv-badge");
+            if (badge) {
+              badge.className = `pv-badge ${row.status}`;
+              badge.textContent = row.status;
+            }
+          }
+        }
+        refreshBudgetHeroDom(root);
+      };
+      el.addEventListener("change", applyLineEdit);
+      if (el.matches('input[type="number"]')) el.addEventListener("input", applyLineEdit);
     });
     root.querySelectorAll("[data-transport]").forEach((el) => {
       el.addEventListener("change", () => {
@@ -2626,6 +2904,28 @@
         state.lines = defaultBudgetLines(state.params, state.scenario);
         persistState();
         state.status = "Template budget ricaricato.";
+        render();
+        return;
+      }
+      if (act === "add-budget-line") {
+        ensureBudgetLines();
+        const title = window.prompt("Nome della voce di budget", "Nuova voce");
+        if (title == null) return;
+        const clean = String(title).trim() || "Nuova voce";
+        state.lines.push({
+          id: uid(),
+          key: `custom-${Date.now()}`,
+          title: clean,
+          mode: "group",
+          unitCents: 0,
+          qty: 1,
+          status: "STIMA",
+          source: "Voce aggiunta manualmente",
+          url: "",
+          verifiedAt: "",
+        });
+        persistState();
+        state.status = `Aggiunta voce «${clean}».`;
         render();
         return;
       }
