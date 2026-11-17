@@ -26,6 +26,8 @@ ok("reveal stacks above input", /z-index:2/.test(ux) && /isolation:isolate/.test
 ok("saved password status card", /pv-pass-status-card/.test(ux) && /Password impostata/.test(ux) && /non si può rileggere/i.test(ux));
 ok("change behind details", /pv-pass-change/.test(ux) && /Cambia password/.test(ux) && /Riscrivi la password attuale/.test(ux));
 ok("reveal label Vedi", /data-pv-reveal-idle="Vedi"/.test(ux) && /data-pv-reveal-idle="Vedi"/.test(account));
+ok("styles stamped once", /const STYLE_VER = "20261117g"/.test(ux) && /dataset\.pvReady === STYLE_VER/.test(ux));
+ok("shell reload once", /pv-shell-reloaded/.test(account) && /pv-sw-checked/.test(account));
 ok("changePassword helper", /async function changePassword/.test(account) && /__pvChangePassword/.test(account));
 ok("gate password wrap", /pv-pass-wrap/.test(account) && /aria-controls="pv-password"/.test(account));
 ok("netlify change-password", /action === "change-password"/.test(netlify) && /currentPassword/.test(netlify));

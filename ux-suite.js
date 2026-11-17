@@ -7,6 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
+  const STYLE_VER = "20261117g";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -38,6 +39,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
+    if (style && style.dataset.pvReady === STYLE_VER) return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -733,6 +735,7 @@
         .pv-book-flight-form .pv-book-row{grid-template-columns:1fr}
       }
     `;
+    style.dataset.pvReady = STYLE_VER;
   }
 
   function tripAuth() {
@@ -2662,6 +2665,7 @@
 
   function ensureItineraryLayoutPolish() {
     let style = document.getElementById("pv-ux-itinerary-layout");
+    if (style && style.dataset.pvReady === STYLE_VER) return;
     if (!style) {
       style = document.createElement("style");
       style.id = "pv-ux-itinerary-layout";
@@ -2677,6 +2681,7 @@
         .topbar .top-label{display:none}
       }
     `;
+    style.dataset.pvReady = STYLE_VER;
   }
 
   function injectMemberRoles() {
@@ -4634,12 +4639,19 @@
   hookSaveToastsAndRevisions();
   hookTripSanitizeFetch();
   sanitizeStoredTrips();
-  const obs = new MutationObserver(() => {
+  const obs = new MutationObserver((records) => {
     if (document.hidden || tick._t) return;
+    // Ignore pure stylesheet churn — rewriting <style> used to re-fire this loop.
+    const meaningful = records.some((rec) => {
+      const nodes = [...rec.addedNodes, ...rec.removedNodes];
+      if (!nodes.length) return rec.type === "childList" && rec.target && rec.target.nodeName !== "STYLE" && rec.target.nodeName !== "HEAD";
+      return nodes.some((n) => n.nodeName !== "STYLE" && n.nodeType === 1);
+    });
+    if (!meaningful) return;
     tick._t = setTimeout(() => {
       tick._t = 0;
       tick();
-    }, 220);
+    }, 280);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
