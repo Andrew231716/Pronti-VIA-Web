@@ -23,18 +23,21 @@ ok("wire change form", /wirePasswordChangeForm/.test(ux) && /__pvChangePassword/
 ok("show/hide reveal", /data-pv-reveal/.test(ux) && /data-pv-reveal/.test(account) && /pv-pass-reveal/.test(css));
 ok("reveal outside label", /pv-pass-field/.test(ux) && /stopPropagation/.test(account) && /is-revealed/.test(account));
 ok("reveal stacks above input", /z-index:2/.test(ux) && /isolation:isolate/.test(ux));
+ok("saved password status card", /pv-pass-status-card/.test(ux) && /Password impostata/.test(ux) && /non si può rileggere/i.test(ux));
+ok("change behind details", /pv-pass-change/.test(ux) && /Cambia password/.test(ux) && /Riscrivi la password attuale/.test(ux));
+ok("reveal label Vedi", /data-pv-reveal-idle="Vedi"/.test(ux) && /data-pv-reveal-idle="Vedi"/.test(account));
 ok("changePassword helper", /async function changePassword/.test(account) && /__pvChangePassword/.test(account));
 ok("gate password wrap", /pv-pass-wrap/.test(account) && /aria-controls="pv-password"/.test(account));
 ok("netlify change-password", /action === "change-password"/.test(netlify) && /currentPassword/.test(netlify));
 ok("recovery change-password", /action === "change-password"/.test(recovery) && /Password attuale non corretta/.test(recovery));
 ok(
   "stamps",
-  /ux-suite-20261117f\.js/.test(index) &&
-    /account\.js\?v=20261117f/.test(index) &&
-    /account\.css\?v=20261117f/.test(index) &&
-    existsSync("assets/ux-suite-20261117f.js")
+  /ux-suite-20261117g\.js/.test(index) &&
+    /account\.js\?v=20261117g/.test(index) &&
+    /account\.css\?v=20261117g/.test(index) &&
+    existsSync("assets/ux-suite-20261117g.js")
 );
-ok("sw", /20261117f/.test(sw) && /ux-suite-20261117f\.js/.test(sw) && /account\.js\?v=20261117f/.test(sw));
+ok("sw", /20261117g/.test(sw) && /ux-suite-20261117g\.js/.test(sw) && /account\.js\?v=20261117g/.test(sw));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

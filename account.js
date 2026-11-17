@@ -436,8 +436,8 @@ function setPasswordRevealState(input, btn, show) {
   input.style.webkitTextSecurity = show ? "none" : "";
   input.classList.toggle("is-revealed", Boolean(show));
   btn.setAttribute("aria-pressed", String(Boolean(show)));
-  btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
-  btn.textContent = show ? "Nascondi" : "Mostra";
+  btn.setAttribute("aria-label", show ? "Nascondi caratteri" : "Mostra caratteri digitati");
+  btn.textContent = show ? "Nascondi" : btn.dataset.pvRevealIdle || "Vedi";
   if (wasFocused) {
     try {
       input.focus({ preventScroll: true });
@@ -607,7 +607,7 @@ function ensureUi() {
           <label for="pv-password">Password</label>
           <div class="pv-pass-wrap">
             <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
-            <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-password" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+            <button type="button" class="pv-pass-reveal" data-pv-reveal data-pv-reveal-idle="Vedi" aria-controls="pv-password" aria-pressed="false" aria-label="Mostra caratteri digitati">Vedi</button>
           </div>
         </div>
         <div class="pv-account-field" id="pv-recovery-field" hidden>
@@ -1494,7 +1494,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261117f";
+const SHELL_VER = "20261117g";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
