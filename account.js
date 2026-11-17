@@ -436,8 +436,8 @@ function setPasswordRevealState(input, btn, show) {
   input.style.webkitTextSecurity = show ? "none" : "";
   input.classList.toggle("is-revealed", Boolean(show));
   btn.setAttribute("aria-pressed", String(Boolean(show)));
-  btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
-  btn.textContent = show ? "Nascondi" : "Mostra";
+  btn.setAttribute("aria-label", show ? "Nascondi caratteri" : "Mostra caratteri digitati");
+  btn.textContent = show ? "Nascondi" : btn.dataset.pvRevealIdle || "Vedi";
   if (wasFocused) {
     try {
       input.focus({ preventScroll: true });
@@ -607,7 +607,7 @@ function ensureUi() {
           <label for="pv-password">Password</label>
           <div class="pv-pass-wrap">
             <input id="pv-password" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Almeno 8 caratteri" enterkeyhint="go">
-            <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-password" aria-pressed="false" aria-label="Mostra password">Mostra</button>
+            <button type="button" class="pv-pass-reveal" data-pv-reveal data-pv-reveal-idle="Vedi" aria-controls="pv-password" aria-pressed="false" aria-label="Mostra caratteri digitati">Vedi</button>
           </div>
         </div>
         <div class="pv-account-field" id="pv-recovery-field" hidden>
@@ -1494,32 +1494,39 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261117f";
+const SHELL_VER = "20261117g";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
   try {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.register(`./sw.js?v=${SHELL_VER}`);
-      // Ask waiting worker to activate immediately when present.
+      // Activate a waiting worker once; avoid update storms that flash the UI.
       reg?.waiting?.postMessage?.({ type: "SKIP_WAITING" });
-      if (reg?.update) await reg.update().catch(() => {});
+      if (reg?.update && !sessionStorage.getItem("pv-sw-checked")) {
+        sessionStorage.setItem("pv-sw-checked", "1");
+        await reg.update().catch(() => {});
+      }
     }
   } catch {
     /* ignore */
   }
   try {
     const prev = localStorage.getItem(SHELL_VER_KEY);
-    if (prev && prev !== SHELL_VER) {
-      localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
-      // One hard reload so iOS/PWA drop the old precache.
-      if (!sessionStorage.getItem("pv-shell-reloaded")) {
-        sessionStorage.setItem("pv-shell-reloaded", "1");
-        location.reload();
-        return;
-      }
-    } else {
-      localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
+    if (prev === SHELL_VER) return;
+    localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
+    // Drop stale shell caches quietly; reload at most once per tab session.
+    if ("caches" in window) {
+      const keys = await caches.keys().catch(() => []);
+      await Promise.all(
+        keys
+          .filter((k) => k.startsWith("pv-shell-") && !k.endsWith(SHELL_VER))
+          .map((k) => caches.delete(k).catch(() => false))
+      );
+    }
+    if (prev && !sessionStorage.getItem("pv-shell-reloaded")) {
+      sessionStorage.setItem("pv-shell-reloaded", "1");
+      location.reload();
     }
   } catch {
     /* ignore */

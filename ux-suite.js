@@ -7,6 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
+  const STYLE_VER = "20261117g";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -38,6 +39,7 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
+    if (style && style.dataset.pvReady === STYLE_VER) return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
@@ -306,8 +308,28 @@
       html[data-pv-theme="dark"] .pv-account-field dd{color:#eef6f7}
       html[data-pv-theme="dark"] .pv-account-field button{color:#5eead4}
       html[data-pv-theme="dark"] .pv-menu-section h3{color:#c5d6da}
-      .pv-pass-form{display:grid;gap:10px;margin:4px 0 0}
-      .pv-pass-hint{margin:0 0 8px;font:500 .82rem/1.4 inherit;color:var(--pv-muted,#5b7380)}
+      .pv-pass-form{display:grid;gap:10px;margin:8px 0 0}
+      .pv-pass-hint{margin:0;font:500 .82rem/1.4 inherit;color:var(--pv-muted,#5b7380)}
+      .pv-pass-status-card{
+        display:grid;gap:4px;padding:12px 14px;border-radius:14px;margin:8px 0 0;
+        background:#eef6f6;border:1px solid rgba(18,64,72,.1)
+      }
+      .pv-pass-status-card strong{font:800 .92rem/1.2 inherit;color:#0f2c31}
+      .pv-pass-status-card span{font:600 .8rem/1.35 inherit;color:#4a646b}
+      .pv-pass-mask{
+        font:800 1.15rem/1 inherit;letter-spacing:.22em;color:#0f5a5e;margin:2px 0 0
+      }
+      .pv-pass-change{
+        margin-top:10px;border:1px solid rgba(18,64,72,.1);border-radius:14px;padding:0;background:#fff;overflow:hidden
+      }
+      .pv-pass-change > summary{
+        list-style:none;cursor:pointer;padding:12px 14px;font:750 .9rem/1.2 inherit;color:#0f5a5e;
+        display:flex;align-items:center;justify-content:space-between;gap:8px
+      }
+      .pv-pass-change > summary::-webkit-details-marker{display:none}
+      .pv-pass-change > summary::after{content:"▾";font-size:.85rem;opacity:.7}
+      .pv-pass-change[open] > summary::after{content:"▴"}
+      .pv-pass-change-body{padding:0 14px 14px}
       .pv-pass-field{display:grid;gap:6px}
       .pv-pass-label{display:block;font:650 .78rem/1.2 inherit;color:#3f5860}
       .pv-pass-wrap{position:relative;display:block;isolation:isolate}
@@ -334,6 +356,16 @@
       .pv-pass-status.is-err{color:#8a1f1f}
       html[data-pv-theme="dark"] .pv-pass-hint{color:#c5d6da}
       html[data-pv-theme="dark"] .pv-pass-label{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-pass-status-card{
+        background:#1a2d32;border-color:rgba(231,242,243,.12)
+      }
+      html[data-pv-theme="dark"] .pv-pass-status-card strong{color:#eef6f7}
+      html[data-pv-theme="dark"] .pv-pass-status-card span{color:#c5d6da}
+      html[data-pv-theme="dark"] .pv-pass-mask{color:#5eead4}
+      html[data-pv-theme="dark"] .pv-pass-change{
+        background:#152428;border-color:rgba(231,242,243,.12)
+      }
+      html[data-pv-theme="dark"] .pv-pass-change > summary{color:#5eead4}
       html[data-pv-theme="dark"] .pv-pass-wrap input{
         background:#1a2d32;border-color:rgba(231,242,243,.14);color:#eef6f7
       }
@@ -703,6 +735,7 @@
         .pv-book-flight-form .pv-book-row{grid-template-columns:1fr}
       }
     `;
+    style.dataset.pvReady = STYLE_VER;
   }
 
   function tripAuth() {
@@ -1952,32 +1985,42 @@
   function renderPasswordChangeBlock() {
     return `<div class="pv-menu-section" id="pv-password-section">
          <h3>Password</h3>
-         <p class="pv-pass-hint">Digita nei campi e usa <strong>Mostra</strong> per vedere i caratteri. La password già salvata non si può rileggere: resta protetta.</p>
-         <form id="pv-change-password-form" class="pv-pass-form" autocomplete="off">
-           <div class="pv-pass-field">
-             <label class="pv-pass-label" for="pv-pass-current">Password attuale</label>
-             <span class="pv-pass-wrap">
-               <input id="pv-pass-current" name="current" type="password" autocomplete="current-password" required minlength="8" maxlength="72" />
-               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-current" aria-pressed="false" aria-label="Mostra password">Mostra</button>
-             </span>
+         <div class="pv-pass-status-card" role="status">
+           <strong>Password impostata</strong>
+           <div class="pv-pass-mask" aria-hidden="true">••••••••</div>
+           <span>Non si può rileggere: è salvata in forma protetta. Per cambiarla, riscrivila qui sotto.</span>
+         </div>
+         <details class="pv-pass-change" id="pv-pass-change">
+           <summary>Cambia password</summary>
+           <div class="pv-pass-change-body">
+             <p class="pv-pass-hint">Dopo aver digitato, <strong>Vedi</strong> mostra i caratteri di quel campo (non la password salvata).</p>
+             <form id="pv-change-password-form" class="pv-pass-form" autocomplete="off">
+               <div class="pv-pass-field">
+                 <label class="pv-pass-label" for="pv-pass-current">Riscrivi la password attuale</label>
+                 <span class="pv-pass-wrap">
+                   <input id="pv-pass-current" name="current" type="password" autocomplete="current-password" required minlength="8" maxlength="72" placeholder="Quella che usi per accedere" />
+                   <button type="button" class="pv-pass-reveal" data-pv-reveal data-pv-reveal-idle="Vedi" aria-controls="pv-pass-current" aria-pressed="false" aria-label="Mostra caratteri digitati">Vedi</button>
+                 </span>
+               </div>
+               <div class="pv-pass-field">
+                 <label class="pv-pass-label" for="pv-pass-new">Nuova password</label>
+                 <span class="pv-pass-wrap">
+                   <input id="pv-pass-new" name="next" type="password" autocomplete="new-password" required minlength="8" maxlength="72" placeholder="Min. 8 caratteri, lettera e numero" />
+                   <button type="button" class="pv-pass-reveal" data-pv-reveal data-pv-reveal-idle="Vedi" aria-controls="pv-pass-new" aria-pressed="false" aria-label="Mostra caratteri digitati">Vedi</button>
+                 </span>
+               </div>
+               <div class="pv-pass-field">
+                 <label class="pv-pass-label" for="pv-pass-confirm">Conferma nuova password</label>
+                 <span class="pv-pass-wrap">
+                   <input id="pv-pass-confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72" />
+                   <button type="button" class="pv-pass-reveal" data-pv-reveal data-pv-reveal-idle="Vedi" aria-controls="pv-pass-confirm" aria-pressed="false" aria-label="Mostra caratteri digitati">Vedi</button>
+                 </span>
+               </div>
+               <p class="pv-pass-status" id="pv-pass-status" aria-live="polite"></p>
+               <button type="submit" class="pv-pass-submit">Aggiorna password</button>
+             </form>
            </div>
-           <div class="pv-pass-field">
-             <label class="pv-pass-label" for="pv-pass-new">Nuova password</label>
-             <span class="pv-pass-wrap">
-               <input id="pv-pass-new" name="next" type="password" autocomplete="new-password" required minlength="8" maxlength="72" placeholder="Min. 8 caratteri, lettera e numero" />
-               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-new" aria-pressed="false" aria-label="Mostra password">Mostra</button>
-             </span>
-           </div>
-           <div class="pv-pass-field">
-             <label class="pv-pass-label" for="pv-pass-confirm">Conferma nuova password</label>
-             <span class="pv-pass-wrap">
-               <input id="pv-pass-confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72" />
-               <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-confirm" aria-pressed="false" aria-label="Mostra password">Mostra</button>
-             </span>
-           </div>
-           <p class="pv-pass-status" id="pv-pass-status" aria-live="polite"></p>
-           <button type="submit" class="pv-pass-submit">Aggiorna password</button>
-         </form>
+         </details>
        </div>`;
   }
 
@@ -2000,8 +2043,8 @@
           input.style.webkitTextSecurity = show ? "none" : "";
           input.classList.toggle("is-revealed", show);
           btn.setAttribute("aria-pressed", String(show));
-          btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
-          btn.textContent = show ? "Nascondi" : "Mostra";
+          btn.setAttribute("aria-label", show ? "Nascondi caratteri" : "Mostra caratteri digitati");
+          btn.textContent = show ? "Nascondi" : btn.dataset.pvRevealIdle || "Vedi";
         });
       });
     }
@@ -2041,11 +2084,13 @@
         form.reset();
         body.querySelectorAll("#pv-change-password-form input").forEach((input) => {
           input.type = "password";
+          input.classList.remove("is-revealed");
+          input.style.webkitTextSecurity = "";
         });
         body.querySelectorAll("#pv-change-password-form [data-pv-reveal]").forEach((btn) => {
           btn.setAttribute("aria-pressed", "false");
-          btn.setAttribute("aria-label", "Mostra password");
-          btn.textContent = "Mostra";
+          btn.setAttribute("aria-label", "Mostra caratteri digitati");
+          btn.textContent = btn.dataset.pvRevealIdle || "Vedi";
         });
         if (status) {
           status.textContent = "Password aggiornata.";
@@ -2620,6 +2665,7 @@
 
   function ensureItineraryLayoutPolish() {
     let style = document.getElementById("pv-ux-itinerary-layout");
+    if (style && style.dataset.pvReady === STYLE_VER) return;
     if (!style) {
       style = document.createElement("style");
       style.id = "pv-ux-itinerary-layout";
@@ -2635,6 +2681,7 @@
         .topbar .top-label{display:none}
       }
     `;
+    style.dataset.pvReady = STYLE_VER;
   }
 
   function injectMemberRoles() {
@@ -4592,12 +4639,19 @@
   hookSaveToastsAndRevisions();
   hookTripSanitizeFetch();
   sanitizeStoredTrips();
-  const obs = new MutationObserver(() => {
+  const obs = new MutationObserver((records) => {
     if (document.hidden || tick._t) return;
+    // Ignore pure stylesheet churn — rewriting <style> used to re-fire this loop.
+    const meaningful = records.some((rec) => {
+      const nodes = [...rec.addedNodes, ...rec.removedNodes];
+      if (!nodes.length) return rec.type === "childList" && rec.target && rec.target.nodeName !== "STYLE" && rec.target.nodeName !== "HEAD";
+      return nodes.some((n) => n.nodeName !== "STYLE" && n.nodeType === 1);
+    });
+    if (!meaningful) return;
     tick._t = setTimeout(() => {
       tick._t = 0;
       tick();
-    }, 220);
+    }, 280);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {
