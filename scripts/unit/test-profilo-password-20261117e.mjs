@@ -21,18 +21,20 @@ const sw = readFileSync("sw.js", "utf8");
 ok("profile password form", /renderPasswordChangeBlock/.test(ux) && /pv-change-password-form/.test(ux));
 ok("wire change form", /wirePasswordChangeForm/.test(ux) && /__pvChangePassword/.test(ux));
 ok("show/hide reveal", /data-pv-reveal/.test(ux) && /data-pv-reveal/.test(account) && /pv-pass-reveal/.test(css));
+ok("reveal outside label", /pv-pass-field/.test(ux) && /stopPropagation/.test(account) && /is-revealed/.test(account));
+ok("reveal stacks above input", /z-index:2/.test(ux) && /isolation:isolate/.test(ux));
 ok("changePassword helper", /async function changePassword/.test(account) && /__pvChangePassword/.test(account));
 ok("gate password wrap", /pv-pass-wrap/.test(account) && /aria-controls="pv-password"/.test(account));
 ok("netlify change-password", /action === "change-password"/.test(netlify) && /currentPassword/.test(netlify));
 ok("recovery change-password", /action === "change-password"/.test(recovery) && /Password attuale non corretta/.test(recovery));
 ok(
   "stamps",
-  /ux-suite-20261117e\.js/.test(index) &&
-    /account\.js\?v=20261117e/.test(index) &&
-    /account\.css\?v=20261117e/.test(index) &&
-    existsSync("assets/ux-suite-20261117e.js")
+  /ux-suite-20261117f\.js/.test(index) &&
+    /account\.js\?v=20261117f/.test(index) &&
+    /account\.css\?v=20261117f/.test(index) &&
+    existsSync("assets/ux-suite-20261117f.js")
 );
-ok("sw", /20261117e/.test(sw) && /ux-suite-20261117e\.js/.test(sw) && /account\.js\?v=20261117e/.test(sw));
+ok("sw", /20261117f/.test(sw) && /ux-suite-20261117f\.js/.test(sw) && /account\.js\?v=20261117f/.test(sw));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);
