@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harness menu prep/viaggio</title>
+  <link rel="stylesheet" href="/travel-diary.css?v=20261117h" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #0f2a30; color: #e8f2f4; }
+    .app-shell { padding: 16px; max-width: 420px; margin: 0 auto; }
+    .workspace-tabs { background: transparent; }
+    .main-tabs {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      padding: 6px;
+      border-radius: 16px;
+      background: #1a3a42;
+      border: 1px solid #2d5560;
+    }
+    .main-tabs [role="tab"] {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .35rem;
+      min-height: 68px;
+      padding: .55rem .3rem;
+      border: 0;
+      border-radius: 12px;
+      background: transparent;
+      color: #c5d7dc;
+      font-size: 11.5px;
+      font-weight: 650;
+    }
+    .main-tabs [role="tab"][aria-selected="true"] {
+      background: #1f6b5c;
+      color: #fff;
+    }
+    .trip-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid #2d5560;
+      background: #14343c;
+    }
+    .travelers { display: flex; align-items: center; gap: 10px; flex: 1; }
+    .avatars span {
+      display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+      margin-left: -8px; font-weight: 700; color: #12343c;
+    }
+    .avatars span:first-child { margin-left: 0; }
+    .toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .icon-btn, .button {
+      min-height: 44px; border-radius: 12px; border: 1px solid #2d5560;
+      background: #1a3a42; color: #e8f2f4; padding: 0 12px;
+    }
+    .button { background: #1f6b5c; border-color: #1f6b5c; font-weight: 700; }
+    .primary-panel [role="tabpanel"] {
+      margin-top: 12px; padding: 12px; border-radius: 12px;
+      background: #14343c; border: 1px solid #2d5560;
+    }
+    #harness-out {
+      margin: 16px; padding: 12px; border-radius: 10px;
+      background: #102228; font: 12px/1.4 ui-monospace, monospace; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="app-shell">
+      <div class="workspace-tabs">
+        <div class="main-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected="true" aria-controls="panel-itinerary" id="t-itinerary">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Itinerario
+          </button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-explore" id="t-explore">Esplora</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-places" id="t-places">Luoghi</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-preventivo" id="t-preventivo" class="pv-tab-preventivo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+            Preventivo
+          </button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-bookings" id="t-bookings">Prenotazioni</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-expenses" id="t-expenses">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
+            Spese di gruppo
+          </button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-documents" id="t-documents">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            Documenti
+          </button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-packing" id="t-packing">Valigia</button>
+          <button type="button" role="tab" aria-selected="false" aria-controls="panel-notes" id="t-notes">Note</button>
+        </div>
+        <div class="trip-toolbar">
+          <div class="travelers">
+            <div class="avatars">
+              <span style="background:#e2f2ee">a</span>
+              <span style="background:#e7edfd">s</span>
+            </div>
+            <span>Modifiche condivise</span>
+          </div>
+          <div class="toolbar-actions">
+            <button type="button" class="icon-btn" aria-label="Esporta viaggio">↓</button>
+            <button type="button" class="icon-btn" aria-label="Impostazioni viaggio">⚙</button>
+            <button type="button" class="button" id="share-btn">Condividi viaggio</button>
+          </div>
+        </div>
+      </div>
+      <div class="primary-panel">
+        <div role="tabpanel" id="panel-itinerary" class="section-heading-host">
+          <div class="section-heading"><h2>Itinerario</h2></div>
+        </div>
+        <div role="tabpanel" id="panel-explore" hidden><div class="section-heading"><h2>Esplora</h2></div></div>
+        <div role="tabpanel" id="panel-places" hidden><div class="section-heading"><h2>Luoghi</h2></div></div>
+        <div role="tabpanel" id="panel-preventivo" hidden><div class="section-heading"><h2>Preventivo</h2></div></div>
+        <div role="tabpanel" id="panel-bookings" hidden><div class="section-heading"><h2>Prenotazioni</h2></div></div>
+        <div role="tabpanel" id="panel-expenses" hidden><div class="section-heading"><h2>Spese</h2></div></div>
+        <div role="tabpanel" id="panel-documents" hidden><div class="section-heading"><h2>Documenti</h2></div></div>
+        <div role="tabpanel" id="panel-packing" hidden><div class="section-heading"><h2>Valigia</h2></div></div>
+        <div role="tabpanel" id="panel-notes" hidden><div class="section-heading"><h2>Note</h2></div></div>
+      </div>
+    </div>
+  </div>
+  <pre id="harness-out">booting…</pre>
+  <script>
+    // Force trip hash before suite binds.
+    location.hash = "#trip=demo-trip&key=demo-key";
+    // Map aria-controls to content-* pattern expected by suite.
+    document.querySelectorAll('[role="tab"]').forEach((tab) => {
+      const id = tab.getAttribute("aria-controls") || "";
+      const key = id.replace(/^panel-/, "");
+      const panel = document.getElementById(id);
+      if (panel) {
+        panel.id = `radix-content-${key}`;
+        tab.setAttribute("aria-controls", panel.id);
+      }
+    });
+    document.querySelectorAll('[role="tab"]').forEach((tab) => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll('[role="tab"]').forEach((t) => {
+          t.setAttribute("aria-selected", t === tab ? "true" : "false");
+          const p = document.getElementById(t.getAttribute("aria-controls"));
+          if (p) p.hidden = t !== tab;
+        });
+      });
+    });
+    let shareClicks = 0;
+    document.getElementById("share-btn").addEventListener("click", () => { shareClicks += 1; });
+  </script>
+  <script src="/assets/ux-suite-20261117h.js"></script>
+  <script>
+    function report() {
+      const phase = document.documentElement.dataset.pvTripPhase || "";
+      const mode = document.querySelector(".pv-trip-phase");
+      const tabs = [...document.querySelectorAll(".main-tabs [role=tab]")].map((t) => ({
+        key: (t.getAttribute("aria-controls") || "").split("-").pop(),
+        label: (t.textContent || "").replace(/\s+/g, " ").trim(),
+        phase: t.dataset.pvPhase || "",
+        display: getComputedStyle(t).display,
+        icon: t.dataset.pvIcon || "",
+      }));
+      const guide = document.querySelector(".pv-section-guide")?.textContent || "";
+      const travelers = document.querySelector(".trip-toolbar .travelers");
+      travelers?.click();
+      const out = {
+        phase,
+        modeButtons: mode ? [...mode.querySelectorAll("button")].map((b) => [b.dataset.phase, b.getAttribute("aria-pressed")]) : [],
+        hint: document.querySelector(".pv-trip-phase-hint")?.textContent || "",
+        tabs,
+        guide,
+        shareClicks,
+        speseLabelOk: tabs.some((t) => t.key === "expenses" && t.label === "Spese"),
+        speseIconOk: tabs.some((t) => t.key === "expenses" && t.icon === "spese"),
+        docsIconOk: tabs.some((t) => t.key === "documents" && t.icon === "docs"),
+        prepHiddenTrip: phase === "prep" ? tabs.filter((t) => t.phase === "trip").every((t) => t.display === "none") : null,
+      };
+      const el = document.getElementById("harness-out");
+      el.dataset.harness = JSON.stringify(out);
+      el.textContent = JSON.stringify(out, null, 2);
+    }
+    // Suite ticks at 500ms; wait then switch to prep and report.
+    setTimeout(() => {
+      const prepBtn = document.querySelector('.pv-trip-phase button[data-phase="prep"]');
+      prepBtn?.click();
+      setTimeout(report, 400);
+    }, 900);
+  </script>
+</body>
+</html>
