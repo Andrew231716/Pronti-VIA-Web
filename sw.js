@@ -24,7 +24,7 @@ const PRECACHE = [
   "./assets/expense-suite-20261111m.js",
   "./assets/expense-splitwise-20261111o.js",
   "./assets/app-suite-20261112r.js",
-  "./assets/preventivo-islanda-20261117d.js",
+  "./assets/preventivo-islanda-20261117e.js",
   "./assets/ux-suite-20261117e.js",
   "./assets/pv-platform-20261112m.js",
   "./assets/destination-theme-20261112k.js",

@@ -29,7 +29,7 @@ ok(
     !/text\.pollinations\.ai\/openai/.test(prev.slice(prev.indexOf("extractPreventivoFromImage")))
 );
 ok("xlsx/docx/pdf paths", /extractSheetMatrix/.test(prev) && /extractTextFromDocx/.test(prev) && /extractTextFromPdf/.test(prev));
-ok("import wizard UI", /openPreventivoImportWizard/.test(prev) && /Importa foglio \/ PDF \/ foto/.test(prev));
+ok("import wizard UI", /openPreventivoImportWizard/.test(prev) && /Importa nel Preventivo/.test(prev) && /Importa foglio/.test(prev));
 ok("window export", /__pvOpenPreventivoImport/.test(prev) && /__pvParsePreventivoImport/.test(prev));
 ok("trip section import button", /pv-tp-import/.test(magic));
 ok(
@@ -44,12 +44,12 @@ ok("open after hydrate/render", /async function openPreventivoImportWizard/.test
 ok("per-file errors isolated", /fileErrors\.push/.test(prev) && /File saltati/.test(prev));
 ok(
   "stamps",
-  /preventivo-islanda-20261117d\.js/.test(index) &&
+  /preventivo-islanda-20261117e\.js/.test(index) &&
     /magic-extras-20261117a\.js/.test(index) &&
-    existsSync("assets/preventivo-islanda-20261117d.js") &&
+    existsSync("assets/preventivo-islanda-20261117e.js") &&
     existsSync("assets/magic-extras-20261117a.js")
 );
-ok("sw cache", /20261117e/.test(sw) && /preventivo-islanda-20261117d\.js/.test(sw));
+ok("sw cache", /20261117e/.test(sw) && /preventivo-islanda-20261117e\.js/.test(sw));
 
 // Runtime parse of the user's sheet shape
 const start = prev.indexOf("function guessPreventivoKey");
