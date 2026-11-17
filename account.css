@@ -294,28 +294,38 @@ body.pv-primary-nav-ready {
   position: relative;
   display: block;
   width: 100%;
+  isolation: isolate;
 }
 #pv-account-gate .pv-pass-wrap input {
   padding-right: 5.5rem !important;
+  position: relative;
+  z-index: 0;
+}
+#pv-account-gate .pv-pass-wrap input.is-revealed {
+  -webkit-text-security: none !important;
 }
 #pv-account-gate .pv-pass-reveal {
   position: absolute;
   top: 50%;
   right: 8px;
   transform: translateY(-50%);
+  z-index: 2;
   appearance: none;
   border: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.92);
   color: var(--pv-account-teal, #007d82);
   font: 750 0.78rem/1 inherit;
   padding: 8px 10px;
   min-height: 36px;
   border-radius: 10px;
   cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 #pv-account-gate .pv-pass-reveal:hover,
 #pv-account-gate .pv-pass-reveal[aria-pressed="true"] {
-  background: rgba(0, 125, 130, 0.1);
+  background: rgba(0, 125, 130, 0.12);
 }
 
 #pv-account-gate .pv-account-field input:focus {

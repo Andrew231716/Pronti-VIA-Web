@@ -422,10 +422,33 @@ function validateNewPassword(password) {
 
 function setPasswordRevealState(input, btn, show) {
   if (!input || !btn) return;
+  const wasFocused = document.activeElement === input;
+  if (wasFocused) {
+    try {
+      input.blur();
+    } catch {
+      /* ignore */
+    }
+  }
+  // Swap type; WebKit sometimes needs the attribute write + text-security clear.
   input.type = show ? "text" : "password";
-  btn.setAttribute("aria-pressed", String(show));
+  input.setAttribute("type", show ? "text" : "password");
+  input.style.webkitTextSecurity = show ? "none" : "";
+  input.classList.toggle("is-revealed", Boolean(show));
+  btn.setAttribute("aria-pressed", String(Boolean(show)));
   btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
   btn.textContent = show ? "Nascondi" : "Mostra";
+  if (wasFocused) {
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      try {
+        input.focus();
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 function wirePasswordReveal(root = document) {
@@ -435,14 +458,15 @@ function wirePasswordReveal(root = document) {
     btn.dataset.pvRevealBound = "1";
     btn.addEventListener("click", (ev) => {
       ev.preventDefault();
+      ev.stopPropagation();
       const wrap = btn.closest(".pv-pass-wrap");
+      const controlId = btn.getAttribute("aria-controls");
       const input =
         wrap?.querySelector("input") ||
-        (btn.getAttribute("aria-controls")
-          ? document.getElementById(btn.getAttribute("aria-controls"))
-          : null);
+        (controlId ? document.getElementById(controlId) : null);
       if (!input) return;
-      setPasswordRevealState(input, btn, input.type === "password");
+      const shouldShow = btn.getAttribute("aria-pressed") !== "true";
+      setPasswordRevealState(input, btn, shouldShow);
     });
   });
 }
@@ -1470,7 +1494,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261117e";
+const SHELL_VER = "20261117f";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

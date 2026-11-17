@@ -308,19 +308,22 @@
       html[data-pv-theme="dark"] .pv-menu-section h3{color:#c5d6da}
       .pv-pass-form{display:grid;gap:10px;margin:4px 0 0}
       .pv-pass-hint{margin:0 0 8px;font:500 .82rem/1.4 inherit;color:var(--pv-muted,#5b7380)}
-      .pv-pass-label{display:grid;gap:6px;font:650 .78rem/1.2 inherit;color:#3f5860}
-      .pv-pass-wrap{position:relative;display:block}
+      .pv-pass-field{display:grid;gap:6px}
+      .pv-pass-label{display:block;font:650 .78rem/1.2 inherit;color:#3f5860}
+      .pv-pass-wrap{position:relative;display:block;isolation:isolate}
       .pv-pass-wrap input{
         width:100%;box-sizing:border-box;min-height:44px;padding:11px 5.2rem 11px 12px;
         border:1px solid var(--pv-line,#d0e0e0);border-radius:12px;font:600 .95rem inherit;
-        color:var(--pv-ink,#12343c);background:#fff
+        color:var(--pv-ink,#12343c);background:#fff;position:relative;z-index:0
       }
+      .pv-pass-wrap input.is-revealed{-webkit-text-security:none!important}
       .pv-pass-reveal{
-        position:absolute;top:50%;right:8px;transform:translateY(-50%);
-        appearance:none;border:0;background:transparent;color:var(--pv-teal-deep,#007d82);
-        font:750 .75rem/1 inherit;padding:8px 10px;border-radius:10px;cursor:pointer
+        position:absolute;top:50%;right:8px;transform:translateY(-50%);z-index:2;
+        appearance:none;border:0;background:rgba(255,255,255,.92);color:var(--pv-teal-deep,#007d82);
+        font:750 .75rem/1 inherit;padding:8px 10px;border-radius:10px;cursor:pointer;
+        pointer-events:auto;touch-action:manipulation;-webkit-tap-highlight-color:transparent
       }
-      .pv-pass-reveal[aria-pressed="true"],.pv-pass-reveal:hover{background:rgba(0,125,130,.1)}
+      .pv-pass-reveal[aria-pressed="true"],.pv-pass-reveal:hover{background:rgba(0,125,130,.12)}
       .pv-pass-submit{
         appearance:none;border:0;border-radius:12px;padding:12px 14px;min-height:44px;
         background:#007d82;color:#fff;font:750 .92rem/1 inherit;cursor:pointer
@@ -334,7 +337,11 @@
       html[data-pv-theme="dark"] .pv-pass-wrap input{
         background:#1a2d32;border-color:rgba(231,242,243,.14);color:#eef6f7
       }
-      html[data-pv-theme="dark"] .pv-pass-reveal{color:#5eead4}
+      html[data-pv-theme="dark"] .pv-pass-reveal{
+        color:#5eead4;background:rgba(26,45,50,.92)
+      }
+      html[data-pv-theme="dark"] .pv-pass-reveal[aria-pressed="true"],
+      html[data-pv-theme="dark"] .pv-pass-reveal:hover{background:rgba(94,234,212,.14)}
       html[data-pv-theme="dark"] .pv-pass-status{color:#c5d6da}
       html[data-pv-theme="dark"] .pv-pass-status.is-ok{color:#86efac}
       html[data-pv-theme="dark"] .pv-pass-status.is-err{color:#fca5a5}
@@ -1945,26 +1952,29 @@
   function renderPasswordChangeBlock() {
     return `<div class="pv-menu-section" id="pv-password-section">
          <h3>Password</h3>
-         <p class="pv-pass-hint">Mostra i caratteri mentre digiti e aggiorna la password. Quella salvata non si può rileggere: è protetta.</p>
+         <p class="pv-pass-hint">Digita nei campi e usa <strong>Mostra</strong> per vedere i caratteri. La password già salvata non si può rileggere: resta protetta.</p>
          <form id="pv-change-password-form" class="pv-pass-form" autocomplete="off">
-           <label class="pv-pass-label" for="pv-pass-current">Password attuale
+           <div class="pv-pass-field">
+             <label class="pv-pass-label" for="pv-pass-current">Password attuale</label>
              <span class="pv-pass-wrap">
                <input id="pv-pass-current" name="current" type="password" autocomplete="current-password" required minlength="8" maxlength="72" />
                <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-current" aria-pressed="false" aria-label="Mostra password">Mostra</button>
              </span>
-           </label>
-           <label class="pv-pass-label" for="pv-pass-new">Nuova password
+           </div>
+           <div class="pv-pass-field">
+             <label class="pv-pass-label" for="pv-pass-new">Nuova password</label>
              <span class="pv-pass-wrap">
                <input id="pv-pass-new" name="next" type="password" autocomplete="new-password" required minlength="8" maxlength="72" placeholder="Min. 8 caratteri, lettera e numero" />
                <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-new" aria-pressed="false" aria-label="Mostra password">Mostra</button>
              </span>
-           </label>
-           <label class="pv-pass-label" for="pv-pass-confirm">Conferma nuova password
+           </div>
+           <div class="pv-pass-field">
+             <label class="pv-pass-label" for="pv-pass-confirm">Conferma nuova password</label>
              <span class="pv-pass-wrap">
                <input id="pv-pass-confirm" name="confirm" type="password" autocomplete="new-password" required minlength="8" maxlength="72" />
                <button type="button" class="pv-pass-reveal" data-pv-reveal aria-controls="pv-pass-confirm" aria-pressed="false" aria-label="Mostra password">Mostra</button>
              </span>
-           </label>
+           </div>
            <p class="pv-pass-status" id="pv-pass-status" aria-live="polite"></p>
            <button type="submit" class="pv-pass-submit">Aggiorna password</button>
          </form>
@@ -1980,11 +1990,15 @@
         btn.dataset.pvRevealBound = "1";
         btn.addEventListener("click", (ev) => {
           ev.preventDefault();
+          ev.stopPropagation();
           const wrap = btn.closest(".pv-pass-wrap");
           const input = wrap?.querySelector("input");
           if (!input) return;
-          const show = input.type === "password";
+          const show = btn.getAttribute("aria-pressed") !== "true";
           input.type = show ? "text" : "password";
+          input.setAttribute("type", show ? "text" : "password");
+          input.style.webkitTextSecurity = show ? "none" : "";
+          input.classList.toggle("is-revealed", show);
           btn.setAttribute("aria-pressed", String(show));
           btn.setAttribute("aria-label", show ? "Nascondi password" : "Mostra password");
           btn.textContent = show ? "Nascondi" : "Mostra";
