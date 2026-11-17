@@ -259,6 +259,34 @@ export async function handler(event) {
       return json(200, { ok: true });
     }
 
+    if (event.httpMethod === "POST" && action === "change-password") {
+      const token = getBearer(event);
+      const session = await getSession(store, token);
+      if (!session) return json(401, { error: "Sessione scaduta. Accedi di nuovo." });
+      const currentPassword = body.currentPassword;
+      const newPassword = body.newPassword;
+      if (!currentPassword || !newPassword) {
+        return json(400, { error: "Inserisci la password attuale e quella nuova." });
+      }
+      const passError = validatePassword(newPassword);
+      if (passError) return json(400, { error: passError });
+      if (currentPassword === newPassword) {
+        return json(400, { error: "La nuova password deve essere diversa da quella attuale." });
+      }
+      const user = await store.get(`user:${session.username}`, { type: "json" });
+      if (!user?.salt || !user?.hash || !verifyPassword(currentPassword, user.salt, user.hash)) {
+        return json(401, { error: "Password attuale non corretta." });
+      }
+      const { salt, hash } = hashPassword(newPassword);
+      await store.setJSON(`user:${session.username}`, {
+        ...user,
+        salt,
+        hash,
+        updatedAt: new Date().toISOString(),
+      });
+      return json(200, { ok: true });
+    }
+
     if (event.httpMethod === "POST" && action === "delete-account") {
       const token = getBearer(event);
       const session = await getSession(store, token);

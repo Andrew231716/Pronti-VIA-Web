@@ -18,7 +18,7 @@ function test(name, fn) {
 }
 
 test("stamp ux-suite wired", () => {
-  assert.match(index, /ux-suite-20261112r\.js/);
+  assert.match(index, /ux-suite-20261117e\.js/);
 });
 
 test("Profilo shows account info helpers", () => {
@@ -30,6 +30,8 @@ test("Profilo shows account info helpers", () => {
   assert.match(ux, /data-ux-copy-user/);
   assert.match(ux, /accountKindLabel/);
   assert.match(ux, /\.pv-account-card/);
+  assert.match(ux, /renderPasswordChangeBlock/);
+  assert.match(ux, /pv-change-password-form/);
 });
 
 const passed = !process.exitCode;

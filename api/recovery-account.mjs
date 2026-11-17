@@ -114,6 +114,22 @@ export default async function recoveryAccount(req, res) {
       user.sessions = user.sessions.filter(s => s !== active);
       return await save(user) ? send(200, { ok: true }) : retry();
     }
+    if (req.method === "POST" && action === "change-password") {
+      const currentPassword = body.currentPassword;
+      const newPassword = body.newPassword;
+      if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+        return error(400, "Inserisci la password attuale e quella nuova.");
+      }
+      if (newPassword.length < 8 || newPassword.length > 72 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+        return error(400, "Usa da 8 a 72 caratteri, con almeno una lettera e un numero.");
+      }
+      if (currentPassword === newPassword) {
+        return error(400, "La nuova password deve essere diversa da quella attuale.");
+      }
+      if (!await verify(currentPassword, user)) return error(401, "Password attuale non corretta.");
+      Object.assign(user, await credentials(newPassword));
+      return await save(user) ? send(200, { ok: true }) : retry();
+    }
     if (req.method === "POST" && action === "delete-account") {
       if (typeof password !== "string" || password.length > 72 || !await verify(password, user))
         return error(401, "Credenziali non corrette.");

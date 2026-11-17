@@ -24,7 +24,7 @@ const ux = readFileSync("ux-suite.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 
 test("stamp ux-suite wired", () => {
-  assert.match(index, /ux-suite-20261112r\.js/);
+  assert.match(index, /ux-suite-20261117e\.js/);
 });
 
 test("import event menu + wizard wired", () => {
