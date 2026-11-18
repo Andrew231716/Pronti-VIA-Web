@@ -3947,7 +3947,8 @@ Regole:
 
   function injectBudgetAndCharts() {
     const money = document.querySelector(".money-stats");
-    if (money && !money.parentElement.querySelector(".pv-budget-box")) {
+    if (money) showPersonalPayments(money);
+    if (money && !money.parentElement.querySelector(".pv-budget-box:not(.pv-personal-payments)")) {
       const auth = tripAuth();
       const priv = auth ? readPrivateBudgetCents(auth.id) : null;
       const preset =
@@ -6203,6 +6204,19 @@ Regole:
         #pv-trip-preventivo-panel{place-items:center;padding:24px 16px}
         #pv-trip-preventivo-panel .pv-tp-sheet{border-radius:22px;max-height:min(84vh,760px)}
       }
+      .pv-quote-summary{background:var(--pv-accent,#174f48);color:white;padding:18px;border-radius:14px;margin-bottom:16px}
+      .pv-quote-summary h3{font-size:1.7rem!important;color:inherit;margin:4px 0!important;font-variant-numeric:tabular-nums}
+      .pv-quote-summary small{font-size:.82rem;font-weight:500}
+      #pv-tp-lines .pv-tp-line{display:block;border:1px solid #cbdad3;border-radius:14px;padding:14px;background:var(--pv-surface,Canvas);color:CanvasText}
+      .pv-tp-line header{display:flex;justify-content:space-between;gap:12px;align-items:baseline;overflow-wrap:anywhere}
+      .pv-tp-line header b{white-space:nowrap;font-variant-numeric:tabular-nums}
+      .pv-payment-info{font-size:.88rem;margin:8px 0}
+      .pv-tp-line details{border-top:1px solid #becdc6}
+      .pv-tp-line summary{padding:12px 0;min-height:44px;box-sizing:border-box;cursor:pointer;font-weight:650}
+      .pv-tp-line label{display:grid;gap:4px;margin:8px 0}
+      .pv-tp-line button{padding:9px 12px;min-height:44px;border:1px solid #afc5bc;border-radius:9px;margin:4px 4px 4px 0}
+      .pv-tp-line [data-pay-status]:empty{display:none}
+      .pv-personal-payments li{margin:.65em 0}
     `;
   }
 
@@ -6252,7 +6266,7 @@ Regole:
       mount.innerHTML = `
         <header class="pv-tp-head">
           <div>
-            <p class="pv-tp-eyebrow">STIMA DI VIAGGIO</p>
+
             <h2 id="pv-tp-title">Preventivo</h2>
           </div>
         </header>
@@ -6347,6 +6361,58 @@ Regole:
       .replace(/"/g, "&quot;");
   }
 
+  function paymentPrefix(id) {
+    const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+    const owner = session?.user?.username;
+    return owner ? "pv-personal-pay:" + JSON.stringify([owner, id]) + ":" : "";
+  }
+
+  function lineAmount(line) {
+    return Number(line.totalCents ?? (Number(line.unitCents || 0) * Number(line.qty ?? 1)));
+  }
+
+  function paymentRow(line, idx, travelers, prefix) {
+    const total = lineAmount(line);
+    const share = Math.round(total / travelers);
+    const paid = prefix && line.id ? JSON.parse(localStorage.getItem(prefix + line.id) || "null")?.paid || 0 : 0;
+    return `<article class="pv-tp-line" data-line-idx="${idx}">
+      <header><strong>${escapeTp(line.title || "Nuova voce")}</strong><b>${formatEuro(total)}</b></header>
+      <p class="pv-payment-info">La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · Residuo ${formatEuro(Math.max(0,share-paid))}</p>
+      <details class="pv-payment-controls"><summary>Il mio pagamento</summary>
+        ${line.id && prefix ? `<label>Totale già versato (€)<input data-paid type="number" min="0" step="0.01" inputmode="decimal" value="${paid/100}"></label>
+        <button type="button" data-payment="partial">Salva importo</button><button type="button" data-payment="full">Salda tutta la quota</button>` : "Salva la voce e accedi per registrare il pagamento."}
+        <p role="status" data-pay-status></p>
+      </details>
+      <details><summary>Modifica voce</summary>
+      <label>Descrizione<input data-k="title" value="${escapeTp(line.title || "Nuova voce")}"></label>
+      <label>Importo di gruppo (€)<input data-k="euros" type="number" min="0" step="0.01" value="${total/100}"></label>
+      <label>Stato del prezzo<select data-k="status">${["STIMA","DA VERIFICARE","VERIFICATO","SCADUTO"].map(v => `<option ${v === line.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <button type="button" class="pv-tp-danger" data-remove-line>Rimuovi voce</button></details></article>`;
+  }
+
+  function showPersonalPayments(money) {
+    const auth = tripAuth();
+    const prefix = auth && paymentPrefix(auth.id);
+    let box = money.parentElement.querySelector(".pv-personal-payments");
+    if (!prefix) { box?.remove(); return; }
+    const rows = Object.keys(localStorage).filter(k => k.startsWith(prefix)).map(k => {
+      const entry = JSON.parse(localStorage.getItem(k));
+      const trip = tripLoadCache?.payload?.auth?.id === auth.id && tripLoadCache.payload.auth.key === auth.key ? tripLoadCache.payload.data.trip : null;
+      const quote = trip?.meta?.preventivo;
+      const line = quote?.lines?.find(l => l.id === k.slice(prefix.length));
+      const share = line ? Math.round(lineAmount(line) / Math.max(1, Number(quote.params?.travelers || trip.members?.length || 1))) : entry.share;
+      return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>Versato ${formatEuro(entry.paid)} · Da saldare ${formatEuro(Math.max(0, share-entry.paid))}</li>`;
+    });
+    if (!rows.length) { box?.remove(); return; }
+    if (!box) {
+      box = document.createElement("section");
+      box.className = "pv-budget-box pv-personal-payments";
+      money.after(box);
+    }
+    const html = `<h3>Spese personali</h3><p>Pagamenti del preventivo su questo dispositivo</p><ul>${rows.join("")}</ul>`;
+    if (box.innerHTML !== html) box.innerHTML = html;
+  }
+
   async function renderTripPreventivoSection() {
     const body = getPreventivoRenderRoot();
     if (!body) return;
@@ -6369,29 +6435,13 @@ Regole:
 
       const lineRows = lines.length
         ? lines
-            .map(
-              (l, idx) => {
-                const total = Number(l.totalCents) || (Number(l.unitCents) || 0) * (Number(l.qty) || 1);
-                return `<div class="pv-tp-line" data-line-idx="${idx}">
-                  <input data-k="title" value="${escapeTp(l.title || "Voce")}" aria-label="Voce" />
-                  <input data-k="euros" type="number" min="0" step="1" value="${Math.round(total / 100)}" aria-label="Euro" />
-                  <select data-k="status" aria-label="Stato">
-                    ${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
-                      .map((s) => `<option value="${s}" ${l.status === s ? "selected" : ""}>${s}</option>`)
-                      .join("")}
-                  </select>
-                  <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>
-                </div>`;
-              }
-            )
+            .map((line, idx) => paymentRow(line, idx, travelers, paymentPrefix(auth.id)))
             .join("")
         : `<p class="pv-tp-muted">Nessuna voce ancora. Aggiungine una o apri il Preventivo intelligente.</p>`;
 
       body.innerHTML = `
         <section class="pv-tp-card">
-          <h3>Riepilogo · scenario ${escapeTp(pv.scenario || "—")}</h3>
-          <p><strong>Gruppo:</strong> ${formatEuro(group)} · <strong>/persona:</strong> ${formatEuro(pp)}</p>
-          <p class="pv-tp-muted">Il preventivo non viene più scritto nelle note: resta in questa sezione e viaggia con il link di condivisione.</p>
+          <header class="pv-quote-summary"><span>Scenario ${escapeTp(pv.scenario || "viaggio")}</span><h3>${formatEuro(pp)} <small>a persona</small></h3><span>${formatEuro(group)} per il gruppo · ${travelers} ${travelers === 1 ? "persona" : "persone"}</span></header>
           <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
           <div class="pv-tp-actions">
             <button type="button" class="pv-tp-ghost" id="pv-tp-add-line">+ Aggiungi voce</button>
@@ -6408,31 +6458,35 @@ Regole:
         </section>
       `;
 
-      body.querySelectorAll("[data-remove-line]").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          btn.closest(".pv-tp-line")?.remove();
-        });
-      });
-      body.querySelector("#pv-tp-add-line")?.addEventListener("click", () => {
-        const host = body.querySelector("#pv-tp-lines");
-        if (!host) return;
-        const empty = host.querySelector(".pv-tp-muted");
-        if (empty) empty.remove();
-        const row = document.createElement("div");
-        row.className = "pv-tp-line";
-        row.innerHTML = `
-          <input data-k="title" value="Nuova voce" aria-label="Voce" />
-          <input data-k="euros" type="number" min="0" step="1" value="0" aria-label="Euro" />
-          <select data-k="status" aria-label="Stato">
-            <option value="STIMA" selected>STIMA</option>
-            <option value="DA VERIFICARE">DA VERIFICARE</option>
-            <option value="VERIFICATO">VERIFICATO</option>
-            <option value="SCADUTO">SCADUTO</option>
-          </select>
-          <button type="button" class="pv-tp-danger" data-remove-line title="Rimuovi">✕</button>`;
-        row.querySelector("[data-remove-line]")?.addEventListener("click", () => row.remove());
-        host.appendChild(row);
-      });
+      const list = body.querySelector("#pv-tp-lines");
+      list.onclick = event => {
+        const row = event.target.closest(".pv-tp-line");
+        if (!row) return;
+        if (event.target.closest("[data-remove-line]")) { row.remove(); return; }
+        const action = event.target.closest("[data-payment]")?.dataset.payment;
+        if (!action) return;
+        const line = lines[Number(row.dataset.lineIdx)];
+        const status = row.querySelector("[data-pay-status]");
+        const field = row.querySelector("[data-paid]");
+        try {
+          const prefix = paymentPrefix(auth.id);
+          if (!prefix || !line?.id) throw new Error("Accedi e salva la voce prima di registrare il pagamento.");
+          if (Math.round(Number(row.querySelector('[data-k="euros"]').value)*100) !== lineAmount(line)) throw new Error("Salva prima il nuovo importo del preventivo.");
+          const share = Math.round(lineAmount(line)/travelers);
+          const paid = action === "full" ? share : Math.round(field.valueAsNumber*100);
+          if (!Number.isSafeInteger(paid) || paid < 0 || paid > share || (action !== "full" && !field.validity.valid)) throw new Error("Inserisci un importo tra zero e la tua quota.");
+          localStorage.setItem(prefix + line.id, JSON.stringify({title:line.title, paid, share}));
+          field.value = String(paid/100);
+          row.querySelector(".pv-payment-info").textContent = `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · Residuo ${formatEuro(share-paid)}`;
+          status.textContent = "Registrato nelle spese personali.";
+        } catch (err) { status.textContent = err.message; }
+      };
+      body.querySelector("#pv-tp-add-line").onclick = () => {
+        list.querySelector(":scope > .pv-tp-muted")?.remove();
+        list.insertAdjacentHTML("beforeend", paymentRow({}, -1, travelers, ""));
+        list.lastElementChild.querySelector("details:last-child").open = true;
+        list.lastElementChild.querySelector('[data-k="title"]').focus();
+      };
       body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
         if (document.getElementById("pv-trip-preventivo-panel") && !document.getElementById("pv-trip-preventivo-panel").hidden) {
           closeTripPreventivoSection();
@@ -6465,20 +6519,22 @@ Regole:
     try {
       const rows = [...(root.querySelectorAll?.("#pv-tp-lines .pv-tp-line") || document.querySelectorAll("#pv-tp-lines .pv-tp-line"))];
       const lines = rows.map((row, i) => {
+        const original = prevPv?.lines?.[Number(row.dataset.lineIdx)] || {};
         const title = row.querySelector('[data-k="title"]')?.value?.trim() || `Voce ${i + 1}`;
         const euros = Number(row.querySelector('[data-k="euros"]')?.value || 0);
         const statusVal = row.querySelector('[data-k="status"]')?.value || "STIMA";
         const totalCents = Math.max(0, Math.round(euros * 100));
         return {
-          id: prevPv?.lines?.[i]?.id || uid(),
+          ...original,
+          id: original.id || uid(),
           title,
           status: statusVal,
-          unitCents: totalCents,
-          qty: 1,
+          unitCents: totalCents === lineAmount(original) ? original.unitCents ?? totalCents : totalCents,
+          qty: totalCents === lineAmount(original) ? original.qty ?? 1 : 1,
           totalCents,
-          source: prevPv?.lines?.[i]?.source || "",
-          key: prevPv?.lines?.[i]?.key || "",
-          mode: prevPv?.lines?.[i]?.mode || "",
+          source: original.source || "",
+          key: original.key || "",
+          mode: original.mode || "",
         };
       });
       const groupCents = lines.reduce((s, l) => s + (l.totalCents || 0), 0);
