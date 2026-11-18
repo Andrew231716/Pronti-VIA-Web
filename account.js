@@ -2,8 +2,15 @@ const SESSION_KEY = "viavia-account-v1";
 const USERS_KEY = "viavia-accounts-db-v1";
 const TRIPS_KEY = "viavia-recent-links-v1";
 const THEME_KEY = "viavia-theme-v1";
+const TEXT_KEY = "viavia-text-size-v1";
 const PENDING_SHARE_KEY = "pv-pending-share-v1";
 const THEME_CYCLE = ["system", "light", "dark"];
+const TEXT_SIZES = {
+  sm: { label: "Piccolo", zoom: "0.9" },
+  md: { label: "Normale", zoom: "1" },
+  lg: { label: "Grande", zoom: "1.125" },
+  xl: { label: "Extra", zoom: "1.25" },
+};
 const API = "/api/account";
 /** Client-side session ceiling (matches server 30d sliding). Local tokens keep 30d too. */
 const CLIENT_SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -67,6 +74,48 @@ function cycleThemeMode() {
   applyThemeMode(next);
   return next;
 }
+
+function readTextSize() {
+  if (typeof window.ProntiPlatform?.getTextSize === "function") {
+    return window.ProntiPlatform.getTextSize();
+  }
+  const size = readJson(TEXT_KEY, { size: "md" }).size || "md";
+  return TEXT_SIZES[size] ? size : "md";
+}
+
+function applyTextSize(size) {
+  if (typeof window.ProntiPlatform?.setTextSize === "function") {
+    window.ProntiPlatform.setTextSize(size);
+    syncTextSizeUi();
+    return;
+  }
+  const key = TEXT_SIZES[size] ? size : readTextSize();
+  writeJson(TEXT_KEY, { size: key });
+  const root = document.documentElement;
+  root.dataset.pvText = key;
+  root.style.setProperty("--pv-text-zoom", TEXT_SIZES[key].zoom);
+  try {
+    window.dispatchEvent(new CustomEvent("pv-text-size-changed", { detail: { size: key } }));
+  } catch {
+    /* ignore */
+  }
+  syncTextSizeUi();
+}
+
+function syncTextSizeUi() {
+  const size = readTextSize();
+  document.querySelectorAll("[data-pv-text-size]").forEach((btn) => {
+    const on = btn.getAttribute("data-pv-text-size") === size;
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.classList.toggle("on", on);
+  });
+  const select = document.getElementById("pv-text-size");
+  if (select && select.value !== size) select.value = size;
+}
+
+window.__pvGetTextSize = readTextSize;
+window.__pvApplyTextSize = applyTextSize;
+window.__pvTextSizes = TEXT_SIZES;
 
 function themeToggleMeta(mode) {
   if (mode === "light") {
@@ -154,6 +203,7 @@ function placeThemeToggle() {
 window.__pvPlaceThemeToggle = placeThemeToggle;
 
 function ensureThemeToggle() {
+  applyTextSize(readTextSize());
   if (document.getElementById("pv-theme-toggle")) {
     placeThemeToggle();
     syncThemeToggleUi();
@@ -173,6 +223,7 @@ function ensureThemeToggle() {
   placeThemeToggle();
   syncThemeToggleUi();
   window.addEventListener("pv-theme-changed", () => syncThemeToggleUi());
+  window.addEventListener("pv-text-size-changed", () => syncTextSizeUi());
   if (window.matchMedia) {
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
       if (readThemeMode() === "system") applyThemeMode("system");
@@ -1527,7 +1578,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261118a";
+const SHELL_VER = "20261118b";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {

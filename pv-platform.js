@@ -4,7 +4,14 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112m";
+  const VER = "20261118c";
+  const TEXT_KEY = "viavia-text-size-v1";
+  const TEXT_SIZES = {
+    sm: { label: "Piccolo", zoom: "0.9" },
+    md: { label: "Normale", zoom: "1" },
+    lg: { label: "Grande", zoom: "1.125" },
+    xl: { label: "Extra", zoom: "1.25" },
+  };
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const THEME_CYCLE = ["system", "light", "dark"];
@@ -12,6 +19,16 @@
   const REMINDERS_LOCAL = "viavia-reminders-local-v1";
   const ARCHIVE_KEY = "viavia-archive-index-v1";
   const FX_CACHE_KEY = "viavia-fx-cache-v1";
+  // Visible Hub tabs = group-only tools (no duplicates of trip sections / Impostazioni).
+  const HUB_TABS = [
+    ["dash", "Panoramica", "🏠"],
+    ["polls", "Votazioni", "🗳️"],
+    ["access", "Inviti", "📨"],
+    ["stats", "Numeri", "📊"],
+    ["archive", "Ricordi", "📸"],
+  ];
+  const HUB_TAB_IDS = new Set(HUB_TABS.map(([id]) => id));
+  let tripCache = null;
 
   const ROLE_PERMS = {
     owner: ["edit", "invite", "roles", "delete", "expenses", "stops", "docs", "polls", "checklist", "polls-vote"],
@@ -303,6 +320,31 @@
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
     applyTheme(next);
     return next;
+  }
+
+  function getTextSize() {
+    const size = readJson(TEXT_KEY, { size: "md" }).size || "md";
+    return TEXT_SIZES[size] ? size : "md";
+  }
+
+  function applyTextSize(size) {
+    const key = TEXT_SIZES[size] ? size : getTextSize();
+    writeJson(TEXT_KEY, { size: key });
+    const root = document.documentElement;
+    root.dataset.pvText = key;
+    root.style.setProperty("--pv-text-zoom", TEXT_SIZES[key].zoom);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-text-size-changed", { detail: { size: key } }));
+    } catch {
+      /* ignore */
+    }
+    const select = document.getElementById("pv-text-size");
+    if (select && select.value !== key) select.value = key;
+    document.querySelectorAll("[data-pv-text-size]").forEach((btn) => {
+      const on = btn.getAttribute("data-pv-text-size") === key;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("on", on);
+    });
   }
 
   /* ---------- styles ---------- */
@@ -905,19 +947,33 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   /* ---------- trip fetch/save ---------- */
-  async function fetchTrip() {
+  function clearTripCache() {
+    tripCache = null;
+  }
+  async function fetchTrip({ force = false } = {}) {
     const auth = tripAuth();
     if (!auth) return null;
+    if (
+      !force &&
+      tripCache &&
+      tripCache.auth?.id === auth.id &&
+      tripCache.auth?.key === auth.key &&
+      Date.now() - tripCache.at < 4000
+    ) {
+      return { auth: tripCache.auth, data: tripCache.data, trip: tripCache.trip };
+    }
     const res = await fetch(`/api/trips/${encodeURIComponent(auth.id)}`, {
       headers: { Authorization: `Bearer ${auth.key}` },
       cache: "no-store",
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Viaggio non disponibile");
-    return { auth, data, trip: data.trip || {} };
+    const packed = { auth, data, trip: data.trip || {}, at: Date.now() };
+    tripCache = packed;
+    return { auth, data, trip: packed.trip };
   }
   async function saveTripMeta(mutator, { permission = "edit" } = {}) {
-    const { auth, data, trip } = await fetchTrip();
+    const { auth, data, trip } = await fetchTrip({ force: true });
     if (data.canEdit === false) throw new Error("Solo lettura: non puoi modificare.");
     const role = data.personalRole === "editor" ? "member" : roleForTrip(trip);
     if (!canRole(role, permission)) {
@@ -954,9 +1010,35 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
             ? "Salvato su questo dispositivo. In attesa di sincronizzazione"
             : "Salvato e sincronizzato";
       showStatus(msg, out.local || out.source === "memory" ? "local" : "server");
+      clearTripCache();
       return out;
     };
     return run();
+  }
+
+  function jumpToTripSection(section, { phase } = {}) {
+    togglePanel(false);
+    try {
+      if (phase === "prep" || phase === "trip") {
+        sessionStorage.setItem("pv-trip-phase-v1", phase);
+        document.documentElement.dataset.pvTripPhase = phase;
+      }
+    } catch {
+      /* ignore */
+    }
+    const tab = [...document.querySelectorAll("#root .main-tabs [role=tab]")].find((el) =>
+      (el.getAttribute("aria-controls") || "").endsWith(`-content-${section}`)
+    );
+    if (!tab) {
+      showStatus("Apri il viaggio per usare questa sezione", "warn");
+      return false;
+    }
+    if (tab.getAttribute("aria-selected") !== "true" && tab.getAttribute("data-state") !== "active") {
+      tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      tab.click();
+    }
+    tab.scrollIntoView?.({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    return true;
   }
 
   /* ---------- UI shell ---------- */
@@ -982,8 +1064,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     fab = document.createElement("button");
     fab.id = "pv-plat-fab";
     fab.type = "button";
-    fab.title = "Hub · Collabora";
-    fab.setAttribute("aria-label", "Apri Hub collaborativo");
+    fab.title = "Hub di gruppo";
+    fab.setAttribute("aria-label", "Apri Hub di gruppo");
     fab.textContent = "Hub";
     document.body.appendChild(fab);
     return bindHubTrigger(fab);
@@ -1001,96 +1083,49 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           panel.removeEventListener("transitionend", done);
         };
         panel.addEventListener("transitionend", done);
-        setTimeout(done, 280);
+        setTimeout(done, 220);
       });
     });
   }
-  const HUB_GROUPS = {
-    collab: {
-      label: "🤝 Collabora",
-      tabs: [
-        ["dash", "Panoramica", "🏠"],
-        ["polls", "Votazioni", "🗳️"],
-        ["access", "Inviti", "📨"],
-        ["prep", "Preparazione", "🧳"],
-        ["stats", "Numeri", "📊"],
-      ],
-    },
-    trip: {
-      label: "🗺️ Organizza",
-      tabs: [
-        ["today", "Oggi", "☀️"],
-        ["cal", "Calendario", "📅"],
-        ["archive", "Ricordi", "📸"],
-        ["settings", "Impostazioni", "⚙️"],
-      ],
-    },
-  };
-  let activeGroup = "collab";
-  function groupForTab(tab) {
-    if (HUB_GROUPS.trip.tabs.some(([id]) => id === tab)) return "trip";
-    return "collab";
-  }
   function ensurePanelChrome(panel) {
-    // Recreate if older single-row chrome (pre-grouping).
-    if (panel.querySelector("#pv-plat-body") && panel.querySelector(".pv-plat-tab-groups")) return;
-    activeGroup = groupForTab(activeTab);
-    const allTabs = [...HUB_GROUPS.collab.tabs, ...HUB_GROUPS.trip.tabs];
+    // Recreate if older Collabora/Organizza chrome or missing body.
+    if (panel.querySelector("#pv-plat-body") && panel.dataset.pvHubChrome === "flat-v1") return;
+    if (!HUB_TAB_IDS.has(activeTab) && !["settings", "backup", "prep", "today", "cal"].includes(activeTab)) {
+      activeTab = "dash";
+    }
+    panel.dataset.pvHubChrome = "flat-v1";
     panel.innerHTML = `
       <div class="pv-plat-head">
         <div>
-          <div class="pv-plat-kicker"><span class="pv-plat-emo" aria-hidden="true">✨</span> Hub di viaggio</div>
-          <strong>Collaborazione di gruppo</strong>
-          <p class="pv-plat-lead">Voti, cose da preparare, numeri e copie di sicurezza — tutto in un posto.</p>
+          <div class="pv-plat-kicker"><span class="pv-plat-emo" aria-hidden="true">🤝</span> Hub di gruppo</div>
+          <strong>Solo ciò che manca altrove</strong>
+          <p class="pv-plat-lead">Votazioni, inviti, numeri e ricordi. Itinerario, valigia e impostazioni restano nelle sezioni del viaggio.</p>
         </div>
         <button type="button" class="pv-plat-btn" data-plat="close" aria-label="Chiudi Hub">Chiudi</button>
       </div>
-      <div class="pv-plat-tab-groups" role="tablist" aria-label="Aree Hub">
-        ${Object.entries(HUB_GROUPS)
-          .map(
-            ([id, g]) =>
-              `<button type="button" class="pv-plat-group${id === activeGroup ? " on" : ""}" data-plat-group="${id}">${g.label}</button>`
-          )
-          .join("")}
-      </div>
-      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${allTabs
+      <div class="pv-plat-tabs" role="tablist" aria-label="Sezioni Hub">${HUB_TABS
         .map(([id, label, emo]) => {
           const icon = emo ? `<span class="pv-plat-tab-emo" aria-hidden="true">${emo}</span>` : "";
-          return `<button type="button" role="tab" data-tab="${id}" data-group="${groupForTab(id)}" hidden>${icon}<span>${label}</span></button>`;
+          return `<button type="button" role="tab" data-tab="${id}">${icon}<span>${label}</span></button>`;
         })
         .join("")}</div>
       <div id="pv-plat-body"></div>
     `;
     panel.querySelector("[data-plat=close]")?.addEventListener("click", () => togglePanel(false));
-    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const g = btn.dataset.platGroup;
-        if (g === activeGroup) return;
-        activeGroup = g;
-        const first = HUB_GROUPS[g].tabs[0][0];
-        if (!HUB_GROUPS[g].tabs.some(([id]) => id === activeTab)) activeTab = first;
-        syncTabButtons(panel);
-        void renderPanel({ tabSwitch: true });
-      });
-    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
       btn.addEventListener("click", () => {
         if (btn.dataset.tab === activeTab) return;
         activeTab = btn.dataset.tab;
-        activeGroup = groupForTab(activeTab);
         void renderPanel({ tabSwitch: true });
       });
     });
   }
   function syncTabButtons(panel) {
-    activeGroup = groupForTab(activeTab);
-    panel.querySelectorAll("[data-plat-group]").forEach((btn) => {
-      btn.classList.toggle("on", btn.dataset.platGroup === activeGroup);
-    });
     panel.querySelectorAll("[data-tab]").forEach((btn) => {
-      const inGroup = btn.dataset.group === activeGroup;
-      btn.hidden = !inGroup;
-      btn.classList.toggle("on", btn.dataset.tab === activeTab);
+      const on = btn.dataset.tab === activeTab;
+      btn.hidden = false;
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
     });
   }
   function togglePanel(force) {
@@ -1272,14 +1307,15 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           .map((t) => `<li>${escapeHtml(t)}</li>`)
           .join("")}</ul>
         <div class="pv-plat-actions">
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="today">☀️ Oggi</button>
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="prep">🧳 Preparazione</button>
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">🗳️ Votazioni</button>
+          <button type="button" class="pv-plat-btn" data-plat="goto-section" data-section="itinerary" data-phase="trip">Itinerario</button>
+          <button type="button" class="pv-plat-btn" data-plat="goto-section" data-section="packing" data-phase="prep">Valigia</button>
+          <button type="button" class="pv-plat-btn" data-plat="goto-section" data-section="preventivo" data-phase="prep">Preventivo</button>
+          <button type="button" class="pv-plat-btn" data-plat="goto-section" data-section="expenses" data-phase="trip">Spese</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="polls">Votazioni</button>
           <button type="button" class="pv-plat-btn" data-plat="tab" data-to="access">Inviti</button>
-          <button type="button" class="pv-plat-btn" data-trip-notifications>Notifiche</button>
-          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="settings">Sincronizzazione</button>
-          <a class="pv-plat-btn" style="text-decoration:none" href="./map.html" target="_blank" rel="noopener">🗺️ Mappa</a>
-          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">🔀 Riordina tappe</button>
+          <button type="button" class="pv-plat-btn" data-plat="open-app-settings">Impostazioni app</button>
+          <button type="button" class="pv-plat-btn" data-plat="tab" data-to="settings">Backup e sync</button>
+          <button type="button" class="pv-plat-btn" data-plat="optimize" title="Riordina le tappe per ridurre i tragitti">Riordina tappe</button>
         </div>
       </div>`;
     const side =
@@ -1871,6 +1907,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderSettings() {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
+    const textSize = getTextSize();
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
     const pending = Array.isArray(outbox) ? outbox.length : 0;
@@ -1890,6 +1927,14 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <option value="system" ${theme === "system" ? "selected" : ""}>Come il telefono</option>
           <option value="light" ${theme === "light" ? "selected" : ""}>Chiaro</option>
           <option value="dark" ${theme === "dark" ? "selected" : ""}>Scuro</option>
+        </select>
+      </label>
+      <label class="pv-plat-muted" style="display:block;margin-top:10px">Grandezza del carattere
+        <select class="pv-plat-input" id="pv-text-size">
+          <option value="sm" ${textSize === "sm" ? "selected" : ""}>Piccolo</option>
+          <option value="md" ${textSize === "md" ? "selected" : ""}>Normale</option>
+          <option value="lg" ${textSize === "lg" ? "selected" : ""}>Grande</option>
+          <option value="xl" ${textSize === "xl" ? "selected" : ""}>Extra</option>
         </select>
       </label>
       <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica</button>
@@ -2135,9 +2180,19 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     body.querySelectorAll("[data-plat=tab]").forEach((b) =>
       b.addEventListener("click", () => {
         activeTab = b.dataset.to;
-        void renderPanel();
+        void renderPanel({ tabSwitch: true });
       })
     );
+    body.querySelectorAll("[data-plat=goto-section]").forEach((b) =>
+      b.addEventListener("click", () => {
+        jumpToTripSection(b.dataset.section, { phase: b.dataset.phase });
+      })
+    );
+    body.querySelector("[data-plat=open-app-settings]")?.addEventListener("click", () => {
+      togglePanel(false);
+      if (typeof window.__pvOpenSettingsMenu === "function") window.__pvOpenSettingsMenu();
+      else showStatus("Apri Impostazioni dalla barra in basso", "warn");
+    });
     body.querySelector("[data-plat=optimize]")?.addEventListener("click", async () => {
       try {
         await saveTripMeta((trip) => {
@@ -2443,8 +2498,13 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     });
     body.querySelector("[data-plat=theme-save]")?.addEventListener("click", () => {
       const mode = body.querySelector("#pv-theme")?.value || "system";
+      const text = body.querySelector("#pv-text-size")?.value || "md";
       applyTheme(mode);
-      showStatus("Tema aggiornato", "server");
+      applyTextSize(text);
+      showStatus("Aspetto aggiornato", "server");
+    });
+    body.querySelector("#pv-text-size")?.addEventListener("change", (ev) => {
+      applyTextSize(ev.target?.value || "md");
     });
     body.querySelector("[data-plat=flush-outbox]")?.addEventListener("click", async () => {
       if (typeof window.__pvFlushOutbox !== "function") {
@@ -2501,27 +2561,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
   }
 
   function ensureTodayShortcut() {
-    const anchor = document.querySelector("#root .trip-cover") || document.querySelector(".day-strip");
-    if (!anchor || !tripAuth() || document.querySelector(".pv-trip-workflow")) return;
-    const bar = document.createElement("nav");
-    bar.className = "pv-trip-workflow";
-    bar.setAttribute("aria-label", "Organizza il viaggio");
-    for (const [tab, label] of [["prep", "Preparazione"], ["today", "Oggi"]]) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "pv-plat-btn" + (tab === "today" ? " pv-today-shortcut" : "");
-      button.textContent = label;
-      button.addEventListener("click", () => {
-        const auth = tripAuth();
-        if (!auth) return;
-        if (tab === "today") daySelections.set(auth.id, { day: "", index: -1 });
-        activeTab = tab;
-        togglePanel(true);
-      });
-      bar.append(button);
-    }
-    if (anchor.matches(".trip-cover")) anchor.after(bar);
-    else anchor.before(bar);
+    // Legacy bar duplicated Prepara/Itinerario — remove if still present.
+    document.querySelectorAll(".pv-trip-workflow").forEach((el) => el.remove());
   }
 
   function boot() {
@@ -2530,21 +2571,25 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     ensureFab();
     ensureTodayShortcut();
     // Chip may mount after platform boot — rebind when account becomes ready.
-    let refreshFrame = 0;
+    let refreshTimer = 0;
     const mo = new MutationObserver(() => {
-      if (document.hidden || refreshFrame) return;
-      refreshFrame = requestAnimationFrame(() => {
-        refreshFrame = 0;
+      if (document.hidden || refreshTimer) return;
+      refreshTimer = setTimeout(() => {
+        refreshTimer = 0;
         if (document.getElementById("pv-hub-nav")) ensureFab();
         ensureTodayShortcut();
         applyDaySelection();
-      });
+      }, 320);
     });
     mo.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("pv-save-status", (e) => onSaveEvent(e.detail));
+    window.addEventListener("pv-save-status", (e) => {
+      clearTripCache();
+      onSaveEvent(e.detail);
+    });
     window.addEventListener("pv-outbox-changed", () => {
       /* badge refresh when settings open */
     });
+    window.addEventListener("hashchange", () => clearTripCache());
     window.addEventListener("online", () => {
       showStatus("Di nuovo online — sincronizzazione…", "pending");
       if (typeof window.__pvFlushOutbox === "function") void window.__pvFlushOutbox();
@@ -2572,9 +2617,16 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       getThemeMode,
       setTheme: applyTheme,
       cycleTheme,
+      getTextSize,
+      setTextSize: applyTextSize,
       open: () => togglePanel(true),
-      openSettings: () => { activeTab = "settings"; togglePanel(true); },
+      openSettings: () => {
+        activeTab = "settings";
+        togglePanel(true);
+      },
+      jumpToTripSection,
     };
+    applyTextSize(getTextSize());
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

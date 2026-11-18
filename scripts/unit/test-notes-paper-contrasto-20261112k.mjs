@@ -40,14 +40,15 @@ ok(
 ok(
   "stamps",
   /pv-platform-20261112m\.js/.test(index) &&
-    /travel-diary\.css\?v=20261117h/.test(index) &&
-    /account\.css\?v=20261118a/.test(index) &&
+    /travel-diary\.css\?v=20261118d/.test(index) &&
+    /account\.css\?v=20261118b/.test(index) &&
     /destination-theme-20261112k\.js/.test(index)
 );
 ok(
   "assets exist",
-  existsSync("assets/pv-platform-20261112m.js") &&
+  existsSync("assets/pv-platform-20261118c.js") &&
     existsSync("assets/destination-theme-20261112k.js")
+
 );
 
 if (failed) {
