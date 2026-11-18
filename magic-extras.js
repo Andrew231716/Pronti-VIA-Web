@@ -1873,7 +1873,8 @@
       const card = document.createElement("div");
       card.className = "pv-place-card";
       const isWeb = Boolean(poi.webOnly);
-      const saved = Boolean(findStopByTitle(magicTripCache || {}, poi.title));
+      const savedStop = findStopByTitle(magicTripCache || {}, poi.title);
+      const saved = Boolean(savedStop);
       const meta = placeKindMeta(isWeb ? "web" : poi.kind || poi.category);
       const extract = tidyExtract(poi.extract || poi.notes || poi.address || "");
       const dayLabel = poi.dayHint ? `Giorno ${poi.dayHint}` : poi.dayLabel || "";
@@ -1889,7 +1890,7 @@
             ${
               isWeb || !tripAuth()
                 ? ""
-                : `${saved ? '<span class="pv-kind-tag">Già salvato</span>' : `<button type="button" class="ghost" data-save-place="${idx}">Salva in Luoghi</button>`}
+                : `${saved ? `<span class="pv-kind-tag">${savedStop.day ? "In itinerario · " + escapeHtml(savedStop.day) : "Salvato in Luoghi"}</span>` : `<button type="button" class="ghost" data-save-place="${idx}">Salva in Luoghi</button>`}
                   <button type="button" class="primary" data-add="${idx}">${saved ? "Cambia giorno" : "Scegli giorno"}</button>`
             }
             ${

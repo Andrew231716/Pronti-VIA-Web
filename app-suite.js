@@ -1060,7 +1060,7 @@
         const bar = panel.querySelector(".pv-as-place-filters");
         const saveBtn = ev.target?.closest?.("[data-favsave]");
         if (saveBtn) {
-          const card = document.querySelector(".pv-place-card strong, .pv-card strong");
+          const card = [...document.querySelectorAll(".pv-place-card strong, .pv-card strong")].find(node => node.getClientRects().length);
           const title = (card?.textContent || "").trim();
           if (!title) return toast("Nessun luogo visibile", "warn");
           const f = readJson(FAV_KEY, {});
@@ -1114,10 +1114,10 @@
     const { panel, fresh } = mountSectionPanel(
       "pv-as-panel-preventivo",
       `<div class="pv-as-card pv-as-prev-tools">
-        <strong>Confronta scenari & alert</strong>
+        <strong>Stime del preventivo</strong>
         <div class="pv-as-row">
           <button type="button" class="pv-as-chip" data-cmp>Apri confronto</button>
-          <button type="button" class="pv-as-chip" data-pdf>PDF preventivo</button>
+          <button type="button" class="pv-as-chip" data-pdf>Stampa o salva il preventivo</button>
         </div>
         <p class="pv-as-hint" id="pv-as-prev-alert"></p>
       </div>`
@@ -1143,12 +1143,7 @@
         openSimpleModal("Confronto scenari", `<ul>${lines}</ul>`);
       });
       panel.querySelector("[data-pdf]")?.addEventListener("click", () => {
-        const w = window.open("", "_blank");
-        if (!w) return;
-        w.document.write(
-          `<html><head><title>Preventivo</title><style>body{font:14px sans-serif;padding:24px}</style></head><body><h1>Preventivo Pronti? VIA!</h1><p>Apri il preventivo nel viaggio e usa Stampa del browser.</p><script>print()<\/script></body></html>`
-        );
-        w.document.close();
+        window.__pvOpenPreventivoSection?.("export");
       });
     }
     void refreshPreventivoAlert(panel.querySelector("#pv-as-prev-alert"));
@@ -1320,6 +1315,7 @@
         <strong>Valigia personale</strong>
         <p class="pv-as-hint" style="margin:4px 0 8px">Solo tu vedi questa lista su questo account. I compagni hanno la loro.</p>
         <div class="pv-as-row">
+          <details><summary>Solo da preparare</summary><ul data-pack-pending></ul></details>
           <button type="button" class="pv-as-chip" data-gen>Suggerisci da destinazione</button>
           <button type="button" class="pv-as-chip" data-pronty>Chiedi a Pronty</button>
         </div>
@@ -1331,6 +1327,9 @@
       const packed = await loadTripSafe();
       if (!packed) return;
       const list = packed.trip.checklist || [];
+      const pending = panel.querySelector("[data-pack-pending]");
+      const html = list.filter(c => !c.done).map(c => `<li>${escapeHtml(c.title || c.label || "Oggetto")}</li>`).join("") || "<li>Nessun oggetto da preparare.</li>";
+      if (pending && pending.innerHTML !== html) pending.innerHTML = html;
       const done = list.filter((c) => c.done).length;
       const pct = list.length ? Math.round((done / list.length) * 100) : 0;
       const bar = panel.querySelector("#pv-as-pack-bar");
@@ -1411,6 +1410,10 @@
     const { panel, fresh } = mountSectionPanel(
       "pv-as-panel-notes",
       `<div class="pv-as-card">
+        <strong>Nota da fissare nella giornata</strong>
+        <label>Data <input type="date" data-note-day></label>
+        <label>Nota su questo dispositivo <textarea data-note-text maxlength="2000"></textarea></label>
+        <button type="button" class="pv-as-chip" data-note-save>Salva nota del giorno</button>
         <strong>Note & versioni</strong>
         <div class="pv-as-bar pv-as-notes-bar">
           <button type="button" class="pv-as-chip" data-snap>Salva versione</button>
@@ -1420,6 +1423,21 @@
       </div>`
     );
     if (fresh) {
+      const date = panel.querySelector("[data-note-day]");
+      const note = panel.querySelector("[data-note-text]");
+      date.value = new Date().toLocaleDateString("sv-SE");
+      const key = () => "pv-day-note:" + JSON.stringify([auth.id, auth.key, date.value]);
+      const load = () => { note.value = localStorage.getItem(key()) || ""; };
+      date.onchange = load;
+      load();
+      panel.querySelector("[data-note-save]").onclick = () => {
+        if (!date.value) return toast("Scegli la data", "warn");
+        try {
+          if (note.value.trim()) localStorage.setItem(key(), note.value.trim());
+          else localStorage.removeItem(key());
+          toast("Giornata aggiornata", "ok");
+        } catch { toast("Salvataggio sul dispositivo non riuscito", "err"); }
+      };
       panel.querySelector("[data-snap]")?.addEventListener("click", async () => {
         const packed = await loadTripSafe();
         const text = packed?.trip?.notes || "";
@@ -1506,7 +1524,7 @@
       <strong>Pronty contestuale</strong>
       <div class="pv-as-row">
         <button type="button" class="pv-as-chip" data-day>Idee per il giorno selezionato</button>
-        <button type="button" class="pv-as-chip" data-morning>Aggiungi mattina tipo</button>
+        <button type="button" class="pv-as-chip" data-morning>Prepara una proposta per la mattina</button>
         <button type="button" class="pv-as-chip ${saver ? "on" : ""}" data-saver>Risparmio dati</button>
       </div>
     `;
@@ -1528,7 +1546,7 @@
       const input = document.querySelector("#pv-chat-input");
       if (input) {
         input.value =
-          "Proponi una mattina completa (colazione zona, 2 tappe, caffè) e aggiungile all’itinerario del giorno selezionato.";
+          "Proponi una mattina completa (colazione zona, 2 tappe, caffè) per il giorno selezionato. Mostrami le tappe prima di inserirle.";
         input.dispatchEvent(new Event("input", { bubbles: true }));
         input.focus();
       }

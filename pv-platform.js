@@ -117,7 +117,9 @@
     if (!dateStr) return null;
     const t = new Date(dateStr + "T12:00:00");
     if (Number.isNaN(+t)) return null;
-    return Math.ceil((t - new Date()) / 86400000);
+    const now = new Date();
+    now.setHours(12, 0, 0, 0);
+    return Math.round((t - now) / 86400000);
   }
   function daysBetween(a, b) {
     if (!a || !b) return 0;
@@ -1241,7 +1243,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
             return `<li><strong>${escapeHtml(r.title || "Viaggio")}</strong>
               <div class="pv-plat-muted">${escapeHtml(r.meta?.start || "?")} → ${escapeHtml(
               r.meta?.end || "?"
-            )}${d != null ? ` · ${d >= 0 ? `tra ${d} giorni` : "concluso"}` : ""}</div>
+            )}${d != null ? ` · ${d > 0 ? `tra ${d} giorni` : d === 0 ? "partenza oggi" : daysUntil(r.meta?.end) >= 0 && r.meta?.end ? "in corso" : "partito"}` : ""}</div>
               <a class="pv-plat-btn" style="display:inline-block;margin-top:6px;text-decoration:none"
                  href="#trip=${encodeURIComponent(r.id)}&key=${encodeURIComponent(r.key)}">Apri</a></li>`;
           })
@@ -1267,7 +1269,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     }
     if (!bookings.length) todos.push("Nessuna prenotazione registrata");
     if (openPolls) todos.push(`${openPolls} votazioni aperte`);
-    if (!(prep.departureChecklist || []).some((x) => x.done)) todos.push("Checklist partenza da completare");
+    if ((prep.departureChecklist || defaultDeparture()).some((x) => !x.done)) todos.push("Checklist partenza da completare");
     const destTheme = window.__pvDestTheme || {};
     const allStickers = Array.isArray(destTheme.stickers) ? destTheme.stickers : [];
     const destStickers = allStickers.slice(0, 6);
@@ -1292,7 +1294,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         ${stickerHtml}
         <div class="pv-plat-grid" style="margin-top:10px">
           <div class="pv-plat-stat"><b>${
-            dLeft == null ? "—" : dLeft > 0 ? `tra ${dLeft} gg` : dLeft === 0 ? "oggi" : "concluso"
+            dLeft == null ? "—" : dLeft > 0 ? `tra ${dLeft} gg` : dLeft === 0 ? "oggi" : "partito"
           }</b><span>Partenza</span></div>
           <div class="pv-plat-stat"><b>${duration || "—"}</b><span>Giorni</span></div>
           <div class="pv-plat-stat"><b>${members.length || 1}</b><span>In gruppo</span></div>
@@ -1329,8 +1331,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           </aside>`
         : "";
     return side
-      ? `<div class="pv-plat-dash-wide">${mainCard}${side}</div>${nextCard}`
-      : `${mainCard}${nextCard}`;
+      ? `<div class="pv-plat-dash-wide">${nextCard}${side}</div>${mainCard}`
+      : `${nextCard}${mainCard}`;
   }
 
   async function renderPolls() {
@@ -1451,7 +1453,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <p class="pv-plat-muted">I file salvati qui sono disponibili offline su questo dispositivo.</p>
           <ul class="pv-plat-list">${local.files.map((request, index) => {
             const name = decodeURIComponent(request.url.slice(local.prefix.length));
-            return `<li>${escapeHtml(name)}
+            return `<li>${escapeHtml(name)} · Disponibile offline
               <button type="button" class="pv-plat-btn" data-offline-file="${index}">Scarica</button>
               <button type="button" class="pv-plat-btn" data-offline-file="${index}" data-remove-file>Rimuovi</button></li>`;
           }).join("")}</ul></details>` : ""}
@@ -1756,6 +1758,9 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       return start && start <= day && end >= day;
     });
     const docs = data.canEdit === false ? [] : (trip.meta?.preparation?.docs || []).filter(doc => doc.day === day);
+    bookings.sort((a, b) => (a.time || a.departureTime || a.startTime || "99:99").localeCompare(b.time || b.departureTime || b.startTime || "99:99"));
+    let dayNote = "";
+    try { dayNote = localStorage.getItem("pv-day-note:" + JSON.stringify([auth.id, auth.key, day])) || ""; } catch {}
     function rows(items, directions = false) {
       return items.map(item => {
         const when = item.time || item.departureTime || item.startTime;
@@ -1784,7 +1789,8 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     <article class="pv-plat-card" id="pv-day-sheet">
       <h3>${escapeHtml(trip.title || "Viaggio")}</h3>
       <p>${escapeHtml([day.split("-").reverse().join("/"), trip.destination].filter(Boolean).join(" · "))}</p>
-      ${syncLabel ? `<p class="pv-plat-muted">${escapeHtml(syncLabel)}</p>` : ""}
+      ${dayNote ? `<p><strong>Nota del giorno</strong><br>${escapeHtml(dayNote)}</p>` : ""}
+      ${syncLabel && syncLabel !== "Sincronizzato" ? `<p class="pv-plat-muted">${escapeHtml(syncLabel)}</p>` : ""}
       <p><strong>${stops.length}</strong> tappe · <strong>${bookings.length}</strong> prenotazioni</p>
       <h4>Tappe e indicazioni</h4><ol class="pv-plat-list">${rows(stops, true)}</ol>
       <h4>Prenotazioni</h4><ul class="pv-plat-list">${rows(bookings)}</ul>
@@ -1838,6 +1844,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
         </form>
         <div id="pv-invite-result" hidden>
           <label>Link personale <input id="pv-invite-url" class="pv-plat-input" readonly></label>
+          <a id="pv-invite-preview" target="_blank" rel="noopener noreferrer" class="pv-plat-btn">Apri come invitato</a>
           <button type="button" class="pv-plat-btn" data-plat="invite-copy">Copia link</button>
         </div>
         <h4>Inviti attivi</h4>
@@ -2097,6 +2104,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           const url = new URL(location.href);
           url.hash = new URLSearchParams({ trip: auth.id, key: created.token }).toString();
           urlField.value = url.toString();
+          body.querySelector("#pv-invite-preview").href = url.toString();
           result.hidden = false;
           inviteForm.reset();
           await refresh();
@@ -2562,7 +2570,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   function ensureTodayShortcut() {
     // Legacy bar duplicated Prepara/Itinerario — remove if still present.
-    document.querySelectorAll(".pv-trip-workflow").forEach((el) => el.remove());
+    document.querySelectorAll("#root .pv-trip-workflow").forEach((el) => el.remove());
   }
 
   function boot() {
@@ -2620,6 +2628,13 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       getTextSize,
       setTextSize: applyTextSize,
       open: () => togglePanel(true),
+      openTravelDay: preparing => {
+        const auth = tripAuth();
+        if (!auth) return;
+        activeTab = preparing ? "prep" : "today";
+        if (!preparing) daySelections.set(auth.id, { day: "", index: -1 });
+        togglePanel(true);
+      },
       openSettings: () => {
         activeTab = "settings";
         togglePanel(true);
