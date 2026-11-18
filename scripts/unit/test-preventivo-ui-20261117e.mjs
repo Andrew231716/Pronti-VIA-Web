@@ -27,7 +27,7 @@ ok(
   "stamp wired",
   /preventivo-islanda-20261117e\.js/.test(index) &&
     /preventivo-islanda-20261117e\.js/.test(sw) &&
-    /20261118g/.test(sw) &&    existsSync(stamped) &&
+    /20261118h/.test(sw) &&    existsSync(stamped) &&
     stampSrc.includes('const VERSION = "20261117e"') &&
     stampSrc.includes("NAV_GROUPS")
 );

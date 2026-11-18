@@ -891,18 +891,19 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .45rem 1.05rem;
-  padding: .75rem .85rem .35rem;
+  gap: .6rem 1.15rem;
+  padding: 1.1rem 1rem .65rem;
   font-size: .8rem;
   line-height: 1.35;
+  color: #d7ece4;
 }
 #root .trip-cover[data-pv-trip-cover] .cover-content h1 {
   order: -2;
   flex: 0 0 100%;
   display: block;
   margin: 0;
-  font-size: clamp(1.18rem, 4.9vw, 1.6rem);
-  line-height: 1.1;
+  font-size: clamp(1.28rem, 5.2vw, 1.75rem);
+  line-height: 1.18;
   overflow: visible;
   overflow-wrap: anywhere;
 }
@@ -936,18 +937,21 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   line-height: 1.2;
 }
 
+/* Title lives in the green meta strip — no absolute overlay / edge clipping. */
 #root .trip-cover[data-pv-trip-cover] .cover-content h1 {
-  position: absolute;
-  inset: auto 0 100%;
-  /* Keep title in the bottom band of the photo so it never meets the top-left countdown. */
-  padding: .7rem .85rem .55rem;
-  max-height: 38%;
-  overflow: hidden;
-  background: linear-gradient(transparent, rgb(10 26 22 / .92));
-  color: #fff;
-  font-size: clamp(1.2rem, 5vw, 1.75rem);
-  line-height: 1.12;
-  text-shadow: 0 1px 4px rgb(0 0 0 / .55);
+  position: static;
+  inset: auto;
+  bottom: auto;
+  padding: 0 0 .25rem;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  color: #f4fbf7;
+  font-size: clamp(1.32rem, 5.4vw, 1.85rem);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  text-shadow: none;
+  z-index: auto;
 }
 
 
