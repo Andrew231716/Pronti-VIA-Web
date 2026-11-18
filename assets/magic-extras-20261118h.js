@@ -242,10 +242,10 @@
       .pv-cover-countdown .pv-cover-count-meta{display:none}
       #root .trip-cover[data-pv-trip-cover]{position:relative;overflow:hidden}
       #root .trip-cover[data-pv-trip-cover] .cover-content h1{
-        left:0;right:0;bottom:calc(100% + .15rem);margin:0;
-        padding:2.5rem .9rem .95rem;max-height:none;overflow:visible;
-        background:linear-gradient(180deg,transparent 0%,rgba(10,26,22,.55) 42%,rgba(10,26,22,.94) 100%);
-        font-size:clamp(1.28rem,5.3vw,1.85rem);line-height:1.18;letter-spacing:-.02em;z-index:4;
+        position:static!important;inset:auto!important;bottom:auto!important;
+        padding:0 0 .15rem!important;max-height:none!important;overflow:visible!important;
+        background:transparent!important;color:#f4fbf7!important;text-shadow:none!important;
+        font-size:clamp(1.32rem,5.4vw,1.85rem)!important;line-height:1.2!important;letter-spacing:-.02em;
       }
       #${ROOT_ID} .pv-pack-cards,#${ROOT_ID} .pv-ai-actions{margin:10px 0;padding:12px;border:1px solid #d5e8e8;border-radius:14px;background:#f7fbfb}
       #${ROOT_ID} .pv-pack-lead{margin:0 0 8px;font-size:.86rem;color:#2f4e55}

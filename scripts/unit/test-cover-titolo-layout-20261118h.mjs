@@ -16,17 +16,20 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
 ok(
-  "title lifted above green strip",
-  /bottom:\s*calc\(100% \+ \.15rem\)/.test(diary) &&
-    /padding:\s*2\.5rem \.9rem \.95rem/.test(diary)
+  "title in meta strip (not absolute overlay)",
+  /Title lives in the green meta strip/.test(diary) &&
+    /position:\s*static/.test(diary) &&
+    /color:\s*#f4fbf7/.test(diary)
 );
 ok(
-  "no title max-height clip",
-  /max-height:\s*none/.test(diary) &&
-    /overflow:\s*visible/.test(diary) &&
-    !/max-height:\s*38%/.test(diary)
+  "no title edge clip rules",
+  !/max-height:\s*38%/.test(diary) &&
+    !/inset:\s*auto 0 100%/.test(diary.match(/trip-cover\[data-pv-trip-cover\] \.cover-content h1 \{[\s\S]*?\n\}/g)?.join("\n") || "")
 );
-ok("magic mirrors title padding", /bottom:calc\(100% \+ \.15rem\)/.test(magic.replace(/\s+/g, "")) || /bottom:calc\(100% \+ \.15rem\)/.test(magic));
+ok(
+  "magic forces static title",
+  /position:static!important/.test(magic) && /color:#f4fbf7!important/.test(magic)
+);
 ok(
   "stamps",
   /magic-extras-20261118h\.js/.test(index) &&
