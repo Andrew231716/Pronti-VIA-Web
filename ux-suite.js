@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261117h";
+  const STYLE_VER = "20261118b";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -2014,12 +2014,56 @@
       </dl>`;
   }
 
+  function textSizeControlsHtml() {
+    const sizes = window.__pvTextSizes || {
+      sm: { label: "Piccolo" },
+      md: { label: "Normale" },
+      lg: { label: "Grande" },
+      xl: { label: "Extra" },
+    };
+    const current = typeof window.__pvGetTextSize === "function" ? window.__pvGetTextSize() : "md";
+    const buttons = Object.entries(sizes)
+      .map(
+        ([key, meta]) =>
+          `<button type="button" data-pv-text-size="${escapeHtml(key)}" aria-pressed="${
+            key === current ? "true" : "false"
+          }"${key === current ? ' class="on"' : ""}>${escapeHtml(meta.label || key)}</button>`
+      )
+      .join("");
+    return `<div class="pv-menu-section pv-text-size" id="pv-text-size-section">
+              <h3>Testo</h3>
+              <p class="pv-text-size-hint">Grandezza del carattere sull’app (si salva su questo dispositivo).</p>
+              <div class="pv-text-size-opts" role="group" aria-label="Grandezza del carattere">${buttons}</div>
+            </div>`;
+  }
+
+  function wireTextSizeControls(body) {
+    body.querySelectorAll("[data-pv-text-size]").forEach((btn) => {
+      if (btn.dataset.pvTextBound === "1") return;
+      btn.dataset.pvTextBound = "1";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const size = btn.getAttribute("data-pv-text-size");
+        if (typeof window.__pvApplyTextSize === "function") window.__pvApplyTextSize(size);
+        else if (typeof window.ProntiPlatform?.setTextSize === "function") window.ProntiPlatform.setTextSize(size);
+        body.querySelectorAll("[data-pv-text-size]").forEach((el) => {
+          const on = el.getAttribute("data-pv-text-size") === size;
+          el.setAttribute("aria-pressed", on ? "true" : "false");
+          el.classList.toggle("on", on);
+        });
+        toast(`Testo: ${btn.textContent.trim()}`, "ok");
+      });
+    });
+  }
+
   function settingsOrganizzaHtml(inTrip) {
+    const textBlock = textSizeControlsHtml();
     if (inTrip) {
       const section = activeSectionMeta();
       const syncStatus =
         window.__pvTripOverview?.(tripAuth().id, tripAuth().key)?.status || "Verifica sincronizzazione";
-      return `<div class="pv-menu-section">
+      return `${textBlock}<div class="pv-menu-section">
               <h3>⚙️ Impostazioni viaggio</h3>
               <div class="pv-menu-grid">
                 <button type="button" data-ux="companions"><strong><span class="pv-menu-emo" aria-hidden="true">🧑‍🤝‍🧑</span>Compagni di viaggio</strong><span>Chi partecipa e gestione ospiti</span></button>
@@ -2043,7 +2087,7 @@
               </div>
             </div>`;
     }
-    return `<div class="pv-menu-section">
+    return `${textBlock}<div class="pv-menu-section">
               <div class="pv-menu-context">
                 <strong>Impostazioni</strong>
                 <p>Apri un viaggio per compagni, inviti, notifiche, sync e checklist. Qui puoi già importare da un evento.</p>
@@ -2307,7 +2351,10 @@
     menuBtn?.setAttribute("aria-expanded", "true");
     if (typeof window.__pvSetPrimaryNav === "function") window.__pvSetPrimaryNav("settings");
     const modal = openModal("Impostazioni", settingsOrganizzaHtml(inTrip), {
-      onMount: (body) => wireUxMenuActions(body, menuBtn),
+      onMount: (body) => {
+        wireTextSizeControls(body);
+        wireUxMenuActions(body, menuBtn);
+      },
     });
     if (modal) modal.dataset.pvMenu = "settings";
   }

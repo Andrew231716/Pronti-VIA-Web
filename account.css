@@ -460,6 +460,77 @@ body.pv-primary-nav-ready {
   color: var(--pv-account-teal);
 }
 
+/* Text size — Impostazioni / Hub Aspetto (persisted as data-pv-text) */
+:root {
+  --pv-text-zoom: 1;
+}
+@supports (zoom: 1) {
+  #root,
+  #pv-plat-panel,
+  #pv-magic-panel,
+  #pv-ux-modal .pv-ux-sheet,
+  #pv-account-gate .pv-account-card {
+    zoom: var(--pv-text-zoom, 1);
+  }
+}
+@supports not (zoom: 1) {
+  html {
+    font-size: calc(16px * var(--pv-text-zoom, 1));
+  }
+}
+
+.pv-text-size {
+  display: grid;
+  gap: 8px;
+  margin: 4px 0 2px;
+}
+.pv-text-size-label {
+  margin: 0;
+  font: 700 0.82rem/1.3 inherit;
+  color: var(--pv-account-ink, #12343c);
+}
+.pv-text-size-hint {
+  margin: 0;
+  font: 500 0.78rem/1.35 inherit;
+  color: #5a727c;
+}
+.pv-text-size-opts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.pv-text-size-opts button {
+  appearance: none;
+  min-height: 44px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--pv-account-line, #c5d4da);
+  background: color-mix(in srgb, var(--pv-account-sand, #f3f8f8) 80%, #fff);
+  color: var(--pv-account-ink, #12343c);
+  font: 700 0.78rem/1.15 inherit;
+  cursor: pointer;
+}
+.pv-text-size-opts button[aria-pressed="true"],
+.pv-text-size-opts button.on {
+  border-color: var(--pv-account-teal, #007d82);
+  background: color-mix(in srgb, var(--pv-account-teal, #007d82) 14%, #fff);
+  color: var(--pv-account-teal, #00656a);
+  box-shadow: 0 1px 6px rgba(16, 42, 48, 0.08);
+}
+html[data-pv-theme="dark"] .pv-text-size-label { color: var(--pv-account-ink); }
+html[data-pv-theme="dark"] .pv-text-size-hint { color: #b7c9cd; }
+html[data-pv-theme="dark"] .pv-text-size-opts button {
+  background: rgba(36, 56, 61, 0.92);
+  border-color: rgba(231, 242, 243, 0.16);
+  color: var(--pv-account-ink);
+}
+html[data-pv-theme="dark"] .pv-text-size-opts button[aria-pressed="true"],
+html[data-pv-theme="dark"] .pv-text-size-opts button.on {
+  background: rgba(45, 212, 191, 0.16);
+  border-color: rgba(45, 212, 191, 0.45);
+  color: #5eead4;
+}
+
 /* Theme toggle — in SPA topbar next to brand; floats only on login gate */
 #pv-theme-toggle.pv-theme-toggle {
   appearance: none;

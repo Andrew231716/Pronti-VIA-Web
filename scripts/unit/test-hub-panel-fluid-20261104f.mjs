@@ -23,7 +23,7 @@ const index = readFileSync("index.html", "utf8");
 const ux = readFileSync("ux-suite.js", "utf8");
 
 test("stamp pv-platform-20261112m wired", () => {
-  assert.match(index, /pv-platform-20261112m\.js/);
+  assert.match(index, /pv-platform-20261118b\.js/);
 });
 
 test("enter animation is opt-in (pv-plat-entering)", () => {
