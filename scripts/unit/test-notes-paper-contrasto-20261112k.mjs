@@ -40,7 +40,7 @@ ok(
 ok(
   "stamps",
   /pv-platform-20261112m\.js/.test(index) &&
-    /travel-diary\.css\?v=20261118d/.test(index) &&
+    /travel-diary\.css\?v=20261118f/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
     /destination-theme-20261112k\.js/.test(index)
 );
