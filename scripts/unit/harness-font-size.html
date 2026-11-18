@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harness font size</title>
+  <link rel="stylesheet" href="/account.css?v=20261118b" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #eef4f4; color: #12343c; }
+    #demo { padding: 16px; max-width: 420px; margin: 0 auto; }
+    #demo h1 { font-size: 1.4rem; }
+    #harness-out {
+      margin: 16px; padding: 12px; border-radius: 10px;
+      background: #102228; color: #e8f2f4; font: 12px/1.4 ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="demo">
+    <h1>Pronti? VIA!</h1>
+    <p>Anteprima grandezza carattere dalle Impostazioni.</p>
+    <div id="panel"></div>
+  </div>
+  <pre id="harness-out">booting…</pre>
+  <script type="module">
+    await import("/account.js?v=20261118b");
+    document.getElementById("pv-account-gate")?.setAttribute("hidden", "");
+    const sizes = window.__pvTextSizes;
+    const panel = document.getElementById("panel");
+    panel.innerHTML = `<div class="pv-text-size">
+      <p class="pv-text-size-label">Grandezza del carattere</p>
+      <div class="pv-text-size-opts" role="group">
+        ${Object.entries(sizes).map(([k, m]) =>
+          `<button type="button" data-pv-text-size="${k}">${m.label}</button>`
+        ).join("")}
+      </div>
+    </div>`;
+    panel.querySelectorAll("[data-pv-text-size]").forEach((btn) => {
+      btn.addEventListener("click", () => window.__pvApplyTextSize(btn.dataset.pvTextSize));
+    });
+    window.__pvApplyTextSize("lg");
+    setTimeout(() => {
+      const out = {
+        size: window.__pvGetTextSize(),
+        zoom: getComputedStyle(document.documentElement).getPropertyValue("--pv-text-zoom").trim(),
+        data: document.documentElement.dataset.pvText,
+        pressed: [...panel.querySelectorAll("[data-pv-text-size]")].map((b) => [
+          b.dataset.pvTextSize,
+          b.getAttribute("aria-pressed"),
+        ]),
+      };
+      const el = document.getElementById("harness-out");
+      el.dataset.harness = JSON.stringify(out);
+      el.textContent = JSON.stringify(out, null, 2);
+    }, 400);
+  </script>
+</body>
+</html>

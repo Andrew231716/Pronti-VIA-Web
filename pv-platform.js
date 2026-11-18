@@ -4,7 +4,14 @@
  * Hub, itinerary day view and account-scoped backup export.
  */
 (() => {
-  const VER = "20261112m";
+  const VER = "20261118b";
+  const TEXT_KEY = "viavia-text-size-v1";
+  const TEXT_SIZES = {
+    sm: { label: "Piccolo", zoom: "0.9" },
+    md: { label: "Normale", zoom: "1" },
+    lg: { label: "Grande", zoom: "1.125" },
+    xl: { label: "Extra", zoom: "1.25" },
+  };
   const STYLE_ID = "pv-platform-css";
   const THEME_KEY = "viavia-theme-v1";
   const THEME_CYCLE = ["system", "light", "dark"];
@@ -303,6 +310,31 @@
     const next = THEME_CYCLE[(THEME_CYCLE.indexOf(cur) + 1) % THEME_CYCLE.length];
     applyTheme(next);
     return next;
+  }
+
+  function getTextSize() {
+    const size = readJson(TEXT_KEY, { size: "md" }).size || "md";
+    return TEXT_SIZES[size] ? size : "md";
+  }
+
+  function applyTextSize(size) {
+    const key = TEXT_SIZES[size] ? size : getTextSize();
+    writeJson(TEXT_KEY, { size: key });
+    const root = document.documentElement;
+    root.dataset.pvText = key;
+    root.style.setProperty("--pv-text-zoom", TEXT_SIZES[key].zoom);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-text-size-changed", { detail: { size: key } }));
+    } catch {
+      /* ignore */
+    }
+    const select = document.getElementById("pv-text-size");
+    if (select && select.value !== key) select.value = key;
+    document.querySelectorAll("[data-pv-text-size]").forEach((btn) => {
+      const on = btn.getAttribute("data-pv-text-size") === key;
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("on", on);
+    });
   }
 
   /* ---------- styles ---------- */
@@ -1871,6 +1903,7 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
 
   async function renderSettings() {
     const theme = readJson(THEME_KEY, { mode: "system" }).mode || "system";
+    const textSize = getTextSize();
     const outbox =
       typeof window.__pvReadOutbox === "function" ? window.__pvReadOutbox() : readJson(OUTBOX_KEY, []);
     const pending = Array.isArray(outbox) ? outbox.length : 0;
@@ -1890,6 +1923,14 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
           <option value="system" ${theme === "system" ? "selected" : ""}>Come il telefono</option>
           <option value="light" ${theme === "light" ? "selected" : ""}>Chiaro</option>
           <option value="dark" ${theme === "dark" ? "selected" : ""}>Scuro</option>
+        </select>
+      </label>
+      <label class="pv-plat-muted" style="display:block;margin-top:10px">Grandezza del carattere
+        <select class="pv-plat-input" id="pv-text-size">
+          <option value="sm" ${textSize === "sm" ? "selected" : ""}>Piccolo</option>
+          <option value="md" ${textSize === "md" ? "selected" : ""}>Normale</option>
+          <option value="lg" ${textSize === "lg" ? "selected" : ""}>Grande</option>
+          <option value="xl" ${textSize === "xl" ? "selected" : ""}>Extra</option>
         </select>
       </label>
       <button type="button" class="pv-plat-btn" data-plat="theme-save">Applica</button>
@@ -2443,8 +2484,13 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
     });
     body.querySelector("[data-plat=theme-save]")?.addEventListener("click", () => {
       const mode = body.querySelector("#pv-theme")?.value || "system";
+      const text = body.querySelector("#pv-text-size")?.value || "md";
       applyTheme(mode);
-      showStatus("Tema aggiornato", "server");
+      applyTextSize(text);
+      showStatus("Aspetto aggiornato", "server");
+    });
+    body.querySelector("#pv-text-size")?.addEventListener("change", (ev) => {
+      applyTextSize(ev.target?.value || "md");
     });
     body.querySelector("[data-plat=flush-outbox]")?.addEventListener("click", async () => {
       if (typeof window.__pvFlushOutbox !== "function") {
@@ -2572,9 +2618,12 @@ input.pv-plat-input, select.pv-plat-input, textarea.pv-plat-input {
       getThemeMode,
       setTheme: applyTheme,
       cycleTheme,
+      getTextSize,
+      setTextSize: applyTextSize,
       open: () => togglePanel(true),
       openSettings: () => { activeTab = "settings"; togglePanel(true); },
     };
+    applyTextSize(getTextSize());
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

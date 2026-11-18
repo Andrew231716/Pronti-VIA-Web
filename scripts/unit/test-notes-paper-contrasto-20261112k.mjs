@@ -39,14 +39,13 @@ ok(
 );
 ok(
   "stamps",
-  /pv-platform-20261112m\.js/.test(index) &&
+  /pv-platform-20261118b\.js/.test(index) &&
     /travel-diary\.css\?v=20261117h/.test(index) &&
-    /account\.css\?v=20261118a/.test(index) &&
-    /destination-theme-20261112k\.js/.test(index)
+    /account\.css\?v=20261118b/.test(index) &&    /destination-theme-20261112k\.js/.test(index)
 );
 ok(
   "assets exist",
-  existsSync("assets/pv-platform-20261112m.js") &&
+  existsSync("assets/pv-platform-20261118b.js") &&
     existsSync("assets/destination-theme-20261112k.js")
 );
 
