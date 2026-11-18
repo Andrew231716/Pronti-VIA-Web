@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261118f";
+  const STYLE_VER = "20261118g";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -4407,10 +4407,29 @@
     }
 
     if (section === "packing") {
-      const items = trip.checklist || [];
+      // Checklist is personal (api-shim private store); local trip row often has [].
+      const items = (() => {
+        try {
+          const db = JSON.parse(localStorage.getItem("viavia-private-packing-v1") || "{}") || {};
+          const suffix = `::${auth.id}`;
+          const keys = Object.keys(db).filter((k) => k === auth.id || k.endsWith(suffix));
+          for (let i = keys.length - 1; i >= 0; i -= 1) {
+            const rows = db[keys[i]];
+            if (Array.isArray(rows) && rows.length) return rows;
+          }
+        } catch { /* private packing optional */ }
+        return Array.isArray(trip.checklist) ? trip.checklist : [];
+      })();
       const assigned = meta.packingAssignments || {};
       const members = trip.members || [];
       const rows = [...panel.querySelectorAll(".check-row")];
+      const rowTitle = (element) => {
+        const raw =
+          element.querySelector(".check-title, [data-title], label, strong")?.textContent ||
+          element.textContent ||
+          "";
+        return String(raw).replace(/\s+/g, " ").trim();
+      };
       const inferPackSection = (title, sectionName) => {
         const given = String(sectionName || "").trim();
         if (given) return given;
@@ -4426,9 +4445,13 @@
       };
       const sectionOrder = ["Documenti", "Abbigliamento", "Igiene", "Farmaci", "Elettronica", "Altro"];
       rows.forEach((element, index) => {
-        const item = items[index];
-        if (!item) return;
-        element.dataset.pvPackSection = inferPackSection(item.title, item.section);
+        const title = rowTitle(element);
+        const item =
+          items[index] ||
+          items.find((entry) => String(entry.title || "").trim().toLowerCase() === title.toLowerCase()) ||
+          { title, section: "" };
+        element.dataset.pvPackItemId = item.id || "";
+        element.dataset.pvPackSection = inferPackSection(item.title || title, item.section);
       });
       const sections = [...new Set(rows.map((row) => row.dataset.pvPackSection).filter(Boolean))];
       sections.sort((a, b) => {
@@ -4509,8 +4532,12 @@
       }
       applyFilter();
       rows.forEach((element, index) => {
-        const item = items[index];
-        if (!item) return;
+        const title = rowTitle(element);
+        const item =
+          items.find((entry) => entry.id && entry.id === element.dataset.pvPackItemId) ||
+          items[index] ||
+          items.find((entry) => String(entry.title || "").trim().toLowerCase() === title.toLowerCase());
+        if (!item?.id) return;
         const current = assigned[item.id] || "";
         const signature = JSON.stringify([item.id, current, members, canEdit, element.dataset.pvPackSection]);
         if (element.dataset.pvAssignment === signature) return;
@@ -4519,14 +4546,25 @@
         const owner = document.createElement(canEdit ? "select" : "small");
         owner.className = "pv-packing-owner";
         if (canEdit) {
-          owner.setAttribute("aria-label", `Assegna ${item.title}`);
+          owner.setAttribute("aria-label", `Assegna ${item.title || title}`);
           owner.innerHTML = '<option value="">Assegna a…</option>' + members.map(member =>
             `<option value="${escapeHtml(member.id)}">${escapeHtml(member.name)}</option>`).join("");
           owner.value = members.some(member => member.id === current) ? current : "";
           owner.onchange = () => {
             const selected = owner.value;
             void saveMeta(owner, "packingAssignments", (prior, latest) => {
-              if (!latest.checklist?.some(entry => entry.id === item.id)) throw new Error("Voce rimossa dalla valigia");
+              const pack = (() => {
+                try {
+                  const db = JSON.parse(localStorage.getItem("viavia-private-packing-v1") || "{}") || {};
+                  const suffix = `::${auth.id}`;
+                  const keys = Object.keys(db).filter((k) => k === auth.id || k.endsWith(suffix));
+                  for (let i = keys.length - 1; i >= 0; i -= 1) {
+                    if (Array.isArray(db[keys[i]])) return db[keys[i]];
+                  }
+                } catch { /* ignore */ }
+                return latest.checklist || [];
+              })();
+              if (!pack.some(entry => entry.id === item.id)) throw new Error("Voce rimossa dalla valigia");
               if (selected && !latest.members?.some(member => member.id === selected)) throw new Error("Viaggiatore non disponibile");
               const next = { ...prior };
               if (selected) next[item.id] = selected;
@@ -4915,10 +4953,34 @@
       if (heading?.parentElement === panel) heading.after(rail);
       else panel.prepend(rail);
     }
-    const signature = JSON.stringify([section, canEdit, items, section === "explore" ? row.trip.stops?.map(stop => stop.title) : null]);
-    if (rail.dataset.render === signature) return;
-    rail.dataset.render = signature;
-    const links = items.map(item => {
+    rail.dataset.section = section;
+    // Keep the add button stable — rewriting rail.innerHTML made it flash on every tick.
+    let addBtn = rail.querySelector("[data-pv-event-add]");
+    if (canEdit) {
+      if (!addBtn) {
+        addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "button secondary";
+        addBtn.dataset.pvEventAdd = "";
+        addBtn.textContent = "Aggiungi da evento";
+        rail.prepend(addBtn);
+        addBtn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          const sec = rail.dataset.section || section;
+          void openEventImportWizard({ mode: "add", section: sec });
+        });
+      }
+    } else if (addBtn) {
+      addBtn.remove();
+    }
+    const listSig = JSON.stringify([
+      items,
+      section === "explore" ? row.trip.stops?.map((stop) => stop.title) : null,
+    ]);
+    if (rail.dataset.listSig === listSig) return;
+    rail.dataset.listSig = listSig;
+    const links = items.map((item, index) => {
       const url = section === "explore"
         ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.query + " " + (row.trip.destination || ""))}`
         : item.url;
@@ -4926,18 +4988,24 @@
         stop.title?.trim().toLowerCase() === item.title?.trim().toLowerCase());
       return /^https?:\/\//i.test(url || "") ? `<li><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.title)}</a>
         ${saved ? '<span>Già salvato</span>' : section === "explore" && canEdit
-          ? `<button type="button" class="button secondary" data-pv-save-explore="${items.indexOf(item)}">Salva in Luoghi</button>` : ""}</li>` : "";
+          ? `<button type="button" class="button secondary" data-pv-save-explore="${index}">Salva in Luoghi</button>` : ""}</li>` : "";
     }).join("");
-    rail.innerHTML = `${canEdit ? '<button type="button" class="button secondary" data-pv-event-add>Aggiungi da evento</button>' : ""}
-      ${links ? `<ul aria-label="Materiali importati">${links}</ul>` : ""}`;
-    rail.querySelectorAll("[data-pv-save-explore]").forEach(button => {
+    let list = rail.querySelector("ul[aria-label='Materiali importati']");
+    if (!links) {
+      list?.remove();
+      return;
+    }
+    if (!list) {
+      list = document.createElement("ul");
+      list.setAttribute("aria-label", "Materiali importati");
+      rail.appendChild(list);
+    }
+    list.innerHTML = links;
+    list.querySelectorAll("[data-pv-save-explore]").forEach((button) => {
       button.onclick = () => {
         const item = items[Number(button.dataset.pvSaveExplore)];
         if (item) void window.__pvSaveSuggestedPlace?.({ title: item.title, address: item.query }, button);
       };
-    });
-    rail.querySelector("[data-pv-event-add]")?.addEventListener("click", () => {
-      void openEventImportWizard({ mode: "add", section });
     });
   }
 

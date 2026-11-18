@@ -24,14 +24,20 @@ ok(
     /section: "Documenti"/.test(magic)
 );
 ok(
-  "Mare template no hard reload",
+  "Mare template remounts Valigia without losing trip",
   (() => {
     const m = magic.match(/async function applyPackingTemplate\([\s\S]*?\n  async function |async function applyPackingTemplate\([\s\S]*?\n  function /);
     const body = m ? m[0] : "";
-    return /softRefreshTrip\(/.test(body) && !/location\.reload\(/.test(body);
+    return (
+      /softRefreshTrip\(/.test(body) &&
+      /remountTripSection\(auth,\s*"packing"\)/.test(body) &&
+      /function remountTripSection\(/.test(magic) &&
+      /pv-event-return-section/.test(magic)
+    );
   })()
 );
 ok("soft refresh helper", /function softRefreshTrip\(/.test(magic) && /pv-trip-loaded/.test(magic));
+ok("remount helper", /function remountTripSection\(/.test(magic) && /location\.reload\(\)/.test(magic));
 ok(
   "cover countdown",
   /function injectCoverCountdown\(/.test(magic) &&
@@ -55,19 +61,24 @@ ok("smoother panel animation", /animation: pv-panel-in \.18s/.test(diary) && /fr
 ok("tick debounce softened", /}, 480\);/.test(ux) && /setTimeout\(tick, 380\)/.test(app));
 ok(
   "stamps",
-  /magic-extras-20261118f\.js/.test(index) &&
-    /ux-suite-20261118f\.js/.test(index) &&
-    /app-suite-20261118f\.js/.test(index) &&
-    /travel-diary\.css\?v=20261118f/.test(index) &&
-    /20261118f/.test(sw)
+  /magic-extras-20261118g\.js/.test(index) &&
+    /ux-suite-20261118g\.js/.test(index) &&
+    /app-suite-20261118g\.js/.test(index) &&
+    /travel-diary\.css\?v=20261118g/.test(index) &&
+    /20261118g/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/magic-extras-20261118f.js") &&
-    existsSync("assets/ux-suite-20261118f.js") &&
-    existsSync("assets/app-suite-20261118f.js") &&
-    readFileSync("assets/magic-extras-20261118f.js", "utf8").includes('dataset.pvReady = "20261118f"') &&
-    readFileSync("assets/ux-suite-20261118f.js", "utf8").includes('const STYLE_VER = "20261118f"')
+  existsSync("assets/magic-extras-20261118g.js") &&
+    existsSync("assets/ux-suite-20261118g.js") &&
+    existsSync("assets/app-suite-20261118g.js") &&
+    readFileSync("assets/magic-extras-20261118g.js", "utf8").includes('dataset.pvReady = "20261118g"') &&
+    readFileSync("assets/ux-suite-20261118g.js", "utf8").includes('const STYLE_VER = "20261118g"')
+);
+ok(
+  "cover countdown clear of title",
+  /#root \.pv-cover-countdown[\s\S]*?top:\s*\.75rem/.test(diary) &&
+    /#root \.pv-cover-countdown \.pv-cover-count-meta\s*\{\s*display:\s*none/.test(diary)
 );
 
 if (failed) {
