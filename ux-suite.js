@@ -7,22 +7,22 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261117h";
+  const STYLE_VER = "20261118d";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
   const INVITE_LOCAL_KEY = "viavia-invite-codes-v1";
   const TRIP_PHASE_KEY = "pv-trip-phase-v1";
   const TRIP_TAB_META = {
-    itinerary: { phase: "trip", label: "Itinerario" },
-    explore: { phase: "both", label: "Esplora" },
-    places: { phase: "both", label: "Luoghi" },
-    preventivo: { phase: "prep", label: "Preventivo" },
-    bookings: { phase: "both", label: "Prenotazioni" },
+    itinerary: { phase: "trip", label: "Itinerario", icon: "itinerary" },
+    explore: { phase: "both", label: "Esplora", icon: "explore" },
+    places: { phase: "both", label: "Luoghi", icon: "places" },
+    preventivo: { phase: "prep", label: "Preventivo", icon: "preventivo" },
+    bookings: { phase: "both", label: "Prenotazioni", icon: "bookings" },
     expenses: { phase: "trip", label: "Spese", icon: "spese" },
     documents: { phase: "prep", label: "Documenti", icon: "docs" },
-    packing: { phase: "prep", label: "Valigia" },
-    notes: { phase: "trip", label: "Note" },
+    packing: { phase: "prep", label: "Valigia", icon: "packing" },
+    notes: { phase: "trip", label: "Note", icon: "notes" },
   };
   const TRIP_PHASE_COPY = {
     prep: {
@@ -46,10 +46,24 @@
     notes: "Appunti rapidi, liste e promemoria durante il viaggio.",
   };
   const ICON_SVG = {
+    itinerary:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>',
+    explore:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>',
+    places:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+    preventivo:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1H5a2 2 0 0 1 0-4"/><path d="M3 5v14a2 2 0 0 0 2 2h15"/></svg>',
+    bookings:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5v2"/><path d="M15 11v2"/><path d="M15 17v2"/><path d="M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4V7a2 2 0 0 1 2-2"/></svg>',
     spese:
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5V6.5"/></svg>',
     docs:
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    packing:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h12l1 14H5L6 6Z"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M10 11v5M14 11v5"/></svg>',
+    notes:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>',
   };
 
   const TEMPLATES = [
@@ -152,16 +166,34 @@
         color:var(--diary-muted,#5a727c);
       }
       .pv-section-guide{
-        margin:.15rem 0 .85rem;padding:.65rem .8rem;border-radius:.75rem;
-        border:1px solid color-mix(in srgb,var(--diary-line,#c5d4da) 80%,transparent);
-        background:color-mix(in srgb,var(--diary-wash,#eef4f6) 70%,transparent);
-        color:var(--diary-ink,#12343c);font-size:.88rem;line-height:1.4;font-weight:550;
+        margin:0 0 .9rem;padding:.15rem 0 .15rem .85rem;border:0;
+        border-inline-start:3px solid var(--diary-accent,#007d82);
+        background:transparent;border-radius:0;
+        color:var(--diary-muted,#5a727c);font-size:.88rem;line-height:1.4;font-weight:550;
       }
+      #root .section-heading{
+        display:flex;align-items:flex-start;gap:.75rem;border-bottom:0;padding-bottom:.2rem;margin-bottom:.15rem;
+      }
+      #root .section-heading .pv-section-icon{
+        display:grid;place-items:center;flex:0 0 auto;width:2.55rem;height:2.55rem;
+        border-radius:.9rem;background:var(--diary-wash,#eef4f6);color:var(--diary-accent,#007d82);
+        box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--diary-line,#c5d4da) 70%,transparent);
+      }
+      #root .section-heading .pv-section-icon svg{width:18px;height:18px}
+      #root .section-heading > :not(.pv-section-icon):not(button):not(.button){min-width:0;flex:1 1 auto}
+      #root .section-heading > :is(button,.button){margin-inline-start:auto;flex:0 0 auto}
+      #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        display:flex;flex-direction:column;gap:.7rem;
+      }
+      #root .primary-panel > [role="tabpanel"] > .section-heading,
+      #root .primary-panel > [role="tabpanel"] > .pv-section-guide{margin:0}
       html[data-pv-trip-phase="prep"] #root .main-tabs [role="tab"][data-pv-phase="trip"],
       html[data-pv-trip-phase="trip"] #root .main-tabs [role="tab"][data-pv-phase="prep"]{
         display:none!important;
       }
-      #root .main-tabs [role="tab"][data-pv-tab-fixed="1"] svg{width:18px;height:18px;flex-shrink:0}
+      #root .main-tabs [role="tab"] svg{width:20px;height:20px;flex-shrink:0;opacity:.92}
+      #root .main-tabs [role="tab"][aria-selected="true"] svg,
+      #root .main-tabs [role="tab"][data-state="active"] svg{opacity:1}
       #root .trip-toolbar .travelers{cursor:pointer;border-radius:12px;padding:4px 6px 4px 2px}
       #root .trip-toolbar .travelers:focus-visible{outline:2px solid var(--diary-accent,#007d82);outline-offset:2px}
       @media (prefers-reduced-motion:reduce){
@@ -4507,17 +4539,37 @@
     }
   }
 
+  function decorateSectionHeading(panel, key) {
+    const meta = TRIP_TAB_META[key];
+    if (!meta?.icon || !ICON_SVG[meta.icon]) return;
+    const heading = panel.querySelector(":scope > .section-heading, :scope > .pv-bookings-ordered > .section-heading");
+    if (!heading) return;
+    let icon = heading.querySelector(":scope > .pv-section-icon");
+    if (!icon) {
+      icon = document.createElement("span");
+      icon.className = "pv-section-icon";
+      icon.setAttribute("aria-hidden", "true");
+      heading.prepend(icon);
+    }
+    if (icon.dataset.key !== key) {
+      icon.dataset.key = key;
+      icon.innerHTML = ICON_SVG[meta.icon];
+    }
+  }
+
   function injectSectionGuide(tabs) {
     const active = tabs.querySelector('[role="tab"][aria-selected="true"], [role="tab"][data-state="active"]');
     const key = tabSectionKey(active);
     const guideText = SECTION_GUIDE[key];
     const panel = document.getElementById(active?.getAttribute("aria-controls") || "");
     if (!panel || panel.hidden || !guideText) return;
-    let guide = panel.querySelector(".pv-section-guide");
+    panel.dataset.pvSection = key;
+    decorateSectionHeading(panel, key);
+    let guide = panel.querySelector(":scope > .pv-section-guide");
     if (!guide) {
       guide = document.createElement("p");
       guide.className = "pv-section-guide";
-      const heading = panel.querySelector(".section-heading");
+      const heading = panel.querySelector(":scope > .section-heading");
       if (heading?.parentElement === panel) heading.after(guide);
       else panel.prepend(guide);
     }

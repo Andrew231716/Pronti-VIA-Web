@@ -31,11 +31,11 @@ ok(
   "stamps",
   /account\.js\?v=20261117g/.test(index) &&
     /api-shim-20261112r\.js/.test(index) &&
-    /ux-suite-20261117h\.js/.test(index)
+    /ux-suite-20261118d\.js/.test(index)
 );
 ok(
   "assets exist",
-  existsSync("assets/api-shim-20261112r.js") && existsSync("assets/ux-suite-20261117h.js")
+  existsSync("assets/api-shim-20261112r.js") && existsSync("assets/ux-suite-20261118d.js")
 );
 
 if (failed) {
