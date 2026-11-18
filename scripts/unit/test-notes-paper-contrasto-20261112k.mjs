@@ -41,7 +41,7 @@ ok(
   "stamps",
   /pv-platform-20261112m\.js/.test(index) &&
     /travel-diary\.css\?v=20261117h/.test(index) &&
-    /account\.css\?v=20261117g/.test(index) &&
+    /account\.css\?v=20261118a/.test(index) &&
     /destination-theme-20261112k\.js/.test(index)
 );
 ok(

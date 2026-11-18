@@ -35,11 +35,11 @@ ok("recovery change-password", /action === "change-password"/.test(recovery) && 
 ok(
   "stamps",
   /ux-suite-20261117h\.js/.test(index) &&
-    /account\.js\?v=20261117g/.test(index) &&
-    /account\.css\?v=20261117g/.test(index) &&
+    /account\.js\?v=20261118a/.test(index) &&
+    /account\.css\?v=20261118a/.test(index) &&
     existsSync("assets/ux-suite-20261117h.js")
 );
-ok("sw", /20261117h/.test(sw) && /ux-suite-20261117h\.js/.test(sw) && /account\.js\?v=20261117g/.test(sw));
+ok("sw", /20261118a/.test(sw) && /ux-suite-20261117h\.js/.test(sw) && /account\.js\?v=20261118a/.test(sw));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

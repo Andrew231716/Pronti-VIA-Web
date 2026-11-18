@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Harness Sistema row</title>
+  <link rel="stylesheet" href="/account.css?v=20261118a" />
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #eef4f4; color: #12343c; }
+    #root { padding: 16px; max-width: 420px; margin: 0 auto; }
+    .section-heading {
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 10px; flex-wrap: wrap; margin: 18px 0;
+    }
+    .eyebrow { color: #007d82; font-weight: 700; }
+    .button {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 44px; padding: 8px 14px; border-radius: 12px;
+      border: 1px solid #c5d4da; background: #fff; color: #12343c; font-weight: 700;
+    }
+    #harness-out {
+      margin-top: 16px; padding: 12px; border-radius: 10px;
+      background: #102228; color: #e8f2f4; font: 12px/1.4 ui-monospace, monospace;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div id="root">
+    <div class="section-heading">
+      <span class="eyebrow">I tuoi viaggi</span>
+      <button type="button" class="button">+ Nuovo viaggio</button>
+    </div>
+  </div>
+  <pre id="harness-out">booting…</pre>
+  <script type="module">
+    // Load only the theme placement by importing account.js after stubbing network bits.
+    // account.js boots gate/chip — we only need placeThemeToggle after ensureThemeToggle.
+    await import("/account.js?v=20261118a");
+    // Force home placement (no trip hash).
+    location.hash = "";
+    document.getElementById("pv-account-gate")?.setAttribute("hidden", "");
+    window.__pvPlaceThemeToggle?.();
+    setTimeout(() => {
+      window.__pvPlaceThemeToggle?.();
+      const btn = document.getElementById("pv-theme-toggle");
+      const nuovo = [...document.querySelectorAll("button")].find((b) => /nuovo viaggio/i.test(b.textContent || ""));
+      const sameRow = btn && nuovo && btn.previousElementSibling === nuovo;
+      const rectN = nuovo?.getBoundingClientRect();
+      const rectS = btn?.getBoundingClientRect();
+      const aligned = rectN && rectS && Math.abs(rectN.top - rectS.top) < 12;
+      const out = {
+        mode: btn?.className || "",
+        sameRow,
+        aligned,
+        labels: [nuovo?.textContent?.trim(), btn?.textContent?.trim()],
+        tops: [rectN?.top, rectS?.top],
+      };
+      const el = document.getElementById("harness-out");
+      el.dataset.harness = JSON.stringify(out);
+      el.textContent = JSON.stringify(out, null, 2);
+    }, 600);
+  </script>
+</body>
+</html>

@@ -29,7 +29,7 @@ ok("invito path writes pending", /__pvWritePendingShare/.test(shim));
 ok("ux upgrade account", /upgrade-account/.test(ux) && /Accedi o crea account/.test(ux));
 ok(
   "stamps",
-  /account\.js\?v=20261117g/.test(index) &&
+  /account\.js\?v=20261118a/.test(index) &&
     /api-shim-20261112r\.js/.test(index) &&
     /ux-suite-20261117h\.js/.test(index)
 );

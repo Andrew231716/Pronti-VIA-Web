@@ -31,7 +31,7 @@ ok(
   /ux-suite-20261117h\.js/.test(index) &&
     /travel-diary\.css\?v=20261117h/.test(index) &&
     /ux-suite-20261117h\.js/.test(sw) &&
-    /20261117h/.test(sw)
+    /20261118a/.test(sw)
 );
 ok("asset mirrors source", existsSync("assets/ux-suite-20261117h.js") && stamped.includes('const STYLE_VER = "20261117h"'));
 ok("style ver bumped", /const STYLE_VER = "20261117h"/.test(ux));

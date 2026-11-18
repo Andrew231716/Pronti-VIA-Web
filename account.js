@@ -101,22 +101,55 @@ function syncThemeToggleUi() {
   btn.innerHTML = `${meta.icon}<span class="pv-theme-toggle-label">${meta.label}</span>`;
 }
 
-/** Sit next to the SPA brand (.topbar); float only on the login gate. */
+/** Home: beside «+ Nuovo viaggio». Trip: SPA topbar. Login gate: float. */
 function placeThemeToggle() {
   const btn = document.getElementById("pv-theme-toggle");
   if (!btn) return;
-  const topbar = document.querySelector("#root .topbar");
   const gate = document.getElementById("pv-account-gate");
   const gateOpen = Boolean(gate && !gate.hidden);
-  if (topbar && !gateOpen) {
-    if (btn.parentElement !== topbar) topbar.appendChild(btn);
-    btn.classList.add("pv-theme-toggle--topbar");
-    btn.classList.remove("pv-theme-toggle--float");
+  const setMode = (mode) => {
+    btn.classList.toggle("pv-theme-toggle--float", mode === "float");
+    btn.classList.toggle("pv-theme-toggle--topbar", mode === "topbar");
+    btn.classList.toggle("pv-theme-toggle--home", mode === "home");
+  };
+
+  if (gateOpen) {
+    if (btn.parentElement !== document.body) document.body.appendChild(btn);
+    setMode("float");
     return;
   }
+
+  let onTrip = false;
+  try {
+    const params = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+    onTrip = Boolean(params.get("trip") && params.get("key"));
+  } catch {
+    onTrip = false;
+  }
+  if (!onTrip) onTrip = document.body.classList.contains("pv-trip-open");
+
+  if (!onTrip) {
+    const nuovo = [...document.querySelectorAll("#root button")].find((el) =>
+      /^\+?\s*nuovo viaggio$/i.test((el.textContent || "").replace(/\s+/g, " ").trim())
+    );
+    if (nuovo) {
+      // Keep the SPA button in place (React-owned); only park Sistema beside it.
+      if (btn.previousElementSibling !== nuovo) nuovo.insertAdjacentElement("afterend", btn);
+      nuovo.classList.add("pv-home-nuovo");
+      setMode("home");
+      return;
+    }
+  }
+
+  const topbar = document.querySelector("#root .topbar");
+  if (topbar) {
+    if (btn.parentElement !== topbar) topbar.appendChild(btn);
+    setMode("topbar");
+    return;
+  }
+
   if (btn.parentElement !== document.body) document.body.appendChild(btn);
-  btn.classList.add("pv-theme-toggle--float");
-  btn.classList.remove("pv-theme-toggle--topbar");
+  setMode("float");
 }
 window.__pvPlaceThemeToggle = placeThemeToggle;
 
@@ -1494,7 +1527,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261117g";
+const SHELL_VER = "20261118a";
 const SHELL_VER_KEY = "pv-shell-ver-v1";
 
 async function ensureFreshShell() {
