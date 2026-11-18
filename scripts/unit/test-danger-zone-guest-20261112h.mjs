@@ -19,8 +19,7 @@ ok("confirm before delete-account", /act === "delete-account"[\s\S]*window\.conf
 ok("guest hides trip danger", /const guest = isGuestAccount\(\)/.test(ux) && /tripDanger = guest/.test(ux));
 ok("account delete only for own account", /hasOwnAccount/.test(ux) && /accountDanger/.test(ux));
 ok("guest blocked in onDeleteAccount", /SESSION_KEY[\s\S]*guest[\s\S]*ospiti del link condiviso/.test(account) || /guest[\s\S]*non possono eliminare/.test(account));
-ok("stamp ux h", /ux-suite-20261118b\.js/.test(index) && existsSync("assets/ux-suite-20261118b.js"));
-
+ok("stamp ux h", /ux-suite-20261118c\.js/.test(index) && existsSync("assets/ux-suite-20261118c.js"));
 if (failed) {
   console.log(`\n${failed} FAIL`);
   process.exit(1);

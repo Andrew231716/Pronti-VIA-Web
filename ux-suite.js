@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261118b";
+  const STYLE_VER = "20261118c";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -4949,6 +4949,7 @@
         /* keep suite alive */
       }
     };
+    const inTrip = Boolean(tripAuth());
     run(() => {
       const mark = document.querySelector("#pv-account-chip .pv-account-mark");
       const brand = document.querySelector("#root .topbar .brand");
@@ -4958,23 +4959,25 @@
       if (typeof window.__pvPlaceThemeToggle === "function") window.__pvPlaceThemeToggle();
     });
     run(ensureStyles);
-    run(ensureItineraryLayoutPolish);
     run(cleanupLegacyChrome);
-    run(() => document.body.classList.toggle("pv-trip-open", Boolean(tripAuth())));
-    run(injectEmptyStates);
-    run(injectMemberRoles);
+    run(() => document.body.classList.toggle("pv-trip-open", inTrip));
     run(injectOfflineChip);
-    run(renderHomeResume);
-    run(enhanceHomeTripCards);
-    run(enhanceRecentTripsDelete);
-    run(injectTripDeleteButton);
-    run(injectHomeDeleteEntry);
-    run(injectHomeImportEntry);
-    run(enhanceTripModeNav);
-    run(injectEventImportRail);
-    run(polishLocalOnlyBanner);
     run(syncPrimaryNavState);
-
+    if (inTrip) {
+      run(ensureItineraryLayoutPolish);
+      run(injectEmptyStates);
+      run(injectMemberRoles);
+      run(injectTripDeleteButton);
+      run(enhanceTripModeNav);
+      run(injectEventImportRail);
+      run(polishLocalOnlyBanner);
+    } else {
+      run(renderHomeResume);
+      run(enhanceHomeTripCards);
+      run(enhanceRecentTripsDelete);
+      run(injectHomeDeleteEntry);
+      run(injectHomeImportEntry);
+    }
   }
 
   window.addEventListener("pv-share-blocked", (ev) => {
@@ -4996,7 +4999,7 @@
     tick._t = setTimeout(() => {
       tick._t = 0;
       tick();
-    }, 280);
+    }, 420);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {

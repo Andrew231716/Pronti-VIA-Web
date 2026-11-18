@@ -19,6 +19,20 @@ function test(name, fn) {
 }
 
 test("account.js stamp wired", () => {
-  assert.match(sw, /20261118b/);});
+  assert.match(index, /account\.js\?v=20261117g/);
+});
 
+test("loadApp retries and watches empty root", () => {
+  assert.match(account, /watchAppMount/);
+  assert.match(account, /showAppBootFallback/);
+  assert.match(account, /rootHasApp/);
+  assert.match(account, /__pvLoadApp/);
+  assert.match(account, /force:\s*true|force = true|\{ force/);
+});
+
+test("service worker refuses HTML as JS cache", () => {
+  assert.match(sw, /Never cache an HTML shell as a JS module/);
+  assert.match(sw, /freshIsJsOk/);
+  assert.match(sw, /20261118c/);
+});
 console.log(process.exitCode ? "\nFAILED" : "\nOK");
