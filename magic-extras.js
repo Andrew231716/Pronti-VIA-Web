@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261118g") return;
+    if (style && style.dataset.pvReady === "20261118h") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261118g";
+    style.dataset.pvReady = "20261118h";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -242,8 +242,10 @@
       .pv-cover-countdown .pv-cover-count-meta{display:none}
       #root .trip-cover[data-pv-trip-cover]{position:relative;overflow:hidden}
       #root .trip-cover[data-pv-trip-cover] .cover-content h1{
-        padding:.7rem .85rem .55rem;max-height:38%;overflow:hidden;
-        font-size:clamp(1.2rem,5vw,1.75rem);line-height:1.12;
+        left:0;right:0;bottom:calc(100% + .15rem);margin:0;
+        padding:2.5rem .9rem .95rem;max-height:none;overflow:visible;
+        background:linear-gradient(180deg,transparent 0%,rgba(10,26,22,.55) 42%,rgba(10,26,22,.94) 100%);
+        font-size:clamp(1.28rem,5.3vw,1.85rem);line-height:1.18;letter-spacing:-.02em;z-index:4;
       }
       #${ROOT_ID} .pv-pack-cards,#${ROOT_ID} .pv-ai-actions{margin:10px 0;padding:12px;border:1px solid #d5e8e8;border-radius:14px;background:#f7fbfb}
       #${ROOT_ID} .pv-pack-lead{margin:0 0 8px;font-size:.86rem;color:#2f4e55}

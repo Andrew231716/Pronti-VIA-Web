@@ -45,11 +45,11 @@ ok("per-file errors isolated", /fileErrors\.push/.test(prev) && /File saltati/.t
 ok(
   "stamps",
   /preventivo-islanda-20261117e\.js/.test(index) &&
-    /magic-extras-20261118g\.js/.test(index) &&
+    /magic-extras-20261118h\.js/.test(index) &&
     existsSync("assets/preventivo-islanda-20261117e.js") &&
-    existsSync("assets/magic-extras-20261118g.js")
+    existsSync("assets/magic-extras-20261118h.js")
 );
-ok("sw cache", /20261118g/.test(sw) && /preventivo-islanda-20261117e\.js/.test(sw));
+ok("sw cache", /20261118h/.test(sw) && /preventivo-islanda-20261117e\.js/.test(sw));
 // Runtime parse of the user's sheet shape
 const start = prev.indexOf("function guessPreventivoKey");
 const end = prev.indexOf("function loadScriptOnce");

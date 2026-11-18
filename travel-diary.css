@@ -891,8 +891,8 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .45rem 1.05rem;
-  padding: .75rem .85rem .35rem;
+  gap: .5rem 1.1rem;
+  padding: .9rem .9rem .45rem;
   font-size: .8rem;
   line-height: 1.35;
 }
@@ -938,16 +938,21 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
 
 #root .trip-cover[data-pv-trip-cover] .cover-content h1 {
   position: absolute;
-  inset: auto 0 100%;
-  /* Keep title in the bottom band of the photo so it never meets the top-left countdown. */
-  padding: .7rem .85rem .55rem;
-  max-height: 38%;
-  overflow: hidden;
-  background: linear-gradient(transparent, rgb(10 26 22 / .92));
+  left: 0;
+  right: 0;
+  /* Sit fully inside the photo band, with clear air above the green strip. */
+  bottom: calc(100% + .15rem);
+  margin: 0;
+  padding: 2.5rem .9rem .95rem;
+  max-height: none;
+  overflow: visible;
+  background: linear-gradient(180deg, transparent 0%, rgb(10 26 22 / .55) 42%, rgb(10 26 22 / .94) 100%);
   color: #fff;
-  font-size: clamp(1.2rem, 5vw, 1.75rem);
-  line-height: 1.12;
+  font-size: clamp(1.28rem, 5.3vw, 1.85rem);
+  line-height: 1.18;
+  letter-spacing: -.02em;
   text-shadow: 0 1px 4px rgb(0 0 0 / .55);
+  z-index: 4;
 }
 
 

@@ -23,9 +23,9 @@ ok("prompt forbids places on packing", /Domanda valigia ⇒ zero itinerario/.tes
 ok("exclude already suggested", /suggestedPackTitles/.test(magic) && /exclude: \[\.\.\.suggestedPackTitles\]/.test(magic));
 ok(
   "stamp magic 20261113a",
-  /magic-extras-20261118g\.js/.test(index) &&
-    /magic-extras-20261118g\.js/.test(sw) &&
-    existsSync("assets/magic-extras-20261118g.js")
+  /magic-extras-20261118h\.js/.test(index) &&
+    /magic-extras-20261118h\.js/.test(sw) &&
+    existsSync("assets/magic-extras-20261118h.js")
 );
 
 if (failed) {

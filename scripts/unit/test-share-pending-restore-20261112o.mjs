@@ -29,13 +29,13 @@ ok("invito path writes pending", /__pvWritePendingShare/.test(shim));
 ok("ux upgrade account", /upgrade-account/.test(ux) && /Accedi o crea account/.test(ux));
 ok(
   "stamps",
-  /account\.js\?v=20261118g/.test(index) &&
+  /account\.js\?v=20261118h/.test(index) &&
     /api-shim-20261112r\.js/.test(index) &&
-    /ux-suite-20261118g\.js/.test(index)
+    /ux-suite-20261118h\.js/.test(index)
 );
 ok(
   "assets exist",
-  existsSync("assets/api-shim-20261112r.js") && existsSync("assets/ux-suite-20261118g.js")
+  existsSync("assets/api-shim-20261112r.js") && existsSync("assets/ux-suite-20261118h.js")
 );
 
 
