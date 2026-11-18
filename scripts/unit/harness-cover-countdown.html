@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cover countdown harness</title>
+  <link rel="stylesheet" href="/travel-diary.css?v=20261118g" />
+  <style>
+    :root {
+      --diary-display: Georgia, "Times New Roman", serif;
+      --diary-paper: #f4f7f5;
+      --diary-ink: #12343c;
+      --diary-muted: #5a727c;
+      --diary-line: #c5d4da;
+      --diary-action: #16564b;
+      --pv-dest-teal-deep: #173b30;
+    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #0f2a24; color: #12343c; }
+    .wrap { max-width: 420px; margin: 1rem auto; background: var(--diary-paper); border-radius: 1.1rem; overflow: hidden; }
+    /* Mirror production stacking used by trip covers */
+    #root .trip-cover[data-pv-trip-cover] { position: relative; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="root" class="wrap">
+    <section class="trip-cover" data-pv-trip-cover data-pv-cover-ready="1" data-pv-accra-cover>
+      <img
+        alt=""
+        src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop stop-color='%232a8f6a'/%3E%3Cstop offset='.55' stop-color='%231a5c45'/%3E%3Cstop offset='1' stop-color='%230c3b2e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='900' height='600' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='420' r='70' fill='%23d8b36a' opacity='.35'/%3E%3Ccircle cx='720' cy='160' r='90' fill='%23f0e6c8' opacity='.2'/%3E%3C/svg%3E"
+      />
+      <div class="pv-cover-countdown" aria-live="polite">
+        <span class="pv-cover-count-label">Alla partenza</span>
+        <p class="pv-cover-count-value">Tra 256 giorni</p>
+        <p class="pv-cover-count-meta">dom 1 ago</p>
+      </div>
+      <div class="cover-content">
+        <h1>Congresso internazionale Ghana</h1>
+        <div class="cover-meta">
+          <span>1 ago — 13 agosto 2027</span>
+          <span class="destination"><strong>Accra</strong></span>
+          <span>13 giorni</span>
+          <span>4 viaggiatori</span>
+        </div>
+      </div>
+      <p class="photo-credit">Collage illustrativo del Ghana</p>
+    </section>
+  </div>
+</body>
+</html>

@@ -11,7 +11,7 @@ function ok(name, cond, detail = "") {
 }
 
 const ux = readFileSync("ux-suite.js", "utf8");
-const stamped = readFileSync("assets/ux-suite-20261118f.js", "utf8");
+const stamped = readFileSync("assets/ux-suite-20261118g.js", "utf8");
 const diary = readFileSync("travel-diary.css", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
@@ -28,13 +28,13 @@ ok("diary mobile tab stack", /flex-direction: column !important/.test(diary));
 ok("diary toolbar polish", /#root \.trip-toolbar/.test(diary) && /pv-trip-phase/.test(diary));
 ok(
   "stamps wired",
-  /ux-suite-20261118f\.js/.test(index) &&
-    /travel-diary\.css\?v=20261118f/.test(index) &&
-    /ux-suite-20261118f\.js/.test(sw) &&
-    /20261118f/.test(sw)
+  /ux-suite-20261118g\.js/.test(index) &&
+    /travel-diary\.css\?v=20261118g/.test(index) &&
+    /ux-suite-20261118g\.js/.test(sw) &&
+    /20261118g/.test(sw)
 );
-ok("asset mirrors source", existsSync("assets/ux-suite-20261118f.js") && stamped.includes('const STYLE_VER = "20261118f"'));
-ok("style ver bumped", /const STYLE_VER = "20261118f"/.test(ux));
+ok("asset mirrors source", existsSync("assets/ux-suite-20261118g.js") && stamped.includes('const STYLE_VER = "20261118g"'));
+ok("style ver bumped", /const STYLE_VER = "20261118g"/.test(ux));
 ok("harness exists", existsSync("scripts/unit/harness-menu-prep.html"));
 
 if (failed) {

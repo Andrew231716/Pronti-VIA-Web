@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261118f") return;
+    if (style && style.dataset.pvReady === "20261118g") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261118f";
+    style.dataset.pvReady = "20261118g";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -226,21 +226,25 @@
       .pv-pack-cat-label{margin:.85rem 0 .4rem;padding:0 .1rem;font:750 .72rem/1.2 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--diary-muted,#5a727c)}
       .pv-pack-cat-label:first-child{margin-top:.2rem}
       .pv-cover-countdown{
-        position:absolute;left:.85rem;right:.85rem;z-index:4;pointer-events:none;
-        top:auto;bottom:calc(28% + .35rem);display:flex;flex-direction:column;gap:.1rem;
-        align-items:flex-start;max-width:min(92%,22rem);
-        color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.55);
+        position:absolute;left:.75rem;right:auto;top:.75rem;bottom:auto;z-index:6;pointer-events:none;
+        display:flex;flex-direction:column;gap:.15rem;align-items:flex-start;
+        max-width:min(70%,15.5rem);padding:.45rem .6rem .5rem;border-radius:.9rem;
+        background:rgba(8,24,22,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+        box-shadow:0 8px 24px rgba(0,0,0,.22);color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35);
       }
       .pv-cover-countdown .pv-cover-count-label{
-        margin:0;padding:.2rem .55rem;border-radius:999px;
-        background:rgba(8,24,22,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-        font:700 .72rem/1.2 inherit;letter-spacing:.05em;text-transform:uppercase;
+        margin:0;padding:0;border-radius:0;background:transparent;
+        font:700 .68rem/1.2 inherit;letter-spacing:.06em;text-transform:uppercase;opacity:.92;
       }
       .pv-cover-countdown .pv-cover-count-value{
-        margin:.2rem 0 0;font:700 clamp(2.1rem,9vw,3.1rem)/1.02 var(--diary-display,Georgia,serif);letter-spacing:-.035em;
+        margin:0;font:700 clamp(1.35rem,5.5vw,1.85rem)/1.05 var(--diary-display,Georgia,serif);letter-spacing:-.03em;
       }
-      .pv-cover-countdown .pv-cover-count-meta{margin:0;font:600 .88rem/1.3 inherit;opacity:.92}
+      .pv-cover-countdown .pv-cover-count-meta{display:none}
       #root .trip-cover[data-pv-trip-cover]{position:relative;overflow:hidden}
+      #root .trip-cover[data-pv-trip-cover] .cover-content h1{
+        padding:.7rem .85rem .55rem;max-height:38%;overflow:hidden;
+        font-size:clamp(1.2rem,5vw,1.75rem);line-height:1.12;
+      }
       #${ROOT_ID} .pv-pack-cards,#${ROOT_ID} .pv-ai-actions{margin:10px 0;padding:12px;border:1px solid #d5e8e8;border-radius:14px;background:#f7fbfb}
       #${ROOT_ID} .pv-pack-lead{margin:0 0 8px;font-size:.86rem;color:#2f4e55}
       #${ROOT_ID} .pv-pack-list{list-style:none;margin:0;padding:0}
@@ -2457,10 +2461,9 @@
       const saved = await saveTrip(auth, trip, data.revision);
       savedTrip = saved?.trip || trip;
       softRefreshTrip(auth, savedTrip);
-    }
-    // Soft refresh only — hard reload sent users back to Home.
-    if (reload && added) {
-      /* kept for API compat; softRefreshTrip already ran */
+      if (reload) {
+        remountTripSection(auth, "packing");
+      }
     }
     return { added, total: savedTrip.checklist?.length || trip.checklist.length };
   }
@@ -3950,8 +3953,18 @@ Regole:
     try {
       window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth?.id, trip } }));
     } catch { /* ignore */ }
-    // Keep hash/tab: never hard-reload (that was kicking users to Home).
-    try { window.dispatchEvent(new Event("hashchange")); } catch { /* ignore */ }
+  }
+
+  function remountTripSection(auth, section = "packing") {
+    if (!auth?.id || !auth?.key) return;
+    try {
+      sessionStorage.setItem("pv-trip-phase-v1", section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip");
+      sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
+    } catch { /* ignore */ }
+    const hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
+    if (location.hash !== hash) location.hash = hash;
+    // SPA checklist is React-owned: remount with hash preserved so Valigia updates.
+    location.reload();
   }
 
   async function applyPackingTemplate(name, button) {
@@ -3978,12 +3991,14 @@ Regole:
       if (added) {
         const saved = await saveTrip(auth, trip, data.revision);
         softRefreshTrip(auth, saved?.trip || trip);
+        if (typeof window.__pvToast === "function") {
+          window.__pvToast(`Template «${name}»: +${added} voci in Valigia`, "ok");
+        }
+        remountTripSection(auth, "packing");
+        return;
       }
       if (typeof window.__pvToast === "function") {
-        window.__pvToast(
-          added ? `Template «${name}»: +${added} voci in Valigia` : `«${name}» già in valigia`,
-          added ? "ok" : "warn"
-        );
+        window.__pvToast(`«${name}» già in valigia`, "warn");
       }
     } catch (err) {
       if (typeof window.__pvToast === "function") {
