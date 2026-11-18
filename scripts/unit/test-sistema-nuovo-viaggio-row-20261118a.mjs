@@ -28,7 +28,7 @@ ok(
     /account\.js\?v=20261118b/.test(sw) &&
     /20261118d/.test(sw)
 );
-ok("shell ver", /const SHELL_VER = "20261118b"/.test(accountJs));
+ok("shell ver", /const SHELL_VER = "20261118e"/.test(accountJs));
 ok("files exist", existsSync("account.js") && existsSync("account.css"));
 
 if (failed) {

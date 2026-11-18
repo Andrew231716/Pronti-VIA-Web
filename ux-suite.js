@@ -1559,11 +1559,20 @@
     }
   }
 
+  let resumeTarget;
+
   function renderHomeResume() {
     const existing = document.querySelector("#root .pv-home-resume");
     const host = document.querySelector("#root main.app-shell");
     if (tripAuth() || !host) {
       existing?.remove();
+      if (resumeTarget && tripAuth()?.id === resumeTarget.id) {
+        if (window.ProntiPlatform?.openTravelDay && document.querySelector("#root .trip-cover")) {
+          const preparing = resumeTarget.preparing;
+          resumeTarget = null;
+          window.ProntiPlatform.openTravelDay(preparing);
+        }
+      }
       return;
     }
 
@@ -1600,9 +1609,11 @@
     resume.classList.toggle("pv-resume-accra", /\b(?:accra|ghana)\b/i.test(`${featured.destination} ${featured.title}`));
     const next = featured.next;
     const dates = [featured.start, featured.end].filter(Boolean).map(date => date.split("-").reverse().join("/")).join(" – ");
-    const action = next
-      ? `Prossima tappa · ${[next.date.split("-").reverse().join("/"), next.time, next.title].filter(Boolean).join(" · ")}`
-      : featured.priority === 1 ? "Controlla la preparazione" : "Apri l’itinerario e le prenotazioni.";
+    const preparing = featured.priority === 1;
+    const active = featured.priority === 0;
+    const action = preparing ? "Prima della partenza · documenti e checklist"
+      : active && next ? [next.date, next.time, next.title].filter(Boolean).join(" · ")
+      : active ? "Viaggio in corso" : "";
     const detail = [dates, action].filter(Boolean).join(" · ");
     for (const [selector, value] of [["h3", featured.title], ["p", detail], ["small", featured.status], [".pv-resume-top span", featured.destination || "Viaggio"]]) {
       const node = resume.querySelector(selector);
@@ -1611,6 +1622,12 @@
     }
     const href = "#" + new URLSearchParams({ trip: featured.id, key: featured.key });
     const link = resume.querySelector("a");
+    const label = preparing ? "Prepara il viaggio" : active ? "Apri la giornata di oggi" : "Apri viaggio";
+    if (link.textContent !== label) link.textContent = label;
+    link.onclick = event => {
+      if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey)
+        resumeTarget = preparing || active ? { id: featured.id, preparing } : null;
+    };
     if (link.getAttribute("href") !== href) link.setAttribute("href", href);
   }
 
@@ -5060,6 +5077,12 @@
       tick();
     }, 200);
   });
+  function updateAtMidnight() {
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    setTimeout(() => { tick(); updateAtMidnight(); }, midnight.getTime() - Date.now() + 100);
+  }
+  updateAtMidnight();
   setTimeout(tick, 500);
   document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
   setTimeout(() => {

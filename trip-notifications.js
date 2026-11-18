@@ -122,6 +122,7 @@
     let saved = false;
     if (first && previous?.key === auth.key && previous?.decided) return;
     const modal = dialog("Notifiche del viaggio", `
+      <p>Queste preferenze riguardano il viaggio aperto su questo dispositivo.</p>
       <p>Scegli quali avvisi ricevere anche quando l’app è chiusa.</p>
       <label><input name="updates" type="checkbox"> Aggiunte e modifiche al viaggio</label>
       <label><input name="expenses" type="checkbox"> Promemoria per le spese da saldare</label>

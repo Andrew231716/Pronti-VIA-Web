@@ -498,6 +498,7 @@
       <button type="button" data-es="export-pdf">Esporta riepilogo</button>
       <button type="button" data-es="members-fx">Valute compagni</button>
       <button type="button" data-es="notify">Preferenze notifiche</button>
+      <span role="status" class="pv-es-hint" id="pv-es-export-status"></span>
       <span class="pv-es-hint" id="pv-es-online-hint"></span>
     `;
     const title = host.querySelector(".pv-es-dock-title");
@@ -652,6 +653,7 @@
   }
 
   async function exportCsv() {
+    document.getElementById("pv-es-export-status")?.replaceChildren();
     try {
       const { auth, trip } = await loadTripData();
       const meta = tripMeta(auth.id);
@@ -659,7 +661,7 @@
         typeof window.__pvResolveTripLocalCurrency === "function"
           ? await window.__pvResolveTripLocalCurrency(trip)
           : null;
-      const rows = [["Titolo", "Data", "Pagato da", "Categoria", "EUR", "Valuta locale", "Importo locale", "Tasso", "Quote"]];
+      const rows = [["Titolo", "Data", "Pagato da", "Categoria", "EUR", "Valuta locale", "Importo locale", "Tasso", "Data cambio", "Quote"]];
       const nameOf = (id) => trip.members.find((m) => m.id === id)?.name || id;
       for (const e of trip.expenses || []) {
         const tag = parseFxTag(e.title) || meta.expenses[e.id] || {};
@@ -675,6 +677,7 @@
           localCode,
           localAmount === "" ? "" : String(localAmount),
           tag.rate || meta.expenses[e.id]?.rateLocalPerEur || "",
+          meta.expenses[e.id]?.rateDate || "",
           (e.shares || []).map((s) => `${nameOf(s.member)} ${((s.amount || 0) / 100).toFixed(2)}`).join(" | "),
         ]);
       }
@@ -687,11 +690,12 @@
       const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
       downloadBlob(csv, `spese-${(trip.title || "viaggio").replace(/\s+/g, "-")}.csv`, "text/csv;charset=utf-8");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Export non riuscito");
+      showExportRetry(exportCsv);
     }
   }
 
   async function exportPdf() {
+    document.getElementById("pv-es-export-status")?.replaceChildren();
     try {
       const { auth, trip } = await loadTripData();
       const meta = tripMeta(auth.id);
@@ -732,8 +736,18 @@
       w.document.write(html);
       w.document.close();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Export non riuscito");
+      showExportRetry(exportPdf);
     }
+  }
+
+  function showExportRetry(retry) {
+    const status = document.getElementById("pv-es-export-status");
+    if (!status) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Riprova";
+    button.onclick = retry;
+    status.replaceChildren("Esportazione non riuscita. ", button);
   }
 
   function downloadBlob(content, filename, type) {
@@ -827,12 +841,19 @@
       const file = fileInput.files?.[0];
       const preview = receipt.querySelector("#pv-es-receipt-preview");
       if (!file || !preview) return;
-      if (file.size > 1.8e6) {
-        alert("Scegli un’immagine sotto i 1,5 MB.");
+      let dataUrl;
+      try {
+        dataUrl = await receiptData(file);
+      } catch (error) {
+        if (fileInput.files[0] !== file) return;
         fileInput.value = "";
+        delete preview.dataset.receipt;
+        delete preview.dataset.receiptName;
+        preview.hidden = false;
+        preview.textContent = error.message || "Impossibile leggere lo scontrino.";
         return;
       }
-      const dataUrl = await readFileAsDataUrl(file);
+      if (fileInput.files[0] !== file) return;
       preview.hidden = false;
       preview.innerHTML = file.type.startsWith("image/")
         ? `<img src="${dataUrl}" alt="Scontrino" /><span class="pv-es-hint">${escapeHtml(file.name)}</span>`
@@ -856,6 +877,28 @@
     }
 
     injectRoundingHint(form);
+  }
+
+  async function receiptData(file) {
+    if (file.size <= 1800000) return readFileAsDataUrl(file);
+    if (!file.type.startsWith("image/")) throw new Error("Scegli un PDF sotto 1,8 MB.");
+    const url = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const scale = Math.min(1, 1800 / Math.max(image.width, image.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg", 0.72);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   function readFileAsDataUrl(file) {

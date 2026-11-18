@@ -1578,8 +1578,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261118b";
-const SHELL_VER_KEY = "pv-shell-ver-v1";
+const SHELL_VER = "20261118e";
 
 async function ensureFreshShell() {
   try {
@@ -1595,26 +1594,7 @@ async function ensureFreshShell() {
   } catch {
     /* ignore */
   }
-  try {
-    const prev = localStorage.getItem(SHELL_VER_KEY);
-    if (prev === SHELL_VER) return;
-    localStorage.setItem(SHELL_VER_KEY, SHELL_VER);
-    // Drop stale shell caches quietly; reload at most once per tab session.
-    if ("caches" in window) {
-      const keys = await caches.keys().catch(() => []);
-      await Promise.all(
-        keys
-          .filter((k) => k.startsWith("pv-shell-") && !k.endsWith(SHELL_VER))
-          .map((k) => caches.delete(k).catch(() => false))
-      );
-    }
-    if (prev && !sessionStorage.getItem("pv-shell-reloaded")) {
-      sessionStorage.setItem("pv-shell-reloaded", "1");
-      location.reload();
-    }
-  } catch {
-    /* ignore */
-  }
+
 }
 
 boot().finally(() => {
