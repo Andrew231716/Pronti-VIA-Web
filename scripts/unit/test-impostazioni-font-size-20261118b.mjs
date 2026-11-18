@@ -26,17 +26,17 @@ ok("settings wired on mount", /wireTextSizeControls\(body\)/.test(ux));
 ok("hub aspetto select", /id="pv-text-size"/.test(plat) && /setTextSize: applyTextSize/.test(plat));
 ok(
   "stamps",
-  /account\.js\?v=20261118b/.test(index) &&
+  /account\.js\?v=20261118f/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
-    /ux-suite-20261118d\.js/.test(index) &&
+    /ux-suite-20261118f\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(index) &&
-    /20261118d/.test(sw)
+    /20261118f/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/ux-suite-20261118d.js") &&
+  existsSync("assets/ux-suite-20261118f.js") &&
     existsSync("assets/pv-platform-20261118c.js") &&
-    /const STYLE_VER = "20261118d"/.test(readFileSync("assets/ux-suite-20261118d.js", "utf8")) &&
+    /const STYLE_VER = "20261118f"/.test(readFileSync("assets/ux-suite-20261118f.js", "utf8")) &&
     /const VER = "20261118c"/.test(readFileSync("assets/pv-platform-20261118c.js", "utf8"))
 );
 

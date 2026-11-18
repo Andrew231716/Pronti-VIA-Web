@@ -39,56 +39,64 @@
 
   const PACKING_TEMPLATES = {
     Mare: [
-      "Costume e asciugamano",
-      "Crema solare",
-      "Occhiali da sole",
-      "Ciabatte",
-      "Cappello",
-      "Documenti e assicurazione",
-      "Caricabatterie",
-      "Medicinali di base",
+      { title: "Costume e asciugamano", section: "Abbigliamento" },
+      { title: "Crema solare", section: "Igiene" },
+      { title: "Occhiali da sole", section: "Abbigliamento" },
+      { title: "Ciabatte", section: "Abbigliamento" },
+      { title: "Cappello", section: "Abbigliamento" },
+      { title: "Documenti e assicurazione", section: "Documenti" },
+      { title: "Caricabatterie", section: "Elettronica" },
+      { title: "Medicinali di base", section: "Farmaci" },
     ],
     Città: [
-      "Scarpe comode",
-      "Adattatore prese",
-      "Power bank",
-      "Documenti e biglietti",
-      "Ombrello leggero",
-      "Borraccia",
-      "Medicinali di base",
-      "Caricabatterie",
+      { title: "Scarpe comode", section: "Abbigliamento" },
+      { title: "Adattatore prese", section: "Elettronica" },
+      { title: "Power bank", section: "Elettronica" },
+      { title: "Documenti e biglietti", section: "Documenti" },
+      { title: "Ombrello leggero", section: "Abbigliamento" },
+      { title: "Borraccia", section: "Altro" },
+      { title: "Medicinali di base", section: "Farmaci" },
+      { title: "Caricabatterie", section: "Elettronica" },
     ],
     Montagna: [
-      "Scarponcini",
-      "Giacca antivento",
-      "Pile / strati",
-      "Borraccia",
-      "Crema solare",
-      "Kit primo soccorso",
-      "Torcia / frontale",
-      "Documenti",
+      { title: "Scarponcini", section: "Abbigliamento" },
+      { title: "Giacca antivento", section: "Abbigliamento" },
+      { title: "Pile / strati", section: "Abbigliamento" },
+      { title: "Borraccia", section: "Altro" },
+      { title: "Crema solare", section: "Igiene" },
+      { title: "Kit primo soccorso", section: "Farmaci" },
+      { title: "Torcia / frontale", section: "Altro" },
+      { title: "Documenti", section: "Documenti" },
     ],
     Famiglia: [
-      "Documenti di tutti",
-      "Snack e borracce",
-      "Giochi / cuffie",
-      "Cambio extra",
-      "Medicinali e termometro",
-      "Crema solare",
-      "Caricabatterie",
-      "Prenotazioni stampate / offline",
+      { title: "Documenti di tutti", section: "Documenti" },
+      { title: "Snack e borracce", section: "Altro" },
+      { title: "Giochi / cuffie", section: "Altro" },
+      { title: "Cambio extra", section: "Abbigliamento" },
+      { title: "Medicinali e termometro", section: "Farmaci" },
+      { title: "Crema solare", section: "Igiene" },
+      { title: "Caricabatterie", section: "Elettronica" },
+      { title: "Prenotazioni stampate / offline", section: "Documenti" },
     ],
   };
+  const PACKING_SECTION_ORDER = [
+    "Documenti",
+    "Abbigliamento",
+    "Igiene",
+    "Farmaci",
+    "Elettronica",
+    "Altro",
+  ];
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261112r") return;
+    if (style && style.dataset.pvReady === "20261118f") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261112r";
+    style.dataset.pvReady = "20261118f";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -208,9 +216,31 @@
         #${ROOT_ID} .pv-card-actions{grid-template-columns:1fr 1fr}
         #${ROOT_ID} .pv-bubble{font-size:.94rem;line-height:1.55}
       }
-      .pv-extras-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px}
-      .pv-extras-bar button,.pv-budget-box button,.pv-chart-box button{appearance:none;border:1px solid #c9dbdb;background:#fff;color:#184047;border-radius:999px;padding:7px 12px;font:600 12px inherit;cursor:pointer}
+      .pv-extras-bar{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 14px;align-items:center}
+      .pv-extras-bar button,.pv-budget-box button,.pv-chart-box button{appearance:none;border:1px solid #c9dbdb;background:#fff;color:#184047;border-radius:999px;padding:7px 12px;font:600 12px inherit;cursor:pointer;min-height:40px}
       .pv-extras-bar button:hover,.pv-budget-box button:hover{background:#eef7f7}
+      .pv-extras-bar button[aria-busy="true"]{opacity:.65;pointer-events:none}
+      .pv-pack-cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+      .pv-pack-cats button{appearance:none;border:1px solid var(--diary-line,#d5e3e6);background:var(--diary-paper,#fff);color:var(--diary-ink,#12343c);border-radius:999px;padding:6px 11px;font:650 .78rem/1.2 inherit;cursor:pointer;min-height:36px}
+      .pv-pack-cats button[aria-pressed="true"]{background:var(--diary-action,#16564b);border-color:var(--diary-action,#16564b);color:#fff}
+      .pv-pack-cat-label{margin:.85rem 0 .4rem;padding:0 .1rem;font:750 .72rem/1.2 inherit;letter-spacing:.06em;text-transform:uppercase;color:var(--diary-muted,#5a727c)}
+      .pv-pack-cat-label:first-child{margin-top:.2rem}
+      .pv-cover-countdown{
+        position:absolute;left:.85rem;right:.85rem;z-index:4;pointer-events:none;
+        top:auto;bottom:calc(28% + .35rem);display:flex;flex-direction:column;gap:.1rem;
+        align-items:flex-start;max-width:min(92%,22rem);
+        color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.55);
+      }
+      .pv-cover-countdown .pv-cover-count-label{
+        margin:0;padding:.2rem .55rem;border-radius:999px;
+        background:rgba(8,24,22,.42);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+        font:700 .72rem/1.2 inherit;letter-spacing:.05em;text-transform:uppercase;
+      }
+      .pv-cover-countdown .pv-cover-count-value{
+        margin:.2rem 0 0;font:700 clamp(2.1rem,9vw,3.1rem)/1.02 var(--diary-display,Georgia,serif);letter-spacing:-.035em;
+      }
+      .pv-cover-countdown .pv-cover-count-meta{margin:0;font:600 .88rem/1.3 inherit;opacity:.92}
+      #root .trip-cover[data-pv-trip-cover]{position:relative;overflow:hidden}
       #${ROOT_ID} .pv-pack-cards,#${ROOT_ID} .pv-ai-actions{margin:10px 0;padding:12px;border:1px solid #d5e8e8;border-radius:14px;background:#f7fbfb}
       #${ROOT_ID} .pv-pack-lead{margin:0 0 8px;font-size:.86rem;color:#2f4e55}
       #${ROOT_ID} .pv-pack-list{list-style:none;margin:0;padding:0}
@@ -2422,9 +2452,17 @@
       existing.add(key);
       added += 1;
     }
-    if (added) await saveTrip(auth, trip, data.revision);
-    if (reload && added) setTimeout(() => location.reload(), 450);
-    return { added, total: trip.checklist.length };
+    let savedTrip = trip;
+    if (added) {
+      const saved = await saveTrip(auth, trip, data.revision);
+      savedTrip = saved?.trip || trip;
+      softRefreshTrip(auth, savedTrip);
+    }
+    // Soft refresh only — hard reload sent users back to Home.
+    if (reload && added) {
+      /* kept for API compat; softRefreshTrip already ran */
+    }
+    return { added, total: savedTrip.checklist?.length || trip.checklist.length };
   }
 
   async function appendTripNote(text) {
@@ -3879,7 +3917,12 @@ Regole:
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = name;
-      btn.onclick = () => void applyPackingTemplate(name);
+      btn.setAttribute("aria-label", `Aggiungi template valigia ${name}`);
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void applyPackingTemplate(name, btn);
+      };
       bar.appendChild(btn);
     }
     const ask = document.createElement("button");
@@ -3903,20 +3946,53 @@ Regole:
     else host.appendChild(bar);
   }
 
-  async function applyPackingTemplate(name) {
+  function softRefreshTrip(auth, trip) {
     try {
-      const { auth, data } = await loadTrip();
+      window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth?.id, trip } }));
+    } catch { /* ignore */ }
+    // Keep hash/tab: never hard-reload (that was kicking users to Home).
+    try { window.dispatchEvent(new Event("hashchange")); } catch { /* ignore */ }
+  }
+
+  async function applyPackingTemplate(name, button) {
+    if (button) button.setAttribute("aria-busy", "true");
+    try {
+      const { auth, data } = await loadTrip({ force: true });
       const trip = structuredClone(data.trip);
       if (!Array.isArray(trip.checklist)) trip.checklist = [];
       const existing = new Set(trip.checklist.map((c) => String(c.title || "").toLowerCase()));
-      for (const title of PACKING_TEMPLATES[name] || []) {
-        if (existing.has(title.toLowerCase())) continue;
-        trip.checklist.push({ id: uid(), title, done: false });
+      let added = 0;
+      for (const raw of PACKING_TEMPLATES[name] || []) {
+        const item = typeof raw === "string" ? { title: raw, section: "" } : raw;
+        const title = String(item.title || "").trim();
+        if (!title || existing.has(title.toLowerCase())) continue;
+        trip.checklist.push({
+          id: uid(),
+          title,
+          done: false,
+          section: String(item.section || "").trim(),
+        });
+        existing.add(title.toLowerCase());
+        added += 1;
       }
-      await saveTrip(auth, trip, data.revision);
-      location.reload();
+      if (added) {
+        const saved = await saveTrip(auth, trip, data.revision);
+        softRefreshTrip(auth, saved?.trip || trip);
+      }
+      if (typeof window.__pvToast === "function") {
+        window.__pvToast(
+          added ? `Template «${name}»: +${added} voci in Valigia` : `«${name}» già in valigia`,
+          added ? "ok" : "warn"
+        );
+      }
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Non riesco ad applicare il template");
+      if (typeof window.__pvToast === "function") {
+        window.__pvToast(err instanceof Error ? err.message : "Template non applicato", "err");
+      } else {
+        alert(err instanceof Error ? err.message : "Non riesco ad applicare il template");
+      }
+    } finally {
+      if (button) button.removeAttribute("aria-busy");
     }
   }
 
@@ -6057,9 +6133,83 @@ Regole:
     }, { once: true });
   }
 
+  function daysUntilIso(iso) {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return null;
+    const start = new Date(t);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.round((start - today) / 86400000);
+  }
+
+  function readOpenTripStartDate() {
+    try {
+      const hash = String(location.hash || "");
+      const id = decodeURIComponent((hash.match(/[#&?]trip=([^&]+)/) || [])[1] || "");
+      if (!id) return "";
+      const row = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[id];
+      const trip = row?.trip || {};
+      return String(trip.startDate || trip.start || trip.from || "").trim();
+    } catch {
+      return "";
+    }
+  }
+
+  function injectCoverCountdown() {
+    const cover = document.querySelector("#root .trip-cover[data-pv-trip-cover], #root .trip-cover");
+    if (!cover) return;
+    const start = readOpenTripStartDate();
+    const days = daysUntilIso(start);
+    let box = cover.querySelector(":scope > .pv-cover-countdown");
+    if (days == null) {
+      box?.remove();
+      return;
+    }
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "pv-cover-countdown";
+      box.setAttribute("aria-live", "polite");
+      cover.appendChild(box);
+    }
+    let label;
+    let value;
+    let meta = "";
+    if (days > 1) {
+      label = "Alla partenza";
+      value = `Tra ${days} giorni`;
+    } else if (days === 1) {
+      label = "Alla partenza";
+      value = "Domani";
+    } else if (days === 0) {
+      label = "Partenza";
+      value = "Oggi";
+    } else if (days >= -1) {
+      label = "In viaggio";
+      value = "Buon viaggio";
+    } else {
+      label = "Vacanza";
+      value = `Da ${Math.abs(days)} giorni`;
+    }
+    try {
+      const d = new Date(start);
+      if (!Number.isNaN(+d)) {
+        meta = d.toLocaleDateString("it-IT", { weekday: "short", day: "numeric", month: "short" });
+      }
+    } catch { /* ignore */ }
+    const sig = `${days}|${value}|${meta}`;
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    box.innerHTML = `<span class="pv-cover-count-label">${label}</span><p class="pv-cover-count-value">${value}</p>${
+      meta ? `<p class="pv-cover-count-meta">${meta}</p>` : ""
+    }`;
+  }
+
   function syncTripCoverToDestination() {
     const cover = document.querySelector(".trip-cover");
     if (!cover) return;
+    injectCoverCountdown();
     const destination = (
       cover.querySelector(".destination")?.textContent ||
       cover.querySelector("h1")?.textContent ||
@@ -6968,6 +7118,7 @@ Regole:
     injectMemberRemoveControls();
     fixItalianTappeGrammar();
     syncTripCoverToDestination();
+    injectCoverCountdown();
     ensureShareToast();
     injectCloudStatusBanner();
     bindForceDeleteStop();

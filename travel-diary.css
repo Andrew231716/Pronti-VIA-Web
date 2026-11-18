@@ -408,11 +408,13 @@ body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !i
   border-radius: 1rem;
   background: var(--diary-paper);
   overflow-wrap: anywhere;
-  animation: pv-panel-in .22s ease-out;
+  animation: pv-panel-in .18s ease-out;
+  will-change: opacity;
+  contain: layout style;
 }
 @keyframes pv-panel-in {
-  from { opacity: .55; transform: translateY(6px); }
-  to { opacity: 1; transform: none; }
+  from { opacity: .72; }
+  to { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   #root .primary-panel > [role="tabpanel"]:not([hidden]) { animation: none; }
@@ -1099,11 +1101,67 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
 
 /* Section panels under the trip menu: clear, simple, consistent */
 #root .primary-panel > [role="tabpanel"]:not([hidden]) {
-  gap: .75rem;
+  gap: .65rem;
   padding: clamp(.9rem, 3.2vw, 1.35rem);
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--diary-wash) 55%, transparent), transparent 4.5rem),
     var(--diary-paper);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] {
+  gap: .55rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem .75rem;
+  margin-block: .15rem .35rem;
+  padding: .65rem .75rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools label {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip {
+  margin-top: .15rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button {
+  min-width: 5.5rem;
+  padding: .55rem .7rem;
+}
+#root .pv-cover-countdown {
+  position: absolute;
+  left: .85rem;
+  right: .85rem;
+  bottom: calc(26% + .2rem);
+  z-index: 4;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+  max-width: min(92%, 22rem);
+  color: #fff;
+  text-shadow: 0 2px 10px rgb(0 0 0 / .55);
+}
+#root .pv-cover-countdown .pv-cover-count-label {
+  margin: 0;
+  width: fit-content;
+  padding: .22rem .55rem;
+  border-radius: 999px;
+  background: rgb(8 24 22 / .42);
+  font: 700 .72rem/1.2 inherit;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+#root .pv-cover-countdown .pv-cover-count-value {
+  margin: .15rem 0 0;
+  font: 700 clamp(2.1rem, 9vw, 3.1rem)/1.02 var(--diary-display);
+  letter-spacing: -.035em;
+}
+#root .pv-cover-countdown .pv-cover-count-meta {
+  margin: 0;
+  font: 600 .88rem/1.3 inherit;
+  opacity: .92;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section] > .section-heading h2 {
   margin: 0;

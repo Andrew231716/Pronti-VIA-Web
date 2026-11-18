@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261118d";
+  const STYLE_VER = "20261118f";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -183,10 +183,36 @@
       #root .section-heading > :not(.pv-section-icon):not(button):not(.button){min-width:0;flex:1 1 auto}
       #root .section-heading > :is(button,.button){margin-inline-start:auto;flex:0 0 auto}
       #root .primary-panel > [role="tabpanel"]:not([hidden]){
-        display:flex;flex-direction:column;gap:.7rem;
+        display:flex;flex-direction:column;gap:.65rem;
       }
       #root .primary-panel > [role="tabpanel"] > .section-heading,
       #root .primary-panel > [role="tabpanel"] > .pv-section-guide{margin:0}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .section-heading{order:-30}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide{order:-20}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-planning-tools,
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-event-section,
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > [data-pv-planning]{order:-10}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip{
+        display:flex;gap:.45rem;overflow-x:auto;-webkit-overflow-scrolling:touch;
+        scroll-snap-type:x proximity;padding:.2rem 0 .35rem;scrollbar-width:thin;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button{
+        flex:0 0 auto;scroll-snap-align:start;min-width:5.6rem;
+      }
+      #root .pv-pack-cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 .55rem}
+      #root .pv-pack-cats button{
+        appearance:none;border:1px solid var(--diary-line,#d5e3e6);background:var(--diary-paper,#fff);
+        color:var(--diary-ink,#12343c);border-radius:999px;padding:6px 11px;font:650 .78rem/1.2 inherit;
+        cursor:pointer;min-height:36px;
+      }
+      #root .pv-pack-cats button[aria-pressed="true"]{
+        background:var(--diary-action,#16564b);border-color:var(--diary-action,#16564b);color:#fff;
+      }
+      #root .pv-pack-cat-label{
+        margin:.75rem 0 .35rem;font:750 .72rem/1.2 inherit;letter-spacing:.06em;text-transform:uppercase;
+        color:var(--diary-muted,#5a727c);
+      }
+      #root [data-pv-section="packing"] .check-row{margin:0}
       html[data-pv-trip-phase="prep"] #root .main-tabs [role="tab"][data-pv-phase="trip"],
       html[data-pv-trip-phase="trip"] #root .main-tabs [role="tab"][data-pv-phase="prep"]{
         display:none!important;
@@ -4385,20 +4411,108 @@
       const assigned = meta.packingAssignments || {};
       const members = trip.members || [];
       const rows = [...panel.querySelectorAll(".check-row")];
-      const applyFilter = () => {
-        const onlyOpen = panel.querySelector('[data-pv-planning="packing"] input')?.checked;
-        for (const item of rows) item.hidden = Boolean(onlyOpen && item.classList.contains("done"));
+      const inferPackSection = (title, sectionName) => {
+        const given = String(sectionName || "").trim();
+        if (given) return given;
+        const t = String(title || "").toLowerCase();
+        if (/passaport|document|bigliett|assicuraz|prenotaz|badge/.test(t)) return "Documenti";
+        if (/costume|scarpe|giacca|pile|cappello|ciabatte|occhiali|abbigliamento|strati|scarpon|cambio|ombrello/.test(t)) {
+          return "Abbigliamento";
+        }
+        if (/crema|igiene|spazzolino|dentifric|sapone|doccia/.test(t)) return "Igiene";
+        if (/medicin|farmac|cerott|repellent|termometro|primo soccorso/.test(t)) return "Farmaci";
+        if (/carica|power|cavo|adattator|elettron|cuffie/.test(t)) return "Elettronica";
+        return "Altro";
       };
-      const controls = mount("packing", "filter", tools => {
-        tools.innerHTML = '<label><input type="checkbox"> Mostra solo da fare</label>';
+      const sectionOrder = ["Documenti", "Abbigliamento", "Igiene", "Farmaci", "Elettronica", "Altro"];
+      rows.forEach((element, index) => {
+        const item = items[index];
+        if (!item) return;
+        element.dataset.pvPackSection = inferPackSection(item.title, item.section);
       });
-      controls.querySelector("input").onchange = applyFilter;
+      const sections = [...new Set(rows.map((row) => row.dataset.pvPackSection).filter(Boolean))];
+      sections.sort((a, b) => {
+        const ia = sectionOrder.indexOf(a);
+        const ib = sectionOrder.indexOf(b);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a.localeCompare(b, "it");
+      });
+      const applyFilter = () => {
+        const onlyOpen = panel.querySelector('[data-pv-planning="packing"] input[type="checkbox"]')?.checked;
+        const activeCat =
+          panel.querySelector(".pv-pack-cats button[aria-pressed='true']")?.dataset?.cat || "all";
+        for (const item of rows) {
+          const doneHide = Boolean(onlyOpen && item.classList.contains("done"));
+          const catHide = activeCat !== "all" && item.dataset.pvPackSection !== activeCat;
+          item.hidden = doneHide || catHide;
+        }
+        panel.querySelectorAll(".pv-pack-cat-label").forEach((label) => {
+          const cat = label.dataset.cat;
+          const visible = rows.some(
+            (row) => row.dataset.pvPackSection === cat && !row.hidden
+          );
+          label.hidden = !visible;
+        });
+      };
+      const controls = mount(
+        "packing",
+        JSON.stringify(["filter", sections]),
+        (tools) => {
+          const chips = [
+            `<button type="button" data-cat="all" aria-pressed="true">Tutte</button>`,
+            ...sections.map(
+              (cat) =>
+                `<button type="button" data-cat="${escapeHtml(cat)}" aria-pressed="false">${escapeHtml(cat)}</button>`
+            ),
+          ].join("");
+          tools.innerHTML = `${
+            sections.length
+              ? `<div class="pv-pack-cats" role="group" aria-label="Categorie valigia">${chips}</div>`
+              : ""
+          }<label><input type="checkbox"> Mostra solo da fare</label>`;
+          tools.querySelector(".pv-pack-cats")?.addEventListener("click", (ev) => {
+            const btn = ev.target?.closest?.("button[data-cat]");
+            if (!btn) return;
+            ev.preventDefault();
+            ev.stopPropagation();
+            tools.querySelectorAll(".pv-pack-cats button").forEach((el) => {
+              el.setAttribute("aria-pressed", el === btn ? "true" : "false");
+            });
+            applyFilter();
+          });
+        }
+      );
+      controls.querySelector("input[type='checkbox']").onchange = applyFilter;
+      // Visual category labels + stable order without breaking React row nodes.
+      const listHost =
+        panel.querySelector(".checks, .checklist, .packing-list, [data-packing-list]") ||
+        rows[0]?.parentElement;
+      if (listHost && rows.length) {
+        listHost.querySelectorAll(".pv-pack-cat-label").forEach((el) => el.remove());
+        let order = 1;
+        for (const cat of sections) {
+          const label = document.createElement("p");
+          label.className = "pv-pack-cat-label";
+          label.dataset.cat = cat;
+          label.textContent = cat;
+          label.style.order = String(order++);
+          listHost.appendChild(label);
+          for (const row of rows) {
+            if (row.dataset.pvPackSection !== cat) continue;
+            row.style.order = String(order++);
+          }
+        }
+        if (listHost.dataset.pvPackFlex !== "1") {
+          listHost.dataset.pvPackFlex = "1";
+          listHost.style.display = "flex";
+          listHost.style.flexDirection = "column";
+        }
+      }
       applyFilter();
       rows.forEach((element, index) => {
         const item = items[index];
         if (!item) return;
         const current = assigned[item.id] || "";
-        const signature = JSON.stringify([item.id, current, members, canEdit]);
+        const signature = JSON.stringify([item.id, current, members, canEdit, element.dataset.pvPackSection]);
         if (element.dataset.pvAssignment === signature) return;
         element.dataset.pvAssignment = signature;
         element.querySelector(".pv-packing-owner")?.remove();
@@ -5068,7 +5182,7 @@
     tick._t = setTimeout(() => {
       tick._t = 0;
       tick();
-    }, 420);
+    }, 480);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => {

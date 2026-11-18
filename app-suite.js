@@ -1781,7 +1781,7 @@
   const obs = new MutationObserver(() => {
     clearTimeout(tick._t);
     // Coalesce React churn — fewer layout thrash passes while typing/switching tabs.
-    tick._t = setTimeout(tick, 220);
+    tick._t = setTimeout(tick, 380);
   });
   obs.observe(document.documentElement, { childList: true, subtree: true });
   addEventListener("hashchange", () => setTimeout(tick, 280));
