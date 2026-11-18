@@ -18,13 +18,14 @@ const index = readFileSync("index.html", "utf8");
 
 ok("theme toggle button", /pv-theme-toggle/.test(accountJs) && /cycleThemeMode/.test(accountJs) && /ensureThemeToggle/.test(accountJs));
 ok("theme mounts in topbar", /placeThemeToggle/.test(accountJs) && /pv-theme-toggle--topbar/.test(accountJs) && /#root \.topbar/.test(accountJs));
+ok("theme mounts beside Nuovo viaggio on home", /pv-theme-toggle--home/.test(accountJs) && /pv-home-nuovo/.test(accountJs) && /nuovo viaggio/i.test(accountJs));
 ok("default system theme", /mode: "system"/.test(accountJs) && /THEME_CYCLE/.test(accountJs));
-ok("theme toggle css", /pv-theme-toggle--topbar/.test(accountCss) && /margin-left:\s*auto/.test(accountCss));
+ok("theme toggle css", /pv-theme-toggle--topbar/.test(accountCss) && /pv-theme-toggle--home/.test(accountCss) && /pv-home-nuovo/.test(accountCss));
 ok("platform theme API", /cycleTheme/.test(plat) && /getThemeMode/.test(plat) && /setTheme: applyTheme/.test(plat));
 ok("profilo only account + danger", /openAccountMenu[\s\S]*Zona pericolosa[\s\S]*Il tuo account[\s\S]*__pvOpenAccountMenu/.test(ux) && /hasOwnAccount/.test(ux));
 ok("profilo no azioni rapide", !/openAccountMenu[\s\S]*Azioni rapide[\s\S]*__pvOpenAccountMenu/.test(ux));
 ok("tools moved to impostazioni", /settingsOrganizzaHtml[\s\S]*Cerca nel viaggio/.test(ux));
-ok("stamps wired", /account\.js\?v=20261117g/.test(index) && /ux-suite-20261117h\.js/.test(index) && /pv-platform-20261112m\.js/.test(index));
+ok("stamps wired", /account\.js\?v=20261118a/.test(index) && /ux-suite-20261117h\.js/.test(index) && /pv-platform-20261112m\.js/.test(index));
 ok("assets exist", existsSync("assets/ux-suite-20261117h.js") && existsSync("assets/pv-platform-20261112m.js"));
 
 if (failed) {

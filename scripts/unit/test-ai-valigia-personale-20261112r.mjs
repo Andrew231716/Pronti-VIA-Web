@@ -38,7 +38,7 @@ ok(
 );
 ok(
   "sw + assets",
-  /20261117g/.test(sw) &&
+  /20261118a/.test(sw) &&
     existsSync("assets/api-shim-20261112r.js") &&
     existsSync("assets/magic-extras-20261117a.js") &&
     existsSync("assets/app-suite-20261112r.js") &&

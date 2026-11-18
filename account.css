@@ -69,11 +69,19 @@ body.pv-primary-nav-ready {
   }
   .section-heading {
     flex-wrap: wrap !important;
-    align-items: flex-start !important;
+    align-items: center !important;
     gap: 10px !important;
   }
-  .section-heading .button {
+  /* Full-width CTA only when Sistema is not beside it */
+  .section-heading .button:not(.pv-home-nuovo):not(:has(+ #pv-theme-toggle)) {
     width: 100%;
+    justify-content: center;
+  }
+  .section-heading .button.pv-home-nuovo,
+  .section-heading .button:has(+ #pv-theme-toggle) {
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
     justify-content: center;
   }
 }
@@ -460,7 +468,7 @@ body.pv-primary-nav-ready {
   color: var(--pv-account-teal);
 }
 
-/* Theme toggle — in SPA topbar next to brand; floats only on login gate */
+/* Theme toggle — home beside Nuovo viaggio; trip topbar; float on login gate */
 #pv-theme-toggle.pv-theme-toggle {
   appearance: none;
   display: inline-flex;
@@ -508,6 +516,31 @@ body.pv-primary-nav-ready {
   order: 20;
 }
 
+#pv-theme-toggle.pv-theme-toggle--home {
+  position: static;
+  z-index: auto;
+  flex: 0 0 auto;
+  align-self: center;
+  min-height: 44px;
+  margin-left: 0;
+  box-shadow: none;
+}
+
+/* Nuovo viaggio + Sistema share one flex row on home */
+#root .button.pv-home-nuovo,
+#root .button:has(+ #pv-theme-toggle.pv-theme-toggle--home) {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+#root *:has(> #pv-theme-toggle.pv-theme-toggle--home) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
 html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle {
   background: rgba(36, 56, 61, 0.92);
   border-color: rgba(231, 242, 243, 0.16);
@@ -515,18 +548,22 @@ html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle {
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
 }
 
-html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle--topbar {
+html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle--topbar,
+html[data-pv-theme="dark"] #pv-theme-toggle.pv-theme-toggle--home {
   background: color-mix(in srgb, var(--diary-paper, #17272c) 88%, #24383d);
   box-shadow: none;
 }
 
 @media (max-width: 380px) {
-  #pv-theme-toggle .pv-theme-toggle-label {
+  #pv-theme-toggle.pv-theme-toggle--float .pv-theme-toggle-label,
+  #pv-theme-toggle.pv-theme-toggle--topbar .pv-theme-toggle-label {
     display: none;
   }
-  #pv-theme-toggle.pv-theme-toggle {
+  #pv-theme-toggle.pv-theme-toggle--float,
+  #pv-theme-toggle.pv-theme-toggle--topbar {
     width: 34px;
     height: 34px;
+    min-height: 34px;
     padding: 0;
     justify-content: center;
   }
