@@ -34,7 +34,17 @@ ok(
   /api-shim-20261112r\.js/.test(index) &&
     /magic-extras-20261117a\.js/.test(index) &&
     /app-suite-20261112r\.js/.test(index) &&
-    existsSync("assets/ux-suite-20261118c.js"));
+    /ux-suite-20261118d\.js/.test(index)
+);
+ok(
+  "sw + assets",
+  /20261118d/.test(sw) &&
+    existsSync("assets/api-shim-20261112r.js") &&
+    existsSync("assets/magic-extras-20261117a.js") &&
+    existsSync("assets/app-suite-20261112r.js") &&
+    existsSync("assets/ux-suite-20261118d.js")
+);
+
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

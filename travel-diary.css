@@ -85,8 +85,8 @@ html[data-pv-theme="dark"] .share-box h3 {
 
 #root .section-heading,
 #root .refund-heading {
-  border-bottom: 1px solid var(--diary-line);
-  padding-bottom: .7rem;
+  border-bottom: 0;
+  padding-bottom: .35rem;
 }
 
 #root .section-heading h2 {
@@ -1071,8 +1071,8 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
 }
 @media (max-width: 640px) {
   #root .trip-toolbar .toolbar-actions .button {
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 8.5rem;
   }
 }
 @media (min-width: 641px) {
@@ -1095,4 +1095,112 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
     padding: .65rem .85rem !important;
   }
   #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
+}
+
+/* Section panels under the trip menu: clear, simple, consistent */
+#root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  gap: .75rem;
+  padding: clamp(.9rem, 3.2vw, 1.35rem);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--diary-wash) 55%, transparent), transparent 4.5rem),
+    var(--diary-paper);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section] > .section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 5.2vw, 1.7rem);
+}
+#root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card) {
+  padding: .85rem .95rem;
+  border-width: 1px;
+  border-style: solid;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+#root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row):hover {
+  border-color: color-mix(in srgb, var(--diary-accent) 35%, var(--diary-line));
+  box-shadow: 0 6px 18px rgba(16, 42, 48, .07);
+}
+#root .primary-panel .empty-state {
+  text-align: center;
+  padding: 1.35rem 1rem;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--diary-wash) 80%, transparent);
+}
+#root .primary-panel .day-strip {
+  gap: .45rem;
+  padding: .15rem 0 .25rem;
+}
+#root .primary-panel .day-strip > button {
+  border-radius: 999px !important;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  font-weight: 650;
+}
+#root .primary-panel .day-strip > button.selected,
+#root .primary-panel .day-strip > button[aria-pressed="true"],
+#root .primary-panel .day-strip > button[data-state="active"] {
+  background: var(--diary-action) !important;
+  border-color: var(--diary-action) !important;
+  color: #fff !important;
+}
+#root .primary-panel .check-row {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-height: 52px;
+}
+#root .primary-panel .check-row.done {
+  opacity: .62;
+}
+#root .primary-panel .money-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: .55rem;
+}
+#root .primary-panel .money-stats > div {
+  border-radius: .9rem;
+  padding: .75rem .8rem;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-wash);
+}
+#root .primary-panel .notes-paper {
+  min-height: 12rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  line-height: 1.55;
+}
+#root .primary-panel .budget-card {
+  padding: .95rem 1rem;
+}
+#root .primary-panel .pv-planning-tools {
+  border: 1px solid color-mix(in srgb, var(--diary-line) 80%, transparent);
+  background: color-mix(in srgb, var(--diary-wash) 88%, transparent);
+}
+#root .trip-toolbar {
+  align-items: center;
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  gap: 8px;
+}
+#root .trip-toolbar .travelers > span:last-child {
+  font-size: 12.5px;
+}
+#root .app-shell .workspace-tabs .main-tabs {
+  border: 1px solid var(--diary-line) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--diary-line) 45%, transparent);
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+  letter-spacing: -.01em;
+}
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    min-height: 72px !important;
+    gap: .4rem;
+    padding: .5rem .25rem !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row) {
+    transition: none;
+  }
 }

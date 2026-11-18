@@ -28,16 +28,16 @@ ok(
   "stamps",
   /account\.js\?v=20261118b/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
-    /ux-suite-20261118b\.js/.test(index) &&
-    /pv-platform-20261118b\.js/.test(index) &&
-    /20261118b/.test(sw)
+    /ux-suite-20261118d\.js/.test(index) &&
+    /pv-platform-20261118c\.js/.test(index) &&
+    /20261118d/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/ux-suite-20261118b.js") &&
-    existsSync("assets/pv-platform-20261118b.js") &&
-    /const STYLE_VER = "20261118b"/.test(readFileSync("assets/ux-suite-20261118b.js", "utf8")) &&
-    /const VER = "20261118b"/.test(readFileSync("assets/pv-platform-20261118b.js", "utf8"))
+  existsSync("assets/ux-suite-20261118d.js") &&
+    existsSync("assets/pv-platform-20261118c.js") &&
+    /const STYLE_VER = "20261118d"/.test(readFileSync("assets/ux-suite-20261118d.js", "utf8")) &&
+    /const VER = "20261118c"/.test(readFileSync("assets/pv-platform-20261118c.js", "utf8"))
 );
 
 if (failed) {

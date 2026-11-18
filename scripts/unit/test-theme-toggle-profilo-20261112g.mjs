@@ -25,8 +25,10 @@ ok("platform theme API", /cycleTheme/.test(plat) && /getThemeMode/.test(plat) &&
 ok("profilo only account + danger", /openAccountMenu[\s\S]*Zona pericolosa[\s\S]*Il tuo account[\s\S]*__pvOpenAccountMenu/.test(ux) && /hasOwnAccount/.test(ux));
 ok("profilo no azioni rapide", !/openAccountMenu[\s\S]*Azioni rapide[\s\S]*__pvOpenAccountMenu/.test(ux));
 ok("tools moved to impostazioni", /settingsOrganizzaHtml[\s\S]*Cerca nel viaggio/.test(ux));
-ok("stamps wired", /account\.js\?v=20261117g/.test(index) && /ux-suite-20261118c\.js/.test(index) && /pv-platform-20261118c\.js/.test(index));
-ok("assets exist", existsSync("assets/ux-suite-20261118c.js") && existsSync("assets/pv-platform-20261118c.js"));
+ok("stamps wired", /account\.js\?v=20261118b/.test(index) && /ux-suite-20261118d\.js/.test(index) && /pv-platform-20261112m\.js/.test(index));
+ok("assets exist", existsSync("assets/ux-suite-20261118d.js") && existsSync("assets/pv-platform-20261118c.js"));
+
+
 if (failed) {
   console.log(`\n${failed} FAIL`);
   process.exit(1);

@@ -11,13 +11,31 @@ function ok(name, cond, detail = "") {
 }
 
 const ux = readFileSync("ux-suite.js", "utf8");
-  /ux-suite-20261118c\.js/.test(index) &&
-    /travel-diary\.css\?v=20261117h/.test(index) &&
-    /ux-suite-20261118c\.js/.test(sw) &&
-    /20261118c/.test(sw)
+const stamped = readFileSync("assets/ux-suite-20261118d.js", "utf8");
+const diary = readFileSync("travel-diary.css", "utf8");
+const index = readFileSync("index.html", "utf8");
+const sw = readFileSync("sw.js", "utf8");
+
+ok("phase key + meta", /TRIP_PHASE_KEY/.test(ux) && /TRIP_TAB_META/.test(ux));
+ok("enhanceTripModeNav wired", /function enhanceTripModeNav\(/.test(ux) && /run\(enhanceTripModeNav\)/.test(ux));
+ok("prep vs trip copy", /Prepara/.test(ux) && /In viaggio/.test(ux));
+ok("Spese short label + distinct icon", /label: "Spese"/.test(ux) && /icon: "spese"/.test(ux) && /ICON_SVG/.test(ux));
+ok("Documenti file icon", /icon: "docs"/.test(ux));
+ok("section guides", /SECTION_GUIDE/.test(ux) && /pv-section-guide/.test(ux));
+ok("toolbar companions open share", /polishTripToolbar/.test(ux) && /Compagni di viaggio/.test(ux));
+ok("hide phase tabs css", /data-pv-trip-phase="prep"/.test(ux) && /data-pv-phase="trip"/.test(ux));
+ok("diary mobile tab stack", /flex-direction: column !important/.test(diary));
+ok("diary toolbar polish", /#root \.trip-toolbar/.test(diary) && /pv-trip-phase/.test(diary));
+ok(
+  "stamps wired",
+  /ux-suite-20261118d\.js/.test(index) &&
+    /travel-diary\.css\?v=20261118d/.test(index) &&
+    /ux-suite-20261118d\.js/.test(sw) &&
+    /20261118d/.test(sw)
 );
-ok("asset mirrors source", existsSync("assets/ux-suite-20261118c.js") && stamped.includes('const STYLE_VER = "20261118c"'));
-ok("style ver bumped", /const STYLE_VER = "20261118c"/.test(ux));ok("harness exists", existsSync("scripts/unit/harness-menu-prep.html"));
+ok("asset mirrors source", existsSync("assets/ux-suite-20261118d.js") && stamped.includes('const STYLE_VER = "20261118d"'));
+ok("style ver bumped", /const STYLE_VER = "20261118d"/.test(ux));
+ok("harness exists", existsSync("scripts/unit/harness-menu-prep.html"));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);
