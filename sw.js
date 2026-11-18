@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261118h`;
+const CACHE = `${CACHE_PREFIX}20261118h-contrast2`;
 const PRECACHE = [
   "./",
   "./index.html",
