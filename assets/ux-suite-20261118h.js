@@ -4945,37 +4945,20 @@
       section === "documents" ? row.trip.meta?.eventDocumentLinks : []) || [];
     const canEdit = row.canEdit !== false && (row.key === auth.key || !row.key);
     injectTripPlanningTools(panel, section, auth, row, canEdit);
+    // React owns [data-pv-event-add] and uses the active trip's edit permission.
+    // Only imported resource links need an enhanced rail.
     let rail = panel.querySelector(".pv-event-section");
+    if (!items.length) {
+      rail?.remove();
+      return;
+    }
     if (!rail) {
       rail = document.createElement("div");
       rail.className = "pv-event-section";
-      const heading = panel.querySelector(".section-heading");
-      if (heading?.parentElement === panel) heading.after(rail);
-      else panel.prepend(rail);
-    }
-    rail.dataset.section = section;
-    // Keep the add button stable — rewriting rail.innerHTML made it flash on every tick.
-    let addBtn = rail.querySelector("[data-pv-event-add]");
-    if (canEdit) {
-      if (!addBtn) {
-        addBtn = document.createElement("button");
-        addBtn.type = "button";
-        addBtn.className = "button secondary";
-        addBtn.dataset.pvEventAdd = "";
-        addBtn.textContent = "Aggiungi da evento";
-        rail.prepend(addBtn);
-        addBtn.addEventListener("click", (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-          const sec = rail.dataset.section || section;
-          void openEventImportWizard({ mode: "add", section: sec });
-        });
-      }
-    } else if (addBtn) {
-      addBtn.remove();
+      panel.prepend(rail);
     }
     const listSig = JSON.stringify([
-      items,
+      items, canEdit, row.trip.destination,
       section === "explore" ? row.trip.stops?.map((stop) => stop.title) : null,
     ]);
     if (rail.dataset.listSig === listSig) return;
