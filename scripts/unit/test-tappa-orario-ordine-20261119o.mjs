@@ -8,5 +8,5 @@ const sw=readFileSync("sw.js","utf8");
 ok("time input + pill sync", /data-pv-time/.test(magic) && /normalizeStopTime/.test(magic) && /syncStopTimePill/.test(magic));
 ok("order controls", /pv-stop-order/.test(magic) && /swapStopOrder/.test(magic) && /↑ Prima/.test(magic) && /↓ Dopo/.test(magic));
 ok("sort by time", /sortDayStopsByTime/.test(magic) && /Ordina per orario/.test(magic));
-ok("stamps", /magic-extras-20261119o\.js/.test(index) && /20261119p-contrasto/.test(sw) && existsSync("assets/magic-extras-20261119o.js") && /dataset\.pvReady = "20261119o"/.test(magic));
+ok("stamps", /magic-extras-20261119o\.js/.test(index) && /20261119q-contrasto/.test(sw) && existsSync("assets/magic-extras-20261119o.js") && /dataset\.pvReady = "20261119o"/.test(magic));
 if(failed){console.log(`\n${failed} FAIL`); process.exit(1);} console.log("\nOK");

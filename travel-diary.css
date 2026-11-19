@@ -1561,8 +1561,29 @@ html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card,
   background: var(--diary-card, #fff);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, transparent);
 }
-html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state) {
   background: var(--diary-card, #22352e);
   border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, #3d555a);
   box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  color: #edf5f5 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .empty-state, .notes-paper)
+  :is(p, span, strong, small, label, a, h3):not(button):not(button *) {
+  color: #d7e6e8 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading h3 {
+  color: #edf5f5 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading > span {
+  color: #d7e6e8 !important;
+  background: #1a2a24 !important;
+}
+/* Light Ghana: ensure muted labels stay dark enough on gold wash */
+html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"] {
+  color: #29271e;
+}
+html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root :is(.eyebrow, .pv-section-guide, .address, .hint) {
+  color: #3a4630 !important;
+  opacity: 1 !important;
 }
