@@ -50,13 +50,13 @@ ok(
 ok(
   "stamps",
   /magic-extras-20261119x\.js/.test(index) &&
-    /ux-suite-20261119v\.js/.test(index) &&
-    /20261119x-verificato/.test(sw) &&
-    /const SHELL_VER = "20261119x"/.test(account) &&
+    /ux-suite-20261119y\.js/.test(index) &&
+    /20261119y-import/.test(sw) &&
+    /const SHELL_VER = "20261119y"/.test(account) &&
     existsSync("assets/magic-extras-20261119x.js") &&
-    existsSync("assets/ux-suite-20261119v.js") &&
+    existsSync("assets/ux-suite-20261119y.js") &&
     /dataset\.pvReady = "20261119x"/.test(magic) &&
-    /const STYLE_VER = "20261119v"/.test(ux)
+    /const STYLE_VER = "20261119y"/.test(ux)
 );
 
 if (process.exitCode) process.exit(process.exitCode);

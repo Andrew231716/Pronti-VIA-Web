@@ -42,8 +42,8 @@ ok(
 ok(
   "stamps",
   /magic-extras-20261119x\.js/.test(index) &&
-    /20261119x-verificato/.test(sw) &&
-    /const SHELL_VER = "20261119x"/.test(account) &&
+    /20261119y-import/.test(sw) &&
+    /const SHELL_VER = "20261119y"/.test(account) &&
     existsSync("assets/magic-extras-20261119x.js") &&
     /dataset\.pvReady = "20261119x"/.test(magic)
 );

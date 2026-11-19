@@ -11,7 +11,7 @@ function ok(name, cond, detail = "") {
 }
 
 const ux = readFileSync("ux-suite.js", "utf8");
-const stamped = readFileSync("assets/ux-suite-20261119v.js", "utf8");
+const stamped = readFileSync("assets/ux-suite-20261119y.js", "utf8");
 const diary = readFileSync("travel-diary.css", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
@@ -58,18 +58,18 @@ ok(
 ok("toolbar not forced full-width share", /min-width: 8\.5rem/.test(diary));
 ok(
   "stamps wired",
-  /ux-suite-20261119v\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119x-verificato/.test(index) &&
-    /ux-suite-20261119v\.js/.test(sw) &&
-    /20261119x-verificato/.test(sw)
+  /ux-suite-20261119y\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119y-import/.test(index) &&
+    /ux-suite-20261119y\.js/.test(sw) &&
+    /20261119y-import/.test(sw)
 );
 ok(
   "asset mirrors source",
-  existsSync("assets/ux-suite-20261119v.js") &&
-    stamped.includes('const STYLE_VER = "20261119v"') &&
+  existsSync("assets/ux-suite-20261119y.js") &&
+    stamped.includes('const STYLE_VER = "20261119y"') &&
     stamped.includes("decorateSectionHeading")
 );
-ok("style ver bumped", /const STYLE_VER = "20261119v"/.test(ux));
+ok("style ver bumped", /const STYLE_VER = "20261119y"/.test(ux));
 
 if (failed) {
   console.log(`\n${failed} FAIL`);

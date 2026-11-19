@@ -30,20 +30,20 @@ ok(
   "stamps wired",
   /api-shim-20261119f\.js/.test(index) &&
     /magic-extras-20261119x\.js/.test(index) &&
-    /ux-suite-20261119v\.js/.test(index)
+    /ux-suite-20261119y\.js/.test(index)
 );
 ok(
   "sw precache matches",
   /api-shim-20261119f\.js/.test(sw) &&
     /magic-extras-20261119x\.js/.test(sw) &&
-    /ux-suite-20261119v\.js/.test(sw) &&
-    /20261119x-verificato/.test(sw)
+    /ux-suite-20261119y\.js/.test(sw) &&
+    /20261119y-import/.test(sw)
 );
 ok(
   "assets exist",
   existsSync("assets/api-shim-20261119f.js") &&
     existsSync("assets/magic-extras-20261119x.js") &&
-    existsSync("assets/ux-suite-20261119v.js")
+    existsSync("assets/ux-suite-20261119y.js")
 );
 
 

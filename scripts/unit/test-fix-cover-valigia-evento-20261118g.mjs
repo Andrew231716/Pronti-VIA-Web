@@ -45,18 +45,18 @@ ok(
 ok(
   "stamps",
   /magic-extras-20261119x\.js/.test(index) &&
-    /ux-suite-20261119v\.js/.test(index) &&
+    /ux-suite-20261119y\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119x-verificato/.test(index) &&
-    /20261119x-verificato/.test(sw)
+    /travel-diary\.css\?v=20261119y-import/.test(index) &&
+    /20261119y-import/.test(sw)
 );
 ok(
   "assets",
   existsSync("assets/magic-extras-20261119x.js") &&
-    existsSync("assets/ux-suite-20261119v.js") &&
+    existsSync("assets/ux-suite-20261119y.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
     readFileSync("assets/magic-extras-20261119x.js", "utf8").includes('dataset.pvReady = "20261119x"') &&
-    readFileSync("assets/ux-suite-20261119v.js", "utf8").includes('const STYLE_VER = "20261119v"')
+    readFileSync("assets/ux-suite-20261119y.js", "utf8").includes('const STYLE_VER = "20261119y"')
 );
 
 if (failed) {

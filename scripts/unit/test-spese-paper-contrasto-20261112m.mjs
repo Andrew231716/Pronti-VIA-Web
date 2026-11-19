@@ -56,13 +56,13 @@ ok(
 ok(
   "stamps wired",
   /pv-platform-20261118c\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119x-verificato/.test(index) &&
+    /travel-diary\.css\?v=20261119y-import/.test(index) &&
     /magic-extras-20261119x\.js/.test(index)
 );
 ok(
   "sw precache matches stamps",
   /pv-platform-20261118c\.js/.test(sw) &&
-    /travel-diary\.css\?v=20261119x-verificato/.test(sw) &&
+    /travel-diary\.css\?v=20261119y-import/.test(sw) &&
     /magic-extras-20261119x\.js/.test(sw) &&
     /destination-theme-20261119u\.js/.test(sw)
 );

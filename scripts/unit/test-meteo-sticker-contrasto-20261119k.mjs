@@ -39,13 +39,13 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261119v\.js/.test(index) &&
+  /ux-suite-20261119y\.js/.test(index) &&
     /magic-extras-20261119x\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119x-verificato/.test(index) &&
-    /20261119x-verificato/.test(sw) &&
-    existsSync("assets/ux-suite-20261119v.js") &&
+    /travel-diary\.css\?v=20261119y-import/.test(index) &&
+    /20261119y-import/.test(sw) &&
+    existsSync("assets/ux-suite-20261119y.js") &&
     existsSync("assets/magic-extras-20261119x.js") &&
-    /const STYLE_VER = "20261119v"/.test(ux) &&
+    /const STYLE_VER = "20261119y"/.test(ux) &&
     /dataset\.pvReady = "20261119x"/.test(magic)
 );
 

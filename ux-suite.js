@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119v";
+  const STYLE_VER = "20261119y";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -382,14 +382,23 @@
       .pv-import-trip-list strong{display:block;font-size:.95rem}
       .pv-import-trip-list span{display:block;font-size:.8rem;color:#3f5860;margin-top:2px}
       .pv-import-paste{
-        width:100%;min-height:140px;box-sizing:border-box;border:1px solid var(--pv-line);
-        border-radius:14px;padding:12px;font:500 13px/1.45 inherit;color:var(--pv-ink);background:#fff;resize:vertical
+        width:100%;min-height:140px;box-sizing:border-box;border:1px solid #cfe0e4;
+        border-radius:14px;padding:12px;font:500 13px/1.45 inherit;color:#12343c;background:#fff;resize:vertical
       }
+      .pv-import-paste::placeholder{color:#5b7076;opacity:1}
       .pv-import-file{
         display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 8px;padding:12px;
-        border:1px dashed rgba(0,125,130,.35);border-radius:14px;background:#f7fbfb
+        border:1px dashed rgba(0,125,130,.35);border-radius:14px;background:#f7fbfb;color:#12343c
       }
-      .pv-import-file input[type=file]{font-size:.85rem;max-width:100%}
+      .pv-import-file input[type=file]{
+        font-size:.85rem;max-width:100%;color:#12343c;background:#fff;
+        border:1px solid #cfe0e4;border-radius:10px;padding:8px 10px
+      }
+      .pv-import-file input[type=file]::file-selector-button,
+      .pv-import-file input[type=file]::-webkit-file-upload-button{
+        appearance:none;margin-right:10px;padding:8px 12px;border:0;border-radius:999px;
+        background:#e8f4f4;color:#0f5a5e;font:700 12px/1.2 inherit;cursor:pointer
+      }
       .pv-import-file-list{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
       .pv-import-file-chip{
         display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
@@ -817,10 +826,11 @@
         background:linear-gradient(180deg,#069199,var(--pv-teal-deep));color:#fff;
         box-shadow:0 6px 16px rgba(0,125,130,.22)
       }
-      .pv-ux-ghost{background:#eef5f5;color:var(--pv-ink)}
+      /* Ghost/close sit on light chips — keep dark ink even when --pv-ink is light (dark theme). */
+      .pv-ux-ghost{background:#eef5f5;color:#12343c}
       .pv-ux-close{
         position:absolute;top:12px;right:12px;border:0;width:36px;height:36px;border-radius:999px;
-        background:#eef5f5;font-size:1.2rem;cursor:pointer;color:var(--pv-ink)
+        background:#eef5f5;font-size:1.2rem;cursor:pointer;color:#12343c
       }
       .pv-compare-bar{height:10px;border-radius:999px;background:#e8f0f0;overflow:hidden;margin:8px 0}
       .pv-compare-bar > span{display:block;height:100%;background:linear-gradient(90deg,#007d82,#2aa3a8)}
