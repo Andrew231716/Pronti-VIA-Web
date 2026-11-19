@@ -1351,3 +1351,38 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
 
 #root .trip-cover > img:not([src]),
 #root .trip-cover > .photo-credit:empty { display: none !important; }
+
+/* Keep the selected date and its stops together on small screens. */
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] {
+  & .section-heading .eyebrow,
+  & > .pv-section-guide { display: none; }
+
+  & .section-heading h2 { font-size: clamp(1.4rem, 4vw, 2rem); }
+
+  & .day-strip > button {
+    display: grid;
+    gap: .15rem;
+    align-content: center;
+    border-radius: .85rem !important;
+    padding: .55rem .8rem;
+    text-align: start;
+  }
+
+  & .day-strip > button.selected :is(span, strong) { color: #fff !important; }
+  & .day-strip > button:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
+  & .day-strip > button strong { font-size: 1.1rem; }
+  & .day-strip > button span { font-size: .76rem; }
+
+  & .pv-planning-tools[data-pv-planning="days"] {
+    background: transparent;
+    border: 0;
+    padding: 0;
+  }
+
+  & > .utility-strip { order: 5; margin-block: .5rem 0; }
+  & > .route-warning { order: 6; margin: 0; }
+  & > .utility-strip:not(:has(a, button:nth-child(2))) + .route-warning { display: none; }
+
+  & .day-heading { margin-block: .4rem 0; }
+  & .empty-state { padding: 1rem; }
+}
