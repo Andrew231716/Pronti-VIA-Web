@@ -38,13 +38,13 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261119f\.js/.test(index) &&
+  /ux-suite-20261119h\.js/.test(index) &&
     /magic-extras-20261119d\.js/.test(index) &&
-    /ux-suite-20261119f\.js/.test(sw) &&
+    /ux-suite-20261119h\.js/.test(sw) &&
     /magic-extras-20261119d\.js/.test(sw) &&
-    existsSync("assets/ux-suite-20261119f.js") &&
+    existsSync("assets/ux-suite-20261119h.js") &&
     existsSync("assets/magic-extras-20261119d.js") &&
-    /const STYLE_VER = "20261119f"/.test(ux) &&
+    /const STYLE_VER = "20261119h"/.test(ux) &&
     /dataset\.pvReady = "20261119d"/.test(magic)
 );
 

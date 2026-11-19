@@ -7,14 +7,14 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119f";
+  const STYLE_VER = "20261119h";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
   const INVITE_LOCAL_KEY = "viavia-invite-codes-v1";
   const TRIP_PHASE_KEY = "pv-trip-phase-v1";
   const TRIP_TAB_META = {
-    itinerary: { phase: "trip", label: "Itinerario", icon: "itinerary" },
+    itinerary: { phase: "both", label: "Itinerario", icon: "itinerary" },
     explore: { phase: "both", label: "Esplora", icon: "explore" },
     places: { phase: "both", label: "Luoghi", icon: "places" },
     preventivo: { phase: "prep", label: "Preventivo", icon: "preventivo" },
@@ -27,7 +27,7 @@
   const TRIP_PHASE_COPY = {
     prep: {
       title: "Prepara",
-      hint: "Budget, prenotazioni, documenti e valigia — tutto prima di partire",
+      hint: "Itinerario giorno per giorno, budget, prenotazioni, documenti e valigia",
     },
     trip: {
       title: "In viaggio",
@@ -35,7 +35,7 @@
     },
   };
   const SECTION_GUIDE = {
-    itinerary: "Giorno per giorno: tappe, orari e check-in mentre viaggi.",
+    itinerary: "Organizza i giorni: tappe e orari in preparazione, check-in mentre viaggi.",
     explore: "Idee e posti da scoprire — salva i preferiti in Luoghi.",
     places: "I tuoi posti salvati, a portata di mappa.",
     preventivo: "Stima costi e budget prima di impegnare le prenotazioni.",
@@ -1101,10 +1101,14 @@
     }
     if (!auth?.id || !auth?.key) return;
     try {
-      sessionStorage.setItem(
-        "pv-trip-phase-v1",
-        section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip"
-      );
+      // Only force phase for prep-only / trip-only tabs; "both" (itinerary, …) keeps current mode.
+      const sectionPhase =
+        section === "packing" || section === "documents" || section === "preventivo"
+          ? "prep"
+          : section === "expenses" || section === "notes"
+            ? "trip"
+            : "";
+      if (sectionPhase) sessionStorage.setItem("pv-trip-phase-v1", sectionPhase);
       sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
       // Preserve share context across reload so boot never drops to the login gate.
       sessionStorage.setItem(
@@ -5433,7 +5437,7 @@
     const preferred =
       phase === "trip"
         ? ["itinerary", "expenses", "notes", "explore", "places", "bookings"]
-        : ["preventivo", "bookings", "documents", "packing", "places", "explore"];
+        : ["itinerary", "preventivo", "bookings", "documents", "packing", "places", "explore"];
     for (const key of preferred) {
       const tab = [...tabs.querySelectorAll('[role="tab"]')].find((el) => tabSectionKey(el) === key);
       if (!tab || getComputedStyle(tab).display === "none") continue;
@@ -5588,10 +5592,11 @@
     });
 
     // Stable visual order: prep cluster then trip cluster within the 3-col grid.
+    // Itinerario is "both" — first in Prepara so you can plan days before leaving.
     const order =
       phase === "trip"
         ? ["itinerary", "explore", "places", "expenses", "bookings", "notes", "preventivo", "documents", "packing"]
-        : ["preventivo", "bookings", "documents", "packing", "places", "explore", "itinerary", "expenses", "notes"];
+        : ["itinerary", "preventivo", "bookings", "documents", "packing", "places", "explore", "expenses", "notes"];
     [...tabs.querySelectorAll('[role="tab"]')].forEach((tab) => {
       const key = tabSectionKey(tab);
       const idx = order.indexOf(key);
