@@ -1348,3 +1348,6 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
     outline-offset: 2px;
   }
 }
+
+#root .trip-cover > img:not([src]),
+#root .trip-cover > .photo-credit:empty { display: none !important; }
