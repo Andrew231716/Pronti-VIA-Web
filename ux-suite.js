@@ -2146,7 +2146,7 @@
                 <button type="button" data-ux="notifications"><strong>Notifiche del viaggio</strong><span>Aggiornamenti e promemoria spese</span></button>
                 <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>${escapeHtml(syncStatus)}</span></button>
                 <button type="button" data-ux="checklist"><strong><span class="pv-menu-emo" aria-hidden="true">✅</span>Checklist partenza</strong><span>Cose da fare prima di partire</span></button>
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da evento / congresso</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
+                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Aggiungi da file</strong><span>Incolla e importa più file nelle sezioni del viaggio</span></button>
               </div>
             </div>
             <div class="pv-menu-section">
@@ -2657,7 +2657,7 @@
     openModal(
       "Altri strumenti",
       `<div class="pv-menu-grid">
-         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa evento / congresso</strong><span>Crea o aggiorna · testo + più file (.txt .json .ics…)</span></button>
+         <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Importa da file</strong><span>Crea o aggiorna · testo + più file (.txt .json .ics…)</span></button>
          <button type="button" data-ux="activity"><strong>Attività recente</strong><span>Cose fatte su questo dispositivo</span></button>
          <button type="button" data-ux="templates"><strong>Template viaggio</strong><span>Parti da uno schema pronto</span></button>
          <button type="button" data-ux="revisions"><strong>Versioni locali</strong><span>Ripristina una copia salvata qui</span></button>
@@ -3676,12 +3676,42 @@
     return items.slice(0, 120);
   }
 
-  async function readImportFile(file) {
+  function summarizeHotelVoucher(text, kind) {
+    if (!/(hotel reservation|hotel name|nome (?:hotel|struttura)|conferma di prenotazione)/i.test(text)) return null;
+    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const title = text.match(/(?:hotel name|nome (?:hotel|struttura))\s*:[ \t]*([^\n:]+)/i)?.[1]?.trim()
+      || lines.find(line => /^(?!.*(?:form|code|address|phone|name|mail|reservation|web))[^:]{3,90}\bhotel$/i.test(line));
+    if (!title) return null;
+    const datePattern = /(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})(?:[ \t]+(\d{1,2}:\d{2}))?/g;
+    const pair = text.match(/\b\d{2}[./]\d{2}[./](?:\d{4}|\d{2})\s+\d{2}:\d{2}\s+\d{2}[./]\d{2}[./](?:\d{4}|\d{2})\s+\d{2}:\d{2}/);
+    const dates = pair && /check[ -]?in date\s+check[ -]?out date/i.test(text)
+      ? [...pair[0].matchAll(datePattern)]
+      : ["in", "out"].map(key => {
+          const line = lines.find(value => new RegExp("check[ -]?" + key + "\\b", "i").test(value) && /\d/.test(value));
+          return line && [...line.matchAll(datePattern)][0];
+        });
+    const [arrival, departure] = dates;
+    if (!arrival || !departure) return null;
+    const iso = date => [date[3].padStart(4, "20"), date[2].padStart(2, "0"), date[1].padStart(2, "0")].join("-");
+    const room = text.match(/\b\d+\s+(SINGLE|DOUBLE|TWIN|TRIPLE)\s+(\d+)(?:\.0)?\s+NIGHTS?(?:\s*-\s*(\d+)\s+Breakfast)?/i);
+    const address = text.match(/Hotel Address[ \t]*:[ \t]*([^\n:]+)/i)?.[1]?.trim()
+      || text.match(/\n([^\n]+\b(?:CD\.|CADDESI|STREET|ROAD))\n([^\n]+)/i)?.slice(1).join(" ");
+    const detail = [`Check-in ${arrival[0]}`, `Check-out ${departure[0]}`, address,
+      room && ({ SINGLE: "Camera singola", DOUBLE: "Camera doppia", TWIN: "Camera doppia con letti singoli", TRIPLE: "Camera tripla" })[room[1].toUpperCase()],
+      room?.[3] && "Colazione inclusa"].filter(Boolean).join(" · ");
+    const id = newImportId("hotel");
+    if (kind === "note") return [{ id, kind, title, detail, payload: { note: title + "\n" + detail } }];
+    if (kind === "stop") return [{ id, kind, title, detail, payload: { stop: { id, title, day: iso(arrival), time: arrival[4], address: address || "", notes: detail, category: "Alloggio" } } }];
+    return [{ id, kind: "booking", title, detail, payload: { booking: { id, title, type: "Alloggio", date: iso(arrival), reference: "", url: "", notes: detail } } }];
+  }
+
+  async function readImportFile(file, kind) {
     const name = String(file?.name || "file");
     const lower = name.toLowerCase();
     if (lower.endsWith(".pdf") || file.type === "application/pdf") {
       const { readEventPdf } = await import("/assets/event-pdf.mjs");
-      return parseEventImportText(await readEventPdf(file), { sourceName: name });
+      const text = await readEventPdf(file);
+      return summarizeHotelVoucher(text, kind) || parseEventImportText(text, { sourceName: name });
     }
     const text = await file.text();
     if (lower.endsWith(".json")) {
@@ -4084,7 +4114,7 @@
     }
 
     openModal(
-      section ? `Aggiungi da evento · ${section.label}` : preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
+      section ? `Aggiungi da file · ${section.label}` : preferAdd ? "📥 Aggiungi da file" : "📥 Importa da file",
       `<div class="pv-import-hint">
          <strong>${preferAdd ? "Aggiunte al viaggio" : "Crea o arricchisci un viaggio"}</strong>
          Incolla più volte e/o carica <em>più file</em> (PDF con testo, .txt, .md, .csv, .json, .ics, .html).
@@ -4177,7 +4207,7 @@
             analyze.textContent = "Lettura file…";
             for (const f of files) {
               try {
-                const parsed = (await readImportFile(f)).map((it) => ({ ...it, source: f.name }));
+                const parsed = (await readImportFile(f, section?.kind)).map((it) => ({ ...it, source: f.name }));
                 state.files.push({ name: f.name, items: parsed });
                 toast(`${f.name}: ${parsed.length} voci`, parsed.length ? "ok" : "warn");
               } catch (err) {
