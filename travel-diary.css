@@ -1126,16 +1126,21 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   margin-block: .15rem .35rem;
   padding: .65rem .75rem;
 }
-#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools label {
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools[data-pv-planning="days"] label {
+  /* Visually hidden — day strip is the navigator; select stays for a11y. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools:not([data-pv-planning="days"]) label {
   flex: 1 1 12rem;
   margin: 0;
-}
-#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip {
-  margin-top: .15rem;
-}
-#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button {
-  min-width: 5.5rem;
-  padding: .55rem .7rem;
 }
 #root .pv-cover-countdown {
   position: absolute;
@@ -1352,37 +1357,172 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
 #root .trip-cover > img:not([src]),
 #root .trip-cover > .photo-credit:empty { display: none !important; }
 
-/* Keep the selected date and its stops together on small screens. */
-#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] {
-  & .section-heading .eyebrow,
-  & > .pv-section-guide { display: none; }
+/* Itinerario: one clear day navigator + tighter day reading. */
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .section-heading .eyebrow,
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide {
+  display: none;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .section-heading h2 {
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: .4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  padding: .1rem 0 .25rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button {
+  display: grid;
+  gap: .12rem;
+  align-content: center;
+  flex: 0 0 auto;
+  min-width: 5.35rem;
+  max-width: 7rem;
+  border-radius: .85rem !important;
+  padding: .5rem .7rem;
+  text-align: start;
+  scroll-snap-align: start;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--diary-action, #16564b) 28%, transparent);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected :is(span, strong),
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] :is(span, strong) {
+  color: #fff !important;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button strong {
+  font-size: 1.05rem;
+  letter-spacing: -.02em;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button span {
+  font-size: .72rem;
+  opacity: .92;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools[data-pv-planning="days"] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .utility-strip {
+  order: 5;
+  margin-block: .45rem 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .route-warning {
+  order: 6;
+  margin: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .utility-strip:not(:has(a, button:nth-child(2))) + .route-warning {
+  display: none;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading {
+  margin-block: .35rem 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .empty-state {
+  padding: .95rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list {
+  gap: .55rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3 {
+  margin: .15rem 0 .2rem;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-footer {
+  gap: .35rem;
+  margin-top: .35rem;
+}
 
-  & .section-heading h2 { font-size: clamp(1.4rem, 4vw, 2rem); }
-
-  & .day-strip > button {
-    display: grid;
-    gap: .15rem;
-    align-content: center;
-    border-radius: .85rem !important;
-    padding: .55rem .8rem;
-    text-align: start;
-  }
-
-  & .day-strip > button.selected :is(span, strong) { color: #fff !important; }
-  & .day-strip > button:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
-  & .day-strip > button strong { font-size: 1.1rem; }
-  & .day-strip > button span { font-size: .76rem; }
-
-  & .pv-planning-tools[data-pv-planning="days"] {
-    background: transparent;
-    border: 0;
-    padding: 0;
-  }
-
-  & > .utility-strip { order: 5; margin-block: .5rem 0; }
-  & > .route-warning { order: 6; margin: 0; }
-  & > .utility-strip:not(:has(a, button:nth-child(2))) + .route-warning { display: none; }
-
-  & .day-heading { margin-block: .4rem 0; }
-  & .empty-state { padding: 1rem; }
+/* Ghana scrapbook panels — light + dark, stickers visible on every section. */
+html[data-pv-dest="gh"] {
+  --diary-paper: #fffaf0;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 88%, #fff);
+  --diary-line: var(--pv-dest-line, #e5d2ac);
+  --diary-action: var(--pv-dest-teal-deep, #104d37);
+  --diary-shadow: 0 8px 22px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] {
+  --diary-paper: #1a2a24;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 22%, #14221c);
+  --diary-line: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 30%, #3d555a);
+  --diary-ink: #edf5f5;
+  --diary-muted: #c5d6da;
+  --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
+  --diary-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  position: relative;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--pv-dest-sand, #fff5df) 72%, #fff) 0%,
+      var(--diary-paper) 48%,
+      color-mix(in srgb, var(--pv-dest-wash, rgba(179, 63, 44, .12)) 28%, var(--diary-paper)) 100%
+    );
+  border-color: var(--diary-line);
+  border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
+  box-shadow: var(--diary-shadow);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--pv-dest-teal, #176348) 26%, #1a2a24) 0%,
+      var(--diary-paper) 55%,
+      color-mix(in srgb, var(--pv-dest-accent, #dba62f) 10%, #14221c) 100%
+    );
+  border-block-start-color: var(--pv-dest-accent, #dba62f);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: var(--pv-dest-teal-deep, #104d37);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, #edf5f5);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
+  background: var(--pv-dest-teal, #176348) !important;
+  border-color: var(--pv-dest-teal-deep, #104d37) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
+}
+html[data-pv-dest="gh"] #root .pv-day-weather {
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 70%, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 40%, var(--diary-line));
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-links-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-fx-calc,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-budget-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-chart-box {
+  color: #edf5f5 !important;
+  background: color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, #1a2a24) !important;
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 38%, #3d555a) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(.pv-block-title, .pv-block-meta, .cond),
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(p, span, strong, small, div, em):not(button):not(button *) {
+  color: #d7e6e8 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather .temp {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 70%, white) !important;
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 80%, transparent);
+  background: color-mix(in srgb, var(--diary-paper) 92%, var(--pv-dest-sand, #fff5df));
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+  background: color-mix(in srgb, var(--diary-paper) 88%, #0f1c1f);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, #3d555a);
 }

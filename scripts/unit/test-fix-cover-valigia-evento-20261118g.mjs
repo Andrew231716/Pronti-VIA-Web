@@ -44,19 +44,19 @@ ok(
 );
 ok(
   "stamps",
-  /magic-extras-20261119d\.js/.test(index) &&
-    /ux-suite-20261119h\.js/.test(index) &&
+  /magic-extras-20261119j\.js/.test(index) &&
+    /ux-suite-20261119j\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /travel-diary\.css\?v=20261118h/.test(index) &&
-    /20261118h/.test(sw)
+    /travel-diary\.css\?v=20261119j-ghana/.test(index) &&
+    /20261119j-ghana/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/magic-extras-20261119d.js") &&
-    existsSync("assets/ux-suite-20261119h.js") &&
+  existsSync("assets/magic-extras-20261119j.js") &&
+    existsSync("assets/ux-suite-20261119j.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
-    readFileSync("assets/magic-extras-20261119d.js", "utf8").includes('dataset.pvReady = "20261119d"') &&
-    readFileSync("assets/ux-suite-20261119h.js", "utf8").includes('const STYLE_VER = "20261119h"')
+    readFileSync("assets/magic-extras-20261119j.js", "utf8").includes('dataset.pvReady = "20261119j"') &&
+    readFileSync("assets/ux-suite-20261119j.js", "utf8").includes('const STYLE_VER = "20261119j"')
 );
 
 if (failed) {
