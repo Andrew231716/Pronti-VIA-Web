@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119v") return;
+    if (style && style.dataset.pvReady === "20261119w") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119v";
+    style.dataset.pvReady = "20261119w";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -4121,6 +4121,8 @@ Regole:
   function injectBudgetAndCharts() {
     const money = document.querySelector(".money-stats");
     if (money) showPersonalPayments(money);
+    const authForBudget = tripAuth();
+    if (authForBudget) syncBudgetCardWithPersonal(authForBudget.id);
     if (money && !money.parentElement.querySelector(".pv-budget-box:not(.pv-personal-payments)")) {
       const auth = tripAuth();
       const priv = auth ? readPrivateBudgetCents(auth.id) : null;
@@ -6755,6 +6757,8 @@ Regole:
       .pv-tp-line button{padding:9px 12px;min-height:44px;border:1px solid #afc5bc;border-radius:9px;margin:4px 4px 4px 0}
       .pv-tp-line [data-pay-status]:empty{display:none}
       .pv-personal-payments li{margin:.65em 0}
+      .pv-tp-personal-ledger .pv-tp-personal-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+      .pv-tp-personal-ledger .pv-tp-personal-list li{padding:8px 10px;border-radius:10px;background:#f4faf9;border:1px solid #d7e4e6}
     `;
   }
 
@@ -6909,6 +6913,125 @@ Regole:
     return Number(line.totalCents ?? (Number(line.unitCents || 0) * Number(line.qty ?? 1)));
   }
 
+  function listPersonalPaymentEntries(tripId) {
+    const prefix = paymentPrefix(tripId);
+    if (!prefix) return [];
+    const out = [];
+    for (const key of Object.keys(localStorage)) {
+      if (!key.startsWith(prefix)) continue;
+      try {
+        const entry = JSON.parse(localStorage.getItem(key) || "null");
+        if (!entry || !Number.isFinite(Number(entry.paid))) continue;
+        out.push({
+          key,
+          lineId: key.slice(prefix.length),
+          title: String(entry.title || "Voce preventivo"),
+          paid: Math.max(0, Math.round(Number(entry.paid) || 0)),
+          share: Math.max(0, Math.round(Number(entry.share) || 0)),
+        });
+      } catch {
+        /* skip bad rows */
+      }
+    }
+    return out;
+  }
+
+  function totalPersonalPaidCents(tripId) {
+    return listPersonalPaymentEntries(tripId).reduce((sum, row) => sum + row.paid, 0);
+  }
+
+  function personalBudgetRemaining(tripId) {
+    const budget = readPrivateBudgetCents(tripId);
+    if (budget == null) return { budget: null, personal: totalPersonalPaidCents(tripId), remaining: null };
+    const personal = totalPersonalPaidCents(tripId);
+    return { budget, personal, remaining: budget - personal };
+  }
+
+  function syncBudgetCardWithPersonal(tripId) {
+    const budget = readPrivateBudgetCents(tripId);
+    if (budget == null) return;
+    const personal = totalPersonalPaidCents(tripId);
+    const card = document.querySelector("#root .budget-card");
+    if (card) {
+      card.dataset.pvPersonalBudget = "1";
+      const strong = card.querySelector(".budget-total strong");
+      const su = card.querySelector(".budget-total span");
+      const avail = card.querySelector(".row-between > span");
+      if (strong) strong.textContent = formatEuro(personal);
+      if (su) su.textContent = `su ${formatEuro(budget)}`;
+      if (avail) {
+        const left = budget - personal;
+        avail.textContent = left < 0 ? "Budget superato" : `${formatEuro(left)} disponibili`;
+      }
+      const bar = card.querySelector(".budget-total + *");
+      if (bar && bar !== card.querySelector(".row-between")) {
+        const pct = budget > 0 ? Math.min(100, Math.round((personal / budget) * 100)) : 0;
+        if (bar.style) bar.style.setProperty("--pv-budget-pct", `${pct}%`);
+        const fill = bar.querySelector?.("[style*='width'], .fill, span");
+        if (fill?.style) fill.style.width = `${pct}%`;
+      }
+    }
+    const box = document.querySelector(".pv-budget-box:not(.pv-personal-payments)");
+    if (box) {
+      let meta = box.querySelector(".pv-budget-personal-meta");
+      if (!meta) {
+        meta = document.createElement("p");
+        meta.className = "pv-budget-personal-meta";
+        meta.style.cssText = "margin:8px 0 0;font-size:.82rem;color:#5b7076";
+        box.appendChild(meta);
+      }
+      const left = budget - personal;
+      meta.textContent =
+        personal > 0
+          ? `Spese personali preventivo ${formatEuro(personal)} · ${left < 0 ? "oltre budget" : formatEuro(left) + " ancora disponibili"}`
+          : "Le quote saldate in Preventivo scalano questo budget.";
+    }
+  }
+
+  function renderPreventivoPersonalLedger(host, tripId) {
+    if (!host) return;
+    let box = host.querySelector(":scope > .pv-tp-personal-ledger, .pv-tp-personal-ledger");
+    const rows = listPersonalPaymentEntries(tripId).filter((r) => r.paid > 0);
+    if (!rows.length) {
+      box?.remove();
+      return;
+    }
+    if (!box) {
+      box = document.createElement("section");
+      box.className = "pv-tp-card pv-tp-personal-ledger";
+      const lines = host.querySelector("#pv-tp-lines");
+      if (lines?.parentElement) lines.parentElement.insertAdjacentElement("afterend", box);
+      else host.prepend(box);
+    }
+    const total = rows.reduce((s, r) => s + r.paid, 0);
+    const budget = readPrivateBudgetCents(tripId);
+    const left = budget != null ? budget - total : null;
+    box.innerHTML = `
+      <h3>Spese personali da preventivo</h3>
+      <p class="pv-tp-muted">Quote già versate su questo dispositivo · totale ${formatEuro(total)}${
+        budget != null
+          ? ` · budget ${formatEuro(budget)} · ${left < 0 ? "superato" : formatEuro(left) + " disponibili"}`
+          : ""
+      }</p>
+      <ul class="pv-tp-personal-list">${rows
+        .map((r) => `<li><strong>${escapeTp(r.title)}</strong> · ${formatEuro(r.paid)}</li>`)
+        .join("")}</ul>
+    `;
+  }
+
+  function refreshPersonalBudgetUi(tripId) {
+    const authId = tripId || tripAuth()?.id;
+    if (!authId) return;
+    const money = document.querySelector(".money-stats");
+    if (money) showPersonalPayments(money);
+    syncBudgetCardWithPersonal(authId);
+    const pvHost =
+      document.getElementById("pv-tp-body") ||
+      document.querySelector(".pv-tp-root") ||
+      document.querySelector(".pv-preventivo-workspace");
+    if (pvHost) renderPreventivoPersonalLedger(pvHost, authId);
+  }
+
   function paymentRow(line, idx, travelers, prefix) {
     const total = lineAmount(line);
     const share = Math.round(total / travelers);
@@ -6929,17 +7052,19 @@ Regole:
   }
 
   function showPersonalPayments(money) {
+    if (!money?.parentElement) return;
     const auth = tripAuth();
     const prefix = auth && paymentPrefix(auth.id);
     let box = money.parentElement.querySelector(".pv-personal-payments");
     if (!prefix) { box?.remove(); return; }
-    const rows = Object.keys(localStorage).filter(k => k.startsWith(prefix)).map(k => {
-      const entry = JSON.parse(localStorage.getItem(k));
-      const trip = tripLoadCache?.payload?.auth?.id === auth.id && tripLoadCache.payload.auth.key === auth.key ? tripLoadCache.payload.data.trip : null;
-      const quote = trip?.meta?.preventivo;
-      const line = quote?.lines?.find(l => l.id === k.slice(prefix.length));
-      const share = line ? Math.round(lineAmount(line) / Math.max(1, Number(quote.params?.travelers || trip.members?.length || 1))) : entry.share;
-      return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>Versato ${formatEuro(entry.paid)} · Da saldare ${formatEuro(Math.max(0, share-entry.paid))}</li>`;
+    const trip = tripLoadCache?.payload?.auth?.id === auth.id && tripLoadCache.payload.auth.key === auth.key ? tripLoadCache.payload.data.trip : null;
+    const quote = trip?.meta?.preventivo;
+    const travelers = Math.max(1, Number(quote?.params?.travelers || trip?.members?.length || 1));
+    const entries = listPersonalPaymentEntries(auth.id).filter((r) => r.paid > 0);
+    const rows = entries.map((entry) => {
+      const line = quote?.lines?.find((l) => l.id === entry.lineId);
+      const share = line ? Math.round(lineAmount(line) / travelers) : entry.share;
+      return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>Versato ${formatEuro(entry.paid)} · Da saldare ${formatEuro(Math.max(0, share - entry.paid))}</li>`;
     });
     if (!rows.length) { box?.remove(); return; }
     if (!box) {
@@ -6947,7 +7072,14 @@ Regole:
       box.className = "pv-budget-box pv-personal-payments";
       money.after(box);
     }
-    const html = `<h3>Spese personali</h3><p>Pagamenti del preventivo su questo dispositivo</p><ul>${rows.join("")}</ul>`;
+    const total = entries.reduce((s, r) => s + r.paid, 0);
+    const budget = readPrivateBudgetCents(auth.id);
+    const left = budget != null ? budget - total : null;
+    const budgetLine =
+      budget != null
+        ? `<p>Totale ${formatEuro(total)} · budget privato ${formatEuro(budget)} · ${left < 0 ? "superato" : formatEuro(left) + " disponibili"}</p>`
+        : `<p>Totale versato ${formatEuro(total)} (imposta un budget privato per vedere il residuo)</p>`;
+    const html = `<h3>Spese personali</h3><p>Pagamenti del preventivo su questo dispositivo</p>${budgetLine}<ul>${rows.join("")}</ul>`;
     if (box.innerHTML !== html) box.innerHTML = html;
   }
 
@@ -7013,10 +7145,19 @@ Regole:
           const share = Math.round(lineAmount(line)/travelers);
           const paid = action === "full" ? share : Math.round(field.valueAsNumber*100);
           if (!Number.isSafeInteger(paid) || paid < 0 || paid > share || (action !== "full" && !field.validity.valid)) throw new Error("Inserisci un importo tra zero e la tua quota.");
-          localStorage.setItem(prefix + line.id, JSON.stringify({title:line.title, paid, share}));
-          field.value = String(paid/100);
-          row.querySelector(".pv-payment-info").textContent = `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · Residuo ${formatEuro(share-paid)}`;
-          status.textContent = "Registrato nelle spese personali.";
+          localStorage.setItem(prefix + line.id, JSON.stringify({ title: line.title, paid, share }));
+          field.value = String(paid / 100);
+          row.querySelector(".pv-payment-info").textContent = `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · Residuo ${formatEuro(share - paid)}`;
+          refreshPersonalBudgetUi(auth.id);
+          const budgetInfo = personalBudgetRemaining(auth.id);
+          if (budgetInfo.budget == null) {
+            status.textContent =
+              "Registrato nelle spese personali. Imposta un budget privato in Spese per scalare il residuo.";
+          } else if (budgetInfo.remaining < 0) {
+            status.textContent = `Registrato nelle spese personali. Budget superato di ${formatEuro(-budgetInfo.remaining)}.`;
+          } else {
+            status.textContent = `Registrato nelle spese personali. Restano ${formatEuro(budgetInfo.remaining)} sul budget privato.`;
+          }
         } catch (err) { status.textContent = err.message; }
       };
       body.querySelector("#pv-tp-add-line").onclick = () => {
@@ -7043,6 +7184,7 @@ Regole:
       body.querySelector("#pv-tp-save")?.addEventListener("click", () =>
         void saveTripPreventivoSection(auth, data, pv)
       );
+      refreshPersonalBudgetUi(auth.id);
     } catch (err) {
       body.innerHTML = `<p class="pv-tp-status" style="color:#7a2e28">${escapeTp(err.message || "Preventivo non disponibile")}</p>`;
     }
