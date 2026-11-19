@@ -25,9 +25,9 @@ ok("trip section import button", /pv-tp-import/.test(magic));
 ok(
   "stamps",
   /preventivo-islanda-20261117a\.js/.test(index) &&
-    /magic-extras-20261119k\.js/.test(index) &&
+    /magic-extras-20261119o\.js/.test(index) &&
     existsSync("assets/preventivo-islanda-20261117a.js") &&
-    existsSync("assets/magic-extras-20261119k.js")
+    existsSync("assets/magic-extras-20261119o.js")
 );
 ok("sw cache", /20261117a/.test(sw) && /preventivo-islanda-20261117a\.js/.test(sw));
 

@@ -34,7 +34,7 @@ ok(
   "compact weather + stop cards",
   /\.pv-day-weather/.test(ux) &&
     /stop-card \.pv-stop-media/.test(ux) &&
-    /width:56px/.test(ux)
+    /width:92px/.test(ux)
 );
 
 ok(
@@ -44,14 +44,14 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261119k\.js/.test(index) &&
-    /magic-extras-20261119k\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119k-meteo/.test(index) &&
-    /20261119k-meteo/.test(sw) &&
-    existsSync("assets/ux-suite-20261119k.js") &&
-    existsSync("assets/magic-extras-20261119k.js") &&
-    /const STYLE_VER = "20261119k"/.test(ux) &&
-    /dataset\.pvReady = "20261119k"/.test(magic)
+  /ux-suite-20261119o\.js/.test(index) &&
+    /magic-extras-20261119o\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119o-orario/.test(index) &&
+    /20261119o-orario/.test(sw) &&
+    existsSync("assets/ux-suite-20261119o.js") &&
+    existsSync("assets/magic-extras-20261119o.js") &&
+    /const STYLE_VER = "20261119o"/.test(ux) &&
+    /dataset\.pvReady = "20261119o"/.test(magic)
 );
 
 if (failed) {

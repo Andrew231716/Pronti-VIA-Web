@@ -1434,16 +1434,28 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
   padding: .95rem;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list {
-  gap: .55rem;
+  gap: .75rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card.pv-stop-enhanced {
+  overflow: visible;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3 {
-  margin: .15rem 0 .2rem;
-  font-size: 1.02rem;
-  line-height: 1.25;
+  margin: .05rem 0 .15rem;
+  font-size: 1.12rem;
+  line-height: 1.22;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-footer {
-  gap: .35rem;
-  margin-top: .35rem;
+  gap: .4rem;
+  margin-top: .25rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media {
+  width: 92px;
+  height: 92px;
+  border-radius: 16px;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .address {
+  font-size: .82rem;
+  opacity: .88;
 }
 
 /* Ghana scrapbook panels — richer wash behind brighter cards so layers don’t blend. */
@@ -1465,18 +1477,7 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] {
   --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
   --diary-shadow: 0 12px 32px rgba(0, 0, 0, .42);
 }
-html[data-pv-dest="gh"] body.pv-account-ready {
-  background:
-    radial-gradient(900px 420px at 8% -8%, color-mix(in srgb, var(--pv-dest-teal, #176348) 34%, transparent), transparent 58%),
-    radial-gradient(760px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, transparent), transparent 52%),
-    linear-gradient(180deg, #e8d8a8 0%, #f3e7c4 42%, #efe0b4 100%) !important;
-}
-html[data-pv-theme="dark"][data-pv-dest="gh"] body.pv-account-ready {
-  background:
-    radial-gradient(900px 420px at 10% -10%, color-mix(in srgb, var(--pv-dest-teal, #176348) 40%, transparent), transparent 55%),
-    radial-gradient(700px 360px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, transparent), transparent 50%),
-    linear-gradient(180deg, #0d1714 0%, #101c18 55%, #0b1411 100%) !important;
-}
+/* Body wash for Ghana is owned by destination-theme.js (loads after diary) so contrast wins. */
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   position: relative;
   background:

@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261119k-meteo`;
+const CACHE = `${CACHE_PREFIX}20261119o-orario`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -12,22 +12,22 @@ const PRECACHE = [
   "./logo.png?v=20261111q",
   "./manifest.webmanifest?v=20261111q",
   "./account.css?v=20261118b",
-  "./travel-diary.css?v=20261119k-meteo",
-  "./account.js?v=20261119b",
+  "./travel-diary.css?v=20261119o-orario",
+  "./account.js?v=20261119o",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261104d",
   "./assets/index-JJ3bX5VS.css",
   // Must match the case-sensitive dynamic import in account.js.
   "./assets/index-loadfix-20261111x.js",
   "./assets/api-shim-20261119f.js",
-  "./assets/magic-extras-20261119k.js",
+  "./assets/magic-extras-20261119o.js",
   "./assets/expense-suite-20261111m.js",
   "./assets/expense-splitwise-20261111o.js",
   "./assets/app-suite-20261118h.js",
   "./assets/preventivo-islanda-20261117e.js",
-  "./assets/ux-suite-20261119k.js",
+  "./assets/ux-suite-20261119o.js",
   "./assets/pv-platform-20261118c.js",
-  "./assets/destination-theme-20261119j.js",
+  "./assets/destination-theme-20261119o.js",
   "./assets/event-pdf.mjs",
   "./vendor/pdfjs/pdf.min.mjs",
   "./vendor/pdfjs/pdf.worker.min.mjs",
@@ -116,7 +116,25 @@ self.addEventListener("fetch", (event) => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match(req);
       const wantsJs = isJsRequest(req, url);
-      const preferCache = req.mode === "navigate" || isStaticAsset(url);
+      // HTML/navigate: network-first so stamp bumps (meteo sticker, Ghana contrast) reach users.
+      if (req.mode === "navigate") {
+        try {
+          const fresh = await networkWithTimeout(req, NETWORK_MS);
+          if (fresh?.ok && fresh.status < 500) {
+            cache.put(req, fresh.clone()).catch(() => {});
+            return fresh;
+          }
+        } catch {
+          /* fall through */
+        }
+        if (cached) return cached;
+        const index = new URL("index.html", self.registration.scope);
+        const shell = await cache.match(index.href);
+        if (shell) return shell;
+        return Response.error();
+      }
+
+      const preferCache = isStaticAsset(url);
 
       // Instant offline / flaky-net shell: return cache first for known assets.
       if (cached && preferCache && jsContentOk(cached, wantsJs)) {

@@ -24,12 +24,12 @@ ok(
     /section === "expenses" \|\| section === "notes"/.test(ux)
 );
 ok("section guide covers planning", /Organizza i giorni/.test(ux));
-ok("style ver 20261119j", /const STYLE_VER = "20261119k"/.test(ux));
-ok("stamps wired", /ux-suite-20261119k\.js/.test(index) && /ux-suite-20261119k\.js/.test(sw));
+ok("style ver 20261119j", /const STYLE_VER = "20261119o"/.test(ux));
+ok("stamps wired", /ux-suite-20261119o\.js/.test(index) && /ux-suite-20261119o\.js/.test(sw));
 ok(
   "asset mirrors source",
-  existsSync("assets/ux-suite-20261119k.js") &&
-    readFileSync("assets/ux-suite-20261119k.js", "utf8") === ux
+  existsSync("assets/ux-suite-20261119o.js") &&
+    readFileSync("assets/ux-suite-20261119o.js", "utf8") === ux
 );
 ok("documenti preview still present", /function openTripDocumentPreview/.test(ux));
 
