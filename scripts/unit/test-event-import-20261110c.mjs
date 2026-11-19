@@ -36,7 +36,7 @@ test("import event menu + wizard wired", () => {
   assert.match(ux, /multiple/);
   assert.match(ux, /createTripForImport/);
   assert.match(ux, /injectEventImportRail/);
-  assert.match(ux, /Aggiungi da evento/);
+  assert.match(ux, /Aggiungi da file/);
   assert.match(ux, /Carica uno o più file/);
   assert.match(ux, /Crea un nuovo viaggio/);
 });
