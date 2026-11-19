@@ -26,7 +26,7 @@ ok("settings wired on mount", /wireTextSizeControls\(body\)/.test(ux));
 ok("hub aspetto select", /id="pv-text-size"/.test(plat) && /setTextSize: applyTextSize/.test(plat));
 ok(
   "stamps",
-  /account.js\?v=20261119o/.test(index) &&
+  /account.js\?v=20261119r/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
     /ux-suite-20261119o\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(index) &&

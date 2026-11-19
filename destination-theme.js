@@ -22,7 +22,13 @@
     return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
   }
 
-  /** Country / region themes — distinctive but on-brand travel feel */
+  /**
+   * Country / region themes — distinctive but on-brand travel feel.
+   * CONTRAST: every new template is audited automatically (light + dark) by
+   * `scripts/lib/dest-theme-contrast.mjs` / unit test, and `applyCssVars`
+   * auto-darkens ink/muted until sand contrast passes WCAG AA.
+   * Use `node scripts/add-dest-theme.mjs` to scaffold a new template.
+   */
   const THEMES = {
     default: {
       id: "default",
@@ -640,6 +646,39 @@
         transition: background .45s ease;
         color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
+      /* —— Auto contrast for EVERY destination template (light + dark) —— */
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .empty-state, .notes-paper){
+        color: var(--pv-dest-ink, #12343c) !important;
+      }
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .empty-state)
+        :is(p, span, strong, small, label, a, h3):not(button):not(button *){
+        color: var(--pv-dest-ink, #12343c) !important;
+      }
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root :is(.eyebrow, .pv-section-guide, .address, .hint){
+        color: var(--pv-dest-muted, #3f5860) !important;
+        opacity: 1 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .empty-state){
+        background: var(--pv-dest-card-dark, #203439) !important;
+        color: var(--pv-dest-ink-dark, #edf5f5) !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 28%, #3d555a) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .empty-state, .expense-row)
+        :is(p, span, strong, small, label, a, h3, div):not(button):not(button *):not(.pv-weather-sticker):not(.pv-stop-sticker){
+        color: var(--pv-dest-muted-dark, #d7e6e8) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .day-heading,
+      html[data-pv-theme="dark"][data-pv-dest] #root .section-heading h2{
+        color: var(--pv-dest-ink-dark, #edf5f5) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .icon-btn,
+      html[data-pv-theme="dark"][data-pv-dest] #root .text-button{
+        color: var(--pv-dest-muted-dark, #d7e6e8) !important;
+      }
       /* Ghana: warmer page wash + white cards so layers don't blend (wins over diary.css). */
       html[data-pv-dest="gh"] body.pv-account-ready{
         background:
@@ -661,11 +700,41 @@
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
         background: linear-gradient(165deg, #1a3228 0%, #15241f 55%, #12201b 100%) !important;
       }
-      html[data-pv-dest="gh"] #root .pv-day-weather,
-      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .pv-day-weather,
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state),
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .empty-state{
         background:#fff !important;
-        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 36%, #d2be8a) !important;
-        box-shadow: 0 6px 16px color-mix(in srgb, var(--pv-dest-teal,#176348) 14%, transparent) !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 42%, #c9b27e) !important;
+        box-shadow: 0 8px 20px color-mix(in srgb, var(--pv-dest-teal,#176348) 16%, transparent) !important;
+        color:#29271e !important;
+      }
+      html[data-pv-dest="gh"] #root .empty-state{
+        border-style:solid !important;
+        border-width:1.5px !important;
+      }
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .empty-state :is(p, strong, span, button),
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .empty-state > p{
+        color:#29271e !important;
+      }
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .day-heading{
+        color:#29271e !important;
+      }
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .day-heading > span{
+        color:#3a4630 !important;
+        font-weight:700 !important;
+        background:#fff !important;
+        border:1px solid color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #d2be8a);
+        border-radius:999px;
+        padding:.2rem .65rem;
+        box-shadow:0 2px 8px color-mix(in srgb, var(--pv-dest-teal,#176348) 10%, transparent);
+      }
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .section-heading :is(.eyebrow, p),
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"] .pv-section-guide{
+        color:#3a4630 !important;
+      }
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .section-heading h2,
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]{
+        color:#29271e !important;
       }
       html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list{
         border-inline-start-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 55%, var(--pv-dest-teal,#176348)) !important;
@@ -682,33 +751,105 @@
         background: color-mix(in srgb, var(--pv-dest-sand,#fff5df) 70%, #fff);
         border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 40%, transparent);
       }
-      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3{
-        color: var(--pv-dest-teal-deep,#104d37);
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3{
+        color: var(--pv-dest-teal-deep,#104d37) !important;
       }
-      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
-        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 45%, #d2be8a) !important;
-        background: color-mix(in srgb, #fff 70%, var(--pv-dest-sand,#fff5df)) !important;
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 50%, #c9b27e) !important;
+        background:#fff !important;
+        color:#29271e !important;
+        box-shadow: 0 4px 12px color-mix(in srgb, var(--pv-dest-teal,#176348) 12%, transparent) !important;
       }
-      html[data-pv-dest="gh"] #root .stop-card .pv-stop-extras :is(select, input[type="time"]),
-      html[data-pv-dest="gh"] #root .stop-card .pv-stop-order button,
-      html[data-pv-dest="gh"] #root .pv-day-order-tools button{
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .stop-card .pv-stop-extras :is(select, input[type="time"]),
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .stop-card .pv-stop-order button,
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .pv-day-order-tools button{
         background:#fff !important;
         border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #d2be8a) !important;
+        color:#29271e !important;
       }
-      html[data-pv-dest="gh"] #root .stop-card .time-pill{
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .stop-card .time-pill{
         background: color-mix(in srgb, var(--pv-dest-teal,#176348) 14%, #fff);
         color: var(--pv-dest-teal-deep,#104d37);
         border:1px solid color-mix(in srgb, var(--pv-dest-accent,#dba62f) 35%, transparent);
         border-radius:999px;padding:.2rem .55rem;font-weight:750;
       }
-      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
-      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
-        background:#243830 !important;
-        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #3d555a) !important;
-      }
-      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]){
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]){
         background:#fff !important;
         border-color:#d2be8a !important;
+        color:#29271e !important;
+      }
+      /* Ghana dark weather: keep light ink (override global dark white-paper + #12343c) */
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather
+        :is(p, span, strong, small, label, div, em, .pv-block-title, .pv-block-meta, .cond, .hint):not(button):not(button *):not(.pv-weather-sticker){
+        color:#d7e6e8 !important;
+      }
+      /* —— Dark Ghana: light ink on dark cards (overrides light #29271e force) —— */
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        color:#edf5f5 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-links-box,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-fx-calc,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-budget-box,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-chart-box,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .empty-state,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state),
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
+        background:#243830 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #3d555a) !important;
+        color:#edf5f5 !important;
+        box-shadow: 0 8px 22px rgba(0,0,0,.35) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .empty-state :is(p, strong, span, button),
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading h3,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .section-heading h2,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .pv-section-guide,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading :is(.eyebrow, p){
+        color:#edf5f5 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading > span{
+        background:#1a2a24 !important;
+        color:#d7e6e8 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 30%, #3d555a) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state, .pv-day-weather)
+        :is(p, span, strong, small, label, div, em, li, time, h3, h4, a):not(button):not(button *):not(.pv-weather-sticker):not(.pv-stop-sticker){
+        color:#d7e6e8 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3{
+        color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 55%, #edf5f5) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather .temp{
+        color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 70%, white) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .stop-card .time-pill{
+        background: color-mix(in srgb, var(--pv-dest-teal,#176348) 28%, #1a2a24);
+        color:#edf5f5;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 40%, transparent);
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .stop-card .pv-stop-extras :is(select, input[type="time"]),
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .stop-card .pv-stop-order button,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-order-tools button{
+        background:#1a2a24 !important;
+        color:#edf5f5 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #3d555a) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]){
+        background:#243830 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 30%, #3d555a) !important;
+        color:#edf5f5 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]) :is(span, strong){
+        color:#edf5f5 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-section-stickers span{
+        background: color-mix(in srgb, var(--pv-dest-teal,#176348) 28%, #1a2a24) !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 42%, rgba(255,255,255,.12)) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .icon-btn,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .text-button{
+        color:#d7e6e8 !important;
       }
       /* Mobile: hide floating stickers — they collide with CTAs; section stickers stay. */
       @media (max-width:767px){
@@ -880,20 +1021,112 @@
     document.head.appendChild(style);
   }
 
+  function pvParseHex(input) {
+    const m = String(input || "").trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!m) return null;
+    let h = m[1];
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  }
+  function pvLum(hex) {
+    const rgb = pvParseHex(hex);
+    if (!rgb) return null;
+    const ch = (c) => {
+      const n = c / 255;
+      return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * ch(rgb.r) + 0.7152 * ch(rgb.g) + 0.0722 * ch(rgb.b);
+  }
+  function pvContrast(a, b) {
+    const la = pvLum(a);
+    const lb = pvLum(b);
+    if (la == null || lb == null) return null;
+    const light = Math.max(la, lb);
+    const dark = Math.min(la, lb);
+    return (light + 0.05) / (dark + 0.05);
+  }
+  function pvDarken(hex) {
+    const rgb = pvParseHex(hex);
+    if (!rgb) return hex;
+    const r = Math.max(0, Math.round(rgb.r * 0.86));
+    const g = Math.max(0, Math.round(rgb.g * 0.86));
+    const b = Math.max(0, Math.round(rgb.b * 0.86));
+    return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+  }
+  /** Auto-fix ink/muted for readable contrast on sand (runs for every template apply). */
+  function ensureThemeContrast(theme) {
+    const sand = theme.sand || "#ffffff";
+    let ink = theme.ink;
+    let muted = theme.muted;
+    let fixed = false;
+    let ratio = pvContrast(ink, sand);
+    let guard = 0;
+    while (ratio != null && ratio < 4.5 && guard < 18) {
+      ink = pvDarken(ink);
+      ratio = pvContrast(ink, sand);
+      fixed = true;
+      guard += 1;
+    }
+    ratio = pvContrast(muted, sand);
+    guard = 0;
+    while (ratio != null && ratio < 3 && guard < 18) {
+      muted = pvDarken(muted);
+      ratio = pvContrast(muted, sand);
+      fixed = true;
+      guard += 1;
+    }
+    return {
+      ...theme,
+      ink,
+      muted,
+      _contrast: {
+        fixed,
+        inkOnSand: pvContrast(ink, sand),
+        mutedOnSand: pvContrast(muted, sand),
+        darkInkOnCard: pvContrast("#edf5f5", "#203439"),
+      },
+    };
+  }
+  function auditThemeContrastReport(theme) {
+    const t = ensureThemeContrast(theme);
+    const pairs = [
+      ["ink-on-sand", t.ink, t.sand, 4.5],
+      ["muted-on-sand", t.muted, t.sand, 3],
+      ["ink-on-white", t.ink, "#ffffff", 4.5],
+      ["dark-ink-on-card", "#edf5f5", "#203439", 4.5],
+      ["white-on-teal", "#ffffff", t.teal, 3],
+    ];
+    const issues = [];
+    for (const [name, fg, bg, min] of pairs) {
+      const r = pvContrast(fg, bg);
+      if (r == null || r < min) issues.push(`${t.id}/${name}: ${r == null ? "n/a" : r.toFixed(2)} < ${min}`);
+    }
+    return { id: t.id, ok: issues.length === 0, issues, theme: t };
+  }
+
   function applyCssVars(theme) {
+    const safe = ensureThemeContrast(theme);
     const root = document.documentElement;
-    root.style.setProperty("--pv-dest-teal", theme.teal);
-    root.style.setProperty("--pv-dest-teal-deep", theme.tealDeep);
-    root.style.setProperty("--pv-dest-ink", theme.ink);
-    root.style.setProperty("--pv-dest-muted", theme.muted);
-    root.style.setProperty("--pv-dest-sand", theme.sand);
-    root.style.setProperty("--pv-dest-line", theme.line);
-    root.style.setProperty("--pv-dest-accent", theme.accent);
-    root.style.setProperty("--pv-dest-wash", theme.wash);
-    root.dataset.pvDest = theme.id;
+    root.style.setProperty("--pv-dest-teal", safe.teal);
+    root.style.setProperty("--pv-dest-teal-deep", safe.tealDeep);
+    root.style.setProperty("--pv-dest-ink", safe.ink);
+    root.style.setProperty("--pv-dest-muted", safe.muted);
+    root.style.setProperty("--pv-dest-sand", safe.sand);
+    root.style.setProperty("--pv-dest-line", safe.line);
+    root.style.setProperty("--pv-dest-accent", safe.accent);
+    root.style.setProperty("--pv-dest-wash", safe.wash);
+    /* Auto dark surfaces for every destination template */
+    root.style.setProperty("--pv-dest-card-dark", "#203439");
+    root.style.setProperty("--pv-dest-ink-dark", "#edf5f5");
+    root.style.setProperty("--pv-dest-muted-dark", "#d7e6e8");
+    root.dataset.pvDest = safe.id;
     document.body.classList.add("pv-dest-theme-ready");
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme.teal);
+    if (meta) meta.setAttribute("content", safe.teal);
+    if (safe._contrast?.fixed && typeof console !== "undefined") {
+      console.info("[pv-dest-theme] contrasto auto-corretto", safe.id, safe._contrast);
+    }
+    return safe;
   }
 
   function applyNavIcons(theme) {
@@ -1241,16 +1474,17 @@
 
   function applyTheme(theme) {
     ensureStyle();
-    applyCssVars(theme);
+    const safe = applyCssVars(theme);
     cancelAnimationFrame(canvasRaf);
-    canvasRaf = requestAnimationFrame(() => drawAtmosphere(theme));
-    currentId = theme.id;
+    canvasRaf = requestAnimationFrame(() => drawAtmosphere(safe));
+    currentId = safe.id;
     window.__pvDestTheme = {
-      id: theme.id,
-      label: theme.label,
-      motif: theme.motif,
-      flag: theme.flag || "🌍",
-      stickers: theme.stickers || [],
+      id: safe.id,
+      label: safe.label,
+      motif: safe.motif,
+      flag: safe.flag || "🌍",
+      stickers: safe.stickers || [],
+      contrast: safe._contrast || null,
     };
     window.dispatchEvent(new CustomEvent("pv-dest-theme", { detail: window.__pvDestTheme }));
   }
@@ -1303,6 +1537,15 @@
   };
   window.__pvResolveDestThemeId = resolveThemeId;
   window.__pvDestThemes = THEMES;
+  /** Automatic light/dark contrast audit for one or all destination templates. */
+  window.__pvAuditDestThemeContrast = (id) => {
+    if (id) {
+      const theme = THEMES[id] || Object.values(THEMES).find((t) => t.id === id);
+      return theme ? auditThemeContrastReport(theme) : { ok: false, issues: [`unknown theme: ${id}`] };
+    }
+    const results = Object.values(THEMES).map((t) => auditThemeContrastReport(t));
+    return { ok: results.every((r) => r.ok), results, failed: results.filter((r) => !r.ok) };
+  };
 
   addEventListener("hashchange", () => {
     void syncTheme(true);
