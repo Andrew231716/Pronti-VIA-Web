@@ -27,14 +27,14 @@ ok("tick debounce slower", /420/.test(ux));
 ok(
   "stamps",
   /pv-platform-20261118c\.js/.test(index) &&
-    /ux-suite-20261119j\.js/.test(index) &&
+    /ux-suite-20261119k\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(sw) &&
-    /20261119j-ghana/.test(sw)
+    /20261119k-meteo/.test(sw)
 );
 ok(
   "assets",
   existsSync("assets/pv-platform-20261118c.js") &&
-    existsSync("assets/ux-suite-20261119j.js") &&
+    existsSync("assets/ux-suite-20261119k.js") &&
     /const VER = "20261118c"/.test(readFileSync("assets/pv-platform-20261118c.js", "utf8"))
 );
 

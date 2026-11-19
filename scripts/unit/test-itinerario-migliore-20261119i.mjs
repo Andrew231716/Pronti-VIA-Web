@@ -44,14 +44,14 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261119j\.js/.test(index) &&
-    /magic-extras-20261119j\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119j-ghana/.test(index) &&
-    /20261119j-ghana/.test(sw) &&
-    existsSync("assets/ux-suite-20261119j.js") &&
-    existsSync("assets/magic-extras-20261119j.js") &&
-    /const STYLE_VER = "20261119j"/.test(ux) &&
-    /dataset\.pvReady = "20261119j"/.test(magic)
+  /ux-suite-20261119k\.js/.test(index) &&
+    /magic-extras-20261119k\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119k-meteo/.test(index) &&
+    /20261119k-meteo/.test(sw) &&
+    existsSync("assets/ux-suite-20261119k.js") &&
+    existsSync("assets/magic-extras-20261119k.js") &&
+    /const STYLE_VER = "20261119k"/.test(ux) &&
+    /dataset\.pvReady = "20261119k"/.test(magic)
 );
 
 if (failed) {

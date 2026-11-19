@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119j") return;
+    if (style && style.dataset.pvReady === "20261119k") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119j";
+    style.dataset.pvReady = "20261119k";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -322,7 +322,15 @@
       .pv-day-weather .pv-block-meta,.pv-fx-calc .pv-block-meta{margin:0 0 10px;font-size:.86rem;color:#5b7076}
       .pv-day-weather{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
       .pv-day-weather .pv-block-title{margin:0;width:auto}
-      .pv-day-weather .pv-weather-card{flex:1;min-width:140px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;gap:2px}
+      .pv-day-weather .pv-weather-card{flex:1;min-width:140px;padding:0;border:0;background:transparent;display:flex;flex-direction:row;align-items:center;gap:10px}
+      .pv-day-weather .pv-weather-sticker{
+        flex:0 0 auto;width:2.55rem;height:2.55rem;display:inline-flex;align-items:center;justify-content:center;
+        font-size:1.45rem;line-height:1;border-radius:14px;
+        background:color-mix(in srgb, var(--pv-dest-sand, #f3f8f8) 55%, #fff);
+        border:1px solid color-mix(in srgb, var(--pv-dest-line, #d5e3e6) 80%, transparent);
+        box-shadow:0 2px 8px rgba(16,42,48,.06);
+      }
+      .pv-day-weather .pv-weather-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
       .pv-day-weather .pv-weather-card strong{font-size:.88rem;color:#16353b}
       .pv-day-weather .pv-weather-card .temp{font-size:1.05rem;font-weight:700;color:#007d82}
       .pv-day-weather .pv-weather-card .cond{font-size:.78rem;color:#5b7076;line-height:1.3}
@@ -4326,6 +4334,37 @@ Regole:
     return WMO[code] || WMO[Math.floor(Number(code) / 10) * 10] || "Meteo";
   }
 
+  /** Climate / forecast sticker emoji for the meteo card. */
+  function weatherStickerFromCode(code) {
+    const n = Number(code);
+    if (!Number.isFinite(n)) return "🌡️";
+    if (n === 0 || n === 1) return "☀️";
+    if (n === 2) return "⛅";
+    if (n === 3) return "☁️";
+    if (n === 45 || n === 48) return "🌫️";
+    if (n >= 51 && n <= 57) return "🌦️";
+    if (n >= 61 && n <= 67) return "🌧️";
+    if (n >= 71 && n <= 77) return "❄️";
+    if (n >= 80 && n <= 82) return "🌧️";
+    if (n >= 85 && n <= 86) return "🌨️";
+    if (n >= 95) return "⛈️";
+    return "🌡️";
+  }
+
+  function weatherStickerFromClimate(tmean, precip) {
+    const rain = Number(precip);
+    const temp = Number(tmean);
+    if (Number.isFinite(rain) && rain >= 8) return "🌧️";
+    if (Number.isFinite(rain) && rain >= 2.5) return "🌦️";
+    if (Number.isFinite(rain) && rain >= 0.8) return "⛅";
+    if (Number.isFinite(temp) && temp >= 30) return "🔥";
+    if (Number.isFinite(temp) && temp >= 24) return "☀️";
+    if (Number.isFinite(temp) && temp >= 16) return "🌤️";
+    if (Number.isFinite(temp) && temp <= 2) return "❄️";
+    if (Number.isFinite(temp) && temp < 10) return "🧥";
+    return "🌡️";
+  }
+
   function formatDayIt(iso) {
     try {
       return new Intl.DateTimeFormat("it-IT", { weekday: "short", day: "numeric", month: "short" }).format(
@@ -4961,21 +5000,29 @@ Regole:
       const tmax = cache.daily.temperature_2m_max?.[i];
       const tmin = cache.daily.temperature_2m_min?.[i];
       const rain = cache.daily.precipitation_probability_max?.[i];
+      const sticker = weatherStickerFromCode(code);
       cardHost.innerHTML = `
         <div class="pv-weather-card">
-          <strong>${escapeHtml(trip.destination)}</strong>
-          <span class="cond">${escapeHtml(weatherLabel(code))}${rain != null ? ` · ${rain}% pioggia` : ""}</span>
-          <span class="temp">${tmin != null && tmax != null ? `${Math.round(tmin)}°–${Math.round(tmax)}°` : "—"}</span>
+          <span class="pv-weather-sticker" aria-hidden="true">${sticker}</span>
+          <div class="pv-weather-copy">
+            <strong>${escapeHtml(trip.destination)}</strong>
+            <span class="cond">${escapeHtml(weatherLabel(code))}${rain != null ? ` · ${rain}% pioggia` : ""}</span>
+            <span class="temp">${tmin != null && tmax != null ? `${Math.round(tmin)}°–${Math.round(tmax)}°` : "—"}</span>
+          </div>
         </div>
       `;
     } else {
       const tmean = cache.daily.temperature_2m_mean?.[i];
       const precip = cache.daily.precipitation_sum?.[i];
+      const sticker = weatherStickerFromClimate(tmean, precip);
       cardHost.innerHTML = `
         <div class="pv-weather-card">
-          <strong>${escapeHtml(trip.destination)}</strong>
-          <span class="cond">${precip != null ? `${Number(precip).toFixed(1)} mm tipici` : "Clima medio"}</span>
-          <span class="temp">${tmean != null ? `~${Math.round(tmean)}°` : "—"}</span>
+          <span class="pv-weather-sticker" aria-hidden="true">${sticker}</span>
+          <div class="pv-weather-copy">
+            <strong>${escapeHtml(trip.destination)}</strong>
+            <span class="cond">${precip != null ? `${Number(precip).toFixed(1)} mm tipici` : "Clima medio"}</span>
+            <span class="temp">${tmean != null ? `~${Math.round(tmean)}°` : "—"}</span>
+          </div>
         </div>
       `;
     }
