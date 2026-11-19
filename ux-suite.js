@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119z";
+  const STYLE_VER = "20261120b";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -3957,7 +3957,13 @@
         payload: { booking },
       };
     }
-    if (/programma|sessione|assemblea|giorno|itinerario|orario|venue|luogo|congresso|convention|evento/.test(section) || extractTime(raw) || extractIsoDate(raw)) {
+    if (
+      /programma|sessione|assemblea|giorno|itinerario|orario|venue|luogo|congresso|convention|evento|attivit|activity|agenda|schedule|elenco|hub\.jw|jw\s*hub/.test(
+        section
+      ) ||
+      extractTime(raw) ||
+      extractIsoDate(raw)
+    ) {
       return {
         kind: "stop",
         title: raw.slice(0, 120),
@@ -3996,6 +4002,12 @@
     return null;
   }
 
+  function looksLikeActivitySchedule(sourceName = "", sample = "") {
+    return /attivit|activity|agenda|schedule|programma|itinerario|elenco|congresso|convention|hub\.jw|jw\s*hub|sessioni?|orari/i.test(
+      `${sourceName} ${String(sample || "").slice(0, 280)}`
+    );
+  }
+
   function parseEventImportText(input, { sourceName = "" } = {}) {
     const text = String(input || "").replace(/^\uFEFF/, "");
     if (!text.trim()) return [];
@@ -4013,8 +4025,9 @@
       .split(/\r?\n/)
       .map((l) => l.replace(/\s+/g, " ").trim())
       .filter(Boolean);
+    const activityLike = looksLikeActivitySchedule(sourceName, body);
     const items = [];
-    let section = sourceName || "Evento";
+    let section = activityLike ? `Programma · ${sourceName || "Evento"}` : sourceName || "Evento";
     const seen = new Set();
     for (const line of lines) {
       const classified = classifyTextLine(line, section);
@@ -4032,26 +4045,70 @@
         title: classified.title,
         detail: classified.detail || "",
         payload: classified.payload,
+        source: sourceName || undefined,
       });
     }
-    // If almost nothing matched as structured, keep meaningful lines as notes/checklist
+    // If almost nothing matched as structured, keep meaningful lines as stops/checklist/notes
     if (items.length < 2) {
       for (const line of lines.slice(0, 40)) {
         if (line.length < 8) continue;
-        const key = `note|${line}`;
+        const preferStop = activityLike || extractTime(line) || extractIsoDate(line);
+        const kind = preferStop ? "stop" : /^-|•|\*/.test(line) ? "checklist" : "note";
+        const title = line.replace(/^[-•*]\s*/, "").slice(0, 160);
+        const key = `${kind}|${title}`;
         if (seen.has(key)) continue;
         seen.add(key);
         items.push({
           id: newImportId("fallback"),
-          kind: /^-|•|\*/.test(line) ? "checklist" : "note",
-          title: line.replace(/^[-•*]\s*/, "").slice(0, 160),
-          detail: "Importo libero",
+          kind,
+          title,
+          detail: preferStop ? "Attività da programma" : "Importo libero",
+          source: sourceName || undefined,
           payload:
-            /^-|•|\*/.test(line)
-              ? { checklist: { id: newImportId("check"), title: line.replace(/^[-•*]\s*/, "").slice(0, 160), done: false } }
-              : { note: line.slice(0, 800) },
+            kind === "stop"
+              ? {
+                  stop: {
+                    id: newImportId("stop"),
+                    title,
+                    day: extractIsoDate(line) || undefined,
+                    time: extractTime(line) || undefined,
+                    category: "Visita",
+                    address: "",
+                    notes: "",
+                  },
+                }
+              : kind === "checklist"
+                ? { checklist: { id: newImportId("check"), title, done: false } }
+                : { note: line.slice(0, 800) },
         });
       }
+    }
+    // Activity/schedule PDFs: promote leftover notes to itinerary stops
+    const noteCount = items.filter((it) => it.kind === "note").length;
+    if (activityLike && noteCount && noteCount >= Math.max(2, Math.ceil(items.length * 0.5))) {
+      return items
+        .map((it) => {
+          if (it.kind !== "note") return it;
+          const title = String(it.title || "").slice(0, 120);
+          return {
+            ...it,
+            kind: "stop",
+            detail: it.detail || "Attività da programma",
+            guess: "Rilevato: elenco attività → Itinerario",
+            payload: {
+              stop: {
+                id: it.id,
+                title,
+                day: extractIsoDate(String(it.payload?.note || title)) || undefined,
+                time: extractTime(String(it.payload?.note || title)) || undefined,
+                category: "Visita",
+                address: "",
+                notes: String(it.payload?.note || "").slice(0, 800),
+              },
+            },
+          };
+        })
+        .slice(0, 120);
     }
     return items.slice(0, 120);
   }
