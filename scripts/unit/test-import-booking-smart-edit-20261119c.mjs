@@ -23,11 +23,11 @@ const ux = readFileSync("ux-suite.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
-test("stamp ux-suite 20261119c", () => {
-  assert.match(index, /ux-suite-20261119c\.js/);
-  assert.match(sw, /ux-suite-20261119c\.js/);
-  assert.ok(existsSync("assets/ux-suite-20261119c.js"));
-  assert.match(ux, /const STYLE_VER = "20261119c"/);
+test("stamp ux-suite 20261119d", () => {
+  assert.match(index, /ux-suite-20261119d\.js/);
+  assert.match(sw, /ux-suite-20261119d\.js/);
+  assert.ok(existsSync("assets/ux-suite-20261119d.js"));
+  assert.match(ux, /const STYLE_VER = "20261119d"/);
 });
 
 test("edit-before-insert UI wired", () => {

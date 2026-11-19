@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119c";
+  const STYLE_VER = "20261119d";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -1037,20 +1037,67 @@
     };
   }
 
+  function patchLocalTripCache(auth, trip, revision) {
+    if (!auth?.id || !trip) return;
+    try {
+      const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}") || {};
+      const prev = db[auth.id] && typeof db[auth.id] === "object" ? db[auth.id] : {};
+      db[auth.id] = {
+        ...prev,
+        id: auth.id,
+        key: auth.key || prev.key || "",
+        trip: JSON.parse(JSON.stringify(trip)),
+        revision: Number(revision) || Number(prev.revision) || 1,
+        canEdit: prev.canEdit !== false,
+        updated: new Date().toISOString(),
+      };
+      localStorage.setItem("viavia-local-trips-v1", JSON.stringify(db));
+    } catch {
+      /* quota / private mode */
+    }
+  }
+
+  function refreshBookingsAfterScopeMove(panel, auth, canEdit, nextTrip, revision, cardToRemove) {
+    patchLocalTripCache(auth, nextTrip, revision);
+    try {
+      window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: nextTrip } }));
+    } catch {
+      /* ignore */
+    }
+    try {
+      cardToRemove?.remove?.();
+    } catch {
+      /* ignore */
+    }
+    if (panel) ensureBookingsScopeChrome(panel, auth, canEdit, true);
+  }
+
   function stayOnTripSection(auth, section) {
     if (typeof window.__pvRemountTripSection === "function") {
       window.__pvRemountTripSection(auth, section);
       return;
     }
+    if (!auth?.id || !auth?.key) return;
     try {
       sessionStorage.setItem(
         "pv-trip-phase-v1",
         section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip"
       );
       sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
+      // Preserve share context across reload so boot never drops to the login gate.
+      sessionStorage.setItem(
+        "pv-pending-share-v1",
+        JSON.stringify({ trip: auth.id, key: auth.key, at: Date.now() })
+      );
     } catch { /* ignore */ }
     const hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
-    if (location.hash !== hash) location.hash = hash;
+    const url = `${location.pathname}${location.search}${hash}`;
+    try {
+      // replaceState avoids a hashchange that can clear guest/shared sessions mid-reload.
+      history.replaceState(null, "", url);
+    } catch {
+      location.hash = hash;
+    }
     location.reload();
   }
 
@@ -1213,11 +1260,11 @@
             url: booking.url || "",
           };
           const nextTrip = { ...data.trip, bookings: [...(data.trip.bookings || []), shared].slice(0, 200) };
-          await saveTrip(auth, nextTrip, data.revision);
+          const saved = await saveTrip(auth, nextTrip, data.revision);
           writePrivateBookings(auth.id, readPrivateBookings(auth.id).filter((b) => b.id !== id));
+          refreshBookingsAfterScopeMove(panel, auth, canEdit, saved.trip || nextTrip, saved.revision);
           toast("Spostata nelle prenotazioni condivise", "ok");
-          window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: nextTrip } }));
-          ensureBookingsScopeChrome(panel, auth, canEdit, true);
+          // Soft remount so the shared React list shows the new card without losing the session.
           stayOnTripSection(auth, "bookings");
         } catch (err) {
           toast(err.message || "Spostamento non riuscito", "err");
@@ -5196,10 +5243,15 @@
             } else {
               moveBtn.dataset.pvToPersonal = booking.id;
             }
-            moveBtn.onclick = async () => {
+            moveBtn.onclick = async (ev) => {
+              ev?.preventDefault?.();
+              ev?.stopPropagation?.();
               moveBtn.disabled = true;
               try {
-                const { data } = await loadTripByAuth(auth);
+                const active = tripAuth();
+                if (!active?.id || !active?.key) throw new Error("Riapri il viaggio e riprova");
+                if (active.id !== auth.id) throw new Error("Il viaggio aperto è cambiato");
+                const { data } = await loadTripByAuth(active);
                 if (data.canEdit === false) throw new Error("Viaggio in sola lettura");
                 if (!isTripOwner(data.trip)) {
                   throw new Error("Solo il proprietario può spostare tra personale e condiviso");
@@ -5209,16 +5261,21 @@
                   ...data.trip,
                   bookings: (data.trip.bookings || []).filter((b) => b.id !== booking.id),
                 };
-                await saveTrip(auth, nextTrip, data.revision);
-                writePrivateBookings(auth.id, [
+                const saved = await saveTrip(active, nextTrip, data.revision);
+                writePrivateBookings(active.id, [
                   personalBookingFromImport(latest),
-                  ...readPrivateBookings(auth.id).filter((b) => b.id !== latest.id),
+                  ...readPrivateBookings(active.id).filter((b) => b.id !== latest.id),
                 ].slice(0, 40));
-                toast("Spostata tra le prenotazioni personali", "ok");
-                window.dispatchEvent(
-                  new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: nextTrip } })
+                // Stay in-trip: no full reload (that was sending users to the login gate).
+                refreshBookingsAfterScopeMove(
+                  panel,
+                  active,
+                  canEdit,
+                  saved.trip || nextTrip,
+                  saved.revision,
+                  card
                 );
-                stayOnTripSection(auth, "bookings");
+                toast("Spostata tra le prenotazioni personali", "ok");
               } catch (err) {
                 toast(err.message || "Spostamento non riuscito", "err");
                 moveBtn.disabled = false;
