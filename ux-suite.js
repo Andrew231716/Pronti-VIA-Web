@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119i";
+  const STYLE_VER = "20261119j";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -189,6 +189,7 @@
       #root .primary-panel > [role="tabpanel"] > .pv-section-guide{margin:0}
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .section-heading{order:-40}
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide{order:-30;display:none}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-stickers{order:-28;margin:0}
       /* Day strip is the only day navigator — hide the duplicate "Vai al giorno" select. */
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-planning-tools[data-pv-planning="days"]{
         order:-25;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;
@@ -5563,6 +5564,11 @@
     if (guide.dataset.key !== key) {
       guide.dataset.key = key;
       guide.textContent = guideText;
+    }
+    try {
+      window.__pvRefreshSectionStickers?.();
+    } catch {
+      /* ignore */
     }
   }
 

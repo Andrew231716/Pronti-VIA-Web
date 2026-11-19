@@ -1445,3 +1445,84 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
   gap: .35rem;
   margin-top: .35rem;
 }
+
+/* Ghana scrapbook panels — light + dark, stickers visible on every section. */
+html[data-pv-dest="gh"] {
+  --diary-paper: #fffaf0;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 88%, #fff);
+  --diary-line: var(--pv-dest-line, #e5d2ac);
+  --diary-action: var(--pv-dest-teal-deep, #104d37);
+  --diary-shadow: 0 8px 22px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] {
+  --diary-paper: #1a2a24;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 22%, #14221c);
+  --diary-line: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 30%, #3d555a);
+  --diary-ink: #edf5f5;
+  --diary-muted: #c5d6da;
+  --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
+  --diary-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  position: relative;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--pv-dest-sand, #fff5df) 72%, #fff) 0%,
+      var(--diary-paper) 48%,
+      color-mix(in srgb, var(--pv-dest-wash, rgba(179, 63, 44, .12)) 28%, var(--diary-paper)) 100%
+    );
+  border-color: var(--diary-line);
+  border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
+  box-shadow: var(--diary-shadow);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--pv-dest-teal, #176348) 26%, #1a2a24) 0%,
+      var(--diary-paper) 55%,
+      color-mix(in srgb, var(--pv-dest-accent, #dba62f) 10%, #14221c) 100%
+    );
+  border-block-start-color: var(--pv-dest-accent, #dba62f);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: var(--pv-dest-teal-deep, #104d37);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, #edf5f5);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
+  background: var(--pv-dest-teal, #176348) !important;
+  border-color: var(--pv-dest-teal-deep, #104d37) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
+}
+html[data-pv-dest="gh"] #root .pv-day-weather {
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 70%, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 40%, var(--diary-line));
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-links-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-fx-calc,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-budget-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-chart-box {
+  color: #edf5f5 !important;
+  background: color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, #1a2a24) !important;
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 38%, #3d555a) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(.pv-block-title, .pv-block-meta, .cond),
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(p, span, strong, small, div, em):not(button):not(button *) {
+  color: #d7e6e8 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather .temp {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 70%, white) !important;
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 80%, transparent);
+  background: color-mix(in srgb, var(--diary-paper) 92%, var(--pv-dest-sand, #fff5df));
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+  background: color-mix(in srgb, var(--diary-paper) 88%, #0f1c1f);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, #3d555a);
+}

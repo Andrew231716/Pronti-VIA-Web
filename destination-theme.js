@@ -42,7 +42,7 @@
     },
     gh: {
       id: "gh", label: "Ghana", motif: "tile", flag: "🇬🇭",
-      stickers: ["⭐", "🥁", "🌴", "☀️"],
+      stickers: ["⭐", "🥁", "🌴", "☀️", "🐘", "🏖️"],
       teal: "#176348", tealDeep: "#104d37", ink: "#29271e", muted: "#605645",
       sand: "#fff5df", line: "#e5d2ac", accent: "#dba62f", wash: "rgba(179,63,44,.12)",
       icons: {
@@ -776,6 +776,32 @@
         #pv-dest-atmosphere{ opacity:.55; }
         .pv-dest-floaters, .pv-dest-floaters-left{ display:none!important; }
       }
+      /* Section scrapbook stickers (Ghana + other dest themes) inside trip panels */
+      .pv-section-stickers{
+        display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+        margin:0 0 .15rem; padding:0; list-style:none;
+      }
+      .pv-section-stickers span{
+        font-size:1.15rem; line-height:1; padding:6px 8px; border-radius:14px;
+        background:rgba(255,255,255,.88); border:1px solid rgba(16,42,48,.08);
+        box-shadow:0 2px 8px rgba(16,42,48,.06);
+        backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      }
+      html[data-pv-theme="dark"] .pv-section-stickers span{
+        background:rgba(20,36,40,.82); border-color:rgba(255,255,255,.1);
+        box-shadow:0 2px 10px rgba(0,0,0,.28);
+      }
+      html[data-pv-dest="gh"] .pv-section-stickers span{
+        background:color-mix(in srgb, var(--pv-dest-sand,#fff5df) 78%, #fff);
+        border-color:color-mix(in srgb, var(--pv-dest-accent,#dba62f) 35%, transparent);
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] .pv-section-stickers span{
+        background:color-mix(in srgb, var(--pv-dest-teal,#176348) 28%, #1a2a24);
+        border-color:color-mix(in srgb, var(--pv-dest-accent,#dba62f) 42%, rgba(255,255,255,.12));
+      }
+      @media (prefers-reduced-motion: reduce){
+        .pv-section-stickers{ opacity:.85; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -834,6 +860,39 @@
     const flag = theme.flag || "🌍";
     badge.innerHTML = `<span class="pv-dest-flag" aria-hidden="true">${flag}</span> Tema · ${theme.label}`;
     badge.title = `Grafica adattata a ${theme.label}`;
+  }
+
+  function ensureSectionStickers(theme) {
+    const panels = document.querySelectorAll(
+      '#root .primary-panel > [role="tabpanel"][data-pv-section]'
+    );
+    if (!theme || theme.id === DEFAULT_ID || !tripAuth()) {
+      document.querySelectorAll(".pv-section-stickers").forEach((el) => el.remove());
+      return;
+    }
+    const stickers = [theme.flag, ...(theme.stickers || [])].filter(Boolean).slice(0, 6);
+    const key = `${theme.id}:${stickers.join("")}`;
+    for (const panel of panels) {
+      if (panel.hidden) {
+        panel.querySelector(":scope > .pv-section-stickers")?.remove();
+        continue;
+      }
+      let rail = panel.querySelector(":scope > .pv-section-stickers");
+      if (!rail) {
+        rail = document.createElement("div");
+        rail.className = "pv-section-stickers";
+        rail.setAttribute("aria-hidden", "true");
+        const heading = panel.querySelector(":scope > .section-heading");
+        const guide = panel.querySelector(":scope > .pv-section-guide");
+        const anchor = guide || heading;
+        if (anchor?.parentElement === panel) anchor.after(rail);
+        else panel.prepend(rail);
+      }
+      if (rail.dataset.pvDest !== key) {
+        rail.dataset.pvDest = key;
+        rail.innerHTML = stickers.map((emoji) => `<span>${emoji}</span>`).join("");
+      }
+    }
   }
 
   function ensureFloaters(theme) {
@@ -1133,6 +1192,7 @@
       applyNavIcons(THEMES.default);
       ensureBadge(THEMES.default);
       ensureFloaters(null);
+      ensureSectionStickers(null);
       renderCover(THEMES.default);
     }
     let theme = THEMES.default;
@@ -1146,6 +1206,7 @@
     applyNavIcons(theme);
     ensureBadge(theme);
     ensureFloaters(theme);
+    ensureSectionStickers(theme);
     renderCover(theme);
     return theme;
   }
@@ -1157,10 +1218,15 @@
     canvasRaf = requestAnimationFrame(() => {
       drawAtmosphere(theme);
       ensureFloaters(theme.id === DEFAULT_ID ? null : theme);
+      ensureSectionStickers(theme.id === DEFAULT_ID ? null : theme);
     });
   }
 
   window.__pvApplyDestTheme = syncTheme;
+  window.__pvRefreshSectionStickers = () => {
+    const theme = THEMES[currentId] || THEMES.default;
+    ensureSectionStickers(theme.id === DEFAULT_ID ? null : theme);
+  };
   window.__pvResolveDestThemeId = resolveThemeId;
   window.__pvDestThemes = THEMES;
 

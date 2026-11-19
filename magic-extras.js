@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119i") return;
+    if (style && style.dataset.pvReady === "20261119j") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119i";
+    style.dataset.pvReady = "20261119j";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -4981,6 +4981,32 @@ Regole:
     }
   }
 
+  function ensureWeatherSkeleton() {
+    let box = document.querySelector(".pv-day-weather");
+    if (box) {
+      const host = itineraryHost();
+      const strip = host?.querySelector(".day-strip");
+      if (host && strip && box.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING) {
+        insertAfterDayStrip(box);
+      }
+      return box;
+    }
+    if (!document.querySelector(".day-strip")) return null;
+    box = document.createElement("div");
+    box.className = "pv-day-weather";
+    box.id = "pv-day-weather";
+    box.innerHTML = `
+      <div class="pv-block-title">Meteo</div>
+      <div class="pv-block-meta" id="pv-weather-meta">Caricamento…</div>
+      <div id="pv-weather-day"></div>
+    `;
+    if (!insertAfterDayStrip(box)) {
+      box.remove();
+      return null;
+    }
+    return box;
+  }
+
   async function syncDayWeather(fromClick = false) {
     if (!tripAuth()) return;
     bindDayStripWeather();
@@ -4990,13 +5016,15 @@ Regole:
       return;
     }
 
-    // Only show weather after the user selects a day (click), or when already shown for a day.
-    const selectedBtn = document.querySelector(".day-strip button.selected");
-    if (!fromClick && !weatherShownForDay && !document.querySelector(".pv-day-weather")) {
-      return;
-    }
-    // First paint with a selected day after a click: proceed.
+    // Show meteo as soon as the day strip exists (selected day or first day) — no click wait.
+    const selectedBtn =
+      document.querySelector(".day-strip button.selected") ||
+      document.querySelector(".day-strip button[aria-pressed='true']") ||
+      document.querySelector(".day-strip button");
     if (!selectedBtn && !weatherShownForDay) return;
+
+    const box = ensureWeatherSkeleton();
+    if (!box) return;
 
     try {
       const { data } = await loadTrip();
@@ -5005,44 +5033,17 @@ Regole:
       const dayIso = getSelectedDayIso(days);
       if (!dayIso) return;
 
-      if (!fromClick && weatherShownForDay === dayIso && document.querySelector(".pv-day-weather")) {
+      if (!fromClick && weatherShownForDay === dayIso && box.querySelector(".pv-weather-card")) {
         return;
-      }
-
-      let box = document.querySelector(".pv-day-weather");
-      if (!box) {
-        box = document.createElement("div");
-        box.className = "pv-day-weather";
-        box.id = "pv-day-weather";
-        box.innerHTML = `
-          <div class="pv-block-title">Meteo</div>
-          <div class="pv-block-meta" id="pv-weather-meta">Caricamento…</div>
-          <div id="pv-weather-day"></div>
-        `;
-        if (!insertAfterDayStrip(box)) {
-          box.remove();
-          return;
-        }
-      } else if (!box.previousElementSibling?.classList?.contains("day-strip") &&
-                 !box.previousElementSibling?.classList?.contains("utility-strip") &&
-                 !document.querySelector(".day-strip")) {
-        /* keep existing placement */
-      }
-
-      // Ensure day strip stays above: if somehow weather ended up before strip, move it.
-      const host = itineraryHost();
-      const strip = host?.querySelector(".day-strip");
-      if (host && strip && box.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING) {
-        insertAfterDayStrip(box);
       }
 
       weatherShownForDay = dayIso;
       const cache = await fetchTripWeather(trip);
       renderDayWeatherCard(box, trip, dayIso, cache);
     } catch (err) {
-      const box = document.querySelector(".pv-day-weather");
-      if (box) {
-        const meta = box.querySelector("#pv-weather-meta");
+      const live = document.querySelector(".pv-day-weather");
+      if (live) {
+        const meta = live.querySelector("#pv-weather-meta");
         if (meta) meta.textContent = err instanceof Error ? err.message : "Meteo non disponibile.";
       }
     }
