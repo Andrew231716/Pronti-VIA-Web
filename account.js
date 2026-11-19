@@ -1589,7 +1589,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261119t";
+const SHELL_VER = "20261119u";
 
 async function ensureFreshShell() {
   try {

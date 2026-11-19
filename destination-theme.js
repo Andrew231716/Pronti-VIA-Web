@@ -646,9 +646,9 @@
         transition: background .45s ease;
         color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
-      /* —— Section frame: always much lighter/clearer than page wash (all sections) —— */
+      /* —— Section frame: tint of page wash, but strongly toward white (all sections) —— */
       html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]:not([hidden]){
-        background: #ffffff !important;
+        background: color-mix(in srgb, var(--pv-dest-sand, #f3f8f8) 28%, #ffffff) !important;
         border: 1px solid color-mix(in srgb, var(--pv-dest-line, #d5e3e6) 70%, #cfd8dc) !important;
         box-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #007d82) 12%, transparent) !important;
         color: var(--pv-dest-ink, #12343c) !important;
@@ -705,9 +705,9 @@
           radial-gradient(700px 360px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent,#dba62f) 26%, transparent), transparent 50%),
           linear-gradient(180deg, #0a1210 0%, #101c18 55%, #08100e 100%) !important;
       }
-      /* Ghana: keep warm gold PAGE wash, but section frame stays crisp white (not gold-on-gold). */
+      /* Ghana: gold PAGE wash; section frame = soft cream (sand→white), not pure white. */
       html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]:not([hidden]){
-        background: #ffffff !important;
+        background: color-mix(in srgb, var(--pv-dest-sand,#fff5df) 34%, #ffffff) !important;
         border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #d2be8a) !important;
         border-block-start: 3px solid var(--pv-dest-accent,#dba62f) !important;
         box-shadow: 0 14px 32px color-mix(in srgb, var(--pv-dest-teal,#176348) 18%, transparent) !important;

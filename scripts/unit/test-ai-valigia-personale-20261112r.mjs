@@ -38,7 +38,7 @@ ok(
 );
 ok(
   "sw + assets",
-  /20261119s-riquadro/.test(sw) &&
+  /20261119u-tint/.test(sw) &&
     existsSync("assets/api-shim-20261119f.js") &&
     existsSync("assets/magic-extras-20261119t.js") &&
     existsSync("assets/app-suite-20261118h.js") &&

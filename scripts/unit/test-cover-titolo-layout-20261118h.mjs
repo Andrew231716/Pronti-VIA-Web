@@ -34,8 +34,8 @@ ok(
   "stamps",
   /magic-extras-20261119t\.js/.test(index) &&
     /ux-suite-20261119s\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119s-riquadro/.test(index) &&
-    /20261119s-riquadro/.test(sw)
+    /travel-diary\.css\?v=20261119u-tint/.test(index) &&
+    /20261119u-tint/.test(sw)
 );
 ok(
   "assets",

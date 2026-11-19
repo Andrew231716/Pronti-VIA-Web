@@ -19,7 +19,7 @@ ok("sort by time kept", /sortDayStopsByTime/.test(magic) && /Ordina per orario/.
 ok(
   "stamps",
   /magic-extras-20261119t\.js/.test(index) &&
-    /20261119s-riquadro/.test(sw) &&
+    /20261119u-tint/.test(sw) &&
     existsSync("assets/magic-extras-20261119t.js") &&
     /dataset\.pvReady = "20261119t"/.test(magic)
 );

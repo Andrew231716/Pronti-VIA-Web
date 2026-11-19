@@ -11,5 +11,5 @@ ok("category stickers", /STOP_CATEGORY_STICKER/.test(magic) && /pv-stop-sticker/
 ok("sposta-al replaces day label", /pv-stop-move/.test(magic) && /Sposta al/.test(magic) && !/Giorno della tappa/.test(magic));
 ok("timeline + larger media", /width:92px/.test(ux) && /stop-card::before/.test(ux) && /grid-template-columns:auto minmax\(0,1fr\)/.test(ux));
 ok("ghana stop accents", /pv-stop-sticker/.test(dest) && /stop-card::before/.test(dest));
-ok("stamps", /ux-suite-20261119s\.js/.test(index) && /magic-extras-20261119t\.js/.test(index) && /20261119s-riquadro/.test(sw) && existsSync("assets/ux-suite-20261119s.js") && /const STYLE_VER = "20261119s"/.test(ux) && /dataset\.pvReady = "20261119t"/.test(magic));
+ok("stamps", /ux-suite-20261119s\.js/.test(index) && /magic-extras-20261119t\.js/.test(index) && /20261119u-tint/.test(sw) && existsSync("assets/ux-suite-20261119s.js") && /const STYLE_VER = "20261119s"/.test(ux) && /dataset\.pvReady = "20261119t"/.test(magic));
 if(failed){console.log(`\n${failed} FAIL`); process.exit(1);} console.log("\nOK");
