@@ -50,12 +50,12 @@ ok(
   "stamps",
   /destination-theme-20261119u\.js/.test(index) &&
     /ux-suite-20261119z\.js/.test(index) &&
-    /magic-extras-20261119z\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119z-iafile/.test(index) &&
-    /20261119z-iafile/.test(sw) &&
+    /magic-extras-20261120a\.js/.test(index) &&
+    /travel-diary\.css\?v=20261120a-iafile/.test(index) &&
+    /20261120a-iafile/.test(sw) &&
     existsSync("assets/destination-theme-20261119u.js") &&
     existsSync("assets/ux-suite-20261119z.js") &&
-    existsSync("assets/magic-extras-20261119z.js")
+    existsSync("assets/magic-extras-20261120a.js")
 );
 
 if (failed) {

@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119z") return;
+    if (style && style.dataset.pvReady === "20261120a") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119z";
+    style.dataset.pvReady = "20261120a";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -198,6 +198,17 @@
       #${ROOT_ID} .pv-chat-kind-select{
         margin:6px 0 0;width:100%;box-sizing:border-box;border:1px solid #cfe0e4;border-radius:10px;
         padding:8px 10px;font:550 .82rem inherit;background:#fff;color:#12343c
+      }
+      #${ROOT_ID} .pv-chat-missing{
+        margin:6px 0 0;padding:6px 8px;border-radius:10px;background:#fff6e8;border:1px solid #f0d2a0;
+        color:#7a4b00;font:650 .75rem/1.35 inherit
+      }
+      #${ROOT_ID} .pv-chat-clarify{
+        display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0
+      }
+      #${ROOT_ID} .pv-chat-clarify button{
+        appearance:none;border:1px solid #b8d0d0;background:#fff;color:#124048;border-radius:999px;
+        padding:8px 12px;font:650 12px inherit;cursor:pointer;min-height:36px
       }
       #${ROOT_ID} .pv-results-title{margin:14px 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#4d676e;font-weight:700}
       #${ROOT_ID} .pv-place-card{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:12px;margin:0 0 10px;border:1px solid #e0ecec;border-radius:14px;background:#fbfefe}
@@ -2324,30 +2335,239 @@
     return /^image\//.test(file?.type || "") || /\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(name);
   }
 
-  async function extractItemsFromChatFile(file) {
+  async function extractTextFromChatFile(file) {
     const name = String(file?.name || "file");
+    const lower = name.toLowerCase();
     if (isImageFile(file)) {
       const text = await ocrImageToText(file);
-      if (!text) return [];
+      if (!text) {
+        throw new Error(
+          `Non riesco a leggere il testo in «${name}». Prova una foto più nitida o un PDF con testo selezionabile.`
+        );
+      }
+      return text;
+    }
+    if (lower.endsWith(".pdf") || file.type === "application/pdf") {
+      try {
+        const { readEventPdf } = await import("/assets/event-pdf.mjs");
+        const text = await readEventPdf(file);
+        if (!String(text || "").trim()) {
+          throw new Error(
+            `Il PDF «${name}» non ha testo estraibile (probabilmente è una scansione). Allega anche una foto nitida o un .txt.`
+          );
+        }
+        return text;
+      } catch (err) {
+        if (err instanceof Error && /scansione|nitida|estraibile|OCR|testo/i.test(err.message)) throw err;
+        throw new Error(err instanceof Error ? err.message : `PDF «${name}» non leggibile.`);
+      }
+    }
+    if (lower.endsWith(".json") || lower.endsWith(".ics") || lower.endsWith(".csv")) {
+      return "";
+    }
+    if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+      const raw = await file.text();
+      const tmp = document.createElement("div");
+      tmp.innerHTML = raw;
+      return (tmp.textContent || "").replace(/\u00a0/g, " ").trim();
+    }
+    return String(await file.text()).trim();
+  }
+
+  async function extractItemsFromChatFile(file) {
+    const name = String(file?.name || "file");
+    let rawText = "";
+    try {
+      rawText = await extractTextFromChatFile(file);
+    } catch (err) {
+      return { items: [], rawText: "", error: err instanceof Error ? err.message : "File non leggibile" };
+    }
+    if (rawText && isImageFile(file)) {
       const summarized =
         typeof window.__pvSummarizeBookingDocument === "function"
-          ? window.__pvSummarizeBookingDocument(text)
+          ? window.__pvSummarizeBookingDocument(rawText)
           : null;
       const parsed = summarized
         ? Array.isArray(summarized)
           ? summarized
           : [summarized]
         : typeof window.__pvParseEventImport === "function"
-          ? window.__pvParseEventImport(text, { sourceName: name }) || []
+          ? window.__pvParseEventImport(rawText, { sourceName: name }) || []
           : [];
-      return (Array.isArray(parsed) ? parsed : []).map((it) => ({ ...it, source: name }));
+      return {
+        items: (Array.isArray(parsed) ? parsed : []).map((it) => ({ ...it, source: name })),
+        rawText,
+        error: "",
+      };
     }
     if (typeof window.__pvReadImportFile !== "function") {
-      throw new Error("Import non ancora pronto: ricarica la pagina.");
+      return { items: [], rawText, error: "Import non ancora pronto: ricarica la pagina." };
     }
-    const parsed = await window.__pvReadImportFile(file);
-    const list = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
-    return list.map((it) => ({ ...it, source: it.source || name }));
+    try {
+      const parsed = await window.__pvReadImportFile(file);
+      const list = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+      return {
+        items: list.map((it) => ({ ...it, source: it.source || name })),
+        rawText,
+        error: "",
+      };
+    } catch (err) {
+      if (rawText && typeof window.__pvParseEventImport === "function") {
+        const parsed = window.__pvParseEventImport(rawText, { sourceName: name }) || [];
+        return {
+          items: (Array.isArray(parsed) ? parsed : []).map((it) => ({ ...it, source: name })),
+          rawText,
+          error: "",
+        };
+      }
+      return {
+        items: [],
+        rawText,
+        error: err instanceof Error ? err.message : "Analisi file non riuscita",
+      };
+    }
+  }
+
+  function importItemGaps(it) {
+    const gaps = [];
+    const title = String(it?.title || "").trim();
+    if (!title || title.length < 3 || /^voce$|^nuova voce$/i.test(title)) gaps.push("titolo poco chiaro");
+    if (it.kind === "stop") {
+      if (!it.payload?.stop?.day) gaps.push("giorno mancante");
+    } else if (it.kind === "booking") {
+      const b = it.payload?.booking || {};
+      if (!b.date) gaps.push("data mancante");
+      if (!b.type || b.type === "Altro") gaps.push("tipo generico");
+      if (!b.reference && !b.url) gaps.push("riferimento/link assente");
+    } else if (it.kind === "doc") {
+      if (!it.payload?.doc?.url) gaps.push("link mancante");
+    }
+    return gaps;
+  }
+
+  function noteItemFromRawText(text, source) {
+    const body = String(text || "").replace(/\s+/g, " ").trim().slice(0, 1500);
+    const title = (body.slice(0, 60) || source || "Nota da file").trim();
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `note-${Date.now()}`;
+    return {
+      id,
+      kind: "note",
+      title,
+      detail: body.slice(0, 160),
+      guess: "Salvabile come nota finché non mi dici di cosa si tratta",
+      source: source || "",
+      payload: { note: body || title },
+    };
+  }
+
+  function parseAiImportBlock(text) {
+    const m = String(text || "").match(/```pv-import\s*([\s\S]*?)```/i);
+    if (!m) return [];
+    try {
+      const raw = JSON.parse(m[1].trim());
+      if (!Array.isArray(raw)) return [];
+      const rekind = window.__pvRekindImportItem;
+      return raw
+        .map((row, idx) => {
+          const kind = String(row.kind || "note").toLowerCase();
+          const title = String(row.title || "").trim().slice(0, 120);
+          if (!title) return null;
+          const base = {
+            id:
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `ai-${Date.now()}-${idx}`,
+            kind: "note",
+            title,
+            detail: String(row.detail || row.notes || "").slice(0, 200),
+            source: "IA",
+            payload: { note: String(row.notes || row.detail || title).slice(0, 1500) },
+          };
+          if (!rekind) return base;
+          if (kind === "booking") {
+            return rekind(
+              {
+                ...base,
+                payload: {
+                  booking: {
+                    id: base.id,
+                    title,
+                    type: String(row.type || "Altro"),
+                    date: String(row.date || "").slice(0, 32),
+                    checkOut: String(row.checkOut || "").slice(0, 32),
+                    reference: String(row.reference || "").slice(0, 80),
+                    url: String(row.url || "").slice(0, 500),
+                    notes: String(row.notes || "").slice(0, 1500),
+                  },
+                },
+              },
+              "booking",
+              String(row.type || "Altro")
+            );
+          }
+          if (kind === "stop") {
+            return rekind(
+              {
+                ...base,
+                payload: {
+                  stop: {
+                    id: base.id,
+                    title,
+                    day: String(row.day || "").slice(0, 32) || undefined,
+                    time: String(row.time || "").slice(0, 16) || undefined,
+                    category: "Visita",
+                    address: String(row.address || "").slice(0, 200),
+                    notes: String(row.notes || "").slice(0, 800),
+                    lat: null,
+                    lng: null,
+                  },
+                },
+              },
+              "stop"
+            );
+          }
+          if (kind === "checklist" || kind === "doc" || kind === "note") {
+            return rekind(base, kind);
+          }
+          return rekind(base, "note");
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  async function askAiToClassifyImport(rawText, sources) {
+    const trip = magicTripCache || { title: "", destination: "", start: "", end: "", members: [], stops: [] };
+    const excerpt = String(rawText || "").slice(0, 3500);
+    if (excerpt.length < 20) return [];
+    const history = [
+      {
+        role: "user",
+        content: `Ho allegato: ${(sources || []).join(", ") || "un file"}.
+Testo estratto:
+"""
+${excerpt}
+"""
+Classifica il contenuto in voci strutturate per il viaggio.
+Rispondi in italiano con 1-2 frasi, poi OBBLIGATORIO un fence:
+
+\`\`\`pv-import
+[{"kind":"stop|booking|checklist|doc|note","title":"...","type":"Volo|Alloggio|Treno|Trasporto|Altro","day":"AAAA-MM-GG","date":"AAAA-MM-GG","time":"HH:MM","reference":"","url":"","address":"","notes":"..."}]
+\`\`\`
+
+Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare date/PNR assenti.`,
+      },
+    ];
+    try {
+      const aiText = await askTravelAI(trip, history);
+      return parseAiImportBlock(aiText);
+    } catch {
+      return [];
+    }
   }
 
   function summarizeImportKinds(items) {
@@ -2432,6 +2652,33 @@
     });
   }
 
+  function annotateImportGaps(root) {
+    if (!root || !chatImportDraft?.items) return;
+    root.querySelectorAll("[data-imp-id]").forEach((box) => {
+      const wrap = box.closest(".pv-import-item");
+      if (!wrap) return;
+      wrap.querySelector(".pv-chat-missing")?.remove();
+      const item = chatImportDraft.items.find((it) => it.id === box.dataset.impId);
+      if (!item) return;
+      const gaps = importItemGaps(item);
+      if (!gaps.length) return;
+      const note = document.createElement("div");
+      note.className = "pv-chat-missing";
+      note.textContent = `Da completare: ${gaps.join(" · ")}`;
+      (wrap.querySelector("div") || wrap).appendChild(note);
+    });
+  }
+
+  function bindChatClarifyChips(box, panel) {
+    box.querySelectorAll("[data-clarify]").forEach((btn) => {
+      btn.onclick = () => {
+        const cmd = btn.dataset.clarify;
+        if (!cmd) return;
+        void handleChatAsk(panel, cmd);
+      };
+    });
+  }
+
   function renderChatImportReview(panel) {
     const results = panel?.querySelector?.("#pv-chat-results");
     if (!results) return;
@@ -2449,18 +2696,36 @@
       typeof window.__pvRenderImportItems === "function"
         ? window.__pvRenderImportItems(chatImportDraft.items, null)
         : `<p>${chatImportDraft.items.length} voci trovate</p>`;
+    const incomplete = chatImportDraft.items.filter((it) => importItemGaps(it).length).length;
+    const uncertain = Boolean(chatImportDraft.uncertain);
+    const lead = uncertain
+      ? "Non sono sicuro al 100%: ho preparato comunque una bozza. Dimmi di cosa si tratta o usa i pulsanti sotto."
+      : `Ho analizzato ${escapeHtml(
+          (chatImportDraft.sources || []).join(", ") || "il file"
+        )}. Controlla tipo e dati (es. «è un volo», «giorno 3»), poi invia.`;
     box.innerHTML = `
       <h4>Proposta di inserimento</h4>
-      <p class="pv-lead" style="margin:0 0 8px">Ho analizzato ${escapeHtml(
-        (chatImportDraft.sources || []).join(", ") || "il file"
-      )}. Controlla il tipo, modifica i dati o dimmi come correggere (es. «è un volo», «metti al giorno 3»), poi invia alla sezione.</p>
+      <p class="pv-lead" style="margin:0 0 8px">${lead}${
+        incomplete
+          ? ` <strong>${incomplete} voc${incomplete === 1 ? "e ha" : "i hanno"} campi da completare.</strong>`
+          : ""
+      }</p>
       ${html}
+      <div class="pv-chat-clarify" role="group" aria-label="Correzioni rapide">
+        <button type="button" data-clarify="è un volo">È un volo</button>
+        <button type="button" data-clarify="è un hotel">È un hotel</button>
+        <button type="button" data-clarify="è una tappa">È una tappa</button>
+        <button type="button" data-clarify="è una nota">Salva come nota</button>
+        <button type="button" data-clarify="inserisci">Invia così</button>
+      </div>
       <div class="pv-chat-import-actions">
         <button type="button" class="primary" data-chat-imp-apply>Invia alle sezioni</button>
         <button type="button" class="ghost" data-chat-imp-clear>Scarta proposta</button>
       </div>
     `;
     bindChatImportKindSelectors(box);
+    annotateImportGaps(box);
+    bindChatClarifyChips(box, panel);
     box.querySelector("[data-chat-imp-apply]")?.addEventListener("click", () => {
       void applyChatImportDraft(panel);
     });
@@ -2492,26 +2757,72 @@
     try {
       const collected = [];
       const sources = [];
+      const rawChunks = [];
+      const errors = [];
       for (const file of list) {
         sources.push(file.name || "file");
-        const items = await extractItemsFromChatFile(file);
-        collected.push(...items);
+        const result = await extractItemsFromChatFile(file);
+        if (result.error) errors.push(result.error);
+        if (result.rawText) rawChunks.push(result.rawText);
+        collected.push(...(result.items || []));
       }
-      const merged =
+      let merged =
         typeof window.__pvMergeImportItems === "function"
           ? window.__pvMergeImportItems(collected)
           : collected;
-      chatImportDraft = { items: merged, sources };
+      let uncertain = false;
+      let usedAi = false;
+      const rawBlob = rawChunks.join("\n\n").trim();
+      if ((!merged.length || merged.every((it) => importItemGaps(it).length >= 2)) && rawBlob.length >= 40) {
+        thinking.textContent = "Classificazione debole: chiedo una seconda lettura all’IA…";
+        if (status) status.textContent = "Seconda lettura IA…";
+        const aiItems = await askAiToClassifyImport(rawBlob, sources);
+        if (aiItems.length) {
+          merged =
+            typeof window.__pvMergeImportItems === "function"
+              ? window.__pvMergeImportItems([...merged, ...aiItems])
+              : [...merged, ...aiItems];
+          usedAi = true;
+          uncertain = true;
+        }
+      }
+      if (!merged.length && rawBlob) {
+        merged = [noteItemFromRawText(rawBlob, sources[0] || "file")];
+        uncertain = true;
+      }
+      chatImportDraft = {
+        items: merged,
+        sources,
+        rawText: rawBlob,
+        uncertain,
+        usedAi,
+        errors,
+      };
       chatPendingFiles = [];
       renderChatFileChips(panel);
       const summary = summarizeImportKinds(merged) || "nessuna voce riconosciuta";
-      const reply = merged.length
-        ? `Ho trovato ${merged.length} voci: ${summary}. Controlla la proposta sotto, correggimi a voce se serve, poi usa «Invia alle sezioni».`
-        : "Non ho riconosciuto voci utili. Prova un PDF/testo più chiaro o dimmi di cosa si tratta.";
+      const incomplete = merged.filter((it) => importItemGaps(it).length).length;
+      let reply;
+      if (!merged.length) {
+        reply =
+          errors[0] ||
+          "Non ho riconosciuto voci utili. Invia un file più chiaro oppure dimmi di cosa si tratta (volo, hotel, tappa…).";
+      } else if (uncertain && usedAi) {
+        reply = `Seconda lettura IA: ${merged.length} voci (${summary}). Alcuni dati possono mancare — correggimi o completa i campi evidenziati, poi «Invia alle sezioni».`;
+      } else if (uncertain) {
+        reply = `Non ho capito bene il tipo: ho preparato una bozza nota da «${sources[0] || "file"}». Dimmi se è un volo, hotel o tappa, oppure salva come nota.`;
+      } else if (incomplete) {
+        reply = `Ho trovato ${merged.length} voci: ${summary}. ${incomplete} da completare (campi evidenziati in arancio). Puoi correggere a voce o dal form.`;
+      } else {
+        reply = `Ho trovato ${merged.length} voci: ${summary}. Controlla la proposta sotto, poi usa «Invia alle sezioni».`;
+      }
+      if (errors.length && merged.length) {
+        reply += ` Nota: ${errors[0]}`;
+      }
       thinking.textContent = reply;
       chatHistory.push({ role: "assistant", content: reply });
       renderChatImportReview(panel);
-      if (status) status.textContent = merged.length ? "Proposta pronta" : "Nessuna voce";
+      if (status) status.textContent = merged.length ? (uncertain ? "Bozza da confermare" : "Proposta pronta") : "Nessuna voce";
     } catch (err) {
       thinking.textContent = err instanceof Error ? err.message : "Analisi non riuscita";
       chatHistory.push({ role: "assistant", content: thinking.textContent });
@@ -2630,8 +2941,13 @@
     if (typeof window.__pvApplyImportItemsToTrip !== "function") {
       throw new Error("Import non disponibile");
     }
+    const incomplete = selected.filter((it) => importItemGaps(it).length);
     try {
-      if (status) status.textContent = "Inserisco nel viaggio…";
+      if (status) {
+        status.textContent = incomplete.length
+          ? `Inserisco comunque (${incomplete.length} incomplete)…`
+          : "Inserisco nel viaggio…";
+      }
       const { data } = await loadTrip({ force: true });
       const { trip, counts } = window.__pvApplyImportItemsToTrip(data.trip || {}, selected);
       await saveTrip(auth, trip, data.revision);
@@ -2645,7 +2961,11 @@
       ]
         .filter(Boolean)
         .join(", ") || summarizeImportKinds(selected);
-      const reply = `Fatto: ${summary}${counts.skipped ? ` · ${counts.skipped} già presenti` : ""}.`;
+      const reply = `Fatto: ${summary}${counts.skipped ? ` · ${counts.skipped} già presenti` : ""}${
+        incomplete.length
+          ? `. Puoi completare dopo i campi mancanti (${incomplete.length} voc${incomplete.length === 1 ? "e" : "i"}).`
+          : "."
+      }`;
       appendBubble(log, "bot", reply);
       chatHistory.push({ role: "assistant", content: reply });
       chatImportDraft = null;

@@ -59,9 +59,9 @@ ok("toolbar not forced full-width share", /min-width: 8\.5rem/.test(diary));
 ok(
   "stamps wired",
   /ux-suite-20261119z\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119z-iafile/.test(index) &&
+    /travel-diary\.css\?v=20261120a-iafile/.test(index) &&
     /ux-suite-20261119z\.js/.test(sw) &&
-    /20261119z-iafile/.test(sw)
+    /20261120a-iafile/.test(sw)
 );
 ok(
   "asset mirrors source",

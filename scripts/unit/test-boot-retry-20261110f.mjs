@@ -19,7 +19,7 @@ function test(name, fn) {
 }
 
 test("account.js stamp wired", () => {
-  assert.match(index, /account.js\?v=20261119z/);
+  assert.match(index, /account.js\?v=20261120a/);
 });
 
 test("loadApp retries and watches empty root", () => {
@@ -34,6 +34,6 @@ test("loadApp retries and watches empty root", () => {
 test("service worker refuses HTML as JS cache", () => {
   assert.match(sw, /jsContentOk/);
   assert.match(sw, /freshIsJsOk/);
-  assert.match(sw, /20261119z-iafile/);
+  assert.match(sw, /20261120a-iafile/);
 });
 console.log(process.exitCode ? "\nFAILED" : "\nOK");

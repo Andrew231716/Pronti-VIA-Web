@@ -29,7 +29,7 @@ ok(
   /pv-platform-20261118c\.js/.test(index) &&
     /ux-suite-20261119z\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(sw) &&
-    /20261119z-iafile/.test(sw)
+    /20261120a-iafile/.test(sw)
 );
 ok(
   "assets",

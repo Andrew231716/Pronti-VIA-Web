@@ -17,7 +17,7 @@ const index = readFileSync("index.html", "utf8");
 ok("platform share-box dark ink", /html\[data-pv-theme="dark"\][\s\S]*\.share-box h3[\s\S]*#12343c/.test(plat));
 ok("platform dialog-title ink", /data-slot="dialog-title"[\s\S]*#12343c/.test(plat));
 ok("diary dialog-title ink", /data-slot="dialog-title"[\s\S]*#12343c/.test(diary));
-ok("stamps", /pv-platform-20261118c\.js/.test(index) && /travel-diary\.css\?v=20261119z-iafile/.test(index));
+ok("stamps", /pv-platform-20261118c\.js/.test(index) && /travel-diary\.css\?v=20261120a-iafile/.test(index));
 ok("asset exists", existsSync("assets/pv-platform-20261118c.js"));
 
 

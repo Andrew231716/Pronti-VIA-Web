@@ -29,9 +29,9 @@ ok("diary toolbar polish", /#root \.trip-toolbar/.test(diary) && /pv-trip-phase/
 ok(
   "stamps wired",
   /ux-suite-20261119z\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119z-iafile/.test(index) &&
+    /travel-diary\.css\?v=20261120a-iafile/.test(index) &&
     /ux-suite-20261119z\.js/.test(sw) &&
-    /20261119z-iafile/.test(sw)
+    /20261120a-iafile/.test(sw)
 );
 ok("asset mirrors source", existsSync("assets/ux-suite-20261119z.js") && stamped.includes('const STYLE_VER = "20261119z"'));
 ok("style ver bumped", /const STYLE_VER = "20261119z"/.test(ux));
