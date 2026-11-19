@@ -26,7 +26,7 @@ ok("reveal stacks above input", /z-index:2/.test(ux) && /isolation:isolate/.test
 ok("saved password status card", /pv-pass-status-card/.test(ux) && /Password impostata/.test(ux) && /non si può rileggere/i.test(ux));
 ok("change behind details", /pv-pass-change/.test(ux) && /Cambia password/.test(ux) && /Riscrivi la password attuale/.test(ux));
 ok("reveal label Vedi", /data-pv-reveal-idle="Vedi"/.test(ux) && /data-pv-reveal-idle="Vedi"/.test(account));
-ok("styles stamped once", /const STYLE_VER = "20261118h"/.test(ux) && /dataset\.pvReady === STYLE_VER/.test(ux));
+ok("styles stamped once", /const STYLE_VER = "20261119b"/.test(ux) && /dataset\.pvReady === STYLE_VER/.test(ux));
 ok("shell updates without forced reload", !/pv-shell-reloaded/.test(account) && /pv-sw-checked/.test(account));
 ok("changePassword helper", /async function changePassword/.test(account) && /__pvChangePassword/.test(account));
 ok("gate password wrap", /pv-pass-wrap/.test(account) && /aria-controls="pv-password"/.test(account));
@@ -34,12 +34,12 @@ ok("netlify change-password", /action === "change-password"/.test(netlify) && /c
 ok("recovery change-password", /action === "change-password"/.test(recovery) && /Password attuale non corretta/.test(recovery));
 ok(
   "stamps",
-  /ux-suite-20261118h\.js/.test(index) &&
-    /account.js\?v=20261119a/.test(index) &&
+  /ux-suite-20261119b\.js/.test(index) &&
+    /account\.js\?v=20261119b/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
-    existsSync("assets/ux-suite-20261118h.js")
+    existsSync("assets/ux-suite-20261119b.js")
 );
-ok("sw", /20261118h/.test(sw) && /ux-suite-20261118h\.js/.test(sw) && /account.js\?v=20261119a/.test(sw));
+ok("sw", /20261119b/.test(sw) && /ux-suite-20261119b\.js/.test(sw) && /account\.js\?v=20261119b/.test(sw));
 
 
 if (failed) {

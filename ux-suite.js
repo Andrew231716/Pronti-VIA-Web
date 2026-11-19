@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261118h";
+  const STYLE_VER = "20261119b";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -958,6 +958,78 @@
     writeJson(PRIVATE_BOOKINGS_KEY, db);
   }
 
+  function accountIdentity() {
+    try {
+      const a = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+      return {
+        displayName: String(a?.user?.displayName || "").trim(),
+        username: String(a?.user?.username || "").trim(),
+        guest: Boolean(a?.guest),
+      };
+    } catch {
+      return { displayName: "", username: "", guest: true };
+    }
+  }
+
+  function isTripOwner(trip) {
+    const members = Array.isArray(trip?.members) ? trip.members : [];
+    const creator = members[0];
+    const me = accountIdentity();
+    if (me.guest) return false;
+    const names = [me.displayName, me.username].map((n) => n.toLowerCase()).filter(Boolean);
+    if (!names.length) return false;
+    if (!creator) return true;
+    const roles = trip?.meta?.roles && typeof trip.meta.roles === "object" ? trip.meta.roles : {};
+    const mine = members.find((m) => {
+      const name = String(m?.name || "").trim().toLowerCase();
+      const uname = String(m?.username || "").trim().toLowerCase();
+      return (name && names.includes(name)) || (uname && names.includes(uname));
+    });
+    if (mine?.id) {
+      const role = String(roles[mine.id] || (mine.id === creator.id ? "owner" : "member"))
+        .trim()
+        .toLowerCase();
+      if (role === "owner" || role === "creatore") return true;
+    }
+    return names.includes(String(creator.name || "").trim().toLowerCase());
+  }
+
+  function personalBookingFromImport(booking) {
+    const base = booking && typeof booking === "object" ? booking : {};
+    return {
+      ...base,
+      id: String(base.id || "").startsWith("pb-")
+        ? base.id
+        : `pb-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+      visibility: "personal",
+      kind: base.kind || "import",
+      title: String(base.title || "Prenotazione").trim().slice(0, 120),
+      type: String(base.type || "Altro").trim().slice(0, 40),
+      date: String(base.date || "").slice(0, 32),
+      reference: String(base.reference || base.pnr || "").slice(0, 80),
+      notes: String(base.notes || "").slice(0, 1500),
+      url: String(base.url || "").slice(0, 500),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function stayOnTripSection(auth, section) {
+    if (typeof window.__pvRemountTripSection === "function") {
+      window.__pvRemountTripSection(auth, section);
+      return;
+    }
+    try {
+      sessionStorage.setItem(
+        "pv-trip-phase-v1",
+        section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip"
+      );
+      sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
+    } catch { /* ignore */ }
+    const hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
+    if (location.hash !== hash) location.hash = hash;
+    location.reload();
+  }
+
   function localFlightFallback(input) {
     const airlineRaw = String(input.airline || "").trim();
     const pnr = String(input.pnr || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
@@ -1029,46 +1101,54 @@
     return localFlightFallback(input);
   }
 
-  function renderPersonalFlightCard(booking) {
+  function renderPersonalFlightCard(booking, { canMove = false } = {}) {
     const color = booking.color || "#0b2c5e";
+    const isFlight = Boolean(booking.airline || booking.flightNumber || booking.pnr);
     const route = booking.from && booking.to
       ? `<div class="pv-flight-route">
           <div><div class="code">${escapeHtml(booking.from)}</div><div class="meta">${escapeHtml(booking.departTime || "Partenza")}</div></div>
           <div class="arrow" aria-hidden="true">→</div>
           <div class="to"><div class="code">${escapeHtml(booking.to)}</div><div class="meta">${escapeHtml(booking.arriveTime || "Arrivo")}</div></div>
         </div>`
-      : `<p class="meta" style="margin:0 0 10px;color:#3f5860;font:550 .86rem/1.4 inherit">Rotta non ancora disponibile — apri Gestisci prenotazione sulla compagnia${booking.flightNumber ? ` o verifica il volo ${escapeHtml(booking.flightNumber)}` : ""}.</p>`;
+      : isFlight
+        ? `<p class="meta" style="margin:0 0 10px;color:#3f5860;font:550 .86rem/1.4 inherit">Rotta non ancora disponibile — apri Gestisci prenotazione sulla compagnia${booking.flightNumber ? ` o verifica il volo ${escapeHtml(booking.flightNumber)}` : ""}.</p>`
+        : (booking.notes
+          ? `<p class="meta" style="margin:0 0 10px;color:#3f5860;font:550 .86rem/1.4 inherit">${escapeHtml(String(booking.notes).slice(0, 220))}</p>`
+          : "");
     const facts = [
+      booking.type && booking.type !== "Volo" && booking.type,
       booking.flightNumber && `Volo ${booking.flightNumber}`,
       booking.date && booking.date,
       booking.status && booking.status,
       booking.airlineCode && booking.airlineCode,
+      booking.reference && !booking.pnr && `Rif. ${booking.reference}`,
     ].filter(Boolean);
     return `<article class="pv-flight-card" data-pv-personal-booking="${escapeHtml(booking.id)}" style="--pv-flight-color:${escapeHtml(color)}">
       <div class="pv-flight-card-banner">
         <div>
-          <strong>${escapeHtml(booking.airline || booking.title || "Volo")}</strong>
+          <strong>${escapeHtml(booking.airline || booking.type || booking.title || "Prenotazione")}</strong>
           <small>${escapeHtml(booking.title || "")}</small>
         </div>
         <span class="pv-flight-badge">Personale</span>
       </div>
       <div class="pv-flight-card-body">
         ${route}
-        <div class="pv-flight-pnr">
+        ${booking.pnr || booking.reference ? `<div class="pv-flight-pnr">
           <div><div class="label">Numero prenotazione</div><div class="value">${escapeHtml(booking.pnr || booking.reference || "")}</div></div>
           ${booking.lastName ? `<div><div class="label">Cognome</div><div class="value" style="letter-spacing:0;font-size:1rem">${escapeHtml(booking.lastName)}</div></div>` : ""}
-        </div>
+        </div>` : ""}
         ${facts.length ? `<div class="pv-flight-facts">${facts.map((f) => `<span>${escapeHtml(f)}</span>`).join("")}</div>` : ""}
         <div class="pv-flight-card-actions">
-          ${booking.url ? `<a class="button" href="${escapeHtml(booking.url)}" target="_blank" rel="noopener noreferrer">Gestisci su ${escapeHtml(booking.airline || "compagnia")}</a>` : ""}
-          <button type="button" class="button secondary" data-pv-share-personal="${escapeHtml(booking.id)}">Copia in condivise</button>
+          ${booking.url ? `<a class="button" href="${escapeHtml(booking.url)}" target="_blank" rel="noopener noreferrer">${isFlight ? `Gestisci su ${escapeHtml(booking.airline || "compagnia")}` : "Apri link"}</a>` : ""}
+          ${canMove ? `<button type="button" class="button secondary" data-pv-share-personal="${escapeHtml(booking.id)}">Sposta in condivise</button>` : ""}
           <button type="button" class="button secondary" data-pv-delete-personal="${escapeHtml(booking.id)}">Rimuovi</button>
         </div>
       </div>
     </article>`;
   }
 
-  function bindPersonalBookingActions(personal, panel, auth, canEdit) {
+  function bindPersonalBookingActions(personal, panel, auth, canEdit, trip) {
+    const owner = isTripOwner(trip);
     personal.querySelectorAll("[data-pv-delete-personal]").forEach((button) => {
       button.onclick = () => {
         const id = button.getAttribute("data-pv-delete-personal");
@@ -1079,8 +1159,8 @@
     });
     personal.querySelectorAll("[data-pv-share-personal]").forEach((button) => {
       button.onclick = async () => {
-        if (!canEdit) {
-          toast("Serve accesso in modifica per copiare nelle condivise", "warn");
+        if (!canEdit || !owner) {
+          toast("Solo il proprietario può spostare tra personale e condiviso", "warn");
           return;
         }
         const id = button.getAttribute("data-pv-share-personal");
@@ -1090,14 +1170,15 @@
         try {
           const { data } = await loadTripByAuth(auth);
           if (data.canEdit === false) throw new Error("Viaggio in sola lettura");
+          if (!isTripOwner(data.trip)) throw new Error("Solo il proprietario può spostare tra personale e condiviso");
           const shared = {
             id: `b-${Date.now().toString(36)}`,
-            title: booking.title || `${booking.airline} ${booking.pnr}`,
-            type: "Volo",
+            title: booking.title || `${booking.airline || "Prenotazione"} ${booking.pnr || ""}`.trim(),
+            type: booking.type || (booking.airline ? "Volo" : "Altro"),
             date: booking.date || data.trip.start || "",
             reference: booking.pnr || booking.reference || "",
             notes: [
-              "Condivisa dal personale",
+              "Spostata dal personale",
               booking.flightNumber && `Volo ${booking.flightNumber}`,
               booking.from && booking.to && `${booking.from}→${booking.to}`,
               booking.notes,
@@ -1107,12 +1188,15 @@
               .slice(0, 1500),
             url: booking.url || "",
           };
-          const trip = { ...data.trip, bookings: [...(data.trip.bookings || []), shared].slice(0, 200) };
-          await saveTrip(auth, trip, data.revision);
-          toast("Copiata nelle prenotazioni condivise", "ok");
-          window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip } }));
+          const nextTrip = { ...data.trip, bookings: [...(data.trip.bookings || []), shared].slice(0, 200) };
+          await saveTrip(auth, nextTrip, data.revision);
+          writePrivateBookings(auth.id, readPrivateBookings(auth.id).filter((b) => b.id !== id));
+          toast("Spostata nelle prenotazioni condivise", "ok");
+          window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: nextTrip } }));
+          ensureBookingsScopeChrome(panel, auth, canEdit, true);
+          stayOnTripSection(auth, "bookings");
         } catch (err) {
-          toast(err.message || "Copia non riuscita", "err");
+          toast(err.message || "Spostamento non riuscito", "err");
         } finally {
           button.disabled = false;
         }
@@ -1131,7 +1215,20 @@
       else panel.prepend(personal);
     }
     const rows = readPrivateBookings(auth.id);
-    const signature = JSON.stringify([auth.id, canEdit, rows.map((b) => [b.id, b.updatedAt, b.pnr, b.from, b.to])]);
+    const trip = (() => {
+      try {
+        return JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")?.[auth.id]?.trip || {};
+      } catch {
+        return {};
+      }
+    })();
+    const owner = isTripOwner(trip);
+    const signature = JSON.stringify([
+      auth.id,
+      canEdit,
+      owner,
+      rows.map((b) => [b.id, b.updatedAt, b.pnr, b.from, b.to, b.title]),
+    ]);
     if (!force && personal.dataset.signature === signature) {
       let sharedLabel = panel.querySelector(".pv-book-shared-label");
       if (!sharedLabel) {
@@ -1181,7 +1278,11 @@
           <span class="meta" style="font:550 .8rem/1.3 inherit;color:#3f5860">Inserisci compagnia + codice: preparo la card e apro i dettagli disponibili.</span>
         </div>
       </form>
-      <div class="pv-book-personal-list">${rows.length ? rows.map(renderPersonalFlightCard).join("") : '<p style="margin:0;color:#3f5860;font:550 .86rem/1.4 inherit">Nessuna prenotazione personale ancora.</p>'}</div>`;
+      <div class="pv-book-personal-list">${
+        rows.length
+          ? rows.map((row) => renderPersonalFlightCard(row, { canMove: owner && canEdit })).join("")
+          : '<p style="margin:0;color:#3f5860;font:550 .86rem/1.4 inherit">Nessuna prenotazione personale ancora.</p>'
+      }</div>`;
     const form = personal.querySelector("[data-pv-flight-form]");
     if (prevAirline) form.airline.value = prevAirline;
     if (prevPnr) form.pnr.value = prevPnr;
@@ -1219,7 +1320,7 @@
         btn.disabled = false;
       }
     };
-    bindPersonalBookingActions(personal, panel, auth, canEdit);
+    bindPersonalBookingActions(personal, panel, auth, canEdit, trip);
 
     let sharedLabel = panel.querySelector(".pv-book-shared-label");
     if (!sharedLabel) {
@@ -1230,7 +1331,10 @@
       else personal.after(sharedLabel);
     }
     sharedLabel.innerHTML =
-      `<strong>Condivise</strong> — visibili a chi ha il link del viaggio (hotel, treni, voli di gruppo…).`;
+      `<strong>Condivise</strong> — visibili a chi ha il link del viaggio (hotel, treni, voli di gruppo…).` +
+      (owner
+        ? ` <span style="display:block;margin-top:4px;font:550 .8rem/1.35 inherit;color:#5b7380">Solo tu (proprietario) puoi spostare tra personali e condivise.</span>`
+        : "");
   }
 
   function logActivity(tripId, text) {
@@ -4120,7 +4224,18 @@
          Incolla più volte e/o carica <em>più file</em> (PDF con testo, .txt, .md, .csv, .json, .ics, .html).
          ${section ? "" : "Poi scegli le voci da inserire nelle sezioni del viaggio."}
        </div>
-       ${section ? `<p>Le voci selezionate saranno aggiunte solo a <strong>${section.label}</strong> in questo viaggio.</p>` : `<h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
+       ${section ? `<p>Le voci selezionate saranno aggiunte solo a <strong>${section.label}</strong> in questo viaggio.</p>
+       ${opts.section === "bookings" ? `<div class="pv-import-scope" style="margin:10px 0 4px;padding:10px 12px;border:1px solid #cfe0e4;border-radius:14px;background:#f7fbfb">
+         <strong style="display:block;margin-bottom:6px">Visibilità</strong>
+         <label style="display:flex;gap:8px;align-items:flex-start;margin:0 0 6px;font:550 .88rem/1.35 inherit">
+           <input type="radio" name="pv-imp-scope" value="shared" checked />
+           <span><strong>Condivisa</strong> — visibile a chi ha il link del viaggio</span>
+         </label>
+         <label style="display:flex;gap:8px;align-items:flex-start;margin:0;font:550 .88rem/1.35 inherit">
+           <input type="radio" name="pv-imp-scope" value="personal" />
+           <span><strong>Personale</strong> — solo sul tuo dispositivo</span>
+         </label>
+       </div>` : ""}` : `<h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
        <div class="pv-import-trip-list" id="pv-imp-trips">
          <label class="${preferAdd && state.auth ? "" : "on"}">
            <input type="radio" name="pv-imp-trip" value="__new__" data-key="" ${preferAdd && state.auth ? "" : "checked"} />
@@ -4290,11 +4405,46 @@
               }
               if (data.canEdit === false) throw new Error("Questo viaggio è in sola lettura");
               if (section) {
+                const scope =
+                  opts.section === "bookings"
+                    ? body.querySelector('input[name="pv-imp-scope"]:checked')?.value || "shared"
+                    : "shared";
+                if (opts.section === "bookings" && scope === "personal") {
+                  const incoming = selected
+                    .filter((it) => it.kind === "booking" && it.payload?.booking)
+                    .map((it) => personalBookingFromImport(it.payload.booking));
+                  if (!incoming.length) throw new Error("Nessuna prenotazione selezionata");
+                  const existing = readPrivateBookings(auth.id);
+                  const keys = new Set(
+                    existing.map((b) => String(b.title || "").trim().toLowerCase()).filter(Boolean)
+                  );
+                  const added = [];
+                  for (const row of incoming) {
+                    const key = String(row.title || "").trim().toLowerCase();
+                    if (key && keys.has(key)) continue;
+                    added.push(row);
+                    if (key) keys.add(key);
+                  }
+                  writePrivateBookings(auth.id, [...added, ...existing].slice(0, 40));
+                  closeModal();
+                  toast(
+                    added.length
+                      ? `Aggiunte ${added.length} prenotazioni personali`
+                      : "Già presenti tra le personali",
+                    added.length ? "ok" : "warn"
+                  );
+                  stayOnTripSection(auth, "bookings");
+                  return;
+                }
                 const { trip } = applySectionEventImport(data.trip, selected, opts.section);
                 const saved = await saveTrip(auth, trip, data.revision);
-                window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: saved.trip || trip } }));
-                sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section: opts.section }));
-                location.reload();
+                window.dispatchEvent(
+                  new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: saved.trip || trip } })
+                );
+                closeModal();
+                toast(`Aggiunto in ${section.label}`, "ok");
+                // Keep #trip=&key= so reload does not drop to Home.
+                stayOnTripSection(auth, opts.section);
                 return;
               }
               const { trip, counts } = applyImportItemsToTrip(data.trip || {}, selected, { replaceMeta: created });
@@ -4644,6 +4794,7 @@
       const cards = [...panel.querySelectorAll(":scope > .booking-card")];
       if (section === "bookings") {
         ensureBookingsScopeChrome(panel, auth, canEdit);
+        const owner = isTripOwner(trip);
         const today = new Date().toLocaleDateString("sv-SE");
         const order = [...bookings].sort((a,b) => {
           const rank = date => !date ? 2 : date >= today ? 0 : 1;
@@ -4666,8 +4817,51 @@
             pill.textContent = "Condivisa";
             group.prepend(pill);
           }
+          let moveBtn = group.querySelector("[data-pv-to-personal]");
+          if (owner && canEdit) {
+            if (!moveBtn) {
+              moveBtn = document.createElement("button");
+              moveBtn.type = "button";
+              moveBtn.className = "button secondary";
+              moveBtn.dataset.pvToPersonal = booking.id;
+              moveBtn.textContent = "Sposta in personali";
+              group.append(moveBtn);
+            } else {
+              moveBtn.dataset.pvToPersonal = booking.id;
+            }
+            moveBtn.onclick = async () => {
+              moveBtn.disabled = true;
+              try {
+                const { data } = await loadTripByAuth(auth);
+                if (data.canEdit === false) throw new Error("Viaggio in sola lettura");
+                if (!isTripOwner(data.trip)) {
+                  throw new Error("Solo il proprietario può spostare tra personale e condiviso");
+                }
+                const latest = (data.trip.bookings || []).find((b) => b.id === booking.id) || booking;
+                const nextTrip = {
+                  ...data.trip,
+                  bookings: (data.trip.bookings || []).filter((b) => b.id !== booking.id),
+                };
+                await saveTrip(auth, nextTrip, data.revision);
+                writePrivateBookings(auth.id, [
+                  personalBookingFromImport(latest),
+                  ...readPrivateBookings(auth.id).filter((b) => b.id !== latest.id),
+                ].slice(0, 40));
+                toast("Spostata tra le prenotazioni personali", "ok");
+                window.dispatchEvent(
+                  new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip: nextTrip } })
+                );
+                stayOnTripSection(auth, "bookings");
+              } catch (err) {
+                toast(err.message || "Spostamento non riuscito", "err");
+                moveBtn.disabled = false;
+              }
+            };
+          } else {
+            moveBtn?.remove();
+          }
           const linked = Array.isArray(documents[booking.id]) ? documents[booking.id] : [];
-          const signature = JSON.stringify([booking.id, linked, canEdit, next]);
+          const signature = JSON.stringify([booking.id, linked, canEdit, next, owner]);
           if (group.dataset.pvBookingDocs === signature) return;
           group.dataset.pvBookingDocs = signature;
           group.querySelector(".pv-booking-docs")?.remove();

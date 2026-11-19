@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261118h") return;
+    if (style && style.dataset.pvReady === "20261119b") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261118h";
+    style.dataset.pvReady = "20261119b";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -3960,14 +3960,18 @@ Regole:
   function remountTripSection(auth, section = "packing") {
     if (!auth?.id || !auth?.key) return;
     try {
-      sessionStorage.setItem("pv-trip-phase-v1", section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip");
+      sessionStorage.setItem(
+        "pv-trip-phase-v1",
+        section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip"
+      );
       sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
     } catch { /* ignore */ }
     const hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
     if (location.hash !== hash) location.hash = hash;
-    // SPA checklist is React-owned: remount with hash preserved so Valigia updates.
+    // SPA checklist/bookings are React-owned: remount with hash preserved so we stay in-trip.
     location.reload();
   }
+  window.__pvRemountTripSection = remountTripSection;
 
   async function applyPackingTemplate(name, button) {
     if (button) button.setAttribute("aria-busy", "true");

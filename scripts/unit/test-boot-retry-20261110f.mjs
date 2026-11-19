@@ -19,7 +19,7 @@ function test(name, fn) {
 }
 
 test("account.js stamp wired", () => {
-  assert.match(index, /account\.js\?v=20261119a/);
+  assert.match(index, /account\.js\?v=20261119b/);
 });
 
 test("loadApp retries and watches empty root", () => {
