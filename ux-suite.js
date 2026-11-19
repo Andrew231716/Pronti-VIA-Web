@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119s";
+  const STYLE_VER = "20261119v";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -5552,6 +5552,13 @@
     tab.dataset.pvTabFixed = "1";
   }
 
+  function phaseRequiredByActiveTab(tabs) {
+    const active = tabs.querySelector('[role="tab"][aria-selected="true"], [role="tab"][data-state="active"]');
+    const meta = TRIP_TAB_META[tabSectionKey(active)];
+    if (meta?.phase === "prep" || meta?.phase === "trip") return meta.phase;
+    return "";
+  }
+
   function ensureVisiblePhaseTab(tabs, phase) {
     const active = tabs.querySelector('[role="tab"][aria-selected="true"], [role="tab"][data-state="active"]');
     const activeKey = tabSectionKey(active);
@@ -5659,7 +5666,18 @@
     const host = tabs.closest(".workspace-tabs") || tabs.parentElement;
     if (!host) return;
 
-    const phase = resolveTripPhase(auth);
+    // Prefer the phase implied by the active tab (e.g. "Vedi spese" → expenses)
+    // so we don't bounce trip-only sections back to Itinerario while in Prepara.
+    let phase = resolveTripPhase(auth);
+    const required = phaseRequiredByActiveTab(tabs);
+    if (required && required !== phase) {
+      phase = required;
+      try {
+        sessionStorage.setItem(TRIP_PHASE_KEY, phase);
+      } catch {
+        /* ignore */
+      }
+    }
     document.documentElement.dataset.pvTripPhase = phase;
 
     let mode = host.querySelector(":scope > .pv-trip-phase");
@@ -5735,6 +5753,35 @@
     ensureVisiblePhaseTab(tabs, phase);
     injectSectionGuide(tabs);
     polishTripToolbar();
+    bindVediSpesePhasePromotion();
+  }
+
+  function bindVediSpesePhasePromotion() {
+    if (document.documentElement.dataset.pvVediSpeseBound === "1") return;
+    document.documentElement.dataset.pvVediSpeseBound = "1";
+    document.addEventListener(
+      "click",
+      (ev) => {
+        const btn = ev.target?.closest?.("button, a, [role='button']");
+        if (!btn) return;
+        const label = (btn.textContent || "").replace(/\s+/g, " ").trim();
+        if (!/^Vedi spese/i.test(label)) return;
+        // Flip to "In viaggio" before the SPA selects expenses, so the phase
+        // filter does not hide Spese and bounce back to Itinerario.
+        try {
+          sessionStorage.setItem(TRIP_PHASE_KEY, "trip");
+        } catch {
+          /* ignore */
+        }
+        document.documentElement.dataset.pvTripPhase = "trip";
+        document.querySelectorAll(".pv-trip-phase button[data-phase]").forEach((el) => {
+          el.setAttribute("aria-pressed", el.dataset.phase === "trip" ? "true" : "false");
+        });
+        const hint = document.querySelector(".pv-trip-phase-hint");
+        if (hint) hint.textContent = TRIP_PHASE_COPY.trip.hint;
+      },
+      true
+    );
   }
 
   function injectEventImportRail() {

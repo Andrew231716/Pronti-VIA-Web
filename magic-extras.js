@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119t") return;
+    if (style && style.dataset.pvReady === "20261119v") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119t";
+    style.dataset.pvReady = "20261119v";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -5278,18 +5278,89 @@ Regole:
       if (Number.isNaN(Date.parse(`${v}T12:00:00Z`))) return "";
       const start = String(trip?.start || "").slice(0, 10);
       const end = String(trip?.end || "").slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(start) && v < start) return start;
-      if (/^\d{4}-\d{2}-\d{2}$/.test(end) && v > end) return end;
+      // Out of trip range → "da decidere" (do not clamp onto day 1 / last day).
+      if (/^\d{4}-\d{2}-\d{2}$/.test(start) && v < start) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(end) && v > end) return "";
       return v;
     }
     // Legacy labels like "Giorno 1" → real ISO day on the trip.
+    // Do NOT fall back to day 1: an unknown label stays "da decidere".
     const m = v.match(/giorno\s*(\d+)/i);
     if (m) {
       const days = tripDays(trip);
       const idx = Math.max(0, Number(m[1]) - 1);
-      return days[idx] || days[0] || "";
+      return days[idx] || "";
     }
     return "";
+  }
+
+  function stopNeedsDay(stop, trip) {
+    const raw = String(stop?.day ?? "").trim();
+    if (!raw || /^unscheduled$/i.test(raw)) return true;
+    const days = tripDays(trip);
+    // Itinerary matches with strict === on ISO days. Legacy labels ("Giorno 6")
+    // or out-of-range dates look "assigned" to the SPA (`!day`) but never appear
+    // on a day strip — count them as still to organize.
+    if (days.length) return !days.includes(raw);
+    return !/^\d{4}-\d{2}-\d{2}$/.test(raw);
+  }
+
+  function readOpenTripSync() {
+    try {
+      if (magicTripCache && !magicTripCache._draftOnly) return magicTripCache;
+      const hash = String(location.hash || "");
+      const id = decodeURIComponent((hash.match(/[#&?]trip=([^&]+)/) || [])[1] || "");
+      if (!id) return null;
+      const row = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[id];
+      return row?.trip || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function refreshOrganizeOverviewCard() {
+    const card = document.querySelector("#root section.saved-card, #root .saved-card");
+    if (!card) return;
+    const trip = readOpenTripSync();
+    if (!trip || !Array.isArray(trip.stops)) return;
+    const pending = trip.stops.filter((s) => stopNeedsDay(s, trip));
+    const sig = `${pending.length}:${pending.map((s) => s.id || s.title || "").join("|")}`;
+    if (card.dataset.pvOrgSig === sig) return;
+    card.dataset.pvOrgSig = sig;
+
+    const countEl = card.querySelector(".round-count");
+    if (countEl) countEl.textContent = String(pending.length);
+
+    card.querySelectorAll(".saved-place, .small-note, .pv-org-note").forEach((el) => el.remove());
+
+    for (const stop of pending.slice(0, 3)) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "saved-place";
+      const cat = escapeHtml(String(stop.category || "Altro"));
+      const title = escapeHtml(String(stop.title || "Senza titolo"));
+      btn.innerHTML = `<span aria-hidden="true">📍</span><span>${title}<small>${cat}</small></span>`;
+      btn.addEventListener("click", () => {
+        const tab = [...document.querySelectorAll('#root .main-tabs [role="tab"]')].find((el) =>
+          (el.getAttribute("aria-controls") || "").includes("itinerary")
+        );
+        tab?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+        tab?.click();
+      });
+      card.appendChild(btn);
+    }
+
+    if (!pending.length) {
+      const note = document.createElement("p");
+      note.className = "small-note";
+      note.textContent = "Tutti i luoghi hanno già il loro giorno.";
+      card.appendChild(note);
+    } else if (pending.length > 3) {
+      const note = document.createElement("p");
+      note.className = "small-note pv-org-note";
+      note.textContent = `Altre ${pending.length - 3} tappe senza giorno.`;
+      card.appendChild(note);
+    }
   }
 
   function normalizeStopsInTrip(trip) {
@@ -7436,6 +7507,7 @@ Regole:
     fixItalianTappeGrammar();
     syncTripCoverToDestination();
     injectCoverCountdown();
+    refreshOrganizeOverviewCard();
     ensureShareToast();
     injectCloudStatusBanner();
     bindForceDeleteStop();
