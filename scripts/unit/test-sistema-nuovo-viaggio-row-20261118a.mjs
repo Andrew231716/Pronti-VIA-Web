@@ -23,12 +23,12 @@ ok("home row css", /pv-home-nuovo/.test(accountCss) && /pv-theme-toggle--home/.t
 ok("home toggle static", /pv-theme-toggle--home[\s\S]*position:\s*static/.test(accountCss));
 ok(
   "stamps",
-  /account.js\?v=20261119s/.test(index) &&
+  /account.js\?v=20261119t/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
-    /account.js\?v=20261119s/.test(sw) &&
+    /account.js\?v=20261119t/.test(sw) &&
     /20261119s-riquadro/.test(sw)
 );
-ok("shell ver", /const SHELL_VER = "20261119s"/.test(accountJs));
+ok("shell ver", /const SHELL_VER = "20261119t"/.test(accountJs));
 ok("files exist", existsSync("account.js") && existsSync("account.css"));
 
 if (failed) {

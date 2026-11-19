@@ -13,14 +13,15 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 ok("time input + pill sync", /data-pv-time/.test(magic) && /normalizeStopTime/.test(magic) && /syncStopTimePill/.test(magic));
 ok("single time pill (no duplicates)", /Keep a single display pill/.test(magic) && /pills\.slice\(1\)\.forEach/.test(magic));
+ok("sposta-al day control", /pv-stop-move/.test(magic) && /Sposta al/.test(magic) && !/Giorno della tappa/.test(magic));
 ok("no redundant Prima/Dopo extras", /drop the redundant Prima\/Dopo row/.test(magic) && !/↑ Prima/.test(magic));
 ok("sort by time kept", /sortDayStopsByTime/.test(magic) && /Ordina per orario/.test(magic));
 ok(
   "stamps",
-  /magic-extras-20261119s\.js/.test(index) &&
+  /magic-extras-20261119t\.js/.test(index) &&
     /20261119s-riquadro/.test(sw) &&
-    existsSync("assets/magic-extras-20261119s.js") &&
-    /dataset\.pvReady = "20261119s"/.test(magic)
+    existsSync("assets/magic-extras-20261119t.js") &&
+    /dataset\.pvReady = "20261119t"/.test(magic)
 );
 if (failed) {
   console.log(`\n${failed} FAIL`);

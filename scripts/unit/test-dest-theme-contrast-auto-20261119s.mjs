@@ -68,8 +68,8 @@ ok(
   "stamps",
   /destination-theme-20261119s\.js/.test(index) &&
     /20261119s-riquadro/.test(sw) &&
-    /account\.js\?v=20261119s/.test(index) &&
-    /const SHELL_VER = "20261119s"/.test(account) &&
+    /account\.js\?v=20261119t/.test(index) &&
+    /const SHELL_VER = "20261119t"/.test(account) &&
     existsSync("assets/destination-theme-20261119s.js")
 );
 ok(

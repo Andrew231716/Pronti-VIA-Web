@@ -15,6 +15,6 @@ ok("ghana diary panel white", /Ghana section frame: white[\s\S]*background: #fff
 ok("no gold tabpanel gradient left", !/background: linear-gradient\(165deg, #e2d194/.test(dest));
 ok("dedupe time pills", /Keep a single display pill/.test(magic) && /pills\.slice\(1\)\.forEach/.test(magic));
 ok("removed Prima\/Dopo extras", /drop the redundant Prima\/Dopo row/.test(magic) && !/up\.textContent = "↑ Prima"/.test(magic));
-ok("stamps", /destination-theme-20261119s\.js/.test(index) && /magic-extras-20261119s\.js/.test(index) && /ux-suite-20261119s\.js/.test(index) && /20261119s-riquadro/.test(sw) && /SHELL_VER = "20261119s"/.test(account) && existsSync("assets/destination-theme-20261119s.js") && existsSync("assets/magic-extras-20261119s.js") && existsSync("assets/ux-suite-20261119s.js"));
-ok("assets mirror", readFileSync("assets/destination-theme-20261119s.js","utf8")===dest && readFileSync("assets/magic-extras-20261119s.js","utf8")===magic);
+ok("stamps", /destination-theme-20261119s\.js/.test(index) && /magic-extras-20261119t\.js/.test(index) && /ux-suite-20261119s\.js/.test(index) && /20261119s-riquadro/.test(sw) && /SHELL_VER = "20261119t"/.test(account) && existsSync("assets/destination-theme-20261119s.js") && existsSync("assets/magic-extras-20261119t.js") && existsSync("assets/ux-suite-20261119s.js"));
+ok("assets mirror", readFileSync("assets/destination-theme-20261119s.js","utf8")===dest && readFileSync("assets/magic-extras-20261119t.js","utf8")===magic);
 if(failed){console.log(`\n${failed} FAIL`); process.exit(1);} console.log("\nOK");

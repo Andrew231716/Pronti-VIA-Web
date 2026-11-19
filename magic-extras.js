@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119s") return;
+    if (style && style.dataset.pvReady === "20261119t") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119s";
+    style.dataset.pvReady = "20261119t";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -328,6 +328,16 @@
         border:1px solid #c9dbdb;border-radius:12px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%);min-height:38px
       }
       .stop-card .pv-stop-extras input[type="time"]{min-width:7.5rem}
+      .stop-card .pv-stop-move{position:relative;display:inline-flex;align-items:center}
+      .stop-card .pv-stop-move > button{
+        appearance:none;border:1px solid #c9dbdb;border-radius:12px;padding:7px 12px;min-height:38px;
+        font:650 .78rem/1 inherit;background:#fff;color:#16353b;cursor:pointer
+      }
+      .stop-card .pv-stop-move > button:hover{border-color:#51a7a3;background:#eef8f7}
+      .stop-card .pv-stop-move > select{
+        position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+        border:0;padding:0;margin:0;font:inherit;background:transparent
+      }
       .stop-card .pv-stop-order{display:inline-flex;gap:4px;align-items:center;margin:0}
       .stop-card .pv-stop-order button{
         appearance:none;border:1px solid #c9dbdb;border-radius:999px;padding:7px 11px;min-height:38px;
@@ -5604,37 +5614,51 @@ Regole:
         body.appendChild(extras);
       }
 
-      if (!extras.querySelector("select[data-pv-day]")) {
-        const label = document.createElement("label");
-        // Visually hide "Giorno" text — options already say "Giorno N · …" (avoids "Giorno Giorno").
-        label.innerHTML = `<span>Giorno della tappa</span>`;
+      // Replace the old always-visible "Giorno N · …" select with a clear "Sposta al" control.
+      const legacyDay = extras.querySelector("select[data-pv-day]");
+      if (legacyDay && !legacyDay.closest(".pv-stop-move")) {
+        legacyDay.closest("label")?.remove();
+        legacyDay.remove();
+      }
+      if (!extras.querySelector(".pv-stop-move")) {
+        const move = document.createElement("div");
+        move.className = "pv-stop-move";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = "Sposta al";
+        btn.setAttribute("aria-hidden", "true");
+        btn.tabIndex = -1;
         const select = document.createElement("select");
         select.dataset.pvDay = stop.id;
-        select.setAttribute("aria-label", "Giorno della tappa");
-        select.innerHTML =
-          `<option value="">Da decidere</option>` +
-          days
-            .map((d, i) => {
-              const sel = d === (stop.day || "") ? " selected" : "";
-              return `<option value="${escapeHtml(d)}"${sel}>Giorno ${i + 1} · ${escapeHtml(formatDayShort(d))}</option>`;
-            })
-            .join("");
+        select.setAttribute("aria-label", "Sposta a un altro giorno");
+        const current = stop.day || "";
+        const options = [
+          `<option value="" disabled selected>Sposta al…</option>`,
+          `<option value="">Da decidere</option>`,
+          ...days.map((d, i) => {
+            if (d === current) return "";
+            return `<option value="${escapeHtml(d)}">Giorno ${i + 1} · ${escapeHtml(formatDayShort(d))}</option>`;
+          }),
+        ].filter(Boolean);
+        select.innerHTML = options.join("");
         select.onchange = async () => {
+          const nextDay = select.value;
+          select.selectedIndex = 0;
           try {
             const latest = await loadTrip({ force: true });
             const nextTrip = structuredClone(latest.data.trip);
             const target = (nextTrip.stops || []).find((s) => s.id === stop.id) || findStopByTitle(nextTrip, title);
             if (!target) return;
-            target.day = select.value || "";
+            target.day = nextDay || "";
             target.category = normalizeStopCategory(target.category);
             await saveTrip(latest.auth, nextTrip, latest.data.revision);
-            select.blur();
+            remountTripSection(latest.auth, "itinerary");
           } catch (err) {
             alert(err instanceof Error ? err.message : "Spostamento non riuscito");
           }
         };
-        label.appendChild(select);
-        extras.appendChild(label);
+        move.append(btn, select);
+        extras.appendChild(move);
       }
 
       if (!extras.querySelector("input[data-pv-time]")) {
