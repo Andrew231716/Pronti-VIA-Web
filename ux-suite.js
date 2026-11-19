@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119v";
+  const STYLE_VER = "20261119z";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -5862,10 +5862,102 @@
     });
   }
 
+  function rekindImportItem(item, kind, bookingType = "") {
+    const title =
+      String(item?.title || item?.payload?.stop?.title || item?.payload?.booking?.title || "Voce").trim() || "Voce";
+    const notes = String(
+      item?.payload?.stop?.notes || item?.payload?.booking?.notes || item?.payload?.note || item?.detail || ""
+    ).slice(0, 1500);
+    const day = item?.payload?.stop?.day || item?.payload?.booking?.date || "";
+    const id = item?.id || newImportId("imp");
+    if (kind === "booking") {
+      const type = BOOKING_TYPE_OPTIONS.includes(bookingType)
+        ? bookingType
+        : detectBookingType(`${title} ${notes}`) || "Altro";
+      const booking = {
+        id: item?.payload?.booking?.id || newImportId("book"),
+        title: title.slice(0, 120),
+        type,
+        date: String(day || item?.payload?.booking?.date || "").slice(0, 32),
+        checkOut: String(item?.payload?.booking?.checkOut || "").slice(0, 32),
+        reference: String(item?.payload?.booking?.reference || "").slice(0, 80),
+        url: String(item?.payload?.booking?.url || "").slice(0, 500),
+        notes,
+      };
+      return {
+        id,
+        kind: "booking",
+        title: booking.title,
+        detail: bookingDetailFromFields(booking),
+        guess: bookingGuessLabel(booking),
+        source: item?.source || "",
+        payload: { booking },
+      };
+    }
+    if (kind === "checklist") {
+      return {
+        id,
+        kind: "checklist",
+        title: title.slice(0, 120),
+        detail: "→ Valigia / checklist",
+        source: item?.source || "",
+        payload: { checklist: { id: newImportId("check"), title: title.slice(0, 120), done: false } },
+      };
+    }
+    if (kind === "doc") {
+      const url = String(item?.payload?.doc?.url || item?.payload?.booking?.url || "").slice(0, 500);
+      return {
+        id,
+        kind: "doc",
+        title: title.slice(0, 120),
+        detail: url || "Documento / link",
+        source: item?.source || "",
+        payload: { doc: { id: newImportId("doc"), title: title.slice(0, 120), url } },
+      };
+    }
+    if (kind === "note") {
+      const note = notes || title;
+      return {
+        id,
+        kind: "note",
+        title: title.slice(0, 120),
+        detail: note.slice(0, 160),
+        source: item?.source || "",
+        payload: { note },
+      };
+    }
+    const stop = {
+      id: item?.payload?.stop?.id || newImportId("stop"),
+      title: title.slice(0, 120),
+      day: day || undefined,
+      time: item?.payload?.stop?.time || undefined,
+      category: item?.payload?.stop?.category || "Visita",
+      address: String(item?.payload?.stop?.address || "").slice(0, 200),
+      notes: notes.slice(0, 800),
+      lat: item?.payload?.stop?.lat ?? null,
+      lng: item?.payload?.stop?.lng ?? null,
+    };
+    return {
+      id,
+      kind: "stop",
+      title: stop.title,
+      detail: [stop.day, stop.time, stop.address].filter(Boolean).join(" · "),
+      source: item?.source || "",
+      payload: { stop },
+    };
+  }
+
   window.__pvParseEventImport = parseEventImportText;
   window.__pvSummarizeBookingDocument = summarizeBookingDocument;
   window.__pvSyncImportEditsFromDom = syncImportEditsFromDom;
   window.__pvOpenEventImport = openEventImportWizard;
+  window.__pvReadImportFile = readImportFile;
+  window.__pvApplyImportItemsToTrip = applyImportItemsToTrip;
+  window.__pvRenderImportItems = renderImportItems;
+  window.__pvMergeImportItems = mergeImportItems;
+  window.__pvKindLabel = kindLabel;
+  window.__pvSectionForKind = sectionForKind;
+  window.__pvRekindImportItem = rekindImportItem;
 
   function escapeHtml(value) {
     return String(value || "")

@@ -18,10 +18,10 @@ ok("no redundant Prima/Dopo extras", /drop the redundant Prima\/Dopo row/.test(m
 ok("sort by time kept", /sortDayStopsByTime/.test(magic) && /Ordina per orario/.test(magic));
 ok(
   "stamps",
-  /magic-extras-20261119x\.js/.test(index) &&
-    /20261119x-verificato/.test(sw) &&
-    existsSync("assets/magic-extras-20261119x.js") &&
-    /dataset\.pvReady = "20261119x"/.test(magic)
+  /magic-extras-20261120a\.js/.test(index) &&
+    /20261120a-iafile/.test(sw) &&
+    existsSync("assets/magic-extras-20261120a.js") &&
+    /dataset\.pvReady = "20261120a"/.test(magic)
 );
 if (failed) {
   console.log(`\n${failed} FAIL`);

@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119x") return;
+    if (style && style.dataset.pvReady === "20261120a") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119x";
+    style.dataset.pvReady = "20261120a";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -167,9 +167,49 @@
       #${ROOT_ID} .pv-bubble{max-width:100%;padding:12px 14px;border-radius:16px;font-size:.92rem;line-height:1.5;color:#122f34;white-space:pre-wrap;word-break:break-word}
       #${ROOT_ID} .pv-bubble.bot{align-self:stretch;background:#eaf5f5;border:1px solid #d5e8e8;border-bottom-left-radius:6px;color:#0f2c31}
       #${ROOT_ID} .pv-bubble.user{align-self:flex-end;max-width:90%;background:#007d82;color:#fff;border-bottom-right-radius:6px}
-      #${ROOT_ID} .pv-chat-form{display:grid;grid-template-columns:1fr auto;gap:8px;margin:0}
+      #${ROOT_ID} .pv-chat-form{display:grid;grid-template-columns:auto 1fr auto;gap:8px;margin:0;align-items:center}
       #${ROOT_ID} .pv-chat-form input,#${ROOT_ID} .pv-lang-pair textarea,#${ROOT_ID} .pv-magic-panel select{width:100%;border:1px solid #b8d0d0;border-radius:12px;padding:12px 14px;font:inherit;color:#122f34;background:#fff;min-height:44px}
-      #${ROOT_ID} .pv-chat-form button{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:#007d82;color:#fff;font:600 14px inherit;cursor:pointer;min-height:44px}
+      #${ROOT_ID} .pv-chat-form > button[type="submit"]{appearance:none;border:0;border-radius:12px;padding:12px 16px;background:#007d82;color:#fff;font:600 14px inherit;cursor:pointer;min-height:44px}
+      #${ROOT_ID} .pv-chat-attach{
+        appearance:none;border:1px solid #b8d0d0;border-radius:12px;width:44px;height:44px;padding:0;
+        background:#eef5f5;color:#12343c;font:700 18px/1 inherit;cursor:pointer;display:grid;place-items:center
+      }
+      #${ROOT_ID} .pv-chat-attach:disabled{opacity:.55;cursor:wait}
+      #${ROOT_ID} .pv-chat-files{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+      #${ROOT_ID} .pv-chat-file-chip{
+        display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+        background:#fff;border:1px solid #cfe0e4;font:650 12px/1 inherit;color:#12343c;max-width:100%
+      }
+      #${ROOT_ID} .pv-chat-file-chip button{appearance:none;border:0;background:transparent;color:#7a2e28;font:800 12px inherit;cursor:pointer;padding:0}
+      #${ROOT_ID} .pv-chat-import{
+        margin:10px 0 0;padding:12px;border-radius:14px;border:1px solid #d7e4e6;background:#f7fbfb;color:#12343c
+      }
+      #${ROOT_ID} .pv-chat-import h4{margin:0 0 8px;font-size:.95rem;color:#0f2c31}
+      #${ROOT_ID} .pv-chat-import .pv-import-item,
+      #${ROOT_ID} .pv-chat-import .pv-import-group,
+      #${ROOT_ID} .pv-chat-import .pv-import-hint{color:#12343c}
+      #${ROOT_ID} .pv-chat-import .pv-import-items{max-height:min(36vh,320px)}
+      #${ROOT_ID} .pv-chat-import-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+      #${ROOT_ID} .pv-chat-import-actions button{
+        appearance:none;border:0;border-radius:999px;padding:10px 14px;font:700 13px inherit;cursor:pointer;min-height:40px
+      }
+      #${ROOT_ID} .pv-chat-import-actions .primary{background:#007d82;color:#fff}
+      #${ROOT_ID} .pv-chat-import-actions .ghost{background:#eef5f5;color:#12343c}
+      #${ROOT_ID} .pv-chat-kind-select{
+        margin:6px 0 0;width:100%;box-sizing:border-box;border:1px solid #cfe0e4;border-radius:10px;
+        padding:8px 10px;font:550 .82rem inherit;background:#fff;color:#12343c
+      }
+      #${ROOT_ID} .pv-chat-missing{
+        margin:6px 0 0;padding:6px 8px;border-radius:10px;background:#fff6e8;border:1px solid #f0d2a0;
+        color:#7a4b00;font:650 .75rem/1.35 inherit
+      }
+      #${ROOT_ID} .pv-chat-clarify{
+        display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0
+      }
+      #${ROOT_ID} .pv-chat-clarify button{
+        appearance:none;border:1px solid #b8d0d0;background:#fff;color:#124048;border-radius:999px;
+        padding:8px 12px;font:650 12px inherit;cursor:pointer;min-height:36px
+      }
       #${ROOT_ID} .pv-results-title{margin:14px 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#4d676e;font-weight:700}
       #${ROOT_ID} .pv-place-card{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:12px;margin:0 0 10px;border:1px solid #e0ecec;border-radius:14px;background:#fbfefe}
       #${ROOT_ID} .pv-place-card img{width:64px;height:64px;object-fit:cover;border-radius:12px;background:#e8f0f0}
@@ -1094,6 +1134,8 @@
   let chatPlaces = [];
   let magicTripCache = null;
   let chatHistory = []; // { role: 'user'|'assistant', content: string }
+  let chatPendingFiles = []; // File[] waiting to analyze in Chiedi
+  let chatImportDraft = null; // { items, sources } proposed inserts from files/text
   /** Last user topic in Chiedi: packing | places | budget | other — used for «altri» follow-ups. */
   let lastChatTopic = "";
   /** Titles already suggested in this chat for packing (so «altri» returns new items). */
@@ -2259,6 +2301,685 @@
     }
   }
 
+  async function ensureTesseractLoaded() {
+    if (window.Tesseract) return;
+    await new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-pv-tesseract="1"]');
+      if (existing) {
+        existing.addEventListener("load", () => resolve());
+        existing.addEventListener("error", () => reject(new Error("OCR non disponibile")));
+        if (window.Tesseract) resolve();
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+      script.async = true;
+      script.dataset.pvTesseract = "1";
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error("OCR non disponibile"));
+      document.head.appendChild(script);
+    });
+    if (!window.Tesseract) throw new Error("OCR non disponibile");
+  }
+
+  async function ocrImageToText(file) {
+    await ensureTesseractLoaded();
+    const result = await window.Tesseract.recognize(file, "ita+eng", {
+      logger: () => {},
+    });
+    return String(result?.data?.text || "").trim();
+  }
+
+  function isImageFile(file) {
+    const name = String(file?.name || "").toLowerCase();
+    return /^image\//.test(file?.type || "") || /\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(name);
+  }
+
+  async function extractTextFromChatFile(file) {
+    const name = String(file?.name || "file");
+    const lower = name.toLowerCase();
+    if (isImageFile(file)) {
+      const text = await ocrImageToText(file);
+      if (!text) {
+        throw new Error(
+          `Non riesco a leggere il testo in «${name}». Prova una foto più nitida o un PDF con testo selezionabile.`
+        );
+      }
+      return text;
+    }
+    if (lower.endsWith(".pdf") || file.type === "application/pdf") {
+      try {
+        const { readEventPdf } = await import("/assets/event-pdf.mjs");
+        const text = await readEventPdf(file);
+        if (!String(text || "").trim()) {
+          throw new Error(
+            `Il PDF «${name}» non ha testo estraibile (probabilmente è una scansione). Allega anche una foto nitida o un .txt.`
+          );
+        }
+        return text;
+      } catch (err) {
+        if (err instanceof Error && /scansione|nitida|estraibile|OCR|testo/i.test(err.message)) throw err;
+        throw new Error(err instanceof Error ? err.message : `PDF «${name}» non leggibile.`);
+      }
+    }
+    if (lower.endsWith(".json") || lower.endsWith(".ics") || lower.endsWith(".csv")) {
+      return "";
+    }
+    if (lower.endsWith(".html") || lower.endsWith(".htm")) {
+      const raw = await file.text();
+      const tmp = document.createElement("div");
+      tmp.innerHTML = raw;
+      return (tmp.textContent || "").replace(/\u00a0/g, " ").trim();
+    }
+    return String(await file.text()).trim();
+  }
+
+  async function extractItemsFromChatFile(file) {
+    const name = String(file?.name || "file");
+    let rawText = "";
+    try {
+      rawText = await extractTextFromChatFile(file);
+    } catch (err) {
+      return { items: [], rawText: "", error: err instanceof Error ? err.message : "File non leggibile" };
+    }
+    if (rawText && isImageFile(file)) {
+      const summarized =
+        typeof window.__pvSummarizeBookingDocument === "function"
+          ? window.__pvSummarizeBookingDocument(rawText)
+          : null;
+      const parsed = summarized
+        ? Array.isArray(summarized)
+          ? summarized
+          : [summarized]
+        : typeof window.__pvParseEventImport === "function"
+          ? window.__pvParseEventImport(rawText, { sourceName: name }) || []
+          : [];
+      return {
+        items: (Array.isArray(parsed) ? parsed : []).map((it) => ({ ...it, source: name })),
+        rawText,
+        error: "",
+      };
+    }
+    if (typeof window.__pvReadImportFile !== "function") {
+      return { items: [], rawText, error: "Import non ancora pronto: ricarica la pagina." };
+    }
+    try {
+      const parsed = await window.__pvReadImportFile(file);
+      const list = Array.isArray(parsed) ? parsed : parsed ? [parsed] : [];
+      return {
+        items: list.map((it) => ({ ...it, source: it.source || name })),
+        rawText,
+        error: "",
+      };
+    } catch (err) {
+      if (rawText && typeof window.__pvParseEventImport === "function") {
+        const parsed = window.__pvParseEventImport(rawText, { sourceName: name }) || [];
+        return {
+          items: (Array.isArray(parsed) ? parsed : []).map((it) => ({ ...it, source: name })),
+          rawText,
+          error: "",
+        };
+      }
+      return {
+        items: [],
+        rawText,
+        error: err instanceof Error ? err.message : "Analisi file non riuscita",
+      };
+    }
+  }
+
+  function importItemGaps(it) {
+    const gaps = [];
+    const title = String(it?.title || "").trim();
+    if (!title || title.length < 3 || /^voce$|^nuova voce$/i.test(title)) gaps.push("titolo poco chiaro");
+    if (it.kind === "stop") {
+      if (!it.payload?.stop?.day) gaps.push("giorno mancante");
+    } else if (it.kind === "booking") {
+      const b = it.payload?.booking || {};
+      if (!b.date) gaps.push("data mancante");
+      if (!b.type || b.type === "Altro") gaps.push("tipo generico");
+      if (!b.reference && !b.url) gaps.push("riferimento/link assente");
+    } else if (it.kind === "doc") {
+      if (!it.payload?.doc?.url) gaps.push("link mancante");
+    }
+    return gaps;
+  }
+
+  function noteItemFromRawText(text, source) {
+    const body = String(text || "").replace(/\s+/g, " ").trim().slice(0, 1500);
+    const title = (body.slice(0, 60) || source || "Nota da file").trim();
+    const id =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `note-${Date.now()}`;
+    return {
+      id,
+      kind: "note",
+      title,
+      detail: body.slice(0, 160),
+      guess: "Salvabile come nota finché non mi dici di cosa si tratta",
+      source: source || "",
+      payload: { note: body || title },
+    };
+  }
+
+  function parseAiImportBlock(text) {
+    const m = String(text || "").match(/```pv-import\s*([\s\S]*?)```/i);
+    if (!m) return [];
+    try {
+      const raw = JSON.parse(m[1].trim());
+      if (!Array.isArray(raw)) return [];
+      const rekind = window.__pvRekindImportItem;
+      return raw
+        .map((row, idx) => {
+          const kind = String(row.kind || "note").toLowerCase();
+          const title = String(row.title || "").trim().slice(0, 120);
+          if (!title) return null;
+          const base = {
+            id:
+              typeof crypto !== "undefined" && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `ai-${Date.now()}-${idx}`,
+            kind: "note",
+            title,
+            detail: String(row.detail || row.notes || "").slice(0, 200),
+            source: "IA",
+            payload: { note: String(row.notes || row.detail || title).slice(0, 1500) },
+          };
+          if (!rekind) return base;
+          if (kind === "booking") {
+            return rekind(
+              {
+                ...base,
+                payload: {
+                  booking: {
+                    id: base.id,
+                    title,
+                    type: String(row.type || "Altro"),
+                    date: String(row.date || "").slice(0, 32),
+                    checkOut: String(row.checkOut || "").slice(0, 32),
+                    reference: String(row.reference || "").slice(0, 80),
+                    url: String(row.url || "").slice(0, 500),
+                    notes: String(row.notes || "").slice(0, 1500),
+                  },
+                },
+              },
+              "booking",
+              String(row.type || "Altro")
+            );
+          }
+          if (kind === "stop") {
+            return rekind(
+              {
+                ...base,
+                payload: {
+                  stop: {
+                    id: base.id,
+                    title,
+                    day: String(row.day || "").slice(0, 32) || undefined,
+                    time: String(row.time || "").slice(0, 16) || undefined,
+                    category: "Visita",
+                    address: String(row.address || "").slice(0, 200),
+                    notes: String(row.notes || "").slice(0, 800),
+                    lat: null,
+                    lng: null,
+                  },
+                },
+              },
+              "stop"
+            );
+          }
+          if (kind === "checklist" || kind === "doc" || kind === "note") {
+            return rekind(base, kind);
+          }
+          return rekind(base, "note");
+        })
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  async function askAiToClassifyImport(rawText, sources) {
+    const trip = magicTripCache || { title: "", destination: "", start: "", end: "", members: [], stops: [] };
+    const excerpt = String(rawText || "").slice(0, 3500);
+    if (excerpt.length < 20) return [];
+    const history = [
+      {
+        role: "user",
+        content: `Ho allegato: ${(sources || []).join(", ") || "un file"}.
+Testo estratto:
+"""
+${excerpt}
+"""
+Classifica il contenuto in voci strutturate per il viaggio.
+Rispondi in italiano con 1-2 frasi, poi OBBLIGATORIO un fence:
+
+\`\`\`pv-import
+[{"kind":"stop|booking|checklist|doc|note","title":"...","type":"Volo|Alloggio|Treno|Trasporto|Altro","day":"AAAA-MM-GG","date":"AAAA-MM-GG","time":"HH:MM","reference":"","url":"","address":"","notes":"..."}]
+\`\`\`
+
+Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare date/PNR assenti.`,
+      },
+    ];
+    try {
+      const aiText = await askTravelAI(trip, history);
+      return parseAiImportBlock(aiText);
+    } catch {
+      return [];
+    }
+  }
+
+  function summarizeImportKinds(items) {
+    const counts = { stop: 0, booking: 0, checklist: 0, doc: 0, note: 0 };
+    for (const it of items) {
+      if (counts[it.kind] != null) counts[it.kind] += 1;
+    }
+    return [
+      counts.stop && `${counts.stop} tappa/e → Itinerario`,
+      counts.booking && `${counts.booking} prenotazione/i → Prenotazioni`,
+      counts.checklist && `${counts.checklist} checklist → Valigia`,
+      counts.doc && `${counts.doc} documento/i → Documenti`,
+      counts.note && `${counts.note} nota/e → Note`,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  function renderChatFileChips(panel) {
+    const host = panel.querySelector("#pv-chat-files");
+    if (!host) return;
+    if (!chatPendingFiles.length) {
+      host.innerHTML = "";
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    host.innerHTML = chatPendingFiles
+      .map(
+        (file, idx) =>
+          `<span class="pv-chat-file-chip"><span>${escapeHtml(file.name || "file")}</span><button type="button" data-rm-file="${idx}" aria-label="Rimuovi">×</button></span>`
+      )
+      .join("");
+    host.querySelectorAll("[data-rm-file]").forEach((btn) => {
+      btn.onclick = () => {
+        chatPendingFiles.splice(Number(btn.dataset.rmFile), 1);
+        renderChatFileChips(panel);
+      };
+    });
+  }
+
+  function bindChatImportKindSelectors(root) {
+    if (!root || !chatImportDraft?.items) return;
+    root.querySelectorAll("[data-imp-id]").forEach((box) => {
+      const wrap = box.closest(".pv-import-item");
+      if (!wrap || wrap.querySelector(".pv-chat-kind-select")) return;
+      const id = box.dataset.impId;
+      const item = chatImportDraft.items.find((it) => it.id === id);
+      if (!item) return;
+      const select = document.createElement("select");
+      select.className = "pv-chat-kind-select";
+      select.dataset.kindFor = id;
+      select.innerHTML = [
+        ["stop", "📍 Tappa → Itinerario"],
+        ["booking:Volo", "✈️ Volo → Prenotazioni"],
+        ["booking:Alloggio", "🏨 Alloggio → Prenotazioni"],
+        ["booking:Treno", "🚆 Treno → Prenotazioni"],
+        ["booking:Trasporto", "🚌 Trasporto → Prenotazioni"],
+        ["booking:Altro", "🎫 Prenotazione → Prenotazioni"],
+        ["checklist", "✅ Checklist → Valigia"],
+        ["doc", "🔗 Documento → Documenti"],
+        ["note", "📝 Nota → Note"],
+      ]
+        .map(([value, label]) => {
+          const current =
+            item.kind === "booking"
+              ? `booking:${item.payload?.booking?.type || "Altro"}`
+              : item.kind;
+          return `<option value="${value}" ${current === value ? "selected" : ""}>${label}</option>`;
+        })
+        .join("");
+      const target = wrap.querySelector("div") || wrap;
+      target.appendChild(select);
+      select.onchange = () => {
+        const [kind, type] = String(select.value).split(":");
+        if (typeof window.__pvRekindImportItem !== "function") return;
+        const next = window.__pvRekindImportItem(item, kind, type || "");
+        const idx = chatImportDraft.items.findIndex((it) => it.id === id);
+        if (idx >= 0) chatImportDraft.items[idx] = next;
+        renderChatImportReview(root.closest(".pv-magic-panel") || document.getElementById(ROOT_ID));
+      };
+    });
+  }
+
+  function annotateImportGaps(root) {
+    if (!root || !chatImportDraft?.items) return;
+    root.querySelectorAll("[data-imp-id]").forEach((box) => {
+      const wrap = box.closest(".pv-import-item");
+      if (!wrap) return;
+      wrap.querySelector(".pv-chat-missing")?.remove();
+      const item = chatImportDraft.items.find((it) => it.id === box.dataset.impId);
+      if (!item) return;
+      const gaps = importItemGaps(item);
+      if (!gaps.length) return;
+      const note = document.createElement("div");
+      note.className = "pv-chat-missing";
+      note.textContent = `Da completare: ${gaps.join(" · ")}`;
+      (wrap.querySelector("div") || wrap).appendChild(note);
+    });
+  }
+
+  function bindChatClarifyChips(box, panel) {
+    box.querySelectorAll("[data-clarify]").forEach((btn) => {
+      btn.onclick = () => {
+        const cmd = btn.dataset.clarify;
+        if (!cmd) return;
+        void handleChatAsk(panel, cmd);
+      };
+    });
+  }
+
+  function renderChatImportReview(panel) {
+    const results = panel?.querySelector?.("#pv-chat-results");
+    if (!results) return;
+    if (!chatImportDraft?.items?.length) {
+      results.querySelector(".pv-chat-import")?.remove();
+      return;
+    }
+    let box = results.querySelector(".pv-chat-import");
+    if (!box) {
+      box = document.createElement("div");
+      box.className = "pv-chat-import";
+      results.prepend(box);
+    }
+    const html =
+      typeof window.__pvRenderImportItems === "function"
+        ? window.__pvRenderImportItems(chatImportDraft.items, null)
+        : `<p>${chatImportDraft.items.length} voci trovate</p>`;
+    const incomplete = chatImportDraft.items.filter((it) => importItemGaps(it).length).length;
+    const uncertain = Boolean(chatImportDraft.uncertain);
+    const lead = uncertain
+      ? "Non sono sicuro al 100%: ho preparato comunque una bozza. Dimmi di cosa si tratta o usa i pulsanti sotto."
+      : `Ho analizzato ${escapeHtml(
+          (chatImportDraft.sources || []).join(", ") || "il file"
+        )}. Controlla tipo e dati (es. «è un volo», «giorno 3»), poi invia.`;
+    box.innerHTML = `
+      <h4>Proposta di inserimento</h4>
+      <p class="pv-lead" style="margin:0 0 8px">${lead}${
+        incomplete
+          ? ` <strong>${incomplete} voc${incomplete === 1 ? "e ha" : "i hanno"} campi da completare.</strong>`
+          : ""
+      }</p>
+      ${html}
+      <div class="pv-chat-clarify" role="group" aria-label="Correzioni rapide">
+        <button type="button" data-clarify="è un volo">È un volo</button>
+        <button type="button" data-clarify="è un hotel">È un hotel</button>
+        <button type="button" data-clarify="è una tappa">È una tappa</button>
+        <button type="button" data-clarify="è una nota">Salva come nota</button>
+        <button type="button" data-clarify="inserisci">Invia così</button>
+      </div>
+      <div class="pv-chat-import-actions">
+        <button type="button" class="primary" data-chat-imp-apply>Invia alle sezioni</button>
+        <button type="button" class="ghost" data-chat-imp-clear>Scarta proposta</button>
+      </div>
+    `;
+    bindChatImportKindSelectors(box);
+    annotateImportGaps(box);
+    bindChatClarifyChips(box, panel);
+    box.querySelector("[data-chat-imp-apply]")?.addEventListener("click", () => {
+      void applyChatImportDraft(panel);
+    });
+    box.querySelector("[data-chat-imp-clear]")?.addEventListener("click", () => {
+      chatImportDraft = null;
+      box.remove();
+      const status = panel.querySelector("#pv-chat-status");
+      if (status) status.textContent = "Proposta scartata.";
+    });
+    box.querySelector("[data-imp-all]")?.addEventListener("click", () => {
+      box.querySelectorAll("[data-imp-id]").forEach((el) => {
+        el.checked = true;
+      });
+    });
+    box.querySelector("[data-imp-none]")?.addEventListener("click", () => {
+      box.querySelectorAll("[data-imp-id]").forEach((el) => {
+        el.checked = false;
+      });
+    });
+  }
+
+  async function analyzeChatFiles(panel, files) {
+    const status = panel.querySelector("#pv-chat-status");
+    const log = panel.querySelector("#pv-chat-log");
+    const list = [...(files || [])].filter(Boolean);
+    if (!list.length) return;
+    if (status) status.textContent = `Analizzo ${list.length} file…`;
+    const thinking = appendBubble(log, "bot", "Sto leggendo i file e classifico le voci…");
+    try {
+      const collected = [];
+      const sources = [];
+      const rawChunks = [];
+      const errors = [];
+      for (const file of list) {
+        sources.push(file.name || "file");
+        const result = await extractItemsFromChatFile(file);
+        if (result.error) errors.push(result.error);
+        if (result.rawText) rawChunks.push(result.rawText);
+        collected.push(...(result.items || []));
+      }
+      let merged =
+        typeof window.__pvMergeImportItems === "function"
+          ? window.__pvMergeImportItems(collected)
+          : collected;
+      let uncertain = false;
+      let usedAi = false;
+      const rawBlob = rawChunks.join("\n\n").trim();
+      if ((!merged.length || merged.every((it) => importItemGaps(it).length >= 2)) && rawBlob.length >= 40) {
+        thinking.textContent = "Classificazione debole: chiedo una seconda lettura all’IA…";
+        if (status) status.textContent = "Seconda lettura IA…";
+        const aiItems = await askAiToClassifyImport(rawBlob, sources);
+        if (aiItems.length) {
+          merged =
+            typeof window.__pvMergeImportItems === "function"
+              ? window.__pvMergeImportItems([...merged, ...aiItems])
+              : [...merged, ...aiItems];
+          usedAi = true;
+          uncertain = true;
+        }
+      }
+      if (!merged.length && rawBlob) {
+        merged = [noteItemFromRawText(rawBlob, sources[0] || "file")];
+        uncertain = true;
+      }
+      chatImportDraft = {
+        items: merged,
+        sources,
+        rawText: rawBlob,
+        uncertain,
+        usedAi,
+        errors,
+      };
+      chatPendingFiles = [];
+      renderChatFileChips(panel);
+      const summary = summarizeImportKinds(merged) || "nessuna voce riconosciuta";
+      const incomplete = merged.filter((it) => importItemGaps(it).length).length;
+      let reply;
+      if (!merged.length) {
+        reply =
+          errors[0] ||
+          "Non ho riconosciuto voci utili. Invia un file più chiaro oppure dimmi di cosa si tratta (volo, hotel, tappa…).";
+      } else if (uncertain && usedAi) {
+        reply = `Seconda lettura IA: ${merged.length} voci (${summary}). Alcuni dati possono mancare — correggimi o completa i campi evidenziati, poi «Invia alle sezioni».`;
+      } else if (uncertain) {
+        reply = `Non ho capito bene il tipo: ho preparato una bozza nota da «${sources[0] || "file"}». Dimmi se è un volo, hotel o tappa, oppure salva come nota.`;
+      } else if (incomplete) {
+        reply = `Ho trovato ${merged.length} voci: ${summary}. ${incomplete} da completare (campi evidenziati in arancio). Puoi correggere a voce o dal form.`;
+      } else {
+        reply = `Ho trovato ${merged.length} voci: ${summary}. Controlla la proposta sotto, poi usa «Invia alle sezioni».`;
+      }
+      if (errors.length && merged.length) {
+        reply += ` Nota: ${errors[0]}`;
+      }
+      thinking.textContent = reply;
+      chatHistory.push({ role: "assistant", content: reply });
+      renderChatImportReview(panel);
+      if (status) status.textContent = merged.length ? (uncertain ? "Bozza da confermare" : "Proposta pronta") : "Nessuna voce";
+    } catch (err) {
+      thinking.textContent = err instanceof Error ? err.message : "Analisi non riuscita";
+      chatHistory.push({ role: "assistant", content: thinking.textContent });
+      if (status) status.textContent = "Analisi non riuscita";
+    }
+  }
+
+  function refineChatImportFromText(text) {
+    if (!chatImportDraft?.items?.length) return null;
+    const q = String(text || "").trim();
+    if (!q) return null;
+    const rekind = window.__pvRekindImportItem;
+    if (!rekind) return null;
+    let items = chatImportDraft.items.map((it) => ({ ...it, payload: { ...it.payload } }));
+    let msg = "";
+
+    if (/^(inserisci|invia|conferma|manda)(\s|$)/i.test(q) || /invia alle sezioni|metti nel viaggio/i.test(q)) {
+      return { apply: true, msg: "" };
+    }
+    if (/scarta|annulla proposta|dimentica i file/i.test(q)) {
+      return { clear: true, msg: "Ok, ho scartato la proposta." };
+    }
+    if (/è (un )?volo|sono voli|come volo/i.test(q)) {
+      items = items.map((it) => rekind(it, "booking", "Volo"));
+      msg = "Ho impostato le voci come voli (Prenotazioni).";
+    } else if (/è (un )?(hotel|alloggio)|sono hotel|come alloggio/i.test(q)) {
+      items = items.map((it) => rekind(it, "booking", "Alloggio"));
+      msg = "Ho impostato le voci come alloggio (Prenotazioni).";
+    } else if (/è (un )?treno|sono treni/i.test(q)) {
+      items = items.map((it) => rekind(it, "booking", "Treno"));
+      msg = "Ho impostato le voci come treni (Prenotazioni).";
+    } else if (/è (una )?tappa|sono tappe|all['’]?itinerario|come tappa/i.test(q)) {
+      items = items.map((it) => rekind(it, "stop"));
+      msg = "Ho impostato le voci come tappe (Itinerario).";
+    } else if (/è (una )?nota|nelle note/i.test(q)) {
+      items = items.map((it) => rekind(it, "note"));
+      msg = "Ho impostato le voci come note.";
+    } else if (/checklist|valigia/i.test(q) && /è|sono|metti|come/i.test(q)) {
+      items = items.map((it) => rekind(it, "checklist"));
+      msg = "Ho impostato le voci come checklist / valigia.";
+    } else {
+      const dayIso = q.match(/\b(\d{4}-\d{2}-\d{2})\b/);
+      const dayNum = q.match(/giorno\s*(\d+)/i);
+      const titleMatch = q.match(/(?:titolo|rinomina)\s*[:\-–]\s*(.+)$/i);
+      if (dayIso || dayNum || titleMatch) {
+        const trip = magicTripCache;
+        const days = trip && !trip._draftOnly ? tripDays(trip) : [];
+        const day = dayIso
+          ? dayIso[1]
+          : dayNum
+            ? days[Math.max(0, Number(dayNum[1]) - 1)] || ""
+            : "";
+        items = items.map((it, idx) => {
+          if (titleMatch && idx === 0) {
+            const title = titleMatch[1].trim().slice(0, 120);
+            if (it.kind === "booking" && it.payload?.booking) {
+              it = { ...it, title, payload: { booking: { ...it.payload.booking, title } } };
+            } else if (it.kind === "stop" && it.payload?.stop) {
+              it = { ...it, title, payload: { stop: { ...it.payload.stop, title } } };
+            } else {
+              it = { ...it, title };
+            }
+          }
+          if (day && it.kind === "stop" && it.payload?.stop) {
+            it = {
+              ...it,
+              detail: [day, it.payload.stop.time, it.payload.stop.address].filter(Boolean).join(" · "),
+              payload: { stop: { ...it.payload.stop, day } },
+            };
+          }
+          if (day && it.kind === "booking" && it.payload?.booking) {
+            it = {
+              ...it,
+              payload: { booking: { ...it.payload.booking, date: day } },
+            };
+          }
+          return it;
+        });
+        msg = [
+          titleMatch && "Ho aggiornato il titolo della prima voce.",
+          day && `Ho impostato la data/giorno a ${day}.`,
+        ]
+          .filter(Boolean)
+          .join(" ");
+      }
+    }
+
+    if (!msg) return null;
+    chatImportDraft = { ...chatImportDraft, items };
+    return { items, msg };
+  }
+
+  async function applyChatImportDraft(panel) {
+    const auth = tripAuth();
+    const status = panel.querySelector("#pv-chat-status");
+    const log = panel.querySelector("#pv-chat-log");
+    if (!auth) {
+      const msg = "Apri un viaggio salvato per inserire le voci.";
+      appendBubble(log, "bot", msg);
+      chatHistory.push({ role: "assistant", content: msg });
+      return;
+    }
+    if (!chatImportDraft?.items?.length) return;
+    const box = panel.querySelector(".pv-chat-import");
+    if (box && typeof window.__pvSyncImportEditsFromDom === "function") {
+      window.__pvSyncImportEditsFromDom(box, chatImportDraft.items);
+    }
+    const selectedIds = new Set(
+      [...(box?.querySelectorAll("[data-imp-id]:checked") || [])].map((el) => el.dataset.impId)
+    );
+    const selected = chatImportDraft.items.filter((it) => !selectedIds.size || selectedIds.has(it.id));
+    if (!selected.length) {
+      if (status) status.textContent = "Seleziona almeno una voce.";
+      return;
+    }
+    if (typeof window.__pvApplyImportItemsToTrip !== "function") {
+      throw new Error("Import non disponibile");
+    }
+    const incomplete = selected.filter((it) => importItemGaps(it).length);
+    try {
+      if (status) {
+        status.textContent = incomplete.length
+          ? `Inserisco comunque (${incomplete.length} incomplete)…`
+          : "Inserisco nel viaggio…";
+      }
+      const { data } = await loadTrip({ force: true });
+      const { trip, counts } = window.__pvApplyImportItemsToTrip(data.trip || {}, selected);
+      await saveTrip(auth, trip, data.revision);
+      magicTripCache = trip;
+      const summary = [
+        counts.stop && `${counts.stop} tappe`,
+        counts.booking && `${counts.booking} prenotazioni`,
+        counts.checklist && `${counts.checklist} checklist`,
+        counts.doc && `${counts.doc} documenti`,
+        counts.note && `${counts.note} note`,
+      ]
+        .filter(Boolean)
+        .join(", ") || summarizeImportKinds(selected);
+      const reply = `Fatto: ${summary}${counts.skipped ? ` · ${counts.skipped} già presenti` : ""}${
+        incomplete.length
+          ? `. Puoi completare dopo i campi mancanti (${incomplete.length} voc${incomplete.length === 1 ? "e" : "i"}).`
+          : "."
+      }`;
+      appendBubble(log, "bot", reply);
+      chatHistory.push({ role: "assistant", content: reply });
+      chatImportDraft = null;
+      renderChatImportReview(panel);
+      if (status) status.textContent = "Inserito nel viaggio";
+      window.dispatchEvent(new CustomEvent("pv-trip-loaded", { detail: { id: auth.id, trip } }));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Inserimento non riuscito";
+      appendBubble(log, "bot", msg);
+      chatHistory.push({ role: "assistant", content: msg });
+      if (status) status.textContent = "Errore inserimento";
+    }
+  }
+
   async function renderChatTab(panel) {
     const dest = magicTripCache?.destination || "";
     const greetingWhere = dest
@@ -2271,7 +2992,7 @@
       <div class="pv-panel-head pv-drag-handle">
         ${magicTabsHtml("chiedi")}
         <h3>${AI_NAME}</h3>
-        <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, idee e gestione pratica.</p>
+        <p class="pv-lead">La tua Bacchetta magica: AI del viaggio ${duringTrip ? "in corso" : "in preparazione"} — domande, file e gestione pratica.</p>
         <div class="pv-chips" id="pv-chat-chips">
           <button type="button" data-q="Posti da vedere e cose da fare con itinerario giorno per giorno">Itinerario</button>
           <button type="button" data-q="Dove mangiare di tipico e buono?">Dove mangiare</button>
@@ -2287,11 +3008,15 @@
         <div id="pv-chat-results"></div>
       </div>
       <div class="pv-panel-foot">
+        <div class="pv-chat-files" id="pv-chat-files" hidden></div>
         <form class="pv-chat-form" id="pv-chat-form">
-          <input type="text" id="pv-chat-input" placeholder="Scrivi a ${AI_NAME}… es. ristoranti ${escapeHtml(greetingWhere)}" autocomplete="off" />
+          <button type="button" class="pv-chat-attach" id="pv-chat-attach" title="Allega file" aria-label="Allega file">📎</button>
+          <input id="pv-chat-file" type="file" multiple hidden accept=".pdf,application/pdf,.txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html,image/*,.png,.jpg,.jpeg,.webp,.gif" />
+          <input type="text" id="pv-chat-input" placeholder="Scrivi o allega un file… es. «è un volo»" autocomplete="off" />
           <button type="submit">Invia</button>
         </form>
         <div class="pv-actions">
+          <button type="button" class="ghost" id="pv-chat-analyze-files">Analizza file</button>
           <button type="button" class="ghost" id="pv-chat-reset">Nuova chat</button>
           <button type="button" class="ghost pv-magic-close">Chiudi</button>
         </div>
@@ -2307,18 +3032,39 @@
         : "Ti aiuto a preparare il viaggio (e resto con te anche dopo)";
       const hello = `Ciao! Sono ${AI_NAME}, la Bacchetta magica di Pronti? VIA!. ${phase} ${greetingWhere}${
         days.length ? ` (${days.length} giorni)` : ""
-      }. Chiedimi posti, cibo, itinerari, budget, bagagli o consigli pratici.`;
+      }. Chiedimi posti e consigli, oppure allega un file (PDF, testo, foto): lo classifica e ti propone dove inserirlo (tappa, volo, hotel…).`;
       chatHistory = [{ role: "assistant", content: hello }];
     }
     for (const msg of chatHistory) {
       appendBubble(log, msg.role === "user" ? "user" : "bot", msg.content);
     }
+    renderChatFileChips(panel);
+    renderChatImportReview(panel);
     panel.querySelector("#pv-chat-reset").onclick = () => {
       chatHistory = [];
       chatPlaces = [];
+      chatPendingFiles = [];
+      chatImportDraft = null;
       lastChatTopic = "";
       suggestedPackTitles = new Set();
       void renderChatTab(panel);
+    };
+    const fileInput = panel.querySelector("#pv-chat-file");
+    panel.querySelector("#pv-chat-attach").onclick = () => fileInput?.click();
+    fileInput.onchange = () => {
+      const picked = [...(fileInput.files || [])];
+      fileInput.value = "";
+      if (!picked.length) return;
+      chatPendingFiles = [...chatPendingFiles, ...picked].slice(0, 12);
+      renderChatFileChips(panel);
+      void analyzeChatFiles(panel, chatPendingFiles);
+    };
+    panel.querySelector("#pv-chat-analyze-files").onclick = () => {
+      if (!chatPendingFiles.length) {
+        fileInput?.click();
+        return;
+      }
+      void analyzeChatFiles(panel, chatPendingFiles);
     };
     panel.querySelectorAll("#pv-chat-chips button").forEach((btn) => {
       btn.onclick = () => {
@@ -2331,6 +3077,10 @@
       ev.preventDefault();
       const input = panel.querySelector("#pv-chat-input");
       const text = (input.value || "").trim();
+      if (!text && chatPendingFiles.length) {
+        void analyzeChatFiles(panel, chatPendingFiles);
+        return;
+      }
       if (!text) return;
       input.value = "";
       void handleChatAsk(panel, text);
@@ -3155,6 +3905,28 @@ Regole:
     status.textContent = "Assistente AI in corso…";
     results.innerHTML = "";
     try {
+      const refinement = refineChatImportFromText(text);
+      if (refinement?.apply) {
+        thinking.remove();
+        await applyChatImportDraft(panel);
+        return;
+      }
+      if (refinement?.clear) {
+        chatImportDraft = null;
+        renderChatImportReview(panel);
+        thinking.textContent = refinement.msg;
+        chatHistory.push({ role: "assistant", content: refinement.msg });
+        if (status) status.textContent = "Proposta scartata";
+        return;
+      }
+      if (refinement?.msg) {
+        thinking.textContent = refinement.msg;
+        chatHistory.push({ role: "assistant", content: refinement.msg });
+        renderChatImportReview(panel);
+        if (status) status.textContent = "Proposta aggiornata";
+        return;
+      }
+
       const direct = await tryDirectSectionCommands(text, results, status);
       if (direct) {
         thinking.textContent = formatChatDisplay(direct);
@@ -7749,6 +8521,8 @@ Regole:
     tripLoadInflight = null;
     chatPlaces = [];
     chatHistory = [];
+    chatPendingFiles = [];
+    chatImportDraft = null;
     lastChatTopic = "";
     suggestedPackTitles = new Set();
     chatAskBusy = false;

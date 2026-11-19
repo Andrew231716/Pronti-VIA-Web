@@ -38,7 +38,7 @@ ok(
 );
 ok(
   "ux style ver 20261119f",
-  /const STYLE_VER = "20261119v"/.test(ux)
+  /const STYLE_VER = "20261119z"/.test(ux)
 );
 ok(
   "shim serves files inline for preview",
@@ -46,17 +46,17 @@ ok(
 );
 ok(
   "stamps wired",
-  /ux-suite-20261119v\.js/.test(index) && /api-shim-20261119f\.js/.test(index)
+  /ux-suite-20261119z\.js/.test(index) && /api-shim-20261119f\.js/.test(index)
 );
 ok(
   "sw precache matches",
-  /ux-suite-20261119v\.js/.test(sw) && /api-shim-20261119f\.js/.test(sw)
+  /ux-suite-20261119z\.js/.test(sw) && /api-shim-20261119f\.js/.test(sw)
 );
 ok(
   "assets exist and match sources",
-  existsSync("assets/ux-suite-20261119v.js") &&
+  existsSync("assets/ux-suite-20261119z.js") &&
     existsSync("assets/api-shim-20261119f.js") &&
-    readFileSync("assets/ux-suite-20261119v.js", "utf8") === ux &&
+    readFileSync("assets/ux-suite-20261119z.js", "utf8") === ux &&
     readFileSync("assets/api-shim-20261119f.js", "utf8") === shim
 );
 

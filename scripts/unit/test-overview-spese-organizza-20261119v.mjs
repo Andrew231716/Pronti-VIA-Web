@@ -49,14 +49,14 @@ ok(
 
 ok(
   "stamps",
-  /magic-extras-20261119x\.js/.test(index) &&
-    /ux-suite-20261119v\.js/.test(index) &&
-    /20261119x-verificato/.test(sw) &&
-    /const SHELL_VER = "20261119x"/.test(account) &&
-    existsSync("assets/magic-extras-20261119x.js") &&
-    existsSync("assets/ux-suite-20261119v.js") &&
-    /dataset\.pvReady = "20261119x"/.test(magic) &&
-    /const STYLE_VER = "20261119v"/.test(ux)
+  /magic-extras-20261120a\.js/.test(index) &&
+    /ux-suite-20261119z\.js/.test(index) &&
+    /20261120a-iafile/.test(sw) &&
+    /const SHELL_VER = "20261120a"/.test(account) &&
+    existsSync("assets/magic-extras-20261120a.js") &&
+    existsSync("assets/ux-suite-20261119z.js") &&
+    /dataset\.pvReady = "20261120a"/.test(magic) &&
+    /const STYLE_VER = "20261119z"/.test(ux)
 );
 
 if (process.exitCode) process.exit(process.exitCode);
