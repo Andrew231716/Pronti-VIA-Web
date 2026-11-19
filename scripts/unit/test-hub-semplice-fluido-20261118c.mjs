@@ -29,7 +29,7 @@ ok(
   /pv-platform-20261118c\.js/.test(index) &&
     /ux-suite-20261119v\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(sw) &&
-    /20261119w-preventivo/.test(sw)
+    /20261119x-verificato/.test(sw)
 );
 ok(
   "assets",

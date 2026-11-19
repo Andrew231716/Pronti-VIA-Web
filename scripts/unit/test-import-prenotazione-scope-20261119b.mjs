@@ -43,10 +43,10 @@ ok(
 ok(
   "stamps",
   /ux-suite-20261119v\.js/.test(index) &&
-    /magic-extras-20261119w\.js/.test(index) &&
-    /20261119w-preventivo/.test(sw) &&
+    /magic-extras-20261119x\.js/.test(index) &&
+    /20261119x-verificato/.test(sw) &&
     existsSync("assets/ux-suite-20261119v.js") &&
-    existsSync("assets/magic-extras-20261119w.js") &&
+    existsSync("assets/magic-extras-20261119x.js") &&
     /const STYLE_VER = "20261119v"/.test(ux)
 );
 
