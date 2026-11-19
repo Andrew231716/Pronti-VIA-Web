@@ -61,19 +61,19 @@ ok("smoother panel animation", /animation: pv-panel-in \.18s/.test(diary) && /fr
 ok("tick debounce softened", /}, 480\);/.test(ux) && /setTimeout\(tick, 380\)/.test(app));
 ok(
   "stamps",
-  /magic-extras-20261118h\.js/.test(index) &&
-    /ux-suite-20261118h\.js/.test(index) &&
+  /magic-extras-20261119b\.js/.test(index) &&
+    /ux-suite-20261119c\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
     /travel-diary\.css\?v=20261118h/.test(index) &&
     /20261118h/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/magic-extras-20261118h.js") &&
-    existsSync("assets/ux-suite-20261118h.js") &&
+  existsSync("assets/magic-extras-20261119b.js") &&
+    existsSync("assets/ux-suite-20261119c.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
-    readFileSync("assets/magic-extras-20261118h.js", "utf8").includes('dataset.pvReady = "20261118h"') &&
-    readFileSync("assets/ux-suite-20261118h.js", "utf8").includes('const STYLE_VER = "20261118h"')
+    readFileSync("assets/magic-extras-20261119b.js", "utf8").includes('dataset.pvReady = "20261119b"') &&
+    readFileSync("assets/ux-suite-20261119c.js", "utf8").includes('const STYLE_VER = "20261119c"')
 );
 ok(
   "cover countdown clear of title",
