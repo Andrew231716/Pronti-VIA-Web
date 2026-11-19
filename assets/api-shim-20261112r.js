@@ -2080,7 +2080,7 @@
       }
 
       // Before opening a shared trip, hydrate snapshot from hash (inline or bytebin).
-      if (method === "GET" && tripIdHint && !isPersonalKey(key)) {
+      if (method === "GET" && tripIdHint && !isPersonalKey(key) && (navigator.onLine || !readLocalTrips()[tripIdHint])) {
         try {
           await hydrateTripFromShare(tripIdHint);
         } catch {
@@ -2106,6 +2106,17 @@
           return jsonResponse(res.status, { ...data, local: true });
         }
         if (method !== "GET") return res;
+      }
+
+      if (!navigator.onLine && !filesPath && ["GET", "PUT", "PATCH"].includes(method)) {
+        if (isPersonalKey(key) && method !== "GET") {
+          return jsonResponse(503, { error: "Serve una connessione per verificare l’invito." });
+        }
+        const response = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        if (response.ok && method !== "GET") {
+          trackTripWriteResult(method, tripIdHint, writeInit, await response.clone().json());
+        }
+        return response;
       }
 
       // Prefer same-origin reverse proxy when available (Netlify / local).
