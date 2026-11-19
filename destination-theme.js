@@ -646,6 +646,19 @@
         transition: background .45s ease;
         color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
+      /* —— Section frame: always much lighter/clearer than page wash (all sections) —— */
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        background: #ffffff !important;
+        border: 1px solid color-mix(in srgb, var(--pv-dest-line, #d5e3e6) 70%, #cfd8dc) !important;
+        box-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #007d82) 12%, transparent) !important;
+        color: var(--pv-dest-ink, #12343c) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        background: #24383d !important;
+        border: 1px solid rgba(231,242,243,.16) !important;
+        box-shadow: 0 14px 32px rgba(0,0,0,.42) !important;
+        color: #edf5f5 !important;
+      }
       /* —— Auto contrast for EVERY destination template (light + dark) —— */
       html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]
         :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .empty-state, .notes-paper){
@@ -692,13 +705,17 @@
           radial-gradient(700px 360px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent,#dba62f) 26%, transparent), transparent 50%),
           linear-gradient(180deg, #0a1210 0%, #101c18 55%, #08100e 100%) !important;
       }
-      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
-        background: linear-gradient(165deg, #e2d194 0%, #efe3b4 48%, #e6d39c 100%) !important;
-        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 40%, #c9b27e) !important;
-        box-shadow: 0 14px 32px color-mix(in srgb, var(--pv-dest-teal,#176348) 22%, transparent) !important;
+      /* Ghana: keep warm gold PAGE wash, but section frame stays crisp white (not gold-on-gold). */
+      html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        background: #ffffff !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #d2be8a) !important;
+        border-block-start: 3px solid var(--pv-dest-accent,#dba62f) !important;
+        box-shadow: 0 14px 32px color-mix(in srgb, var(--pv-dest-teal,#176348) 18%, transparent) !important;
       }
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
-        background: linear-gradient(165deg, #1a3228 0%, #15241f 55%, #12201b 100%) !important;
+        background: #2a4038 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 28%, #3d555a) !important;
+        border-block-start: 3px solid var(--pv-dest-accent,#dba62f) !important;
       }
       html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .pv-day-weather,
       html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state),

@@ -1107,13 +1107,16 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
 }
 
-/* Section panels under the trip menu: clear, simple, consistent */
+/* Section panels under the trip menu: clear white frame vs page wash */
 #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   gap: .65rem;
   padding: clamp(.9rem, 3.2vw, 1.35rem);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--diary-wash) 55%, transparent), transparent 4.5rem),
-    var(--diary-paper);
+  background: #fff;
+  box-shadow: 0 10px 26px rgba(20, 49, 55, .08);
+}
+html[data-pv-theme="dark"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  background: #24383d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] {
   gap: .55rem;
@@ -1490,29 +1493,18 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] {
   --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
   --diary-shadow: 0 12px 32px rgba(0, 0, 0, .42);
 }
-/* Body wash for Ghana is owned by destination-theme.js (loads after diary) so contrast wins. */
+/* Ghana section frame: white (light) / elevated (dark) — gold stays on the PAGE only. */
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   position: relative;
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, #f6ebcf) 0%,
-      color-mix(in srgb, var(--pv-dest-sand, #fff5df) 55%, #efe0b8) 46%,
-      color-mix(in srgb, var(--pv-dest-wash, rgba(179, 63, 44, .12)) 35%, #ead7a4) 100%
-    );
+  background: #fff;
   border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, var(--diary-line));
   border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
-  box-shadow: var(--diary-shadow);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
-  background:
-    linear-gradient(
-      165deg,
-      color-mix(in srgb, var(--pv-dest-teal, #176348) 36%, #15241f) 0%,
-      var(--diary-paper) 55%,
-      color-mix(in srgb, var(--pv-dest-accent, #dba62f) 12%, #101c18) 100%
-    );
+  background: #2a4038;
   border-block-start-color: var(--pv-dest-accent, #dba62f);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .4);
 }
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
   color: var(--pv-dest-teal-deep, #104d37);
