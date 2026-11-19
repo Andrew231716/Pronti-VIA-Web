@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119b";
+  const STYLE_VER = "20261119c";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -338,6 +338,30 @@
       .pv-import-item .kind.note{background:#f4f6f7;color:#3f5860}
       .pv-import-item .title{font-weight:750;color:var(--pv-ink);font-size:.92rem}
       .pv-import-item .detail{margin-top:3px;font-size:.8rem;color:#3f5860;line-height:1.35;white-space:pre-wrap}
+      .pv-import-item .pv-imp-guess{
+        margin:6px 0 0;display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+        background:#e8f4f4;color:#0f5a5e;font:700 .72rem/1.25 inherit
+      }
+      .pv-import-item .pv-imp-edit{
+        margin:8px 0 0;padding:8px 10px;border-radius:12px;border:1px solid #d7e4e6;background:#f7fbfb
+      }
+      .pv-import-item .pv-imp-edit summary{
+        cursor:pointer;font:700 .8rem/1.3 inherit;color:#0f5a5e;list-style:none
+      }
+      .pv-import-item .pv-imp-edit summary::-webkit-details-marker{display:none}
+      .pv-import-item .pv-imp-edit-grid{
+        display:grid;gap:8px;margin-top:10px
+      }
+      .pv-import-item .pv-imp-edit-grid label{
+        display:grid;gap:4px;font:650 .74rem/1.25 inherit;color:#3f5860
+      }
+      .pv-import-item .pv-imp-edit-grid input,
+      .pv-import-item .pv-imp-edit-grid select,
+      .pv-import-item .pv-imp-edit-grid textarea{
+        width:100%;box-sizing:border-box;border:1px solid #cfe0e4;border-radius:10px;
+        padding:8px 10px;font:550 .86rem/1.35 inherit;background:#fff;color:#12343c
+      }
+      .pv-import-item .pv-imp-edit-grid textarea{min-height:64px;resize:vertical}
       .pv-import-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
       .pv-import-count{margin:0 0 8px;font:650 12px/1.3 inherit;color:#3f5860}
       .pv-empty-state button{
@@ -3444,14 +3468,81 @@
     return (tmp.textContent || tmp.innerText || "").replace(/\u00a0/g, " ");
   }
 
+  const BOOKING_TYPE_OPTIONS = ["Volo", "Treno", "Alloggio", "Trasporto", "Ristorante", "Traghetto", "Altro"];
+
   function detectBookingType(line) {
     const s = String(line || "").toLowerCase();
-    if (/volo|flight|aereo|aeroporto|boarding/.test(s)) return "Volo";
-    if (/treno|train|ferrovia|stazione/.test(s)) return "Treno";
-    if (/hotel|alloggio|albergo|bnb|appartament|check-?in|check-?out/.test(s)) return "Alloggio";
-    if (/navetta|transfer|shuttle|taxi|bus|pullman|noleggio|auto/.test(s)) return "Trasporto";
-    if (/ristorante|cena|pranzo|colazione/.test(s)) return "Ristorante";
+    if (/volo|flight|aereo|aeroporto|boarding|e-?ticket|airline|compagnia aerea|departure flight/.test(s)) return "Volo";
+    if (/treno|train|ferrovia|stazione|trenitalia|italo|carrozza/.test(s)) return "Treno";
+    if (/traghetto|ferry|nave\b|crociera|imbarco/.test(s)) return "Traghetto";
+    if (/hotel|alloggio|albergo|bnb|appartament|airbnb|booking\.com|check-?in|check-?out|soggiorno/.test(s))
+      return "Alloggio";
+    if (/navetta|transfer|shuttle|taxi|bus|pullman|noleggio|rental|auto(mobile)?|car hire/.test(s)) return "Trasporto";
+    if (/ristorante|cena|pranzo|colazione|restaurant|prenotazione tavolo/.test(s)) return "Ristorante";
     return "Altro";
+  }
+
+  function extractBookingReference(text) {
+    const s = String(text || "");
+    const labeled = s.match(
+      /(?:\bPNR\b|booking\s*(?:ref(?:erence)?|code|number|id)|codice\s*(?:di\s*)?prenotazione|numero\s*(?:di\s*)?prenotazione|confirmation\s*(?:code|number|no\.?|id)|reservation\s*(?:code|number|id)|record\s*locator|locator)\s*[:#\-–]?\s*([A-Z0-9]{5,12})\b/i
+    );
+    if (labeled) return labeled[1].toUpperCase();
+    const near = s.match(/\b([A-Z0-9]{6})\b(?=[^\n]{0,40}(?:prenotaz|booking|confirm|PNR))/i);
+    if (near) return near[1].toUpperCase();
+    return "";
+  }
+
+  function bookingGuessLabel(booking) {
+    const type = String(booking?.type || "Altro");
+    const bits = [type];
+    if (booking?.reference) bits.push(`rif. ${booking.reference}`);
+    if (booking?.date) bits.push(booking.date);
+    return `Rilevato: ${bits.join(" · ")}`;
+  }
+
+  function bookingDetailFromFields(booking) {
+    return [booking?.type, booking?.date, booking?.reference && `Rif. ${booking.reference}`, booking?.checkOut && `out ${booking.checkOut}`]
+      .filter(Boolean)
+      .join(" · ");
+  }
+
+  function makeBookingImportItem({ title, type, date, checkOut, reference, url, notes, guess }) {
+    const id = newImportId("book");
+    const booking = {
+      id,
+      title: String(title || "Prenotazione").trim().slice(0, 120),
+      type: BOOKING_TYPE_OPTIONS.includes(type) ? type : detectBookingType(`${title} ${notes || ""}`),
+      date: String(date || "").slice(0, 32),
+      checkOut: String(checkOut || "").slice(0, 32),
+      reference: String(reference || "").slice(0, 80),
+      url: String(url || "").slice(0, 500),
+      notes: String(notes || "").slice(0, 1500),
+    };
+    return {
+      id,
+      kind: "booking",
+      title: booking.title,
+      detail: bookingDetailFromFields(booking),
+      guess: guess || bookingGuessLabel(booking),
+      payload: { booking },
+    };
+  }
+
+  function looksLikeBookingDocument(text) {
+    const s = String(text || "");
+    if (s.trim().length < 40) return false;
+    return /(conferma\s*(di\s*)?prenotazione|booking\s*confirmation|reservation\s*confirm|e-?ticket|biglietto\s*(aereo|treno|elettronico)|boarding\s*pass|hotel\s*reservation|voucher|PNR\b|booking\s*reference|codice\s*prenotazione|check-?in\s*date|itinerary\s*receipt|manage\s*(your\s*)?booking)/i.test(
+      s
+    );
+  }
+
+  function prefersDocumentSummary(text) {
+    if (!looksLikeBookingDocument(text)) return false;
+    const timed = (String(text).match(/\b\d{1,2}[:.]\d{2}\b/g) || []).length;
+    const programish = /(programma|sessione|assemblea|giorno\s+\d|itinerario\s*giorno|congresso|convention)/i.test(text);
+    if (programish && timed >= 3) return false;
+    return true;
   }
 
   function extractFirstUrl(text) {
@@ -3662,25 +3753,29 @@
       };
     }
     if (
-      /hotel|alloggio|volo|treno|transfer|navetta|prenotaz|bigliett|check-?in|check-?out|flight|train/i.test(raw) ||
+      /hotel|alloggio|volo|treno|transfer|navetta|prenotaz|bigliett|check-?in|check-?out|flight|train|traghetto|ferry|noleggio/i.test(
+        raw
+      ) ||
       /hotel|trasporto|volo|alloggio|prenot/.test(section)
     ) {
       const type = detectBookingType(`${section} ${raw}`);
+      const reference = extractBookingReference(raw);
+      const date = extractIsoDate(raw);
+      const booking = {
+        id: newImportId("book"),
+        title: raw.slice(0, 120),
+        type,
+        date,
+        reference,
+        url: url || "",
+        notes: [sectionHint, extractTime(raw) && `Ore ${extractTime(raw)}`].filter(Boolean).join(" · "),
+      };
       return {
         kind: "booking",
-        title: raw.slice(0, 120),
-        detail: [type, extractIsoDate(raw), extractTime(raw)].filter(Boolean).join(" · "),
-        payload: {
-          booking: {
-            id: newImportId("book"),
-            title: raw.slice(0, 120),
-            type,
-            date: extractIsoDate(raw),
-            reference: "",
-            url: url || "",
-            notes: sectionHint || "",
-          },
-        },
+        title: booking.title,
+        detail: bookingDetailFromFields(booking),
+        guess: bookingGuessLabel(booking),
+        payload: { booking },
       };
     }
     if (/programma|sessione|assemblea|giorno|itinerario|orario|venue|luogo|congresso|convention|evento/.test(section) || extractTime(raw) || extractIsoDate(raw)) {
@@ -3733,6 +3828,8 @@
     }
     let body = text;
     if (/<\/?[a-z][\s\S]*>/i.test(text) && text.length > 40) body = stripHtmlToText(text);
+    const docSummary = prefersDocumentSummary(body) ? summarizeBookingDocument(body, "") : null;
+    if (docSummary?.length) return docSummary;
     const lines = body
       .split(/\r?\n/)
       .map((l) => l.replace(/\s+/g, " ").trim())
@@ -3781,32 +3878,214 @@
   }
 
   function summarizeHotelVoucher(text, kind) {
-    if (!/(hotel reservation|hotel name|nome (?:hotel|struttura)|conferma di prenotazione)/i.test(text)) return null;
-    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-    const title = text.match(/(?:hotel name|nome (?:hotel|struttura))\s*:[ \t]*([^\n:]+)/i)?.[1]?.trim()
-      || lines.find(line => /^(?!.*(?:form|code|address|phone|name|mail|reservation|web))[^:]{3,90}\bhotel$/i.test(line));
+    if (!/(hotel reservation|hotel name|nome (?:hotel|struttura)|conferma di prenotazione|booking\.com|airbnb|alloggio confermato)/i.test(text))
+      return null;
+    if (/(boarding\s*pass|e-?ticket|flight\s*(?:number|confirmation)|numero\s*volo)/i.test(text) && !/(hotel|alloggio|check-?out)/i.test(text))
+      return null;
+    const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const title =
+      text.match(/(?:hotel name|nome (?:hotel|struttura)|struttura|property)\s*:[ \t]*([^\n:]+)/i)?.[1]?.trim() ||
+      lines.find((line) => /^(?!.*(?:form|code|address|phone|name|mail|reservation|web))[^:]{3,90}\bhotel$/i.test(line)) ||
+      text.match(/\b(?:Hotel|Albergo|Resort|Apart(?:ment|hotel)?)\s+([A-ZÀ-Ü][^,\n]{2,60})/)?.[0];
     if (!title) return null;
     const datePattern = /(\d{1,2})[./-](\d{1,2})[./-](\d{4}|\d{2})(?:[ \t]+(\d{1,2}:\d{2}))?/g;
     const pair = text.match(/\b\d{2}[./]\d{2}[./](?:\d{4}|\d{2})\s+\d{2}:\d{2}\s+\d{2}[./]\d{2}[./](?:\d{4}|\d{2})\s+\d{2}:\d{2}/);
-    const dates = pair && /check[ -]?in date\s+check[ -]?out date/i.test(text)
-      ? [...pair[0].matchAll(datePattern)]
-      : ["in", "out"].map(key => {
-          const line = lines.find(value => new RegExp("check[ -]?" + key + "\\b", "i").test(value) && /\d/.test(value));
-          return line && [...line.matchAll(datePattern)][0];
-        });
+    const dates =
+      pair && /check[ -]?in date\s+check[ -]?out date/i.test(text)
+        ? [...pair[0].matchAll(datePattern)]
+        : ["in", "out"].map((key) => {
+            const line = lines.find((value) => new RegExp("check[ -]?" + key + "\\b", "i").test(value) && /\d/.test(value));
+            return line && [...line.matchAll(datePattern)][0];
+          });
     const [arrival, departure] = dates;
-    if (!arrival || !departure) return null;
-    const iso = date => [date[3].padStart(4, "20"), date[2].padStart(2, "0"), date[1].padStart(2, "0")].join("-");
+    const arrivalIso = arrival ? [arrival[3].padStart(4, "20"), arrival[2].padStart(2, "0"), arrival[1].padStart(2, "0")].join("-") : extractIsoDate(text);
+    const departureIso = departure
+      ? [departure[3].padStart(4, "20"), departure[2].padStart(2, "0"), departure[1].padStart(2, "0")].join("-")
+      : "";
+    if (!arrivalIso) return null;
     const room = text.match(/\b\d+\s+(SINGLE|DOUBLE|TWIN|TRIPLE)\s+(\d+)(?:\.0)?\s+NIGHTS?(?:\s*-\s*(\d+)\s+Breakfast)?/i);
-    const address = text.match(/Hotel Address[ \t]*:[ \t]*([^\n:]+)/i)?.[1]?.trim()
-      || text.match(/\n([^\n]+\b(?:CD\.|CADDESI|STREET|ROAD))\n([^\n]+)/i)?.slice(1).join(" ");
-    const detail = [`Check-in ${arrival[0]}`, `Check-out ${departure[0]}`, address,
-      room && ({ SINGLE: "Camera singola", DOUBLE: "Camera doppia", TWIN: "Camera doppia con letti singoli", TRIPLE: "Camera tripla" })[room[1].toUpperCase()],
-      room?.[3] && "Colazione inclusa"].filter(Boolean).join(" · ");
-    const id = newImportId("hotel");
-    if (kind === "note") return [{ id, kind, title, detail, payload: { note: title + "\n" + detail } }];
-    if (kind === "stop") return [{ id, kind, title, detail, payload: { stop: { id, title, day: iso(arrival), time: arrival[4], address: address || "", notes: detail, category: "Alloggio" } } }];
-    return [{ id, kind: "booking", title, detail, payload: { booking: { id, title, type: "Alloggio", date: iso(arrival), reference: "", url: "", notes: detail } } }];
+    const address =
+      text.match(/Hotel Address[ \t]*:[ \t]*([^\n:]+)/i)?.[1]?.trim() ||
+      text.match(/\n([^\n]+\b(?:CD\.|CADDESI|STREET|ROAD|VIA|PIAZZA))\n([^\n]+)/i)?.slice(1).join(" ");
+    const reference = extractBookingReference(text);
+    const notes = [
+      arrival && `Check-in ${arrival[0]}`,
+      departure && `Check-out ${departure[0]}`,
+      address,
+      room &&
+        ({ SINGLE: "Camera singola", DOUBLE: "Camera doppia", TWIN: "Camera doppia con letti singoli", TRIPLE: "Camera tripla" })[
+          room[1].toUpperCase()
+        ],
+      room?.[3] && "Colazione inclusa",
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const item = makeBookingImportItem({
+      title: String(title).slice(0, 120),
+      type: "Alloggio",
+      date: arrivalIso,
+      checkOut: departureIso,
+      reference,
+      url: extractFirstUrl(text),
+      notes,
+      guess: "Rilevato: conferma alloggio / hotel",
+    });
+    if (kind === "note") {
+      return [{ id: item.id, kind: "note", title: item.title, detail: notes, payload: { note: `${item.title}\n${notes}` } }];
+    }
+    if (kind === "stop") {
+      return [
+        {
+          id: item.id,
+          kind: "stop",
+          title: item.title,
+          detail: notes,
+          payload: {
+            stop: {
+              id: item.id,
+              title: item.title,
+              day: arrivalIso,
+              time: arrival?.[4] || extractTime(text) || undefined,
+              address: address || "",
+              notes,
+              category: "Alloggio",
+            },
+          },
+        },
+      ];
+    }
+    return [item];
+  }
+
+  function summarizeFlightDocument(text, kind) {
+    if (!/(volo|flight|boarding|e-?ticket|airline|aeroporto|departure|arrivo\s*volo|partenza\s*volo|numero\s*volo|compagnia aerea)/i.test(text))
+      return null;
+    if (/(hotel reservation|check-?out date|hotel name)/i.test(text) && !/(flight|volo|boarding|e-?ticket)/i.test(text)) return null;
+    const flight =
+      text.match(/\b(?:flight|volo|n(?:umero)?\.?\s*volo)\s*[:#]?\s*([A-Z]{2})\s?[-]?(\d{2,4})\b/i) ||
+      text.match(/\b([A-Z]{2})\s?(\d{3,4})\b/);
+    const route =
+      text.match(/\b([A-Z]{3})\s*(?:[-–—>]|to|→|\/)\s*([A-Z]{3})\b/) ||
+      text.match(/(?:da|from|partenza)\s*[:\s]+([A-Za-zÀ-ÿ .'-]{3,40})\s+(?:a|to|arrivo|→)\s*[:\s]+([A-Za-zÀ-ÿ .'-]{3,40})/i);
+    const airline =
+      text.match(/(?:airline|compagnia(?:\s*aerea)?)\s*[:#]?\s*([^\n,]{2,40})/i)?.[1]?.trim() ||
+      text.match(/\b(Ryanair|easyJet|ITA Airways|Alitalia|Lufthansa|British Airways|Air France|KLM|Wizz\s*Air|Vueling|Emirates|Qatar|Turkish Airlines|Swiss|Austrian)\b/i)?.[1];
+    const reference = extractBookingReference(text);
+    const date = extractIsoDate(text);
+    const time = extractTime(text);
+    const title = [
+      airline || (flight ? `Volo ${flight[1].toUpperCase()}${flight[2]}` : "Volo"),
+      route ? `${route[1].trim()} → ${route[2].trim()}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .slice(0, 120);
+    if (!reference && !flight && !route && !/(e-?ticket|boarding\s*pass|booking\s*confirmation)/i.test(text)) return null;
+    const notes = [
+      flight && `Volo ${flight[1].toUpperCase()}${flight[2]}`,
+      time && `Partenza ${time}`,
+      airline && !title.includes(airline) && airline,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    const item = makeBookingImportItem({
+      title: title || "Volo",
+      type: "Volo",
+      date,
+      reference: reference || (flight ? `${flight[1].toUpperCase()}${flight[2]}` : ""),
+      url: extractFirstUrl(text),
+      notes,
+      guess: "Rilevato: biglietto / conferma volo",
+    });
+    if (kind && kind !== "booking") return null;
+    return [item];
+  }
+
+  function summarizeTrainDocument(text, kind) {
+    if (!/(treno|train\s*ticket|trenitalia|italo|biglietto\s*treno|carrozza|posto\s*\d|stazione\s*(di\s*)?(partenza|arrivo))/i.test(text))
+      return null;
+    const trainNo = text.match(/\b(?:treno|train)\s*[:#]?\s*([A-Z]{0,3}\d{2,5})\b/i)?.[1];
+    const route =
+      text.match(/(?:da|from|partenza)\s*[:\s]+([A-Za-zÀ-ÿ .'-]{3,40})\s+(?:a|to|arrivo|→)\s*[:\s]+([A-Za-zÀ-ÿ .'-]{3,40})/i) ||
+      text.match(/\b([A-ZÀ-Ü][A-Za-zÀ-ÿ .'-]{2,30})\s*(?:[-–—>]|→)\s*([A-ZÀ-Ü][A-Za-zÀ-ÿ .'-]{2,30})\b/);
+    const reference = extractBookingReference(text) || text.match(/\b(?:PNR|codice)\s*[:#]?\s*([A-Z0-9]{5,12})\b/i)?.[1]?.toUpperCase() || "";
+    const date = extractIsoDate(text);
+    const time = extractTime(text);
+    const carrier = /italo/i.test(text) ? "Italo" : /trenitalia|frecciarossa|frecciargento|intercity/i.test(text) ? "Trenitalia" : "Treno";
+    const title = [carrier, route ? `${route[1].trim()} → ${route[2].trim()}` : trainNo ? `Treno ${trainNo}` : ""].filter(Boolean).join(" ").slice(0, 120);
+    const notes = [trainNo && `Treno ${trainNo}`, time && `Partenza ${time}`].filter(Boolean).join(" · ");
+    const item = makeBookingImportItem({
+      title: title || "Treno",
+      type: "Treno",
+      date,
+      reference,
+      url: extractFirstUrl(text),
+      notes,
+      guess: "Rilevato: biglietto treno",
+    });
+    if (kind && kind !== "booking") return null;
+    return [item];
+  }
+
+  function summarizeTransportDocument(text, kind) {
+    if (!/(transfer|navetta|shuttle|noleggio|rental\s*car|car\s*hire|taxi\s*prenot|pick-?up|consegna\s*auto)/i.test(text)) return null;
+    if (/(hotel reservation|boarding\s*pass|e-?ticket\s*flight)/i.test(text)) return null;
+    const reference = extractBookingReference(text);
+    const date = extractIsoDate(text);
+    const company =
+      text.match(/(?:societ[aà]|company|fornitore|provider)\s*[:#]?\s*([^\n,]{2,40})/i)?.[1]?.trim() ||
+      text.match(/\b(Hertz|Avis|Europcar|Sixt|Budget|Enterprise|Drivy|Enjoy)\b/i)?.[1] ||
+      "Transfer / noleggio";
+    const notes = [extractTime(text) && `Orario ${extractTime(text)}`, text.match(/(?:pick-?up|ritiro|consegna)[^\n]{0,60}/i)?.[0]].filter(Boolean).join(" · ");
+    const item = makeBookingImportItem({
+      title: company.slice(0, 120),
+      type: "Trasporto",
+      date,
+      reference,
+      url: extractFirstUrl(text),
+      notes,
+      guess: "Rilevato: transfer / noleggio",
+    });
+    if (kind && kind !== "booking") return null;
+    return [item];
+  }
+
+  function summarizeGenericBooking(text, kind) {
+    if (!looksLikeBookingDocument(text)) return null;
+    const type = detectBookingType(text);
+    const reference = extractBookingReference(text);
+    const date = extractIsoDate(text);
+    const lines = String(text)
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length >= 4 && l.length <= 90 && !/^(dear|gentile|ciao|hello|https?:)/i.test(l));
+    const title =
+      text.match(/(?:titolo|summary|evento|event|servizio|service|struttura|merchant)\s*[:#]\s*([^\n]{3,80})/i)?.[1]?.trim() ||
+      lines.find((l) => !/(conferma|confirmation|prenotazione|booking|reservation|codice|reference|PNR|data|date)/i.test(l)) ||
+      `${type} importato`;
+    const item = makeBookingImportItem({
+      title: String(title).slice(0, 120),
+      type,
+      date,
+      reference,
+      url: extractFirstUrl(text),
+      notes: lines.slice(0, 4).join(" · ").slice(0, 500),
+      guess: `Rilevato: documento di prenotazione (${type})`,
+    });
+    if (kind && kind !== "booking" && kind !== "") return null;
+    return [item];
+  }
+
+  function summarizeBookingDocument(text, kind) {
+    const raw = String(text || "");
+    if (raw.trim().length < 40) return null;
+    return (
+      summarizeHotelVoucher(raw, kind) ||
+      summarizeFlightDocument(raw, kind) ||
+      summarizeTrainDocument(raw, kind) ||
+      summarizeTransportDocument(raw, kind) ||
+      (prefersDocumentSummary(raw) ? summarizeGenericBooking(raw, kind) : null)
+    );
   }
 
   async function readImportFile(file, kind) {
@@ -3815,7 +4094,7 @@
     if (lower.endsWith(".pdf") || file.type === "application/pdf") {
       const { readEventPdf } = await import("/assets/event-pdf.mjs");
       const text = await readEventPdf(file);
-      return summarizeHotelVoucher(text, kind) || parseEventImportText(text, { sourceName: name });
+      return summarizeBookingDocument(text, kind) || parseEventImportText(text, { sourceName: name });
     }
     const text = await file.text();
     if (lower.endsWith(".json")) {
@@ -3824,7 +4103,8 @@
     }
     if (lower.endsWith(".ics")) return parseIcsEvents(text);
     if (lower.endsWith(".html") || lower.endsWith(".htm")) {
-      return parseEventImportText(stripHtmlToText(text), { sourceName: name });
+      const plain = stripHtmlToText(text);
+      return summarizeBookingDocument(plain, kind) || parseEventImportText(plain, { sourceName: name });
     }
     if (lower.endsWith(".csv")) {
       // Prefer "date,title,notes" rows; otherwise treat as plain text.
@@ -3857,7 +4137,7 @@
         if (items.length) return items;
       }
     }
-    return parseEventImportText(text, { sourceName: name });
+    return summarizeBookingDocument(text, kind) || parseEventImportText(text, { sourceName: name });
   }
 
   async function loadTripByAuth(auth) {
@@ -4061,6 +4341,39 @@
     return { id: kind, title: kind, hint: "" };
   }
 
+  function renderBookingEditFields(it, open) {
+    const b = it.payload?.booking || {};
+    const typeOpts = BOOKING_TYPE_OPTIONS.map(
+      (t) => `<option value="${escapeHtml(t)}" ${b.type === t ? "selected" : ""}>${escapeHtml(t)}</option>`
+    ).join("");
+    return `<details class="pv-imp-edit" data-imp-edit="${escapeHtml(it.id)}" ${open ? "open" : ""}>
+      <summary>Modifica prima di inserire</summary>
+      <div class="pv-imp-edit-grid">
+        <label>Titolo<input name="title" type="text" value="${escapeHtml(b.title || it.title || "")}" maxlength="120" /></label>
+        <label>Tipo<select name="type">${typeOpts}</select></label>
+        <label>Data<input name="date" type="text" value="${escapeHtml(b.date || "")}" placeholder="AAAA-MM-GG" /></label>
+        <label>Check-out<input name="checkOut" type="text" value="${escapeHtml(b.checkOut || "")}" placeholder="opzionale" /></label>
+        <label>Riferimento / PNR<input name="reference" type="text" value="${escapeHtml(b.reference || "")}" maxlength="80" /></label>
+        <label>Link<input name="url" type="url" value="${escapeHtml(b.url || "")}" placeholder="https://…" /></label>
+        <label>Note<textarea name="notes" maxlength="1500">${escapeHtml(b.notes || "")}</textarea></label>
+      </div>
+    </details>`;
+  }
+
+  function renderStopEditFields(it, open) {
+    const s = it.payload?.stop || {};
+    return `<details class="pv-imp-edit" data-imp-edit="${escapeHtml(it.id)}" ${open ? "open" : ""}>
+      <summary>Modifica prima di inserire</summary>
+      <div class="pv-imp-edit-grid">
+        <label>Titolo<input name="title" type="text" value="${escapeHtml(s.title || it.title || "")}" maxlength="120" /></label>
+        <label>Giorno<input name="day" type="text" value="${escapeHtml(s.day || "")}" placeholder="AAAA-MM-GG" /></label>
+        <label>Ora<input name="time" type="text" value="${escapeHtml(s.time || "")}" placeholder="HH:MM" /></label>
+        <label>Indirizzo<input name="address" type="text" value="${escapeHtml(s.address || "")}" /></label>
+        <label>Note<textarea name="notes" maxlength="800">${escapeHtml(s.notes || "")}</textarea></label>
+      </div>
+    </details>`;
+  }
+
   function renderImportItems(items, section) {
     if (!items.length) {
       return `<p class="pv-import-count">Nessuna voce riconosciuta. Aggiungi altro testo o altri file, poi analizza di nuovo.</p>`;
@@ -4069,7 +4382,8 @@
     const groups = order
       .map((kind) => ({ kind, items: items.filter((i) => i.kind === kind) }))
       .filter((g) => g.items.length);
-    return `<p class="pv-import-count">${items.length} voci trovate — spunta cosa inserire.</p>
+    const preferOpen = !!(section && (section.kind === "booking" || section.kind === "stop"));
+    return `<p class="pv-import-count">${items.length} voci trovate — controlla il tipo rilevato, modifica se serve, poi inserisci.</p>
       ${section ? "" : `<div class="pv-import-map">
         <div><strong>📍 Tappe</strong> → Itinerario</div>
         <div><strong>🎫 Prenotazioni</strong> → Prenotazioni</div>
@@ -4087,21 +4401,72 @@
           return `<div class="pv-import-group" data-kind="${escapeHtml(g.kind)}">
             <h4>${escapeHtml(sec.title)} · ${g.items.length} <span style="font-weight:500;text-transform:none;letter-spacing:0">— ${escapeHtml(sec.hint)}</span></h4>
             <div class="pv-import-items">${g.items
-              .map(
-                (it) => `<label class="pv-import-item">
+              .map((it) => {
+                const openEdit = preferOpen || it.kind === "booking";
+                const edit =
+                  it.kind === "booking"
+                    ? renderBookingEditFields(it, openEdit)
+                    : it.kind === "stop"
+                      ? renderStopEditFields(it, preferOpen)
+                      : "";
+                return `<div class="pv-import-item">
                   <input type="checkbox" data-imp-id="${escapeHtml(it.id)}" checked />
                   <div>
                     <div class="kind ${escapeHtml(it.kind)}">${escapeHtml(kindLabel(it.kind))}</div>
-                    <div class="title">${escapeHtml(it.title)}</div>
+                    <div class="title" data-imp-title="${escapeHtml(it.id)}">${escapeHtml(it.title)}</div>
+                    ${it.guess ? `<div class="pv-imp-guess">${escapeHtml(it.guess)}</div>` : ""}
                     ${it.detail ? `<div class="detail">${escapeHtml(it.detail)}</div>` : ""}
                     ${it.source ? `<div class="detail">da ${escapeHtml(it.source)}</div>` : ""}
+                    ${edit}
                   </div>
-                </label>`
-              )
+                </div>`;
+              })
               .join("")}</div>
           </div>`;
         })
         .join("")}`;
+  }
+
+  function syncImportEditsFromDom(root, items) {
+    if (!root || !Array.isArray(items)) return items;
+    for (const it of items) {
+      const box = root.querySelector(`[data-imp-edit="${CSS.escape(it.id)}"]`);
+      if (!box) continue;
+      const val = (name) => String(box.querySelector(`[name="${name}"]`)?.value || "").trim();
+      if (it.kind === "booking" && it.payload?.booking) {
+        const booking = {
+          ...it.payload.booking,
+          title: val("title").slice(0, 120) || it.payload.booking.title,
+          type: BOOKING_TYPE_OPTIONS.includes(val("type")) ? val("type") : it.payload.booking.type || "Altro",
+          date: val("date").slice(0, 32),
+          checkOut: val("checkOut").slice(0, 32),
+          reference: val("reference").slice(0, 80),
+          url: val("url").slice(0, 500),
+          notes: val("notes").slice(0, 1500),
+        };
+        it.payload.booking = booking;
+        it.title = booking.title;
+        it.detail = bookingDetailFromFields(booking);
+        it.guess = bookingGuessLabel(booking);
+        const titleEl = root.querySelector(`[data-imp-title="${CSS.escape(it.id)}"]`);
+        if (titleEl) titleEl.textContent = booking.title;
+      } else if (it.kind === "stop" && it.payload?.stop) {
+        const stop = {
+          ...it.payload.stop,
+          title: val("title").slice(0, 120) || it.payload.stop.title,
+          day: val("day").slice(0, 32) || undefined,
+          time: val("time").slice(0, 16) || undefined,
+          address: val("address").slice(0, 200),
+          notes: val("notes").slice(0, 800),
+        };
+        it.payload.stop = stop;
+        it.title = stop.title;
+        it.detail = [stop.day, stop.time, stop.address].filter(Boolean).join(" · ");
+        const titleEl = root.querySelector(`[data-imp-title="${CSS.escape(it.id)}"]`);
+        if (titleEl) titleEl.textContent = stop.title;
+      }
+    }
+    return items;
   }
 
   function mergeImportItems(list) {
@@ -4376,6 +4741,8 @@
 
           body.querySelector("#pv-imp-apply")?.addEventListener("click", async () => {
             const picked = body.querySelector("#pv-imp-trips input:checked");
+            const resultsHost = body.querySelector("#pv-imp-results");
+            syncImportEditsFromDom(resultsHost, state.items);
             const selectedIds = new Set(
               [...body.querySelectorAll("input[data-imp-id]:checked")].map((c) => c.getAttribute("data-imp-id"))
             );
@@ -5228,6 +5595,8 @@
   }
 
   window.__pvParseEventImport = parseEventImportText;
+  window.__pvSummarizeBookingDocument = summarizeBookingDocument;
+  window.__pvSyncImportEditsFromDom = syncImportEditsFromDom;
   window.__pvOpenEventImport = openEventImportWizard;
 
   function escapeHtml(value) {

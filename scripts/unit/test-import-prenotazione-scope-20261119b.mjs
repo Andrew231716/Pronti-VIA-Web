@@ -42,12 +42,12 @@ ok(
 );
 ok(
   "stamps",
-  /ux-suite-20261119b\.js/.test(index) &&
+  /ux-suite-20261119c\.js/.test(index) &&
     /magic-extras-20261119b\.js/.test(index) &&
     /20261119b/.test(sw) &&
-    existsSync("assets/ux-suite-20261119b.js") &&
+    existsSync("assets/ux-suite-20261119c.js") &&
     existsSync("assets/magic-extras-20261119b.js") &&
-    /const STYLE_VER = "20261119b"/.test(ux)
+    /const STYLE_VER = "20261119c"/.test(ux)
 );
 
 if (failed) {

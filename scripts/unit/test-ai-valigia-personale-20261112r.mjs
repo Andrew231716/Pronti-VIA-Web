@@ -34,7 +34,7 @@ ok(
   /api-shim-20261119a\.js/.test(index) &&
     /magic-extras-20261119b\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /ux-suite-20261119b\.js/.test(index)
+    /ux-suite-20261119c\.js/.test(index)
 );
 ok(
   "sw + assets",
@@ -42,7 +42,7 @@ ok(
     existsSync("assets/api-shim-20261119a.js") &&
     existsSync("assets/magic-extras-20261119b.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
-    existsSync("assets/ux-suite-20261119b.js")
+    existsSync("assets/ux-suite-20261119c.js")
 );
 
 
