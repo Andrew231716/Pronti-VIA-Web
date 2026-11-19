@@ -39,8 +39,8 @@ ok(
 );
 ok(
   "stamps",
-  /pv-platform-20261112m\.js/.test(index) &&
-    /travel-diary\.css\?v=20261118h/.test(index) &&
+  /pv-platform-20261118c\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119i-itinerario/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
     /destination-theme-20261112k\.js/.test(index)
 );

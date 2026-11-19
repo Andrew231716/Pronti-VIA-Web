@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119d") return;
+    if (style && style.dataset.pvReady === "20261119i") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119d";
+    style.dataset.pvReady = "20261119i";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -320,12 +320,12 @@
       .pv-day-weather,.pv-links-box,.pv-fx-calc{margin:12px 0 14px;padding:14px 16px;border:1px solid #d9e7e7;border-radius:16px;background:#fff}
       .pv-day-weather .pv-block-title,.pv-links-box .pv-block-title,.pv-fx-calc .pv-block-title{margin:0 0 10px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
       .pv-day-weather .pv-block-meta,.pv-fx-calc .pv-block-meta{margin:0 0 10px;font-size:.86rem;color:#5b7076}
-      .pv-day-weather{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
-      .pv-day-weather .pv-block-title{margin:0;width:100%}
-      .pv-day-weather .pv-weather-card{flex:1;min-width:160px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;gap:4px}
-      .pv-day-weather .pv-weather-card strong{font-size:.92rem;color:#16353b}
-      .pv-day-weather .pv-weather-card .temp{font-size:1.15rem;font-weight:700;color:#007d82}
-      .pv-day-weather .pv-weather-card .cond{font-size:.82rem;color:#5b7076;line-height:1.35}
+      .pv-day-weather{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+      .pv-day-weather .pv-block-title{margin:0;width:auto}
+      .pv-day-weather .pv-weather-card{flex:1;min-width:140px;padding:0;border:0;background:transparent;display:flex;flex-direction:column;gap:2px}
+      .pv-day-weather .pv-weather-card strong{font-size:.88rem;color:#16353b}
+      .pv-day-weather .pv-weather-card .temp{font-size:1.05rem;font-weight:700;color:#007d82}
+      .pv-day-weather .pv-weather-card .cond{font-size:.78rem;color:#5b7076;line-height:1.3}
       .pv-fx-calc .pv-fx-rows{display:grid;gap:10px;max-width:420px}
       .pv-fx-calc .pv-fx-row{display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:8px;align-items:center}
       .pv-fx-calc .pv-fx-row input{width:100%;border:1px solid #c9dbdb;border-radius:10px;padding:10px 12px;font:600 1rem inherit;color:#16353b;background:#f7fbfb}

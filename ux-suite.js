@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119h";
+  const STYLE_VER = "20261119i";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -187,17 +187,69 @@
       }
       #root .primary-panel > [role="tabpanel"] > .section-heading,
       #root .primary-panel > [role="tabpanel"] > .pv-section-guide{margin:0}
-      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .section-heading{order:-30}
-      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide{order:-20}
-      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-planning-tools,
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .section-heading{order:-40}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide{order:-30;display:none}
+      /* Day strip is the only day navigator — hide the duplicate "Vai al giorno" select. */
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-planning-tools[data-pv-planning="days"]{
+        order:-25;display:flex;flex-wrap:wrap;gap:.45rem;align-items:center;
+        margin:0;padding:0;background:transparent;border:0;box-shadow:none;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-planning-tools[data-pv-planning="days"] label{
+        position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+        clip:rect(0,0,0,0);white-space:nowrap;border:0;
+      }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-event-section,
-      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > [data-pv-planning]{order:-10}
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > [data-pv-planning]:not([data-pv-planning="days"]){order:-10}
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip{
-        display:flex;gap:.45rem;overflow-x:auto;-webkit-overflow-scrolling:touch;
-        scroll-snap-type:x proximity;padding:.2rem 0 .35rem;scrollbar-width:thin;
+        order:-20;display:flex!important;gap:.4rem;overflow-x:auto;-webkit-overflow-scrolling:touch;
+        scroll-snap-type:x proximity;padding:.15rem 0 .3rem;scrollbar-width:thin;
+        grid-template-columns:none!important;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button{
-        flex:0 0 auto;scroll-snap-align:start;min-width:5.6rem;
+        flex:0 0 auto;scroll-snap-align:start;min-width:5.4rem;max-width:7.2rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather{
+        order:-15;margin:.15rem 0 .35rem;padding:.55rem .75rem;gap:.45rem .85rem;
+        border-radius:14px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-block-title{
+        width:auto;margin:0;font-size:.68rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-block-meta{
+        margin:0;font-size:.78rem;flex:1 1 auto;min-width:0;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather #pv-weather-day{
+        display:contents;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card{
+        flex:0 0 auto;min-width:0;flex-direction:row;align-items:baseline;gap:.45rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card .temp{
+        font-size:1rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card .cond{
+        font-size:.75rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card{
+        padding:.7rem .8rem;gap:.55rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media{
+        width:56px;height:56px;flex-basis:56px;border-radius:10px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .inline-actions{
+        gap:2px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .inline-actions .icon-btn{
+        min-width:40px;min-height:40px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras{
+        margin-top:6px;gap:6px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras select{
+        padding:5px 8px;font-size:11px;min-height:36px;max-width:min(180px,100%);
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
+        margin-top:.15rem;padding:.85rem;font-size:.9rem;
       }
       #root .pv-pack-cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 .55rem}
       #root .pv-pack-cats button{
@@ -4964,18 +5016,44 @@
       const days = [...(strip?.querySelectorAll("button") || [])];
       if (!days.length) return;
       panel.classList.add("pv-itinerary-timeline");
-      const active = days.findIndex(day => day.classList.contains("selected"));
-      const labels = days.map(day => day.querySelector("strong")?.textContent || day.textContent);
-      const controls = mount("days", JSON.stringify(labels), tools => {
-        tools.innerHTML = `<label>Vai al giorno <select aria-label="Vai al giorno">${labels.map((label, index) =>
-          `<option value="${index}">${escapeHtml(label)} · Giorno ${index + 1}</option>`).join("")}</select></label>`;
+      const active = days.findIndex(
+        (day) =>
+          day.classList.contains("selected") ||
+          day.getAttribute("aria-pressed") === "true" ||
+          day.dataset.state === "active"
+      );
+      // Keep a visually-hidden select for a11y / keyboard jump, but the day strip is the UI.
+      const labels = days.map((day, index) => {
+        const dateLabel = day.querySelector("strong")?.textContent?.trim() || "";
+        return dateLabel || `Giorno ${index + 1}`;
+      });
+      const controls = mount("days", JSON.stringify(labels), (tools) => {
+        tools.innerHTML = `<label>Vai al giorno <select aria-label="Vai al giorno">${labels
+          .map(
+            (label, index) =>
+              `<option value="${index}">${escapeHtml(label)} · Giorno ${index + 1}</option>`
+          )
+          .join("")}</select></label>`;
       });
       const today = panel.querySelector(".pv-today-shortcut");
       if (today && today.parentElement !== controls) controls.prepend(today);
-      controls.querySelector("select").onchange = event => {
-        strip.querySelectorAll("button")[Number(event.currentTarget.value)]?.click();
-      };
-      if (active >= 0 && controls.querySelector("select").value !== String(active)) controls.querySelector("select").value = String(active);
+      const select = controls.querySelector("select");
+      if (select) {
+        select.onchange = (event) => {
+          const btn = strip.querySelectorAll("button")[Number(event.currentTarget.value)];
+          btn?.click();
+          btn?.scrollIntoView?.({ inline: "center", block: "nearest", behavior: "smooth" });
+        };
+        if (active >= 0 && select.value !== String(active)) select.value = String(active);
+      }
+      // Keep the selected day chip in view (avoids looking "stuck" on day 1).
+      if (active >= 0) {
+        try {
+          days[active]?.scrollIntoView?.({ inline: "center", block: "nearest", behavior: "smooth" });
+        } catch {
+          /* ignore */
+        }
+      }
     }
 
     if (section === "explore") {

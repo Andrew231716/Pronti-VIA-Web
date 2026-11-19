@@ -26,7 +26,7 @@ ok(
   /account\.js\?v=20261119b/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
     /account\.js\?v=20261119b/.test(sw) &&
-    /20261119h/.test(sw)
+    /20261119i-itinerario/.test(sw)
 );
 ok("shell ver", /const SHELL_VER = "20261119b"/.test(accountJs));
 ok("files exist", existsSync("account.js") && existsSync("account.css"));
