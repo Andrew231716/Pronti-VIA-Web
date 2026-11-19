@@ -34,6 +34,6 @@ test("loadApp retries and watches empty root", () => {
 test("service worker refuses HTML as JS cache", () => {
   assert.match(sw, /jsContentOk/);
   assert.match(sw, /freshIsJsOk/);
-  assert.match(sw, /20261119f/);
+  assert.match(sw, /20261119h/);
 });
 console.log(process.exitCode ? "\nFAILED" : "\nOK");

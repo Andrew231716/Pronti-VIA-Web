@@ -45,7 +45,7 @@ ok(
 ok(
   "stamps",
   /magic-extras-20261119d\.js/.test(index) &&
-    /ux-suite-20261119f\.js/.test(index) &&
+    /ux-suite-20261119h\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
     /travel-diary\.css\?v=20261118h/.test(index) &&
     /20261118h/.test(sw)
@@ -53,10 +53,10 @@ ok(
 ok(
   "assets",
   existsSync("assets/magic-extras-20261119d.js") &&
-    existsSync("assets/ux-suite-20261119f.js") &&
+    existsSync("assets/ux-suite-20261119h.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
     readFileSync("assets/magic-extras-20261119d.js", "utf8").includes('dataset.pvReady = "20261119d"') &&
-    readFileSync("assets/ux-suite-20261119f.js", "utf8").includes('const STYLE_VER = "20261119f"')
+    readFileSync("assets/ux-suite-20261119h.js", "utf8").includes('const STYLE_VER = "20261119h"')
 );
 
 if (failed) {

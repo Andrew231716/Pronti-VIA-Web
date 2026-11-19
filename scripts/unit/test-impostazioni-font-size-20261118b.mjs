@@ -28,15 +28,15 @@ ok(
   "stamps",
   /account\.js\?v=20261119b/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
-    /ux-suite-20261119f\.js/.test(index) &&
+    /ux-suite-20261119h\.js/.test(index) &&
     /pv-platform-20261118c\.js/.test(index) &&
     /20261118h/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/ux-suite-20261119f.js") &&
+  existsSync("assets/ux-suite-20261119h.js") &&
     existsSync("assets/pv-platform-20261118c.js") &&
-    /const STYLE_VER = "20261119f"/.test(readFileSync("assets/ux-suite-20261119f.js", "utf8")) &&
+    /const STYLE_VER = "20261119h"/.test(readFileSync("assets/ux-suite-20261119h.js", "utf8")) &&
     /const VER = "20261118c"/.test(readFileSync("assets/pv-platform-20261118c.js", "utf8"))
 );
 
