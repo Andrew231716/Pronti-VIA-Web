@@ -38,12 +38,12 @@ ok(
 );
 
 ok(
-  "stamps 20261120c",
-  /ux-suite-20261120c\.js/.test(index) &&
-    /20261120c-import/.test(sw) &&
-    /const SHELL_VER = "20261120c"/.test(account) &&
-    /const STYLE_VER = "20261120c"/.test(ux) &&
-    existsSync("assets/ux-suite-20261120c.js")
+  "stamps 20261120d",
+  /ux-suite-20261120d\.js/.test(index) &&
+    /20261120d-iacta/.test(sw) &&
+    /const SHELL_VER = "20261120d"/.test(account) &&
+    /const STYLE_VER = "20261120d"/.test(ux) &&
+    existsSync("assets/ux-suite-20261120d.js")
 );
 
 if (process.exitCode) process.exit(process.exitCode);
