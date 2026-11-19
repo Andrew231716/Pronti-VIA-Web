@@ -41,7 +41,7 @@ ok(
   /precacheAll/.test(sw) &&
     /preferCache/.test(sw) &&
     /NETWORK_MS/.test(sw) &&
-    /20261119v-overview/.test(sw)
+    /20261119w-preventivo/.test(sw)
 );
 ok(
   "SW precaches pdfjs + leaflet images",
@@ -56,10 +56,10 @@ ok(
 );
 ok(
   "stamps wired",
-  /account.js\?v=20261119v/.test(index) &&
+  /account.js\?v=20261119w/.test(index) &&
     /api-shim-20261119f\.js/.test(index) &&
     existsSync("assets/api-shim-20261119f.js") &&
-    /const SHELL_VER = "20261119v"/.test(account)
+    /const SHELL_VER = "20261119w"/.test(account)
 );
 
 if (failed) {

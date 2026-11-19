@@ -49,10 +49,10 @@ ok(
 ok(
   "stamps",
   /destination-theme-20261119u\.js/.test(index) &&
-    /magic-extras-20261119v\.js/.test(index) &&
+    /magic-extras-20261119w\.js/.test(index) &&
     /ux-suite-20261119v\.js/.test(index) &&
-    /20261119v-overview/.test(sw) &&
-    /SHELL_VER = "20261119v"/.test(account) &&
+    /20261119w-preventivo/.test(sw) &&
+    /SHELL_VER = "20261119w"/.test(account) &&
     existsSync("assets/destination-theme-20261119u.js")
 );
 ok("assets mirror", readFileSync("assets/destination-theme-20261119u.js", "utf8") === dest);

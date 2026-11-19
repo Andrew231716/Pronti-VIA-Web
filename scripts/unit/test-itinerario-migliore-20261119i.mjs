@@ -45,13 +45,13 @@ ok(
 ok(
   "stamps",
   /ux-suite-20261119v\.js/.test(index) &&
-    /magic-extras-20261119v\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119v-overview/.test(index) &&
-    /20261119v-overview/.test(sw) &&
+    /magic-extras-20261119w\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119w-preventivo/.test(index) &&
+    /20261119w-preventivo/.test(sw) &&
     existsSync("assets/ux-suite-20261119v.js") &&
-    existsSync("assets/magic-extras-20261119v.js") &&
+    existsSync("assets/magic-extras-20261119w.js") &&
     /const STYLE_VER = "20261119v"/.test(ux) &&
-    /dataset\.pvReady = "20261119v"/.test(magic)
+    /dataset\.pvReady = "20261119w"/.test(magic)
 );
 
 if (failed) {

@@ -44,18 +44,18 @@ ok(
 );
 ok(
   "stamps",
-  /magic-extras-20261119v\.js/.test(index) &&
+  /magic-extras-20261119w\.js/.test(index) &&
     /ux-suite-20261119v\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119v-overview/.test(index) &&
-    /20261119v-overview/.test(sw)
+    /travel-diary\.css\?v=20261119w-preventivo/.test(index) &&
+    /20261119w-preventivo/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/magic-extras-20261119v.js") &&
+  existsSync("assets/magic-extras-20261119w.js") &&
     existsSync("assets/ux-suite-20261119v.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
-    readFileSync("assets/magic-extras-20261119v.js", "utf8").includes('dataset.pvReady = "20261119v"') &&
+    readFileSync("assets/magic-extras-20261119w.js", "utf8").includes('dataset.pvReady = "20261119w"') &&
     readFileSync("assets/ux-suite-20261119v.js", "utf8").includes('const STYLE_VER = "20261119v"')
 );
 
