@@ -13,7 +13,7 @@ function test(name, fn) {
 }
 
 test("stamp destination-theme wired", () => {
-  assert.match(index, /destination-theme-20261119m\.js/);
+  assert.match(index, /destination-theme-20261119n\.js/);
 });
 
 test("canvas destination load uses Bearer + hints", () => {

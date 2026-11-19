@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119m") return;
+    if (style && style.dataset.pvReady === "20261119n") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119m";
+    style.dataset.pvReady = "20261119n";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -310,10 +310,19 @@
       .pv-day-picker-actions .primary{background:#007d82;color:#fff}
       .pv-day-picker-actions .ghost{background:#eef5f5;color:#1d3338}
       .stop-card{position:relative}
-      .stop-card .pv-stop-media{flex:0 0 72px;width:72px;height:72px;border-radius:12px;overflow:hidden;background:#e8f0f0;align-self:flex-start}
+      .stop-card .pv-stop-media{flex:0 0 72px;width:72px;height:72px;border-radius:12px;overflow:hidden;background:#e8f0f0;align-self:flex-start;position:relative}
       .stop-card .pv-stop-media img{width:100%;height:100%;object-fit:cover;display:block}
+      .stop-card .pv-stop-sticker{
+        position:absolute;right:-6px;bottom:-6px;z-index:2;
+        width:1.85rem;height:1.85rem;display:inline-flex;align-items:center;justify-content:center;
+        font-size:1.05rem;line-height:1;border-radius:999px;
+        background:#fff;border:1px solid rgba(16,42,48,.1);
+        box-shadow:0 3px 10px rgba(16,42,48,.12);
+      }
+      .stop-card.pv-stop-enhanced .stop-symbol{display:none}
       .stop-card .pv-stop-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
       .stop-card .pv-stop-extras label{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:.78rem;font-weight:700;color:#3d5960}
+      .stop-card .pv-stop-extras label > span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
       .stop-card .pv-stop-extras select{border:1px solid #c9dbdb;border-radius:10px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%)}
       .stop-card .pv-stop-links{display:flex;flex-wrap:wrap;gap:6px}
       .stop-card .pv-stop-links a{appearance:none;display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border:1px solid #b9d0d0;border-radius:999px;background:#fff;color:#124048;font:600 11px inherit;text-decoration:none}
@@ -768,6 +777,23 @@
   }
 
   const STOP_CATEGORIES = ["Visita", "Spiaggia", "Cibo", "Trasporto", "Alloggio", "Altro"];
+  const STOP_CATEGORY_STICKER = {
+    Visita: "📍",
+    Spiaggia: "🏖️",
+    Cibo: "🍽️",
+    Trasporto: "🚌",
+    Alloggio: "🏨",
+    Altro: "✨",
+    Cultura: "🏛️",
+    Natura: "🌿",
+    Attività: "🎯",
+    Shopping: "🛍️",
+  };
+
+  function stopCategorySticker(cat) {
+    const key = normalizeStopCategory(cat);
+    return STOP_CATEGORY_STICKER[key] || STOP_CATEGORY_STICKER.Altro;
+  }
 
   function normalizeStopCategory(cat) {
     const c = String(cat || "").trim();
@@ -5407,14 +5433,32 @@ Regole:
       const title = card.querySelector("h3")?.textContent?.trim() || "";
       const stop = findStopByTitle(trip, title);
       if (!stop) continue;
+      card.classList.add("pv-stop-enhanced");
+      const cat = normalizeStopCategory(stop.category);
+      card.dataset.pvStopCat = cat;
 
-      if (!card.querySelector(".pv-stop-media")) {
-        const media = document.createElement("div");
+      let media = card.querySelector(".pv-stop-media");
+      if (!media) {
+        media = document.createElement("div");
         media.className = "pv-stop-media";
         media.innerHTML = `<img src="${escapeHtml(extractStopImage(stop))}" alt="" loading="lazy" />`;
         const symbol = card.querySelector(".stop-symbol");
         if (symbol) symbol.insertAdjacentElement("afterend", media);
         else card.insertBefore(media, card.firstChild);
+      }
+
+      let sticker = media.querySelector(".pv-stop-sticker");
+      const emoji = stopCategorySticker(cat);
+      if (!sticker) {
+        sticker = document.createElement("span");
+        sticker.className = "pv-stop-sticker";
+        sticker.setAttribute("aria-hidden", "true");
+        media.appendChild(sticker);
+      }
+      if (sticker.dataset.cat !== cat) {
+        sticker.dataset.cat = cat;
+        sticker.textContent = emoji;
+        sticker.title = cat;
       }
 
       // Hide raw Foto:/TripAdvisor URL lines from notes — links live in the chip row.
@@ -5438,9 +5482,11 @@ Regole:
 
       if (!extras.querySelector("select[data-pv-day]")) {
         const label = document.createElement("label");
-        label.innerHTML = `<span>Giorno</span>`;
+        // Visually hide "Giorno" text — options already say "Giorno N · …" (avoids "Giorno Giorno").
+        label.innerHTML = `<span>Giorno della tappa</span>`;
         const select = document.createElement("select");
         select.dataset.pvDay = stop.id;
+        select.setAttribute("aria-label", "Giorno della tappa");
         select.innerHTML =
           `<option value="">Da decidere</option>` +
           days

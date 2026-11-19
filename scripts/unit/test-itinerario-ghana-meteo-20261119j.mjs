@@ -48,14 +48,14 @@ ok(
 
 ok(
   "stamps",
-  /destination-theme-20261119m\.js/.test(index) &&
-    /ux-suite-20261119m\.js/.test(index) &&
-    /magic-extras-20261119m\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119m-visibile/.test(index) &&
-    /20261119m-visibile/.test(sw) &&
-    existsSync("assets/destination-theme-20261119m.js") &&
-    existsSync("assets/ux-suite-20261119m.js") &&
-    existsSync("assets/magic-extras-20261119m.js")
+  /destination-theme-20261119n\.js/.test(index) &&
+    /ux-suite-20261119n\.js/.test(index) &&
+    /magic-extras-20261119n\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119n-tappe/.test(index) &&
+    /20261119n-tappe/.test(sw) &&
+    existsSync("assets/destination-theme-20261119n.js") &&
+    existsSync("assets/ux-suite-20261119n.js") &&
+    existsSync("assets/magic-extras-20261119n.js")
 );
 
 if (failed) {

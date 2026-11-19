@@ -27,8 +27,8 @@ ok("login dark inputs", /html\[data-pv-theme="dark"\] #pv-account-gate \.pv-acco
 ok("account field dark values", /html\[data-pv-theme="dark"\] \.pv-account-field dd\{color:#eef6f7\}/.test(ux));
 ok("diary account field contrast", /#pv-ux-modal \.pv-account-field dd/.test(diary));
 ok("7-col nav grid", /repeat\(7, minmax\(0, 1fr\)\)/.test(diary) || /repeat\(7, minmax\(0, 1fr\)\)/.test(accountCss));
-ok("stamps wired", /ux-suite-20261119m\.js/.test(index) && /account\.css\?v=20261118b/.test(index) && /destination-theme-20261119m\.js/.test(index));
-ok("assets exist", existsSync("assets/ux-suite-20261119m.js") && existsSync("assets/destination-theme-20261119m.js"));
+ok("stamps wired", /ux-suite-20261119n\.js/.test(index) && /account\.css\?v=20261118b/.test(index) && /destination-theme-20261119n\.js/.test(index));
+ok("assets exist", existsSync("assets/ux-suite-20261119n.js") && existsSync("assets/destination-theme-20261119n.js"));
 
 
 if (failed) {

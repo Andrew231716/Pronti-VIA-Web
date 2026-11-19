@@ -1434,16 +1434,28 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
   padding: .95rem;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list {
-  gap: .55rem;
+  gap: .75rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card.pv-stop-enhanced {
+  overflow: visible;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3 {
-  margin: .15rem 0 .2rem;
-  font-size: 1.02rem;
-  line-height: 1.25;
+  margin: .05rem 0 .15rem;
+  font-size: 1.12rem;
+  line-height: 1.22;
 }
 #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-footer {
-  gap: .35rem;
-  margin-top: .35rem;
+  gap: .4rem;
+  margin-top: .25rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media {
+  width: 92px;
+  height: 92px;
+  border-radius: 16px;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .address {
+  font-size: .82rem;
+  opacity: .88;
 }
 
 /* Ghana scrapbook panels — richer wash behind brighter cards so layers don’t blend. */

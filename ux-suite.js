@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119m";
+  const STYLE_VER = "20261119n";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -237,26 +237,59 @@
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card .cond{
         font-size:.75rem;
       }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list{
+        display:flex;flex-direction:column;gap:.75rem;
+        border-inline-start:2px solid color-mix(in srgb, var(--diary-accent,#007d82) 35%, var(--diary-line,#d5e3e6));
+        padding-inline-start:.85rem;margin-inline-start:.2rem;
+      }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card{
-        padding:.7rem .8rem;gap:.55rem;
+        display:grid;grid-template-columns:auto minmax(0,1fr);gap:.75rem .85rem;
+        align-items:start;padding:.85rem .9rem;border-radius:1.15rem;position:relative;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card::before{
+        content:"";position:absolute;inset-inline-start:calc(-.85rem - 5px);top:1.35rem;
+        width:.7rem;height:.7rem;border-radius:50%;
+        background:var(--diary-accent, #007d82);
+        box-shadow:0 0 0 3px color-mix(in srgb, var(--diary-accent,#007d82) 22%, transparent);
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media{
-        width:56px;height:56px;flex-basis:56px;border-radius:10px;
+        width:92px;height:92px;flex-basis:92px;border-radius:16px;
+        grid-row:1 / span 2;align-self:stretch;min-height:92px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .stop-body{
+        min-width:0;display:flex;flex-direction:column;gap:.35rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .eyebrow{
+        font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;opacity:.78;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3{
+        margin:0;font-size:1.12rem;line-height:1.2;letter-spacing:-.01em;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .inline-actions{
-        gap:2px;
+        gap:4px;margin-left:auto;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .inline-actions .icon-btn{
-        min-width:40px;min-height:40px;
+        min-width:40px;min-height:40px;border-radius:12px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .stop-footer{
+        display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin-top:.2rem;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras{
-        margin-top:6px;gap:6px;
+        margin-top:4px;gap:8px;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras select{
-        padding:5px 8px;font-size:11px;min-height:36px;max-width:min(180px,100%);
+        padding:7px 10px;font-size:12px;min-height:38px;max-width:min(200px,100%);
+        border-radius:999px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading{
+        display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;
+        margin-block:.55rem .1rem;padding:.35rem .15rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading h3{
+        font-size:1.12rem;letter-spacing:-.015em;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
-        margin-top:.15rem;padding:.85rem;font-size:.9rem;
+        margin-top:.25rem;padding:1rem;font-size:.92rem;border-radius:1rem;
       }
       #root .pv-pack-cats{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 .55rem}
       #root .pv-pack-cats button{

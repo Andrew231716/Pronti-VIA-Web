@@ -667,6 +667,28 @@
         border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 36%, #d2be8a) !important;
         box-shadow: 0 6px 16px color-mix(in srgb, var(--pv-dest-teal,#176348) 14%, transparent) !important;
       }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list{
+        border-inline-start-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 55%, var(--pv-dest-teal,#176348)) !important;
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card::before{
+        background: var(--pv-dest-teal,#176348) !important;
+        box-shadow:0 0 0 3px color-mix(in srgb, var(--pv-dest-accent,#dba62f) 45%, transparent) !important;
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media{
+        box-shadow:0 4px 12px color-mix(in srgb, var(--pv-dest-teal,#176348) 16%, transparent);
+        border:1px solid color-mix(in srgb, var(--pv-dest-accent,#dba62f) 28%, transparent);
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-sticker{
+        background: color-mix(in srgb, var(--pv-dest-sand,#fff5df) 70%, #fff);
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 40%, transparent);
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3{
+        color: var(--pv-dest-teal-deep,#104d37);
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .add-dashed{
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 45%, #d2be8a) !important;
+        background: color-mix(in srgb, #fff 70%, var(--pv-dest-sand,#fff5df)) !important;
+      }
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
         background:#243830 !important;

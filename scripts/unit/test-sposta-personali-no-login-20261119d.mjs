@@ -38,14 +38,14 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261119m\.js/.test(index) &&
-    /magic-extras-20261119m\.js/.test(index) &&
-    /ux-suite-20261119m\.js/.test(sw) &&
-    /magic-extras-20261119m\.js/.test(sw) &&
-    existsSync("assets/ux-suite-20261119m.js") &&
-    existsSync("assets/magic-extras-20261119m.js") &&
-    /const STYLE_VER = "20261119m"/.test(ux) &&
-    /dataset\.pvReady = "20261119m"/.test(magic)
+  /ux-suite-20261119n\.js/.test(index) &&
+    /magic-extras-20261119n\.js/.test(index) &&
+    /ux-suite-20261119n\.js/.test(sw) &&
+    /magic-extras-20261119n\.js/.test(sw) &&
+    existsSync("assets/ux-suite-20261119n.js") &&
+    existsSync("assets/magic-extras-20261119n.js") &&
+    /const STYLE_VER = "20261119n"/.test(ux) &&
+    /dataset\.pvReady = "20261119n"/.test(magic)
 );
 
 if (failed) {

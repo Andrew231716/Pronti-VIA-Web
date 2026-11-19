@@ -29,21 +29,21 @@ ok("soft readonly blocks PUT", /sola lettura su questo viaggio/.test(shim));
 ok(
   "stamps wired",
   /api-shim-20261119f\.js/.test(index) &&
-    /magic-extras-20261119m\.js/.test(index) &&
-    /ux-suite-20261119m\.js/.test(index)
+    /magic-extras-20261119n\.js/.test(index) &&
+    /ux-suite-20261119n\.js/.test(index)
 );
 ok(
   "sw precache matches",
   /api-shim-20261119f\.js/.test(sw) &&
-    /magic-extras-20261119m\.js/.test(sw) &&
-    /ux-suite-20261119m\.js/.test(sw) &&
-    /20261119m-visibile/.test(sw)
+    /magic-extras-20261119n\.js/.test(sw) &&
+    /ux-suite-20261119n\.js/.test(sw) &&
+    /20261119n-tappe/.test(sw)
 );
 ok(
   "assets exist",
   existsSync("assets/api-shim-20261119f.js") &&
-    existsSync("assets/magic-extras-20261119m.js") &&
-    existsSync("assets/ux-suite-20261119m.js")
+    existsSync("assets/magic-extras-20261119n.js") &&
+    existsSync("assets/ux-suite-20261119n.js")
 );
 
 

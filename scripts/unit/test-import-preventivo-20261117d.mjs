@@ -45,9 +45,9 @@ ok("per-file errors isolated", /fileErrors\.push/.test(prev) && /File saltati/.t
 ok(
   "stamps",
   /preventivo-islanda-20261117e\.js/.test(index) &&
-    /magic-extras-20261119m\.js/.test(index) &&
+    /magic-extras-20261119n\.js/.test(index) &&
     existsSync("assets/preventivo-islanda-20261117e.js") &&
-    existsSync("assets/magic-extras-20261119m.js")
+    existsSync("assets/magic-extras-20261119n.js")
 );
 ok("sw cache", /20261118h/.test(sw) && /preventivo-islanda-20261117e\.js/.test(sw));
 // Runtime parse of the user's sheet shape
