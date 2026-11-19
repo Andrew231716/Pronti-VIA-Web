@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120d") return;
+    if (style && style.dataset.pvReady === "20261120e") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120d";
+    style.dataset.pvReady = "20261120e";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -185,6 +185,11 @@
         margin:10px 0 0;padding:12px;border-radius:14px;border:1px solid #d7e4e6;background:#f7fbfb;color:#12343c
       }
       #${ROOT_ID} .pv-chat-import h4{margin:0 0 8px;font-size:.95rem;color:#0f2c31}
+      /* Keep dark ink even when travel-diary maps .pv-lead to pale --diary-ink (dark theme). */
+      #${ROOT_ID} .pv-chat-import :is(.pv-lead,.pv-import-count,.pv-import-group h4,.pv-import-hint,.pv-import-map,.title,.detail,.pv-imp-guess,p,strong){
+        color:#12343c !important
+      }
+      #${ROOT_ID} .pv-chat-import .pv-lead strong{color:#0f2c31 !important}
       #${ROOT_ID} .pv-chat-import .pv-import-item,
       #${ROOT_ID} .pv-chat-import .pv-import-group,
       #${ROOT_ID} .pv-chat-import .pv-import-hint{color:#12343c}
