@@ -1460,12 +1460,25 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
 
 /* Ghana scrapbook panels — richer wash behind brighter cards so layers don’t blend. */
 html[data-pv-dest="gh"] {
-  --diary-paper: #fffef9;
+  --diary-paper: #ffffff;
   --diary-card: #ffffff;
-  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 12%, #f0e4c4);
-  --diary-line: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 70%, #c9b27e);
+  /* Keep wash for accents, but never use it as card fill (blends with Ghana panel). */
+  --diary-wash: #ffffff;
+  --diary-muted: #3a4630;
+  --diary-ink: #29271e;
+  --diary-line: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 55%, #b89a58);
   --diary-action: var(--pv-dest-teal-deep, #104d37);
   --diary-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, transparent);
+}
+html[data-pv-dest="gh"] #root .primary-panel .empty-state {
+  background: #fff !important;
+  border: 1.5px solid color-mix(in srgb, var(--pv-dest-accent, #dba62f) 42%, #c9b27e) !important;
+  border-style: solid !important;
+  color: #29271e !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+}
+html[data-pv-dest="gh"] #root .day-heading > span {
+  color: #3a4630 !important;
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] {
   --diary-paper: #15241f;

@@ -44,7 +44,7 @@ ok(
   "stamps",
   /ux-suite-20261119o\.js/.test(index) &&
     /magic-extras-20261119o\.js/.test(index) &&
-    /20261119o-orario/.test(sw) &&
+    /20261119p-contrasto/.test(sw) &&
     existsSync("assets/ux-suite-20261119o.js") &&
     existsSync("assets/magic-extras-20261119o.js") &&
     /const STYLE_VER = "20261119o"/.test(ux)

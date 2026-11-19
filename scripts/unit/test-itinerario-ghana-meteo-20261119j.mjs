@@ -48,12 +48,12 @@ ok(
 
 ok(
   "stamps",
-  /destination-theme-20261119o\.js/.test(index) &&
+  /destination-theme-20261119p\.js/.test(index) &&
     /ux-suite-20261119o\.js/.test(index) &&
     /magic-extras-20261119o\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119o-orario/.test(index) &&
-    /20261119o-orario/.test(sw) &&
-    existsSync("assets/destination-theme-20261119o.js") &&
+    /travel-diary\.css\?v=20261119p-contrasto/.test(index) &&
+    /20261119p-contrasto/.test(sw) &&
+    existsSync("assets/destination-theme-20261119p.js") &&
     existsSync("assets/ux-suite-20261119o.js") &&
     existsSync("assets/magic-extras-20261119o.js")
 );

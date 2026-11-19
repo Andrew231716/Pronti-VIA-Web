@@ -38,7 +38,7 @@ ok(
 );
 ok(
   "sw + assets",
-  /20261119o-orario/.test(sw) &&
+  /20261119p-contrasto/.test(sw) &&
     existsSync("assets/api-shim-20261119f.js") &&
     existsSync("assets/magic-extras-20261119o.js") &&
     existsSync("assets/app-suite-20261118h.js") &&

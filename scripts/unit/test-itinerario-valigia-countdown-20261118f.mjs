@@ -64,8 +64,8 @@ ok(
   /magic-extras-20261119o\.js/.test(index) &&
     /ux-suite-20261119o\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119o-orario/.test(index) &&
-    /20261119o-orario/.test(sw)
+    /travel-diary\.css\?v=20261119p-contrasto/.test(index) &&
+    /20261119p-contrasto/.test(sw)
 );
 ok(
   "assets",
