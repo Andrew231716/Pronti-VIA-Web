@@ -1107,11 +1107,11 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-in
   #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
 }
 
-/* Section panels under the trip menu: clear white frame vs page wash */
+/* Section panels: soft tint of destination sand toward white (clearer than page wash) */
 #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   gap: .65rem;
   padding: clamp(.9rem, 3.2vw, 1.35rem);
-  background: #fff;
+  background: color-mix(in srgb, var(--diary-wash, var(--pv-dest-sand, #f3f8f8)) 22%, #fff);
   box-shadow: 0 10px 26px rgba(20, 49, 55, .08);
 }
 html[data-pv-theme="dark"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
@@ -1493,10 +1493,10 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] {
   --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
   --diary-shadow: 0 12px 32px rgba(0, 0, 0, .42);
 }
-/* Ghana section frame: white (light) / elevated (dark) — gold stays on the PAGE only. */
+/* Ghana section frame: soft cream (not pure white); gold wash stays on the PAGE. */
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   position: relative;
-  background: #fff;
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 34%, #fff);
   border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, var(--diary-line));
   border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
