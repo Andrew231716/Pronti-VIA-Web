@@ -640,6 +640,46 @@
         transition: background .45s ease;
         color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
+      /* Ghana: warmer page wash + white cards so layers don't blend (wins over diary.css). */
+      html[data-pv-dest="gh"] body.pv-account-ready{
+        background:
+          radial-gradient(900px 420px at 8% -8%, color-mix(in srgb, var(--pv-dest-teal,#176348) 42%, transparent), transparent 58%),
+          radial-gradient(760px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, transparent), transparent 52%),
+          linear-gradient(180deg, #d4c07a 0%, #e8d9a4 40%, #dcc98a 100%) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] body.pv-account-ready{
+        background:
+          radial-gradient(900px 420px at 10% -10%, color-mix(in srgb, var(--pv-dest-teal,#176348) 48%, transparent), transparent 55%),
+          radial-gradient(700px 360px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent,#dba62f) 26%, transparent), transparent 50%),
+          linear-gradient(180deg, #0a1210 0%, #101c18 55%, #08100e 100%) !important;
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        background: linear-gradient(165deg, #e2d194 0%, #efe3b4 48%, #e6d39c 100%) !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 40%, #c9b27e) !important;
+        box-shadow: 0 14px 32px color-mix(in srgb, var(--pv-dest-teal,#176348) 22%, transparent) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]){
+        background: linear-gradient(165deg, #1a3228 0%, #15241f 55%, #12201b 100%) !important;
+      }
+      html[data-pv-dest="gh"] #root .pv-day-weather,
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
+        background:#fff !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 36%, #d2be8a) !important;
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--pv-dest-teal,#176348) 14%, transparent) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
+      html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
+        background:#243830 !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #3d555a) !important;
+      }
+      html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]){
+        background:#fff !important;
+        border-color:#d2be8a !important;
+      }
+      /* Mobile: hide floating stickers — they collide with CTAs; section stickers stay. */
+      @media (max-width:767px){
+        body.pv-dest-theme-ready .pv-dest-floaters{ display:none!important; }
+      }
       /* Bottom nav + chip follow Hub/destination accents */
       body.pv-dest-theme-ready #pv-primary-nav .pv-nav-item{
         color: var(--pv-plat-muted) !important;

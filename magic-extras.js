@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119k") return;
+    if (style && style.dataset.pvReady === "20261119m") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119k";
+    style.dataset.pvReady = "20261119m";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -321,14 +321,19 @@
       .pv-day-weather .pv-block-title,.pv-links-box .pv-block-title,.pv-fx-calc .pv-block-title{margin:0 0 10px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
       .pv-day-weather .pv-block-meta,.pv-fx-calc .pv-block-meta{margin:0 0 10px;font-size:.86rem;color:#5b7076}
       .pv-day-weather{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
-      .pv-day-weather .pv-block-title{margin:0;width:auto}
-      .pv-day-weather .pv-weather-card{flex:1;min-width:140px;padding:0;border:0;background:transparent;display:flex;flex-direction:row;align-items:center;gap:10px}
+      .pv-day-weather .pv-block-title{
+        margin:0;width:auto;display:inline-flex;align-items:center;gap:8px;font-size:.78rem;
+      }
+      .pv-day-weather .pv-weather-card{flex:1;min-width:140px;padding:0;border:0;background:transparent;display:flex;flex-direction:row;align-items:center;gap:12px}
       .pv-day-weather .pv-weather-sticker{
-        flex:0 0 auto;width:2.55rem;height:2.55rem;display:inline-flex;align-items:center;justify-content:center;
-        font-size:1.45rem;line-height:1;border-radius:14px;
+        flex:0 0 auto;width:3rem;height:3rem;display:inline-flex;align-items:center;justify-content:center;
+        font-size:1.7rem;line-height:1;border-radius:16px;
         background:color-mix(in srgb, var(--pv-dest-sand, #f3f8f8) 55%, #fff);
         border:1px solid color-mix(in srgb, var(--pv-dest-line, #d5e3e6) 80%, transparent);
-        box-shadow:0 2px 8px rgba(16,42,48,.06);
+        box-shadow:0 3px 10px rgba(16,42,48,.1);
+      }
+      .pv-day-weather .pv-block-title .pv-weather-sticker{
+        width:2.35rem;height:2.35rem;font-size:1.35rem;border-radius:12px;
       }
       .pv-day-weather .pv-weather-copy{display:flex;flex-direction:column;gap:2px;min-width:0}
       .pv-day-weather .pv-weather-card strong{font-size:.88rem;color:#16353b}
@@ -4991,6 +4996,7 @@ Regole:
       cardHost.innerHTML = "";
       return;
     }
+    const titleEl = box.querySelector(".pv-block-title");
     meta.textContent =
       cache.mode === "forecast"
         ? `Previsione · ${formatDayIt(dayIso)}`
@@ -5001,6 +5007,9 @@ Regole:
       const tmin = cache.daily.temperature_2m_min?.[i];
       const rain = cache.daily.precipitation_probability_max?.[i];
       const sticker = weatherStickerFromCode(code);
+      if (titleEl) {
+        titleEl.innerHTML = `<span class="pv-weather-sticker" aria-hidden="true">${sticker}</span> Meteo`;
+      }
       cardHost.innerHTML = `
         <div class="pv-weather-card">
           <span class="pv-weather-sticker" aria-hidden="true">${sticker}</span>
@@ -5015,6 +5024,9 @@ Regole:
       const tmean = cache.daily.temperature_2m_mean?.[i];
       const precip = cache.daily.precipitation_sum?.[i];
       const sticker = weatherStickerFromClimate(tmean, precip);
+      if (titleEl) {
+        titleEl.innerHTML = `<span class="pv-weather-sticker" aria-hidden="true">${sticker}</span> Meteo`;
+      }
       cardHost.innerHTML = `
         <div class="pv-weather-card">
           <span class="pv-weather-sticker" aria-hidden="true">${sticker}</span>
@@ -5043,7 +5055,7 @@ Regole:
     box.className = "pv-day-weather";
     box.id = "pv-day-weather";
     box.innerHTML = `
-      <div class="pv-block-title">Meteo</div>
+      <div class="pv-block-title"><span class="pv-weather-sticker" aria-hidden="true">🌡️</span> Meteo</div>
       <div class="pv-block-meta" id="pv-weather-meta">Caricamento…</div>
       <div id="pv-weather-day"></div>
     `;

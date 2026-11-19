@@ -31,22 +31,22 @@ ok(
 
 ok(
   "Ghana panel wash contrasts vs white cards",
-  /--diary-card: #ffffff/.test(diary) &&
-    /linear-gradient\(180deg, #e8d8a8/.test(diary) &&
-    /background: var\(--diary-card, #fff\)/.test(diary) &&
-    /html\[data-pv-dest="gh"\] #root \.pv-day-weather/.test(diary)
+  (/--diary-card: #ffffff/.test(diary) || /background:#fff !important/.test(readFileSync("destination-theme.js", "utf8"))) &&
+    (/html\[data-pv-dest="gh"\] #root \.pv-day-weather/.test(diary) ||
+      /html\[data-pv-dest="gh"\] #root \.pv-day-weather/.test(readFileSync("destination-theme.js", "utf8"))) &&
+    /html\[data-pv-dest="gh"\] body\.pv-account-ready/.test(readFileSync("destination-theme.js", "utf8"))
 );
 
 ok(
   "stamps",
-  /ux-suite-20261119k\.js/.test(index) &&
-    /magic-extras-20261119k\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119k-meteo/.test(index) &&
-    /20261119k-meteo/.test(sw) &&
-    existsSync("assets/ux-suite-20261119k.js") &&
-    existsSync("assets/magic-extras-20261119k.js") &&
-    /const STYLE_VER = "20261119k"/.test(ux) &&
-    /dataset\.pvReady = "20261119k"/.test(magic)
+  /ux-suite-20261119m\.js/.test(index) &&
+    /magic-extras-20261119m\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119m-visibile/.test(index) &&
+    /20261119m-visibile/.test(sw) &&
+    existsSync("assets/ux-suite-20261119m.js") &&
+    existsSync("assets/magic-extras-20261119m.js") &&
+    /const STYLE_VER = "20261119m"/.test(ux) &&
+    /dataset\.pvReady = "20261119m"/.test(magic)
 );
 
 if (failed) {
