@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119d";
+  const STYLE_VER = "20261119f";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -684,6 +684,28 @@
         transition:bottom .28s var(--pv-ease),transform .16s var(--pv-ease),box-shadow .2s ease!important;
       }
       .pv-ux-modal .pv-ux-sheet h2{margin:0 0 10px;font-size:1.28rem;letter-spacing:-.02em}
+      .pv-ux-modal .pv-ux-sheet:has(.pv-doc-preview){
+        width:min(720px,100%);max-height:min(92vh,960px)
+      }
+      .pv-doc-preview-status{margin:8px 0;color:var(--pv-muted);font-weight:600;line-height:1.4}
+      .pv-doc-preview-stage{margin:8px 0 12px}
+      .pv-doc-preview-img{
+        display:block;max-width:100%;height:auto;border-radius:12px;
+        border:1px solid var(--pv-line);background:#fff
+      }
+      .pv-doc-preview-text{
+        margin:0;padding:12px;max-height:min(55vh,520px);overflow:auto;
+        white-space:pre-wrap;word-break:break-word;background:#fff;
+        border:1px solid var(--pv-line);border-radius:12px;
+        font:500 .85rem/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;color:#12343c
+      }
+      .pv-doc-pdf-pages{display:grid;gap:10px}
+      .pv-doc-pdf-pages canvas{
+        width:100%;height:auto;border-radius:10px;border:1px solid var(--pv-line);background:#fff
+      }
+      .pv-doc-preview-hint{margin:8px 0 0;font-size:.78rem;color:var(--pv-muted);line-height:1.35}
+      #root .booking-card .pv-doc-preview-btn{color:var(--pv-teal,#007d82)}
+      #root .booking-card .grow h3.pv-doc-preview-title{cursor:pointer;text-decoration:underline;text-decoration-color:rgba(0,125,130,.35);text-underline-offset:3px}
       .pv-ux-list{display:grid;gap:8px;margin:0;padding:0;list-style:none}
       .pv-ux-list li,.pv-ux-card{
         background:var(--pv-surface);border:1px solid rgba(18,52,60,.08);border-radius:16px;padding:13px;
@@ -2064,6 +2086,14 @@
       document.documentElement.style.overflow = "";
       clearMenuNavExpanded();
       return;
+    }
+    if (typeof modal._pvDocCleanup === "function") {
+      try {
+        modal._pvDocCleanup();
+      } catch {
+        /* ignore */
+      }
+      delete modal._pvDocCleanup;
     }
     modal.classList.remove("pv-open");
     document.documentElement.style.overflow = "";
@@ -5835,6 +5865,195 @@
   window.addEventListener("pv-save-status", enhanceHomeTripCards);
   window.addEventListener("pv-save-status", renderHomeResume);
 
+  const DOC_PREVIEW_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>';
+
+  function documentsSectionVisible() {
+    return [...document.querySelectorAll("#root h2")].some(
+      (h2) =>
+        /Documenti del viaggio/i.test(h2.textContent || "") && h2.getClientRects().length > 0
+    );
+  }
+
+  function guessDocumentPreviewKind(name, mime) {
+    const lower = String(name || "").toLowerCase();
+    const type = String(mime || "").toLowerCase();
+    if (type.startsWith("image/") || /\.(jpe?g|png|gif|webp|heic)$/i.test(lower)) return "image";
+    if (type === "application/pdf" || /\.pdf$/i.test(lower)) return "pdf";
+    if (type.startsWith("text/") || /\.txt$/i.test(lower)) return "text";
+    return "other";
+  }
+
+  async function renderPdfPreviewPages(host, blob) {
+    const pdfjs = await import("/vendor/pdfjs/pdf.min.mjs");
+    pdfjs.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.mjs";
+    const data = await blob.arrayBuffer();
+    const task = pdfjs.getDocument({ data, isEvalSupported: false });
+    try {
+      const doc = await task.promise;
+      const maxPages = Math.min(doc.numPages, 30);
+      for (let n = 1; n <= maxPages; n++) {
+        const page = await doc.getPage(n);
+        const base = page.getViewport({ scale: 1 });
+        const width = Math.min(host.clientWidth || 560, 720);
+        const scale = Math.max(0.85, Math.min(1.6, width / base.width));
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d", { alpha: false });
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.setAttribute("aria-label", `Pagina ${n} di ${doc.numPages}`);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+        host.appendChild(canvas);
+        page.cleanup();
+      }
+      if (doc.numPages > maxPages) {
+        const note = document.createElement("p");
+        note.className = "pv-doc-preview-hint";
+        note.textContent = `Anteprima delle prime ${maxPages} pagine su ${doc.numPages}. Scarica per il PDF completo.`;
+        host.appendChild(note);
+      }
+    } finally {
+      await task.destroy();
+    }
+  }
+
+  async function openTripDocumentPreview(fileName) {
+    const auth = tripAuth();
+    if (!auth) {
+      toast("Apri un viaggio per vedere i documenti", "warn");
+      return;
+    }
+    const name = String(fileName || "").trim();
+    if (!name) return;
+    const headers = { Authorization: `Bearer ${auth.key}` };
+    const base = `/api/trips/${encodeURIComponent(auth.id)}/files`;
+
+    openModal(`Anteprima · ${name}`, `
+      <div class="pv-doc-preview" data-state="loading">
+        <p class="pv-doc-preview-status">Caricamento anteprima…</p>
+        <div class="pv-doc-preview-stage" hidden></div>
+        <div class="pv-ux-actions">
+          <button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button>
+          <button type="button" class="pv-ux-primary" data-pv-doc-download disabled>Scarica</button>
+        </div>
+      </div>
+    `, {
+      onMount: (body, modal) => {
+        const status = body.querySelector(".pv-doc-preview-status");
+        const stage = body.querySelector(".pv-doc-preview-stage");
+        const root = body.querySelector(".pv-doc-preview");
+        const dlBtn = body.querySelector("[data-pv-doc-download]");
+        let objectUrl = "";
+        const cleanup = () => {
+          if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = "";
+          }
+        };
+        modal._pvDocCleanup = cleanup;
+
+        void (async () => {
+          try {
+            const listRes = await fetch(base, { headers });
+            const listJson = await listRes.json().catch(() => ({}));
+            if (!listRes.ok) throw new Error(listJson.error || "Elenco documenti non disponibile");
+            const files = Array.isArray(listJson.files) ? listJson.files : [];
+            const meta =
+              files.find((f) => f && f.name === name) ||
+              files.find((f) => String(f?.name || "").toLowerCase() === name.toLowerCase());
+            if (!meta?.id) throw new Error("Documento non trovato");
+
+            const fileRes = await fetch(`${base}/${encodeURIComponent(meta.id)}`, { headers });
+            if (!fileRes.ok) throw new Error("Anteprima non riuscita");
+            const blob = await fileRes.blob();
+            const mime = blob.type || meta.type || "application/octet-stream";
+            objectUrl = URL.createObjectURL(blob);
+            const kind = guessDocumentPreviewKind(meta.name || name, mime);
+
+            dlBtn.disabled = false;
+            dlBtn.onclick = () => {
+              const a = document.createElement("a");
+              a.href = objectUrl;
+              a.download = meta.name || name;
+              a.click();
+            };
+
+            if (kind === "image") {
+              stage.hidden = false;
+              status.hidden = true;
+              stage.innerHTML = `<img class="pv-doc-preview-img" alt="">`;
+              const img = stage.querySelector("img");
+              img.alt = meta.name || name;
+              img.src = objectUrl;
+            } else if (kind === "text") {
+              stage.hidden = false;
+              status.hidden = true;
+              stage.innerHTML = `<pre class="pv-doc-preview-text"></pre>`;
+              stage.querySelector("pre").textContent = (await blob.text()).slice(0, 200000);
+            } else if (kind === "pdf") {
+              stage.hidden = false;
+              status.textContent = "Preparazione pagine PDF…";
+              stage.innerHTML =
+                `<div class="pv-doc-pdf-pages" role="document" aria-label="Anteprima PDF"></div>` +
+                `<p class="pv-doc-preview-hint">Scorri per vedere le pagine. Usa Scarica per il file originale.</p>`;
+              await renderPdfPreviewPages(stage.querySelector(".pv-doc-pdf-pages"), blob);
+              status.hidden = true;
+            } else {
+              status.textContent =
+                "Anteprima non disponibile per questo tipo di file. Puoi scaricarlo.";
+              stage.hidden = true;
+            }
+            root.dataset.state = "ready";
+          } catch (err) {
+            cleanup();
+            status.hidden = false;
+            status.textContent = err instanceof Error ? err.message : "Anteprima non riuscita";
+            stage.hidden = true;
+            root.dataset.state = "error";
+            dlBtn.disabled = true;
+          }
+        })();
+      },
+    });
+  }
+
+  function enhanceDocumentFilePreview() {
+    if (!tripAuth() || !documentsSectionVisible()) return;
+    for (const card of document.querySelectorAll("#root .booking-card")) {
+      const downloadBtn = card.querySelector('button.icon-btn[aria-label^="Scarica "]');
+      if (!downloadBtn) continue;
+      if (card.querySelector(".pv-doc-preview-btn")) continue;
+      const name = (downloadBtn.getAttribute("aria-label") || "").replace(/^Scarica\s+/i, "").trim();
+      if (!name) continue;
+      card.dataset.pvDocPreview = "1";
+
+      const previewBtn = document.createElement("button");
+      previewBtn.type = "button";
+      previewBtn.className = "icon-btn pv-doc-preview-btn";
+      previewBtn.setAttribute("aria-label", `Anteprima ${name}`);
+      previewBtn.title = "Anteprima senza scaricare";
+      previewBtn.innerHTML = DOC_PREVIEW_ICON;
+      downloadBtn.insertAdjacentElement("beforebegin", previewBtn);
+      previewBtn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        void openTripDocumentPreview(name);
+      });
+
+      const title = card.querySelector(".grow h3");
+      if (title && !title.dataset.pvDocPreviewTitle) {
+        title.dataset.pvDocPreviewTitle = "1";
+        title.classList.add("pv-doc-preview-title");
+        title.title = "Apri anteprima";
+        title.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          void openTripDocumentPreview(name);
+        });
+      }
+    }
+  }
+
   function tick() {
     if (document.hidden) return;
     const run = (fn) => {
@@ -5866,6 +6085,7 @@
       run(enhanceTripModeNav);
       run(injectEventImportRail);
       run(polishLocalOnlyBanner);
+      run(enhanceDocumentFilePreview);
     } else {
       run(renderHomeResume);
       run(enhanceHomeTripCards);

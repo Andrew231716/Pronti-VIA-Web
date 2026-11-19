@@ -24,10 +24,10 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
 test("stamp api-shim 20261119e wired", () => {
-  assert.match(index, /api-shim-20261119e\.js/);
-  assert.match(sw, /api-shim-20261119e\.js/);
-  assert.ok(existsSync("assets/api-shim-20261119e.js"));
-  assert.equal(shim, readFileSync("assets/api-shim-20261119e.js", "utf8"));
+  assert.match(index, /api-shim-20261119f\.js/);
+  assert.match(sw, /api-shim-20261119f\.js/);
+  assert.ok(existsSync("assets/api-shim-20261119f.js"));
+  assert.equal(shim, readFileSync("assets/api-shim-20261119f.js", "utf8"));
 });
 
 test("rewrite guards FormData /files uploads", () => {
