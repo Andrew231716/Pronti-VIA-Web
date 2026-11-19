@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120a") return;
+    if (style && style.dataset.pvReady === "20261120d") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120a";
+    style.dataset.pvReady = "20261120d";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -189,12 +189,7 @@
       #${ROOT_ID} .pv-chat-import .pv-import-group,
       #${ROOT_ID} .pv-chat-import .pv-import-hint{color:#12343c}
       #${ROOT_ID} .pv-chat-import .pv-import-items{max-height:min(36vh,320px)}
-      #${ROOT_ID} .pv-chat-import-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-      #${ROOT_ID} .pv-chat-import-actions button{
-        appearance:none;border:0;border-radius:999px;padding:10px 14px;font:700 13px inherit;cursor:pointer;min-height:40px
-      }
-      #${ROOT_ID} .pv-chat-import-actions .primary{background:#007d82;color:#fff}
-      #${ROOT_ID} .pv-chat-import-actions .ghost{background:#eef5f5;color:#12343c}
+      #${ROOT_ID} .pv-chat-import-actions{display:none}
       #${ROOT_ID} .pv-chat-kind-select{
         margin:6px 0 0;width:100%;box-sizing:border-box;border:1px solid #cfe0e4;border-radius:10px;
         padding:8px 10px;font:550 .82rem inherit;background:#fff;color:#12343c
@@ -204,12 +199,17 @@
         color:#7a4b00;font:650 .75rem/1.35 inherit
       }
       #${ROOT_ID} .pv-chat-clarify{
-        display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0
+        display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px
       }
       #${ROOT_ID} .pv-chat-clarify button{
         appearance:none;border:1px solid #b8d0d0;background:#fff;color:#124048;border-radius:999px;
         padding:8px 12px;font:650 12px inherit;cursor:pointer;min-height:36px
       }
+      #${ROOT_ID} .pv-actions .primary{
+        appearance:none;border:0;border-radius:999px;padding:10px 14px;font:700 13px inherit;cursor:pointer;
+        min-height:40px;background:#007d82;color:#fff
+      }
+      #${ROOT_ID} .pv-actions [data-chat-imp-apply]{flex:1 1 100%}
       #${ROOT_ID} .pv-results-title{margin:14px 0 8px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#4d676e;font-weight:700}
       #${ROOT_ID} .pv-place-card{display:grid;grid-template-columns:64px 1fr;gap:12px;padding:12px;margin:0 0 10px;border:1px solid #e0ecec;border-radius:14px;background:#fbfefe}
       #${ROOT_ID} .pv-place-card img{width:64px;height:64px;object-fit:cover;border-radius:12px;background:#e8f0f0}
@@ -2553,13 +2553,15 @@ Testo estratto:
 ${excerpt}
 """
 Classifica il contenuto in voci strutturate per il viaggio.
+Regole: elenco attività / programma / agenda / JW Hub / congresso → kind "stop" (Itinerario), non note.
+Volo/hotel/treno → "booking". Link → "doc". Cose da fare/portare → "checklist". Solo se è testo libero senza struttura → "note".
 Rispondi in italiano con 1-2 frasi, poi OBBLIGATORIO un fence:
 
 \`\`\`pv-import
 [{"kind":"stop|booking|checklist|doc|note","title":"...","type":"Volo|Alloggio|Treno|Trasporto|Altro","day":"AAAA-MM-GG","date":"AAAA-MM-GG","time":"HH:MM","reference":"","url":"","address":"","notes":"..."}]
 \`\`\`
 
-Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare date/PNR assenti.`,
+Non inventare date/PNR assenti.`,
       },
     ];
     try {
@@ -2679,11 +2681,54 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
     });
   }
 
+  function syncChatImportFooter(panel) {
+    const actions = panel?.querySelector?.(".pv-actions");
+    if (!actions) return;
+    const hasDraft = Boolean(chatImportDraft?.items?.length);
+    actions.innerHTML = hasDraft
+      ? `<button type="button" class="primary" data-chat-imp-apply>Invia alle sezioni</button>
+         <button type="button" class="ghost" data-chat-imp-clear>Scarta</button>
+         <button type="button" class="ghost" id="pv-chat-reset">Nuova chat</button>
+         <button type="button" class="ghost pv-magic-close">Chiudi</button>`
+      : `<button type="button" class="ghost" id="pv-chat-analyze-files">Analizza file</button>
+         <button type="button" class="ghost" id="pv-chat-reset">Nuova chat</button>
+         <button type="button" class="ghost pv-magic-close">Chiudi</button>`;
+    bindPanelChrome(panel);
+    const fileInput = panel.querySelector("#pv-chat-file");
+    actions.querySelector("#pv-chat-analyze-files")?.addEventListener("click", () => {
+      if (!chatPendingFiles.length) {
+        fileInput?.click();
+        return;
+      }
+      void analyzeChatFiles(panel, chatPendingFiles);
+    });
+    actions.querySelector("#pv-chat-reset")?.addEventListener("click", () => {
+      chatHistory = [];
+      chatPlaces = [];
+      chatPendingFiles = [];
+      chatImportDraft = null;
+      lastChatTopic = "";
+      suggestedPackTitles = new Set();
+      void renderChatTab(panel);
+    });
+    actions.querySelector("[data-chat-imp-apply]")?.addEventListener("click", () => {
+      void applyChatImportDraft(panel);
+    });
+    actions.querySelector("[data-chat-imp-clear]")?.addEventListener("click", () => {
+      chatImportDraft = null;
+      panel.querySelector(".pv-chat-import")?.remove();
+      syncChatImportFooter(panel);
+      const status = panel.querySelector("#pv-chat-status");
+      if (status) status.textContent = "Proposta scartata.";
+    });
+  }
+
   function renderChatImportReview(panel) {
     const results = panel?.querySelector?.("#pv-chat-results");
     if (!results) return;
     if (!chatImportDraft?.items?.length) {
       results.querySelector(".pv-chat-import")?.remove();
+      syncChatImportFooter(panel);
       return;
     }
     let box = results.querySelector(".pv-chat-import");
@@ -2699,10 +2744,10 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
     const incomplete = chatImportDraft.items.filter((it) => importItemGaps(it).length).length;
     const uncertain = Boolean(chatImportDraft.uncertain);
     const lead = uncertain
-      ? "Non sono sicuro al 100%: ho preparato comunque una bozza. Dimmi di cosa si tratta o usa i pulsanti sotto."
+      ? "Non sono sicuro al 100%: ho preparato comunque una bozza. Scegli il tipo con i pulsanti, poi «Invia alle sezioni» in basso."
       : `Ho analizzato ${escapeHtml(
           (chatImportDraft.sources || []).join(", ") || "il file"
-        )}. Controlla tipo e dati (es. «è un volo», «giorno 3»), poi invia.`;
+        )}. Controlla tipo e dati, poi usa «Invia alle sezioni» in basso.`;
     box.innerHTML = `
       <h4>Proposta di inserimento</h4>
       <p class="pv-lead" style="margin:0 0 8px">${lead}${
@@ -2710,31 +2755,17 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
           ? ` <strong>${incomplete} voc${incomplete === 1 ? "e ha" : "i hanno"} campi da completare.</strong>`
           : ""
       }</p>
-      ${html}
       <div class="pv-chat-clarify" role="group" aria-label="Correzioni rapide">
         <button type="button" data-clarify="è un volo">È un volo</button>
         <button type="button" data-clarify="è un hotel">È un hotel</button>
         <button type="button" data-clarify="è una tappa">È una tappa</button>
         <button type="button" data-clarify="è una nota">Salva come nota</button>
-        <button type="button" data-clarify="inserisci">Invia così</button>
       </div>
-      <div class="pv-chat-import-actions">
-        <button type="button" class="primary" data-chat-imp-apply>Invia alle sezioni</button>
-        <button type="button" class="ghost" data-chat-imp-clear>Scarta proposta</button>
-      </div>
+      ${html}
     `;
     bindChatImportKindSelectors(box);
     annotateImportGaps(box);
     bindChatClarifyChips(box, panel);
-    box.querySelector("[data-chat-imp-apply]")?.addEventListener("click", () => {
-      void applyChatImportDraft(panel);
-    });
-    box.querySelector("[data-chat-imp-clear]")?.addEventListener("click", () => {
-      chatImportDraft = null;
-      box.remove();
-      const status = panel.querySelector("#pv-chat-status");
-      if (status) status.textContent = "Proposta scartata.";
-    });
     box.querySelector("[data-imp-all]")?.addEventListener("click", () => {
       box.querySelectorAll("[data-imp-id]").forEach((el) => {
         el.checked = true;
@@ -2745,6 +2776,12 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
         el.checked = false;
       });
     });
+    syncChatImportFooter(panel);
+    try {
+      box.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } catch {
+      /* ignore */
+    }
   }
 
   async function analyzeChatFiles(panel, files) {
@@ -3040,15 +3077,7 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
     }
     renderChatFileChips(panel);
     renderChatImportReview(panel);
-    panel.querySelector("#pv-chat-reset").onclick = () => {
-      chatHistory = [];
-      chatPlaces = [];
-      chatPendingFiles = [];
-      chatImportDraft = null;
-      lastChatTopic = "";
-      suggestedPackTitles = new Set();
-      void renderChatTab(panel);
-    };
+    syncChatImportFooter(panel);
     const fileInput = panel.querySelector("#pv-chat-file");
     panel.querySelector("#pv-chat-attach").onclick = () => fileInput?.click();
     fileInput.onchange = () => {
@@ -3057,13 +3086,6 @@ Se sei incerto sul tipo, usa kind "note" e spiega nella frase. Non inventare dat
       if (!picked.length) return;
       chatPendingFiles = [...chatPendingFiles, ...picked].slice(0, 12);
       renderChatFileChips(panel);
-      void analyzeChatFiles(panel, chatPendingFiles);
-    };
-    panel.querySelector("#pv-chat-analyze-files").onclick = () => {
-      if (!chatPendingFiles.length) {
-        fileInput?.click();
-        return;
-      }
       void analyzeChatFiles(panel, chatPendingFiles);
     };
     panel.querySelectorAll("#pv-chat-chips button").forEach((btn) => {
