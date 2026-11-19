@@ -28,20 +28,20 @@ ok("soft canEdit from roles", /applySoftMemberCanEdit/.test(shim) && /softRoleBl
 ok("soft readonly blocks PUT", /sola lettura su questo viaggio/.test(shim));
 ok(
   "stamps wired",
-  /api-shim-20261119a\.js/.test(index) &&
+  /api-shim-20261119e\.js/.test(index) &&
     /magic-extras-20261119d\.js/.test(index) &&
     /ux-suite-20261119d\.js/.test(index)
 );
 ok(
   "sw precache matches",
-  /api-shim-20261119a\.js/.test(sw) &&
+  /api-shim-20261119e\.js/.test(sw) &&
     /magic-extras-20261119d\.js/.test(sw) &&
     /ux-suite-20261119d\.js/.test(sw) &&
     /20261118h/.test(sw)
 );
 ok(
   "assets exist",
-  existsSync("assets/api-shim-20261119a.js") &&
+  existsSync("assets/api-shim-20261119e.js") &&
     existsSync("assets/magic-extras-20261119d.js") &&
     existsSync("assets/ux-suite-20261119d.js")
 );
