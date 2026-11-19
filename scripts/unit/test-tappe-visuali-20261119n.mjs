@@ -11,5 +11,5 @@ ok("category stickers", /STOP_CATEGORY_STICKER/.test(magic) && /pv-stop-sticker/
 ok("no duplicate Giorno label", /Giorno della tappa/.test(magic) && /Visually hide "Giorno"/.test(magic));
 ok("timeline + larger media", /width:92px/.test(ux) && /stop-card::before/.test(ux) && /grid-template-columns:auto minmax\(0,1fr\)/.test(ux));
 ok("ghana stop accents", /pv-stop-sticker/.test(dest) && /stop-card::before/.test(dest));
-ok("stamps", /ux-suite-20261119o\.js/.test(index) && /magic-extras-20261119o\.js/.test(index) && /20261119q-contrasto/.test(sw) && existsSync("assets/ux-suite-20261119o.js") && /const STYLE_VER = "20261119o"/.test(ux) && /dataset\.pvReady = "20261119o"/.test(magic));
+ok("stamps", /ux-suite-20261119o\.js/.test(index) && /magic-extras-20261119o\.js/.test(index) && /20261119r-contrasto/.test(sw) && existsSync("assets/ux-suite-20261119o.js") && /const STYLE_VER = "20261119o"/.test(ux) && /dataset\.pvReady = "20261119o"/.test(magic));
 if(failed){console.log(`\n${failed} FAIL`); process.exit(1);} console.log("\nOK");

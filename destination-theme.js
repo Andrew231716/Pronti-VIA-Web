@@ -22,7 +22,13 @@
     return `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
   }
 
-  /** Country / region themes — distinctive but on-brand travel feel */
+  /**
+   * Country / region themes — distinctive but on-brand travel feel.
+   * CONTRAST: every new template is audited automatically (light + dark) by
+   * `scripts/lib/dest-theme-contrast.mjs` / unit test, and `applyCssVars`
+   * auto-darkens ink/muted until sand contrast passes WCAG AA.
+   * Use `node scripts/add-dest-theme.mjs` to scaffold a new template.
+   */
   const THEMES = {
     default: {
       id: "default",
@@ -640,6 +646,39 @@
         transition: background .45s ease;
         color: var(--pv-plat-ink, var(--pv-dest-ink, #12343c));
       }
+      /* —— Auto contrast for EVERY destination template (light + dark) —— */
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .empty-state, .notes-paper){
+        color: var(--pv-dest-ink, #12343c) !important;
+      }
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .empty-state)
+        :is(p, span, strong, small, label, a, h3):not(button):not(button *){
+        color: var(--pv-dest-ink, #12343c) !important;
+      }
+      html[data-pv-dest]:not([data-pv-theme="dark"]) #root :is(.eyebrow, .pv-section-guide, .address, .hint){
+        color: var(--pv-dest-muted, #3f5860) !important;
+        opacity: 1 !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .empty-state){
+        background: var(--pv-dest-card-dark, #203439) !important;
+        color: var(--pv-dest-ink-dark, #edf5f5) !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 28%, #3d555a) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .primary-panel > [role="tabpanel"]
+        :is(.stop-card, .booking-card, .empty-state, .expense-row)
+        :is(p, span, strong, small, label, a, h3, div):not(button):not(button *):not(.pv-weather-sticker):not(.pv-stop-sticker){
+        color: var(--pv-dest-muted-dark, #d7e6e8) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .day-heading,
+      html[data-pv-theme="dark"][data-pv-dest] #root .section-heading h2{
+        color: var(--pv-dest-ink-dark, #edf5f5) !important;
+      }
+      html[data-pv-theme="dark"][data-pv-dest] #root .icon-btn,
+      html[data-pv-theme="dark"][data-pv-dest] #root .text-button{
+        color: var(--pv-dest-muted-dark, #d7e6e8) !important;
+      }
       /* Ghana: warmer page wash + white cards so layers don't blend (wins over diary.css). */
       html[data-pv-dest="gh"] body.pv-account-ready{
         background:
@@ -982,20 +1021,112 @@
     document.head.appendChild(style);
   }
 
+  function pvParseHex(input) {
+    const m = String(input || "").trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (!m) return null;
+    let h = m[1];
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+  }
+  function pvLum(hex) {
+    const rgb = pvParseHex(hex);
+    if (!rgb) return null;
+    const ch = (c) => {
+      const n = c / 255;
+      return n <= 0.03928 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+    };
+    return 0.2126 * ch(rgb.r) + 0.7152 * ch(rgb.g) + 0.0722 * ch(rgb.b);
+  }
+  function pvContrast(a, b) {
+    const la = pvLum(a);
+    const lb = pvLum(b);
+    if (la == null || lb == null) return null;
+    const light = Math.max(la, lb);
+    const dark = Math.min(la, lb);
+    return (light + 0.05) / (dark + 0.05);
+  }
+  function pvDarken(hex) {
+    const rgb = pvParseHex(hex);
+    if (!rgb) return hex;
+    const r = Math.max(0, Math.round(rgb.r * 0.86));
+    const g = Math.max(0, Math.round(rgb.g * 0.86));
+    const b = Math.max(0, Math.round(rgb.b * 0.86));
+    return `#${[r, g, b].map((n) => n.toString(16).padStart(2, "0")).join("")}`;
+  }
+  /** Auto-fix ink/muted for readable contrast on sand (runs for every template apply). */
+  function ensureThemeContrast(theme) {
+    const sand = theme.sand || "#ffffff";
+    let ink = theme.ink;
+    let muted = theme.muted;
+    let fixed = false;
+    let ratio = pvContrast(ink, sand);
+    let guard = 0;
+    while (ratio != null && ratio < 4.5 && guard < 18) {
+      ink = pvDarken(ink);
+      ratio = pvContrast(ink, sand);
+      fixed = true;
+      guard += 1;
+    }
+    ratio = pvContrast(muted, sand);
+    guard = 0;
+    while (ratio != null && ratio < 3 && guard < 18) {
+      muted = pvDarken(muted);
+      ratio = pvContrast(muted, sand);
+      fixed = true;
+      guard += 1;
+    }
+    return {
+      ...theme,
+      ink,
+      muted,
+      _contrast: {
+        fixed,
+        inkOnSand: pvContrast(ink, sand),
+        mutedOnSand: pvContrast(muted, sand),
+        darkInkOnCard: pvContrast("#edf5f5", "#203439"),
+      },
+    };
+  }
+  function auditThemeContrastReport(theme) {
+    const t = ensureThemeContrast(theme);
+    const pairs = [
+      ["ink-on-sand", t.ink, t.sand, 4.5],
+      ["muted-on-sand", t.muted, t.sand, 3],
+      ["ink-on-white", t.ink, "#ffffff", 4.5],
+      ["dark-ink-on-card", "#edf5f5", "#203439", 4.5],
+      ["white-on-teal", "#ffffff", t.teal, 3],
+    ];
+    const issues = [];
+    for (const [name, fg, bg, min] of pairs) {
+      const r = pvContrast(fg, bg);
+      if (r == null || r < min) issues.push(`${t.id}/${name}: ${r == null ? "n/a" : r.toFixed(2)} < ${min}`);
+    }
+    return { id: t.id, ok: issues.length === 0, issues, theme: t };
+  }
+
   function applyCssVars(theme) {
+    const safe = ensureThemeContrast(theme);
     const root = document.documentElement;
-    root.style.setProperty("--pv-dest-teal", theme.teal);
-    root.style.setProperty("--pv-dest-teal-deep", theme.tealDeep);
-    root.style.setProperty("--pv-dest-ink", theme.ink);
-    root.style.setProperty("--pv-dest-muted", theme.muted);
-    root.style.setProperty("--pv-dest-sand", theme.sand);
-    root.style.setProperty("--pv-dest-line", theme.line);
-    root.style.setProperty("--pv-dest-accent", theme.accent);
-    root.style.setProperty("--pv-dest-wash", theme.wash);
-    root.dataset.pvDest = theme.id;
+    root.style.setProperty("--pv-dest-teal", safe.teal);
+    root.style.setProperty("--pv-dest-teal-deep", safe.tealDeep);
+    root.style.setProperty("--pv-dest-ink", safe.ink);
+    root.style.setProperty("--pv-dest-muted", safe.muted);
+    root.style.setProperty("--pv-dest-sand", safe.sand);
+    root.style.setProperty("--pv-dest-line", safe.line);
+    root.style.setProperty("--pv-dest-accent", safe.accent);
+    root.style.setProperty("--pv-dest-wash", safe.wash);
+    /* Auto dark surfaces for every destination template */
+    root.style.setProperty("--pv-dest-card-dark", "#203439");
+    root.style.setProperty("--pv-dest-ink-dark", "#edf5f5");
+    root.style.setProperty("--pv-dest-muted-dark", "#d7e6e8");
+    root.dataset.pvDest = safe.id;
     document.body.classList.add("pv-dest-theme-ready");
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", theme.teal);
+    if (meta) meta.setAttribute("content", safe.teal);
+    if (safe._contrast?.fixed && typeof console !== "undefined") {
+      console.info("[pv-dest-theme] contrasto auto-corretto", safe.id, safe._contrast);
+    }
+    return safe;
   }
 
   function applyNavIcons(theme) {
@@ -1343,16 +1474,17 @@
 
   function applyTheme(theme) {
     ensureStyle();
-    applyCssVars(theme);
+    const safe = applyCssVars(theme);
     cancelAnimationFrame(canvasRaf);
-    canvasRaf = requestAnimationFrame(() => drawAtmosphere(theme));
-    currentId = theme.id;
+    canvasRaf = requestAnimationFrame(() => drawAtmosphere(safe));
+    currentId = safe.id;
     window.__pvDestTheme = {
-      id: theme.id,
-      label: theme.label,
-      motif: theme.motif,
-      flag: theme.flag || "🌍",
-      stickers: theme.stickers || [],
+      id: safe.id,
+      label: safe.label,
+      motif: safe.motif,
+      flag: safe.flag || "🌍",
+      stickers: safe.stickers || [],
+      contrast: safe._contrast || null,
     };
     window.dispatchEvent(new CustomEvent("pv-dest-theme", { detail: window.__pvDestTheme }));
   }
@@ -1405,6 +1537,15 @@
   };
   window.__pvResolveDestThemeId = resolveThemeId;
   window.__pvDestThemes = THEMES;
+  /** Automatic light/dark contrast audit for one or all destination templates. */
+  window.__pvAuditDestThemeContrast = (id) => {
+    if (id) {
+      const theme = THEMES[id] || Object.values(THEMES).find((t) => t.id === id);
+      return theme ? auditThemeContrastReport(theme) : { ok: false, issues: [`unknown theme: ${id}`] };
+    }
+    const results = Object.values(THEMES).map((t) => auditThemeContrastReport(t));
+    return { ok: results.every((r) => r.ok), results, failed: results.filter((r) => !r.ok) };
+  };
 
   addEventListener("hashchange", () => {
     void syncTheme(true);

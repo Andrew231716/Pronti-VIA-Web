@@ -41,8 +41,8 @@ ok(
   "stamps",
   /ux-suite-20261119o\.js/.test(index) &&
     /magic-extras-20261119o\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119q-contrasto/.test(index) &&
-    /20261119q-contrasto/.test(sw) &&
+    /travel-diary\.css\?v=20261119r-contrasto/.test(index) &&
+    /20261119r-contrasto/.test(sw) &&
     existsSync("assets/ux-suite-20261119o.js") &&
     existsSync("assets/magic-extras-20261119o.js") &&
     /const STYLE_VER = "20261119o"/.test(ux) &&
