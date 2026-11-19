@@ -1497,7 +1497,8 @@
       status: 200,
       headers: {
         "Content-Type": mime,
-        "Content-Disposition": `attachment; filename="${String(name || "file").replace(/"/g, "")}"`,
+        // inline so in-app anteprima can display; SPA still force-downloads via <a download>
+        "Content-Disposition": `inline; filename="${String(name || "file").replace(/"/g, "")}"`,
         "Cache-Control": "no-store",
       },
     });

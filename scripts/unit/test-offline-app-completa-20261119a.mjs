@@ -57,8 +57,8 @@ ok(
 ok(
   "stamps wired",
   /account\.js\?v=20261119b/.test(index) &&
-    /api-shim-20261119e\.js/.test(index) &&
-    existsSync("assets/api-shim-20261119e.js") &&
+    /api-shim-20261119f\.js/.test(index) &&
+    existsSync("assets/api-shim-20261119f.js") &&
     /const SHELL_VER = "20261119b"/.test(account)
 );
 
