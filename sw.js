@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261119-file-summary`;
+const CACHE = `${CACHE_PREFIX}20261119-offline`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -35,7 +35,19 @@ const PRECACHE = [
   "./iceland.svg",
   "./vendor/leaflet/leaflet.css",
   "./vendor/leaflet/leaflet.js",
+  "./assets/event-pdf.mjs",
+  "./vendor/pdfjs/pdf.min.mjs",
+  "./vendor/pdfjs/pdf.worker.min.mjs",
+  "./assets/accra-black-star-square.jpg",
+  "./assets/accra-golden-hour.jpg",
+  ...["layers.png", "layers-2x.png", "marker-icon.png", "marker-icon-2x.png", "marker-shadow.png"]
+    .map(name => "./vendor/leaflet/images/" + name),
 ];
+
+const shellByPath = new Map(PRECACHE.map(path => {
+  const url = new URL(path, self.registration.scope);
+  return [url.pathname, url];
+}));
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -64,11 +76,17 @@ self.addEventListener("fetch", (event) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (!url.href.startsWith(self.registration.scope)) return;
-  if (url.pathname.includes("/api/")) return;
+  if (url.pathname.includes("/api/") || url.pathname.includes("/.netlify/")) return;
 
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
+      // Versioned shell assets belong to the installed worker, even on a slow network.
+      const shellUrl = shellByPath.get(url.pathname);
+      if (shellUrl && (url.href === shellUrl.href && req.mode !== "navigate" || self.navigator?.onLine === false)) {
+        const saved = await cache.match(shellUrl.href);
+        if (saved) return saved;
+      }
       const fresh = await fetch(req).catch(() => undefined);
       const ct = fresh?.headers?.get("content-type") || "";
       const wantsJs = /\.m?js(\?|$)/i.test(url.pathname) || req.destination === "script";
@@ -77,12 +95,16 @@ self.addEventListener("fetch", (event) => {
       if (freshIsJsOk) cache.put(req, fresh.clone()).catch(() => {});
       if (fresh && fresh.status < 500 && (!wantsJs || freshIsJsOk)) return fresh;
 
-      const cached = await cache.match(req);
+      const cached = await cache.match(req) || (shellUrl && await cache.match(shellUrl.href));
       if (cached) {
         const cachedCt = cached.headers?.get("content-type") || "";
         if (!wantsJs || /javascript|ecmascript|json/i.test(cachedCt)) return cached;
       }
       if (req.mode === "navigate") {
+        if (shellUrl) {
+          const page = await cache.match(shellUrl.href);
+          if (page) return page;
+        }
         const index = new URL("index.html", self.registration.scope);
         const shell = await cache.match(index.href);
         if (shell) return shell;

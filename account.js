@@ -1191,7 +1191,7 @@ async function activateSession(data, { bootApp = true } = {}) {
     writeLocalTrips(merged);
   }
 
-  if (state.token && !String(state.token).startsWith("local:")) {
+  if (navigator.onLine && state.token && !String(state.token).startsWith("local:")) {
     try {
       await api("save-trips", {
         method: "PUT",
@@ -1527,6 +1527,11 @@ async function boot() {
     return;
   }
 
+  if (!navigator.onLine) {
+    await activateSession({ ...session, trips: [] });
+    return;
+  }
+
   if (String(session.token || "").startsWith("pvacct:")) {
     try {
       const data = await api("me", { method: "GET", token: session.token });
@@ -1597,7 +1602,7 @@ async function ensureFreshShell() {
 
 }
 
+void ensureFreshShell();
 boot().finally(() => {
   watchAppMount();
-  void ensureFreshShell();
 });
