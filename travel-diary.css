@@ -1446,33 +1446,47 @@ html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-se
   margin-top: .35rem;
 }
 
-/* Ghana scrapbook panels — light + dark, stickers visible on every section. */
+/* Ghana scrapbook panels — richer wash behind brighter cards so layers don’t blend. */
 html[data-pv-dest="gh"] {
-  --diary-paper: #fffaf0;
-  --diary-wash: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 88%, #fff);
-  --diary-line: var(--pv-dest-line, #e5d2ac);
+  --diary-paper: #fffef9;
+  --diary-card: #ffffff;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 12%, #f0e4c4);
+  --diary-line: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 70%, #c9b27e);
   --diary-action: var(--pv-dest-teal-deep, #104d37);
-  --diary-shadow: 0 8px 22px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+  --diary-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, transparent);
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] {
-  --diary-paper: #1a2a24;
-  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 22%, #14221c);
-  --diary-line: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 30%, #3d555a);
+  --diary-paper: #15241f;
+  --diary-card: #22352e;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 34%, #0d1714);
+  --diary-line: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 34%, #3d555a);
   --diary-ink: #edf5f5;
   --diary-muted: #c5d6da;
   --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
-  --diary-shadow: 0 10px 28px rgba(0, 0, 0, .35);
+  --diary-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+}
+html[data-pv-dest="gh"] body.pv-account-ready {
+  background:
+    radial-gradient(900px 420px at 8% -8%, color-mix(in srgb, var(--pv-dest-teal, #176348) 34%, transparent), transparent 58%),
+    radial-gradient(760px 380px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, transparent), transparent 52%),
+    linear-gradient(180deg, #e8d8a8 0%, #f3e7c4 42%, #efe0b4 100%) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] body.pv-account-ready {
+  background:
+    radial-gradient(900px 420px at 10% -10%, color-mix(in srgb, var(--pv-dest-teal, #176348) 40%, transparent), transparent 55%),
+    radial-gradient(700px 360px at 100% 0%, color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, transparent), transparent 50%),
+    linear-gradient(180deg, #0d1714 0%, #101c18 55%, #0b1411 100%) !important;
 }
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
   position: relative;
   background:
     linear-gradient(
       165deg,
-      color-mix(in srgb, var(--pv-dest-sand, #fff5df) 72%, #fff) 0%,
-      var(--diary-paper) 48%,
-      color-mix(in srgb, var(--pv-dest-wash, rgba(179, 63, 44, .12)) 28%, var(--diary-paper)) 100%
+      color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, #f6ebcf) 0%,
+      color-mix(in srgb, var(--pv-dest-sand, #fff5df) 55%, #efe0b8) 46%,
+      color-mix(in srgb, var(--pv-dest-wash, rgba(179, 63, 44, .12)) 35%, #ead7a4) 100%
     );
-  border-color: var(--diary-line);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, var(--diary-line));
   border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
   box-shadow: var(--diary-shadow);
 }
@@ -1480,9 +1494,9 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabp
   background:
     linear-gradient(
       165deg,
-      color-mix(in srgb, var(--pv-dest-teal, #176348) 26%, #1a2a24) 0%,
+      color-mix(in srgb, var(--pv-dest-teal, #176348) 36%, #15241f) 0%,
       var(--diary-paper) 55%,
-      color-mix(in srgb, var(--pv-dest-accent, #dba62f) 10%, #14221c) 100%
+      color-mix(in srgb, var(--pv-dest-accent, #dba62f) 12%, #101c18) 100%
     );
   border-block-start-color: var(--pv-dest-accent, #dba62f);
 }
@@ -1492,6 +1506,11 @@ html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-headin
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
   color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, #edf5f5);
 }
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]) {
+  background: var(--diary-card, #fff) !important;
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 75%, #c9b27e) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, transparent);
+}
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
   background: var(--pv-dest-teal, #176348) !important;
@@ -1499,8 +1518,13 @@ html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section
   box-shadow: 0 8px 18px color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
 }
 html[data-pv-dest="gh"] #root .pv-day-weather {
-  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 70%, #fff);
-  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 40%, var(--diary-line));
+  background: var(--diary-card, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 42%, var(--diary-line));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pv-dest-teal, #176348) 12%, transparent);
+}
+html[data-pv-dest="gh"] #root .pv-day-weather .pv-weather-sticker {
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 65%, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-links-box,
@@ -1508,21 +1532,23 @@ html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-fx-calc,
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-budget-box,
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-chart-box {
   color: #edf5f5 !important;
-  background: color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, #1a2a24) !important;
+  background: var(--diary-card, #22352e) !important;
   border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 38%, #3d555a) !important;
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(.pv-block-title, .pv-block-meta, .cond),
-html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(p, span, strong, small, div, em):not(button):not(button *) {
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(p, span, strong, small, div, em):not(button):not(button *):not(.pv-weather-sticker) {
   color: #d7e6e8 !important;
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather .temp {
   color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 70%, white) !important;
 }
 html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
-  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 80%, transparent);
-  background: color-mix(in srgb, var(--diary-paper) 92%, var(--pv-dest-sand, #fff5df));
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 70%, #c9b27e);
+  background: var(--diary-card, #fff);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, transparent);
 }
 html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
-  background: color-mix(in srgb, var(--diary-paper) 88%, #0f1c1f);
+  background: var(--diary-card, #22352e);
   border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, #3d555a);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
 }

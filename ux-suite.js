@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119j";
+  const STYLE_VER = "20261119k";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -223,7 +223,13 @@
         display:contents;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card{
-        flex:0 0 auto;min-width:0;flex-direction:row;align-items:baseline;gap:.45rem;
+        flex:0 0 auto;min-width:0;flex-direction:row;align-items:center;gap:.55rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-sticker{
+        width:2.4rem;height:2.4rem;font-size:1.35rem;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-copy{
+        display:flex;flex-direction:column;gap:1px;min-width:0;
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-day-weather .pv-weather-card .temp{
         font-size:1rem;
