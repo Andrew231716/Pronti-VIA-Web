@@ -52,15 +52,15 @@ ok(
 );
 ok(
   "stamps",
-  /destination-theme-20261119r\.js/.test(index) &&
-    /20261119r-contrasto/.test(sw) &&
-    /account\.js\?v=20261119r/.test(index) &&
-    /const SHELL_VER = "20261119r"/.test(account) &&
-    existsSync("assets/destination-theme-20261119r.js")
+  /destination-theme-20261119s\.js/.test(index) &&
+    /20261119s-riquadro/.test(sw) &&
+    /account\.js\?v=20261119s/.test(index) &&
+    /const SHELL_VER = "20261119s"/.test(account) &&
+    existsSync("assets/destination-theme-20261119s.js")
 );
 ok(
   "asset mirrors source",
-  readFileSync("assets/destination-theme-20261119r.js", "utf8") === dest
+  readFileSync("assets/destination-theme-20261119s.js", "utf8") === dest
 );
 
 if (failed) {

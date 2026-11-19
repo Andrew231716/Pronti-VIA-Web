@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119o") return;
+    if (style && style.dataset.pvReady === "20261119s") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119o";
+    style.dataset.pvReady = "20261119s";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -325,7 +325,7 @@
       .stop-card .pv-stop-extras label > span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
       .stop-card .pv-stop-extras select,
       .stop-card .pv-stop-extras input[type="time"]{
-        border:1px solid #c9dbdb;border-radius:999px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%);min-height:38px
+        border:1px solid #c9dbdb;border-radius:12px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%);min-height:38px
       }
       .stop-card .pv-stop-extras input[type="time"]{min-width:7.5rem}
       .stop-card .pv-stop-order{display:inline-flex;gap:4px;align-items:center;margin:0}
@@ -5436,17 +5436,25 @@ Regole:
 
   function syncStopTimePill(card, time) {
     const value = normalizeStopTime(time);
-    let pill = card.querySelector(".time-pill");
+    const pills = [...card.querySelectorAll(".time-pill")];
     if (!value) {
-      pill?.remove();
+      pills.forEach((el) => el.remove());
       return;
     }
-    if (!pill) {
-      pill = document.createElement("span");
-      pill.className = "time-pill";
+    // Keep a single display pill — duplicates looked like a double "09:10".
+    const pill = pills[0] || document.createElement("span");
+    pills.slice(1).forEach((el) => el.remove());
+    if (!pill.classList.contains("time-pill")) pill.className = "time-pill";
+    if (!pill.isConnected) {
       const row = card.querySelector(".stop-body .row-between");
-      if (row) row.appendChild(pill);
-      else card.querySelector("h3")?.insertAdjacentElement("beforebegin", pill);
+      if (row) {
+        // Prefer after the title block, before inline action icons.
+        const actions = row.querySelector(".inline-actions");
+        if (actions) row.insertBefore(pill, actions);
+        else row.appendChild(pill);
+      } else {
+        card.querySelector("h3")?.insertAdjacentElement("beforebegin", pill);
+      }
     }
     pill.textContent = value;
   }
@@ -5657,49 +5665,8 @@ Regole:
         extras.appendChild(label);
       }
 
-      if (!extras.querySelector(".pv-stop-order")) {
-        const day = stop.day || "";
-        const sameDay = (trip.stops || []).filter((s) => (s.day || "") === day);
-        const pos = sameDay.findIndex((s) => s.id === stop.id);
-        const order = document.createElement("div");
-        order.className = "pv-stop-order";
-        order.setAttribute("role", "group");
-        order.setAttribute("aria-label", "Ordine della tappa");
-        const up = document.createElement("button");
-        up.type = "button";
-        up.textContent = "↑ Prima";
-        up.title = "Sposta prima nell’ordine del giorno";
-        up.disabled = pos <= 0;
-        up.onclick = async () => {
-          up.disabled = true;
-          down.disabled = true;
-          try {
-            await swapStopOrder(stop.id, -1);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Spostamento non riuscito");
-            up.disabled = pos <= 0;
-            down.disabled = pos < 0 || pos >= sameDay.length - 1;
-          }
-        };
-        const down = document.createElement("button");
-        down.type = "button";
-        down.textContent = "↓ Dopo";
-        down.title = "Sposta dopo nell’ordine del giorno";
-        down.disabled = pos < 0 || pos >= sameDay.length - 1;
-        down.onclick = async () => {
-          up.disabled = true;
-          down.disabled = true;
-          try {
-            await swapStopOrder(stop.id, 1);
-          } catch (err) {
-            alert(err instanceof Error ? err.message : "Spostamento non riuscito");
-            up.disabled = pos <= 0;
-            down.disabled = pos < 0 || pos >= sameDay.length - 1;
-          }
-        };
-        order.append(up, down);
-        extras.appendChild(order);
-      }
+      // Card already has ↑/↓ icon actions — drop the redundant Prima/Dopo row.
+      extras.querySelector(".pv-stop-order")?.remove();
 
       if (!extras.querySelector(".pv-stop-links")) {
         const links = extractStopLinks(stop);
