@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261119d`;
+const CACHE = `${CACHE_PREFIX}20261119e`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -19,7 +19,7 @@ const PRECACHE = [
   "./assets/index-JJ3bX5VS.css",
   // Must match the case-sensitive dynamic import in account.js.
   "./assets/index-loadfix-20261111x.js",
-  "./assets/api-shim-20261119a.js",
+  "./assets/api-shim-20261119e.js",
   "./assets/magic-extras-20261119d.js",
   "./assets/expense-suite-20261111m.js",
   "./assets/expense-splitwise-20261111o.js",

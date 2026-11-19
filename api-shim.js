@@ -591,12 +591,20 @@
     const method = (init.method || "GET").toUpperCase();
     if (method !== "POST" && method !== "PUT" && method !== "PATCH") return init;
     if (!init.body) return init;
+    // Documenti uploads POST multipart FormData to /files — never rewrite those bodies.
+    // Spreading FormData looked like a trip create (`!body.trip`) and replaced the file with
+    // `{"budget":0,"checklist":[]}`, which made local storage answer "Nessun file ricevuto."
+    if (/\/files(?:\/|$)/.test(String(pathname || ""))) return init;
+    if (typeof FormData !== "undefined" && init.body instanceof FormData) return init;
+    if (typeof Blob !== "undefined" && init.body instanceof Blob) return init;
     let body;
     try {
       body = typeof init.body === "string" ? JSON.parse(init.body) : init.body;
     } catch {
       return init;
     }
+    // Plain objects only — never treat binary/multipart uploads as trip JSON.
+    if (!body || typeof body !== "object" || Array.isArray(body)) return init;
     const idFromPath = decodeURIComponent(pathname.replace(/^\/api\/trips\/?/, "").split("/")[0] || "");
     if (method === "POST" && body && !body.trip) {
       // create: body is the trip itself — stash budget/packing privately after we know the id

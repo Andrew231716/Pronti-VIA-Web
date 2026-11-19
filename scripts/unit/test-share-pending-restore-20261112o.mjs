@@ -30,12 +30,12 @@ ok("ux upgrade account", /upgrade-account/.test(ux) && /Accedi o crea account/.t
 ok(
   "stamps",
   /account\.js\?v=20261119b/.test(index) &&
-    /api-shim-20261119a\.js/.test(index) &&
+    /api-shim-20261119e\.js/.test(index) &&
     /ux-suite-20261119d\.js/.test(index)
 );
 ok(
   "assets exist",
-  existsSync("assets/api-shim-20261119a.js") && existsSync("assets/ux-suite-20261119d.js")
+  existsSync("assets/api-shim-20261119e.js") && existsSync("assets/ux-suite-20261119d.js")
 );
 
 
