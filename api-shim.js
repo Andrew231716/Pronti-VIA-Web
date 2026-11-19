@@ -2079,6 +2079,24 @@
         return handleLocalTrips(parsed.pathname, parsed.search, writeInit);
       }
 
+      // Offline: serve / mutate the on-device trip copy immediately (no network hang).
+      if (!navigator.onLine) {
+        if (accessPath) {
+          return jsonResponse(503, { error: "Gli inviti richiedono una connessione." });
+        }
+        const localOffline = await handleLocalTrips(parsed.pathname, parsed.search, writeInit);
+        if (localOffline.ok && (method === "PUT" || method === "PATCH")) {
+          try {
+            const data = await localOffline.clone().json();
+            trackTripWriteResult(method, tripIdHint, writeInit, data);
+            return jsonResponse(localOffline.status, { ...data, local: true });
+          } catch {
+            return localOffline;
+          }
+        }
+        return localOffline;
+      }
+
       // Before opening a shared trip, hydrate snapshot from hash (inline or bytebin).
       if (method === "GET" && tripIdHint && !isPersonalKey(key)) {
         try {

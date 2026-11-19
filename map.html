@@ -26,10 +26,14 @@
 
     function showFallback(detail) {
       const el = document.getElementById("map");
+      const offline = typeof navigator !== "undefined" && navigator.onLine === false;
       el.innerHTML =
-        '<div class="fallback">Mappa non disponibile' +
-        (detail ? " (" + detail + ")" : "") +
-        '. <a href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">Apri OpenStreetMap</a></div>';
+        '<div class="fallback">' +
+        (offline
+          ? "Mappa non disponibile offline: le mappe richiedono una connessione."
+          : "Mappa non disponibile" + (detail ? " (" + detail + ")" : "") +
+            '. <a href="https://www.openstreetmap.org/" target="_blank" rel="noreferrer">Apri OpenStreetMap</a>') +
+        "</div>";
     }
 
     function loadScript(src) {
@@ -46,9 +50,8 @@
     function ensureCss() {
       const link = document.getElementById("pv-leaflet-css");
       if (!link) return;
+      if (typeof navigator !== "undefined" && navigator.onLine === false) return;
       // If local CSS 404'd, swap to CDN.
-      const probe = new Image();
-      // leaflet.css isn't an image; use fetch HEAD instead when available
       fetch(link.href, { method: "HEAD", cache: "no-store" })
         .then((r) => {
           if (!r.ok) link.href = CDN_CSS;
@@ -61,6 +64,10 @@
     function bootMap() {
       if (!window.L) {
         showFallback("Leaflet assente");
+        return;
+      }
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        showFallback("offline");
         return;
       }
       const DEFAULT_VIEW = [41.9, 12.5];
@@ -191,10 +198,11 @@
     }
 
     ensureCss();
+    const offline = typeof navigator !== "undefined" && navigator.onLine === false;
     loadScript(LOCAL_JS)
-      .catch(() => loadScript(CDN_JS))
+      .catch(() => (offline ? Promise.reject(new Error("offline")) : loadScript(CDN_JS)))
       .then(() => bootMap())
-      .catch(() => showFallback("caricamento fallito"));
+      .catch(() => showFallback(offline ? "offline" : "caricamento fallito"));
   })();
   </script>
 </body>
