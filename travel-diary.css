@@ -880,6 +880,45 @@ html[data-pv-theme="dark"] #pv-ux-modal .pv-import-file > span {
   color: #3f5860 !important;
 }
 
+/*
+ * Pronty chat import proposal sits on light paper (#f7fbfb).
+ * Global .pv-lead / diary-ink go pale in dark theme → unreadable on white.
+ */
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import {
+  background: #f7fbfb !important;
+  border-color: #d7e4e6 !important;
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import :is(
+  h4,
+  .pv-lead,
+  .pv-import-count,
+  .pv-import-group h4,
+  .pv-import-map,
+  .pv-import-hint,
+  .pv-import-item,
+  .title,
+  .detail,
+  .pv-imp-guess,
+  strong,
+  p,
+  span,
+  label
+) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-lead strong {
+  color: #0f2c31 !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-import-group h4 span {
+  color: #3f5860 !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-chat-clarify button {
+  background: #fff !important;
+  border-color: #b8d0d0 !important;
+  color: #124048 !important;
+}
+
 html #pv-plat-status.server { display: none !important; }
 html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
   background: var(--diary-paper);
