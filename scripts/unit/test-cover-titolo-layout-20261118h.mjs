@@ -32,16 +32,16 @@ ok(
 );
 ok(
   "stamps",
-  /magic-extras-20261119t\.js/.test(index) &&
-    /ux-suite-20261119s\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119u-tint/.test(index) &&
-    /20261119u-tint/.test(sw)
+  /magic-extras-20261119v\.js/.test(index) &&
+    /ux-suite-20261119v\.js/.test(index) &&
+    /travel-diary\.css\?v=20261119v-overview/.test(index) &&
+    /20261119v-overview/.test(sw)
 );
 ok(
   "assets",
-  existsSync("assets/magic-extras-20261119t.js") &&
-    existsSync("assets/ux-suite-20261119s.js") &&
-    readFileSync("assets/magic-extras-20261119t.js", "utf8").includes('dataset.pvReady = "20261119t"')
+  existsSync("assets/magic-extras-20261119v.js") &&
+    existsSync("assets/ux-suite-20261119v.js") &&
+    readFileSync("assets/magic-extras-20261119v.js", "utf8").includes('dataset.pvReady = "20261119v"')
 );
 
 if (failed) {

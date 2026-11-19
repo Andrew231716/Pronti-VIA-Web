@@ -56,20 +56,20 @@ ok(
 ok(
   "stamps wired",
   /pv-platform-20261118c\.js/.test(index) &&
-    /travel-diary\.css\?v=20261119u-tint/.test(index) &&
-    /magic-extras-20261119t\.js/.test(index)
+    /travel-diary\.css\?v=20261119v-overview/.test(index) &&
+    /magic-extras-20261119v\.js/.test(index)
 );
 ok(
   "sw precache matches stamps",
   /pv-platform-20261118c\.js/.test(sw) &&
-    /travel-diary\.css\?v=20261119u-tint/.test(sw) &&
-    /magic-extras-20261119t\.js/.test(sw) &&
+    /travel-diary\.css\?v=20261119v-overview/.test(sw) &&
+    /magic-extras-20261119v\.js/.test(sw) &&
     /destination-theme-20261119u\.js/.test(sw)
 );
 ok(
   "assets exist",
   existsSync("assets/pv-platform-20261118c.js") &&
-    existsSync("assets/magic-extras-20261119t.js")
+    existsSync("assets/magic-extras-20261119v.js")
 
 );
 
