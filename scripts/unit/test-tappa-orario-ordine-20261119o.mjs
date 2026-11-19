@@ -1,0 +1,12 @@
+#!/usr/bin/env node
+import { readFileSync, existsSync } from "node:fs";
+let failed=0;
+function ok(n,c,d=""){ if(c) console.log(`PASS  ${n}${d?` — ${d}`:""}`); else {failed++; console.log(`FAIL  ${n}${d?` — ${d}`:""}`);} }
+const magic=readFileSync("magic-extras.js","utf8");
+const index=readFileSync("index.html","utf8");
+const sw=readFileSync("sw.js","utf8");
+ok("time input + pill sync", /data-pv-time/.test(magic) && /normalizeStopTime/.test(magic) && /syncStopTimePill/.test(magic));
+ok("order controls", /pv-stop-order/.test(magic) && /swapStopOrder/.test(magic) && /↑ Prima/.test(magic) && /↓ Dopo/.test(magic));
+ok("sort by time", /sortDayStopsByTime/.test(magic) && /Ordina per orario/.test(magic));
+ok("stamps", /magic-extras-20261119o\.js/.test(index) && /20261119o-orario/.test(sw) && existsSync("assets/magic-extras-20261119o.js") && /dataset\.pvReady = "20261119o"/.test(magic));
+if(failed){console.log(`\n${failed} FAIL`); process.exit(1);} console.log("\nOK");

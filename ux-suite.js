@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261119n";
+  const STYLE_VER = "20261119o";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -277,9 +277,15 @@
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras{
         margin-top:4px;gap:8px;
       }
-      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras select{
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras select,
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-extras input[type="time"]{
         padding:7px 10px;font-size:12px;min-height:38px;max-width:min(200px,100%);
         border-radius:999px;
+      }
+      #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .time-pill{
+        font-variant-numeric:tabular-nums;font-weight:750;font-size:.82rem;
+        padding:.2rem .55rem;border-radius:999px;
+        background:color-mix(in srgb, var(--diary-accent,#007d82) 14%, #fff);
       }
       #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading{
         display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;

@@ -689,6 +689,18 @@
         border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 45%, #d2be8a) !important;
         background: color-mix(in srgb, #fff 70%, var(--pv-dest-sand,#fff5df)) !important;
       }
+      html[data-pv-dest="gh"] #root .stop-card .pv-stop-extras :is(select, input[type="time"]),
+      html[data-pv-dest="gh"] #root .stop-card .pv-stop-order button,
+      html[data-pv-dest="gh"] #root .pv-day-order-tools button{
+        background:#fff !important;
+        border-color: color-mix(in srgb, var(--pv-dest-accent,#dba62f) 34%, #d2be8a) !important;
+      }
+      html[data-pv-dest="gh"] #root .stop-card .time-pill{
+        background: color-mix(in srgb, var(--pv-dest-teal,#176348) 14%, #fff);
+        color: var(--pv-dest-teal-deep,#104d37);
+        border:1px solid color-mix(in srgb, var(--pv-dest-accent,#dba62f) 35%, transparent);
+        border-radius:999px;padding:.2rem .55rem;font-weight:750;
+      }
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
       html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper){
         background:#243830 !important;

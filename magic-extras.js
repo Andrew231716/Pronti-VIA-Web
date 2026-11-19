@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119n") return;
+    if (style && style.dataset.pvReady === "20261119o") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119n";
+    style.dataset.pvReady = "20261119o";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -321,11 +321,27 @@
       }
       .stop-card.pv-stop-enhanced .stop-symbol{display:none}
       .stop-card .pv-stop-extras{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
-      .stop-card .pv-stop-extras label{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:.78rem;font-weight:700;color:#3d5960}
+      .stop-card .pv-stop-extras label{display:inline-flex;align-items:center;gap:6px;margin:0;font-size:.78rem;font-weight:700;color:#3d5960;position:relative}
       .stop-card .pv-stop-extras label > span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-      .stop-card .pv-stop-extras select{border:1px solid #c9dbdb;border-radius:10px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%)}
+      .stop-card .pv-stop-extras select,
+      .stop-card .pv-stop-extras input[type="time"]{
+        border:1px solid #c9dbdb;border-radius:999px;padding:7px 10px;font:600 12px inherit;background:#fff;color:#16353b;max-width:min(220px,100%);min-height:38px
+      }
+      .stop-card .pv-stop-extras input[type="time"]{min-width:7.5rem}
+      .stop-card .pv-stop-order{display:inline-flex;gap:4px;align-items:center;margin:0}
+      .stop-card .pv-stop-order button{
+        appearance:none;border:1px solid #c9dbdb;border-radius:999px;padding:7px 11px;min-height:38px;
+        font:650 .78rem/1 inherit;background:#fff;color:#16353b;cursor:pointer
+      }
+      .stop-card .pv-stop-order button:disabled{opacity:.45;cursor:default}
+      .stop-card .pv-stop-order button:not(:disabled):hover{border-color:#51a7a3;background:#eef8f7}
       .stop-card .pv-stop-links{display:flex;flex-wrap:wrap;gap:6px}
       .stop-card .pv-stop-links a{appearance:none;display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border:1px solid #b9d0d0;border-radius:999px;background:#fff;color:#124048;font:600 11px inherit;text-decoration:none}
+      .pv-day-order-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:.15rem 0 .35rem}
+      .pv-day-order-tools button{
+        appearance:none;border:1px solid var(--diary-line,#d5e3e6);border-radius:999px;padding:7px 12px;min-height:36px;
+        font:650 .78rem/1 inherit;background:var(--diary-paper,#fff);color:var(--diary-ink,#12343c);cursor:pointer
+      }
       .pv-day-weather,.pv-links-box,.pv-fx-calc{margin:12px 0 14px;padding:14px 16px;border:1px solid #d9e7e7;border-radius:16px;background:#fff}
       .pv-day-weather .pv-block-title,.pv-links-box .pv-block-title,.pv-fx-calc .pv-block-title{margin:0 0 10px;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
       .pv-day-weather .pv-block-meta,.pv-fx-calc .pv-block-meta{margin:0 0 10px;font-size:.86rem;color:#5b7076}
@@ -5412,6 +5428,104 @@ Regole:
     return links;
   }
 
+  function normalizeStopTime(raw) {
+    const t = String(raw || "").trim();
+    if (!t) return "";
+    return /^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? t : "";
+  }
+
+  function syncStopTimePill(card, time) {
+    const value = normalizeStopTime(time);
+    let pill = card.querySelector(".time-pill");
+    if (!value) {
+      pill?.remove();
+      return;
+    }
+    if (!pill) {
+      pill = document.createElement("span");
+      pill.className = "time-pill";
+      const row = card.querySelector(".stop-body .row-between");
+      if (row) row.appendChild(pill);
+      else card.querySelector("h3")?.insertAdjacentElement("beforebegin", pill);
+    }
+    pill.textContent = value;
+  }
+
+  async function swapStopOrder(stopId, delta) {
+    const latest = await loadTrip({ force: true });
+    const nextTrip = structuredClone(latest.data.trip);
+    const stops = nextTrip.stops || [];
+    const idx = stops.findIndex((s) => s.id === stopId);
+    if (idx < 0) return false;
+    const day = stops[idx].day || "";
+    const sameDay = stops
+      .map((s, i) => ({ s, i }))
+      .filter((x) => (x.s.day || "") === day);
+    const pos = sameDay.findIndex((x) => x.i === idx);
+    const neighbor = sameDay[pos + delta];
+    if (!neighbor) return false;
+    const j = neighbor.i;
+    const tmp = stops[idx];
+    stops[idx] = stops[j];
+    stops[j] = tmp;
+    await saveTrip(latest.auth, nextTrip, latest.data.revision);
+    remountTripSection(latest.auth, "itinerary");
+    return true;
+  }
+
+  async function sortDayStopsByTime(dayIso) {
+    const latest = await loadTrip({ force: true });
+    const nextTrip = structuredClone(latest.data.trip);
+    const stops = nextTrip.stops || [];
+    const dayIndexes = stops
+      .map((s, i) => i)
+      .filter((i) => (stops[i].day || "") === (dayIso || ""));
+    if (dayIndexes.length < 2) return false;
+    const first = Math.min(...dayIndexes);
+    const without = stops.filter((s) => (s.day || "") !== (dayIso || ""));
+    const dayStops = stops
+      .filter((s) => (s.day || "") === (dayIso || ""))
+      .sort((a, b) => {
+        const ta = normalizeStopTime(a.time) || "99:99";
+        const tb = normalizeStopTime(b.time) || "99:99";
+        return ta.localeCompare(tb);
+      });
+    nextTrip.stops = [...without.slice(0, first), ...dayStops, ...without.slice(first)];
+    await saveTrip(latest.auth, nextTrip, latest.data.revision);
+    remountTripSection(latest.auth, "itinerary");
+    return true;
+  }
+
+  function ensureDayOrderTools(list, trip) {
+    const heading = list.previousElementSibling?.classList?.contains("day-heading")
+      ? list.previousElementSibling
+      : list.parentElement?.querySelector(":scope > .day-heading");
+    if (!heading || heading.querySelector(".pv-day-order-tools")) return;
+    const dayIso =
+      [...list.querySelectorAll("article.stop-card")].map((card) => {
+        const title = card.querySelector("h3")?.textContent?.trim() || "";
+        return findStopByTitle(trip, title)?.day || "";
+      }).find(Boolean) || "";
+    if (!dayIso) return;
+    const tools = document.createElement("div");
+    tools.className = "pv-day-order-tools";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Ordina per orario";
+    btn.title = "Riordina le tappe di questo giorno in base all’orario";
+    btn.onclick = async () => {
+      btn.disabled = true;
+      try {
+        await sortDayStopsByTime(dayIso);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Ordinamento non riuscito");
+        btn.disabled = false;
+      }
+    };
+    tools.appendChild(btn);
+    heading.insertAdjacentElement("afterend", tools);
+  }
+
   async function enhanceItineraryStops() {
     if (!tripAuth()) return;
     const list = document.querySelector(".stops-list");
@@ -5428,6 +5542,7 @@ Regole:
     const trip = structuredClone(data.trip);
     const days = tripDays(trip);
     let dirty = false;
+    ensureDayOrderTools(list, trip);
 
     for (const card of cards) {
       const title = card.querySelector("h3")?.textContent?.trim() || "";
@@ -5436,6 +5551,7 @@ Regole:
       card.classList.add("pv-stop-enhanced");
       const cat = normalizeStopCategory(stop.category);
       card.dataset.pvStopCat = cat;
+      syncStopTimePill(card, stop.time);
 
       let media = card.querySelector(".pv-stop-media");
       if (!media) {
@@ -5511,6 +5627,78 @@ Regole:
         };
         label.appendChild(select);
         extras.appendChild(label);
+      }
+
+      if (!extras.querySelector("input[data-pv-time]")) {
+        const label = document.createElement("label");
+        label.innerHTML = `<span>Orario</span>`;
+        const input = document.createElement("input");
+        input.type = "time";
+        input.dataset.pvTime = stop.id;
+        input.setAttribute("aria-label", "Orario della tappa");
+        input.value = normalizeStopTime(stop.time);
+        const persistTime = async () => {
+          try {
+            const latest = await loadTrip({ force: true });
+            const nextTrip = structuredClone(latest.data.trip);
+            const target = (nextTrip.stops || []).find((s) => s.id === stop.id) || findStopByTitle(nextTrip, title);
+            if (!target) return;
+            target.time = normalizeStopTime(input.value);
+            target.category = normalizeStopCategory(target.category);
+            await saveTrip(latest.auth, nextTrip, latest.data.revision);
+            syncStopTimePill(card, target.time);
+            input.blur();
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Orario non salvato");
+          }
+        };
+        input.onchange = () => void persistTime();
+        label.appendChild(input);
+        extras.appendChild(label);
+      }
+
+      if (!extras.querySelector(".pv-stop-order")) {
+        const day = stop.day || "";
+        const sameDay = (trip.stops || []).filter((s) => (s.day || "") === day);
+        const pos = sameDay.findIndex((s) => s.id === stop.id);
+        const order = document.createElement("div");
+        order.className = "pv-stop-order";
+        order.setAttribute("role", "group");
+        order.setAttribute("aria-label", "Ordine della tappa");
+        const up = document.createElement("button");
+        up.type = "button";
+        up.textContent = "↑ Prima";
+        up.title = "Sposta prima nell’ordine del giorno";
+        up.disabled = pos <= 0;
+        up.onclick = async () => {
+          up.disabled = true;
+          down.disabled = true;
+          try {
+            await swapStopOrder(stop.id, -1);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Spostamento non riuscito");
+            up.disabled = pos <= 0;
+            down.disabled = pos < 0 || pos >= sameDay.length - 1;
+          }
+        };
+        const down = document.createElement("button");
+        down.type = "button";
+        down.textContent = "↓ Dopo";
+        down.title = "Sposta dopo nell’ordine del giorno";
+        down.disabled = pos < 0 || pos >= sameDay.length - 1;
+        down.onclick = async () => {
+          up.disabled = true;
+          down.disabled = true;
+          try {
+            await swapStopOrder(stop.id, 1);
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Spostamento non riuscito");
+            up.disabled = pos <= 0;
+            down.disabled = pos < 0 || pos >= sameDay.length - 1;
+          }
+        };
+        order.append(up, down);
+        extras.appendChild(order);
       }
 
       if (!extras.querySelector(".pv-stop-links")) {
