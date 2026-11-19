@@ -31,7 +31,7 @@ ok("app-suite personal packing", /Valigia personale/.test(app) && /data-pronty/.
 ok("ux checklist note", /personali/.test(ux));
 ok(
   "stamps wired",
-  /api-shim-20261112r\.js/.test(index) &&
+  /api-shim-20261119a\.js/.test(index) &&
     /magic-extras-20261118h\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
     /ux-suite-20261118h\.js/.test(index)
@@ -39,7 +39,7 @@ ok(
 ok(
   "sw + assets",
   /20261118h/.test(sw) &&
-    existsSync("assets/api-shim-20261112r.js") &&
+    existsSync("assets/api-shim-20261119a.js") &&
     existsSync("assets/magic-extras-20261118h.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
     existsSync("assets/ux-suite-20261118h.js")

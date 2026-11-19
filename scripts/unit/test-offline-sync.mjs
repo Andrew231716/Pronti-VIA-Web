@@ -100,13 +100,17 @@ test("service worker keeps other apps' caches and falls back to its scoped page"
   const deleted = [];
   const shell = new Response("Cached app");
   const cache = {
+    add: async () => { throw new Error("Precache unavailable"); },
     addAll: async () => { throw new Error("Precache unavailable"); },
     match: async (request) => request === new URL("index.html", location).href ? shell : undefined,
+    put: async () => {},
   };
   let skippedWaiting = false;
   load("sw.js", {
-    URL, Response,
-    Request: class {},
+    URL, Response, console,
+    Request: class {
+      constructor(input) { this.url = String(input?.url || input); }
+    },
     fetch: async () => new Response("Upstream unavailable", { status: 503 }),
     caches: {
       open: async () => cache,
@@ -123,8 +127,9 @@ test("service worker keeps other apps' caches and falls back to its scoped page"
   let waiting;
   const waitUntil = (promise) => { waiting = promise; };
   listeners.get("install")({ waitUntil });
-  await assert.rejects(waiting, /Precache unavailable/);
-  assert.equal(skippedWaiting, false);
+  // Resilient precache: one missing asset must not block SW install.
+  await waiting;
+  assert.equal(skippedWaiting, true);
 
   listeners.get("activate")({ waitUntil });
   await waiting;
@@ -134,6 +139,7 @@ test("service worker keeps other apps' caches and falls back to its scoped page"
   const navigate = (url) => listeners.get("fetch")({
     request: { method: "GET", mode: "navigate", url },
     respondWith: (promise) => { handled = promise; },
+    waitUntil: () => {},
   });
   navigate(new URL("/other-app/", location).href);
   assert.equal(handled, undefined);

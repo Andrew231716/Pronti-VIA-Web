@@ -598,16 +598,20 @@ async function changePassword({ currentPassword, newPassword } = {}) {
   return { ok: true };
 }
 
-async function api(action, { method = "POST", body, token } = {}) {
+async function api(action, { method = "POST", body, token, timeoutMs = 6000 } = {}) {
   const headers = {};
   if (token) headers.Authorization = `Bearer ${token}`;
   const isGet = method === "GET";
   if (!isGet) headers["Content-Type"] = "application/json";
   const payload = isGet ? undefined : JSON.stringify({ action, ...(body || {}) });
   const query = isGet ? `?action=${encodeURIComponent(action)}` : "";
+  const signal =
+    typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
+      ? AbortSignal.timeout(timeoutMs)
+      : undefined;
   if (action === "reset" || String(token || "").startsWith("pvacct:") || body?.username?.endsWith("@via")) {
     const response = await fetch(`https://pronti-via.vercel.app/api/recovery-account${query}`, {
-      method, headers, body: payload, cache: "no-store",
+      method, headers, body: payload, cache: "no-store", signal,
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok || (action === "me" && !data.user)) {
@@ -630,6 +634,7 @@ async function api(action, { method = "POST", body, token } = {}) {
         headers,
         body: payload,
         cache: "no-store",
+        signal,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -1263,15 +1268,15 @@ async function loadApp({ force = false } = {}) {
   appLoadPromise = (async () => {
     try {
       if (force) appLoaded = false;
-      // Bust sticky module failures after a partial deploy / SW glitch.
-      const url = force ? `${APP_MODULE}?t=${Date.now()}` : APP_MODULE;
+      const online = typeof navigator === "undefined" || navigator.onLine !== false;
+      // Never cache-bust offline: `?t=` misses the SW precache and blanks the home.
+      const url = force && online ? `${APP_MODULE}?t=${Date.now()}` : APP_MODULE;
       await import(url);
       appLoaded = true;
       // Give React a tick to mount before declaring success.
       await new Promise((r) => setTimeout(r, 80));
       if (!rootHasApp()) {
-        // Second attempt with cache bust
-        await import(`${APP_MODULE}?t=${Date.now()}`);
+        await import(online ? `${APP_MODULE}?t=${Date.now()}` : APP_MODULE);
         await new Promise((r) => setTimeout(r, 120));
       }
       if (!rootHasApp()) {
@@ -1528,15 +1533,21 @@ async function boot() {
   }
 
   if (String(session.token || "").startsWith("pvacct:")) {
+    const localTrips = readLocalTrips();
+    // Offline / flaky net: open immediately from the device copy, refresh in background.
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      await activateSession({ ...session, trips: localTrips }, { bootApp: true });
+      return;
+    }
     try {
-      const data = await api("me", { method: "GET", token: session.token });
+      const data = await api("me", { method: "GET", token: session.token, timeoutMs: 5000 });
       await activateSession({ ...data, token: session.token });
     } catch (err) {
       if (err.status === 401) {
         writeSession(null);
         showGate("Sessione scaduta. Accedi di nuovo.");
       } else {
-        await activateSession({ ...session, trips: [] });
+        await activateSession({ ...session, trips: localTrips }, { bootApp: true });
       }
     }
     return;
@@ -1578,7 +1589,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261118h";
+const SHELL_VER = "20261119a";
 
 async function ensureFreshShell() {
   try {
