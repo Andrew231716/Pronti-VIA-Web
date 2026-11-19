@@ -3679,6 +3679,10 @@
   async function readImportFile(file) {
     const name = String(file?.name || "file");
     const lower = name.toLowerCase();
+    if (lower.endsWith(".pdf") || file.type === "application/pdf") {
+      const { readEventPdf } = await import("/assets/event-pdf.mjs");
+      return parseEventImportText(await readEventPdf(file), { sourceName: name });
+    }
     const text = await file.text();
     if (lower.endsWith(".json")) {
       const items = parseJsonEventPayload(text);
@@ -4083,7 +4087,7 @@
       section ? `Aggiungi da evento · ${section.label}` : preferAdd ? "📥 Aggiungi da evento / congresso" : "📥 Importa evento / congresso",
       `<div class="pv-import-hint">
          <strong>${preferAdd ? "Aggiunte al viaggio" : "Crea o arricchisci un viaggio"}</strong>
-         Incolla più volte e/o carica <em>più file</em> (.txt, .md, .csv, .json, .ics, .html).
+         Incolla più volte e/o carica <em>più file</em> (PDF con testo, .txt, .md, .csv, .json, .ics, .html).
          ${section ? "" : "Poi scegli le voci da inserire nelle sezioni del viaggio."}
        </div>
        ${section ? `<p>Le voci selezionate saranno aggiunte solo a <strong>${section.label}</strong> in questo viaggio.</p>` : `<h3 style="margin:0 0 8px;font-size:.95rem">1. Destinazione import</h3>
@@ -4110,7 +4114,7 @@
        </div>
        <h3 style="margin:14px 0 8px;font-size:.95rem">3. Carica uno o più file</h3>
        <div class="pv-import-file">
-         <input id="pv-imp-file" type="file" multiple accept=".txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
+         <input id="pv-imp-file" type="file" multiple accept=".pdf,application/pdf,.txt,.md,.csv,.json,.ics,.html,.htm,text/plain,text/csv,application/json,text/calendar,text/html" />
          <span style="font-size:.8rem;color:#3f5860">Puoi selezionare più file insieme e aggiungerne altri dopo</span>
        </div>
        <div class="pv-import-file-list" id="pv-imp-file-list"></div>
@@ -4166,6 +4170,11 @@
 
           body.querySelector("#pv-imp-file")?.addEventListener("change", async (ev) => {
             const files = [...(ev.target.files || [])];
+            const analyze = body.querySelector("#pv-imp-analyze");
+            const apply = body.querySelector("#pv-imp-apply");
+            const input = ev.target;
+            input.disabled = analyze.disabled = apply.disabled = true;
+            analyze.textContent = "Lettura file…";
             for (const f of files) {
               try {
                 const parsed = (await readImportFile(f)).map((it) => ({ ...it, source: f.name }));
@@ -4175,7 +4184,9 @@
                 toast(err.message || `Lettura fallita: ${f.name}`, "err");
               }
             }
-            ev.target.value = "";
+            input.value = "";
+            input.disabled = analyze.disabled = apply.disabled = false;
+            analyze.textContent = "Analizza tutto";
             renderFiles();
           });
 
