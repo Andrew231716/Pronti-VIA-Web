@@ -6121,7 +6121,7 @@ Regole:
   }
 
   function applyTripCover(cover, result, destination) {
-    const img = cover.querySelector("img");
+    const img = cover.querySelector(":scope > img");
     if (!img || !result?.url) return;
     renderDestinationCollage(cover, result.photos);
     img.dataset.pvCoverSwap = "1";
@@ -6236,7 +6236,7 @@ Regole:
       .trim();
     if (!destination) return;
 
-    const img = cover.querySelector("img");
+    const img = cover.querySelector(":scope > img");
     const alreadyGood =
       cover.dataset.pvCoverDest === destination &&
       cover.dataset.pvCoverUrl &&
