@@ -32,15 +32,15 @@ ok("ux checklist note", /personali/.test(ux));
 ok(
   "stamps wired",
   /api-shim-20261119f\.js/.test(index) &&
-    /magic-extras-20261119w\.js/.test(index) &&
+    /magic-extras-20261119x\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
     /ux-suite-20261119v\.js/.test(index)
 );
 ok(
   "sw + assets",
-  /20261119w-preventivo/.test(sw) &&
+  /20261119x-verificato/.test(sw) &&
     existsSync("assets/api-shim-20261119f.js") &&
-    existsSync("assets/magic-extras-20261119w.js") &&
+    existsSync("assets/magic-extras-20261119x.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
     existsSync("assets/ux-suite-20261119v.js")
 );

@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119w") return;
+    if (style && style.dataset.pvReady === "20261119x") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119w";
+    style.dataset.pvReady = "20261119x";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -6913,6 +6913,30 @@ Regole:
     return Number(line.totalCents ?? (Number(line.unitCents || 0) * Number(line.qty ?? 1)));
   }
 
+  /**
+   * Share used for "Da saldare" in Spese.
+   * Verificato often updates the preventivo amount; if the user already fully settled
+   * the stored share, do not invent a new debt from the live price until they Salda again.
+   */
+  function settledShareForDisplay(entry, line, travelers) {
+    const live =
+      line != null
+        ? Math.round(lineAmount(line) / Math.max(1, Number(travelers) || 1))
+        : 0;
+    const stored = Math.max(0, Math.round(Number(entry?.share) || 0));
+    const paid = Math.max(0, Math.round(Number(entry?.paid) || 0));
+    if (paid > 0 && stored > 0 && paid >= stored) {
+      return Math.max(stored, paid);
+    }
+    return live || stored || paid;
+  }
+
+  function personalPayStatusLabel(paid, share) {
+    const due = Math.max(0, share - paid);
+    if (due <= 0) return `Versato ${formatEuro(paid)} · Saldato`;
+    return `Versato ${formatEuro(paid)} · Da saldare ${formatEuro(due)}`;
+  }
+
   function listPersonalPaymentEntries(tripId) {
     const prefix = paymentPrefix(tripId);
     if (!prefix) return [];
@@ -7035,10 +7059,19 @@ Regole:
   function paymentRow(line, idx, travelers, prefix) {
     const total = lineAmount(line);
     const share = Math.round(total / travelers);
-    const paid = prefix && line.id ? JSON.parse(localStorage.getItem(prefix + line.id) || "null")?.paid || 0 : 0;
+    const stored =
+      prefix && line.id ? JSON.parse(localStorage.getItem(prefix + line.id) || "null") : null;
+    const paid = Number(stored?.paid) || 0;
+    const displayShare = settledShareForDisplay(
+      { paid, share: Number(stored?.share) || share },
+      line,
+      travelers
+    );
+    const due = Math.max(0, displayShare - paid);
+    const residualLabel = due > 0 ? `Residuo ${formatEuro(due)}` : "Saldato";
     return `<article class="pv-tp-line" data-line-idx="${idx}">
       <header><strong>${escapeTp(line.title || "Nuova voce")}</strong><b>${formatEuro(total)}</b></header>
-      <p class="pv-payment-info">La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · Residuo ${formatEuro(Math.max(0,share-paid))}</p>
+      <p class="pv-payment-info">La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · ${residualLabel}</p>
       <details class="pv-payment-controls"><summary>Il mio pagamento</summary>
         ${line.id && prefix ? `<label>Totale già versato (€)<input data-paid type="number" min="0" step="0.01" inputmode="decimal" value="${paid/100}"></label>
         <button type="button" data-payment="partial">Salva importo</button><button type="button" data-payment="full">Salda tutta la quota</button>` : "Salva la voce e accedi per registrare il pagamento."}
@@ -7048,6 +7081,7 @@ Regole:
       <label>Descrizione<input data-k="title" value="${escapeTp(line.title || "Nuova voce")}"></label>
       <label>Importo di gruppo (€)<input data-k="euros" type="number" min="0" step="0.01" value="${total/100}"></label>
       <label>Stato del prezzo<select data-k="status">${["STIMA","DA VERIFICARE","VERIFICATO","SCADUTO"].map(v => `<option ${v === line.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
+      <p class="pv-tp-muted">Verificato = prezzo confermato, non un pagamento. Usa «Il mio pagamento» per le quote versate.</p>
       <button type="button" class="pv-tp-danger" data-remove-line>Rimuovi voce</button></details></article>`;
   }
 
@@ -7063,8 +7097,8 @@ Regole:
     const entries = listPersonalPaymentEntries(auth.id).filter((r) => r.paid > 0);
     const rows = entries.map((entry) => {
       const line = quote?.lines?.find((l) => l.id === entry.lineId);
-      const share = line ? Math.round(lineAmount(line) / travelers) : entry.share;
-      return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>Versato ${formatEuro(entry.paid)} · Da saldare ${formatEuro(Math.max(0, share - entry.paid))}</li>`;
+      const share = settledShareForDisplay(entry, line, travelers);
+      return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>${personalPayStatusLabel(entry.paid, share)}</li>`;
     });
     if (!rows.length) { box?.remove(); return; }
     if (!box) {
@@ -7147,7 +7181,9 @@ Regole:
           if (!Number.isSafeInteger(paid) || paid < 0 || paid > share || (action !== "full" && !field.validity.valid)) throw new Error("Inserisci un importo tra zero e la tua quota.");
           localStorage.setItem(prefix + line.id, JSON.stringify({ title: line.title, paid, share }));
           field.value = String(paid / 100);
-          row.querySelector(".pv-payment-info").textContent = `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · Residuo ${formatEuro(share - paid)}`;
+          const dueNow = Math.max(0, share - paid);
+          row.querySelector(".pv-payment-info").textContent =
+            `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · ${dueNow > 0 ? `Residuo ${formatEuro(dueNow)}` : "Saldato"}`;
           refreshPersonalBudgetUi(auth.id);
           const budgetInfo = personalBudgetRemaining(auth.id);
           if (budgetInfo.budget == null) {
