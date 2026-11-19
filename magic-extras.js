@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261119b") return;
+    if (style && style.dataset.pvReady === "20261119d") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261119b";
+    style.dataset.pvReady = "20261119d";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -3965,9 +3965,20 @@ Regole:
         section === "packing" || section === "documents" || section === "preventivo" ? "prep" : "trip"
       );
       sessionStorage.setItem("pv-event-return-section", JSON.stringify({ id: auth.id, section }));
+      // Keep trip credentials across reload so account boot does not open the login gate.
+      sessionStorage.setItem(
+        "pv-pending-share-v1",
+        JSON.stringify({ trip: auth.id, key: auth.key, at: Date.now() })
+      );
     } catch { /* ignore */ }
     const hash = `#trip=${encodeURIComponent(auth.id)}&key=${encodeURIComponent(auth.key)}`;
-    if (location.hash !== hash) location.hash = hash;
+    const url = `${location.pathname}${location.search}${hash}`;
+    try {
+      // Avoid hashchange side-effects (guest session wipe → login gate) before reload.
+      history.replaceState(null, "", url);
+    } catch {
+      location.hash = hash;
+    }
     // SPA checklist/bookings are React-owned: remount with hash preserved so we stay in-trip.
     location.reload();
   }
