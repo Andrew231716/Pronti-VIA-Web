@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120h") return;
+    if (style && style.dataset.pvReady === "20261120i") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120h";
+    style.dataset.pvReady = "20261120i";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -357,6 +357,11 @@
       .stop-card{position:relative}
       .stop-card .pv-stop-media{flex:0 0 72px;width:72px;height:72px;border-radius:12px;overflow:hidden;background:#e8f0f0;align-self:flex-start;position:relative}
       .stop-card .pv-stop-media img{width:100%;height:100%;object-fit:cover;display:block}
+      .stop-card .pv-stop-mini-map{
+        margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid #d9e7e7;
+        background:#e8f0f0;aspect-ratio:16/9;max-height:220px
+      }
+      .stop-card .pv-stop-mini-map iframe{width:100%;height:100%;min-height:160px;border:0;display:block}
       .stop-card .pv-stop-sticker{
         position:absolute;right:-6px;bottom:-6px;z-index:2;
         width:1.85rem;height:1.85rem;display:inline-flex;align-items:center;justify-content:center;
@@ -906,15 +911,35 @@
 
   function tidyExtract(text) {
     return String(text || "")
+      .replace(/Foto:\s*https?:\/\/\S+/gi, "")
       .replace(/https?:\/\/\S+/gi, "")
-      .replace(/(?:TripAdvisor|Maps|Wiki)\s*:\s*/gi, "")
+      .replace(/(?:TripAdvisor|Maps|Wiki|Foto)\s*:\s*/gi, "")
       .replace(/\n{2,}/g, "\n")
       .replace(/\s{2,}/g, " ")
       .trim();
   }
 
+  function isUsablePlacePhoto(titleOrUrl) {
+    const s = String(titleOrUrl || "");
+    if (!s) return false;
+    // Reject SVG (incl. rasterized Commons thumbs like …/Foo.svg/960px-Foo.svg.png).
+    if (/\.svg/i.test(s) || /\/svg\//i.test(s)) return false;
+    if (
+      /flag|coat[_\s-]?of[_\s-]?arms|logo|emblem|seal|banner|diagram|icon|crest|blason|armoiries|escudo|stemma/i.test(
+        s
+      ) ||
+      /(?:^|[_\s/-])coa(?:[_\s./-]|$)/i.test(s)
+    ) {
+      return false;
+    }
+    if (/picsum\.photos/i.test(s)) return true;
+    return /\.(jpe?g|png|webp)(\?|#|$)/i.test(s) || /thumb\.wikimedia|upload\.wikimedia/i.test(s);
+  }
+
   function placeImageUrl(place) {
-    if (place?.image && /^https?:\/\//i.test(place.image)) return place.image;
+    if (place?.image && /^https?:\/\//i.test(place.image) && isUsablePlacePhoto(place.image)) {
+      return place.image;
+    }
     const seed = encodeURIComponent(String(place?.address || place?.title || "place").slice(0, 40));
     return `https://picsum.photos/seed/${seed}/320/240`;
   }
@@ -928,51 +953,198 @@
     return [tidyExtract(text), line].filter(Boolean).join("\n").slice(0, 3000);
   }
 
-  async function fetchStopPlaceImage(query, destination) {
-    const q = String(query || "").trim();
-    if (q.length < 2) return "";
-    const hint = String(destination || "").trim();
-    const searchQ = hint ? `${q} ${hint}` : q;
-    const wikiHosts = ["en.wikipedia.org", "it.wikipedia.org"];
-    for (const host of wikiHosts) {
-      try {
-        const search = await fetch(
-          `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
-            searchQ
-          )}&srlimit=3&format=json&origin=*`,
-          { signal: AbortSignal.timeout(8000) }
-        ).then((r) => r.json());
-        const hits = search?.query?.search || [];
-        const title = hits[0]?.title;
-        if (!title) continue;
-        const data = await fetch(
-          `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(
-            title
-          )}&prop=pageimages&pithumbsize=640&format=json&origin=*`,
-          { signal: AbortSignal.timeout(8000) }
-        ).then((r) => r.json());
-        const page = Object.values(data?.query?.pages || {})[0];
-        const thumb = page?.thumbnail?.source || "";
-        if (thumb && /^https?:\/\//i.test(thumb)) return thumb;
-      } catch {
-        /* try next */
-      }
+  function placePhotoTokens(query) {
+    return String(query || "")
+      .toLowerCase()
+      .split(/[^a-z0-9àèéìòù]+/i)
+      .filter((t) => t.length > 2 && !/^(the|and|for|del|della|delle|degli|di|da|in|at|of|und)$/i.test(t));
+  }
+
+  function scorePlaceText(titleOrUrl, query) {
+    const s = String(titleOrUrl || "").toLowerCase();
+    if (!s) return -1;
+    let score = 0;
+    for (const t of placePhotoTokens(query)) {
+      if (s.includes(t)) score += 3;
     }
+    if (/stadium|stadio|arena|sports|campo|venue|exterior|building|facade|stand|tribun/i.test(s)) {
+      score += 4;
+    }
+    if (/library|biblioteca|logo|portrait|map of|campus map|person|people|coat|flag/i.test(s)) {
+      score -= 4;
+    }
+    return score;
+  }
+
+  function scorePlacePhoto(titleOrUrl, query) {
+    const s = String(titleOrUrl || "");
+    if (!isUsablePlacePhoto(s)) return -1;
+    return scorePlaceText(s, query);
+  }
+
+  async function fetchCommonsPlaceImage(searchQ, preferQuery) {
     try {
       const data = await fetch(
         `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
           searchQ
-        )}&gsrlimit=3&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json&origin=*`,
+        )}&gsrlimit=12&gsrnamespace=6&prop=imageinfo&iiprop=url|mime|size&iiurlwidth=640&format=json&origin=*`,
         { signal: AbortSignal.timeout(8000) }
       ).then((r) => r.json());
-      for (const page of Object.values(data?.query?.pages || {})) {
-        const url = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || "";
-        if (url && /\.(jpe?g|png|webp)/i.test(url)) return url;
+      const pages = Object.values(data?.query?.pages || {});
+      let best = null;
+      let bestScore = 0;
+      for (const page of pages) {
+        const info = page?.imageinfo?.[0];
+        const url = info?.thumburl || info?.url || "";
+        if (!url || !isUsablePlacePhoto(page?.title || "") || !isUsablePlacePhoto(url)) continue;
+        if (info?.mime && !/^image\/(jpeg|png|webp)$/i.test(info.mime)) continue;
+        const score =
+          scorePlacePhoto(page?.title || "", preferQuery) +
+          scorePlacePhoto(url, preferQuery) +
+          Math.max(0, 6 - Number(page.index || 0));
+        if (score > bestScore) {
+          bestScore = score;
+          best = url;
+        }
       }
+      if (best && bestScore >= 3) return best;
     } catch {
       /* ignore */
     }
     return "";
+  }
+
+  async function fetchStopPlaceImage(query, destination) {
+    const q = String(query || "").trim();
+    if (q.length < 2) return "";
+    const hint = String(destination || "").trim();
+    const baseQ = hint ? `${q} ${hint}` : q;
+    const searchQueries = [
+      q,
+      baseQ,
+      `${q} stadium`,
+      `${q} sports stadium`,
+      `${baseQ} exterior`,
+      `${q} building`,
+    ].filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+    // Prefer Commons file search first — pageimages often return coats of arms.
+    for (const searchQ of searchQueries) {
+      const commons = await fetchCommonsPlaceImage(searchQ, q);
+      if (commons) return commons;
+    }
+
+    const wikiHosts = ["en.wikipedia.org", "it.wikipedia.org"];
+    let bestUrl = "";
+    let bestScore = 0;
+    for (const searchQ of searchQueries.slice(0, 3)) {
+      for (const host of wikiHosts) {
+        try {
+          const search = await fetch(
+            `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+              searchQ
+            )}&srlimit=8&format=json&origin=*`,
+            { signal: AbortSignal.timeout(8000) }
+          ).then((r) => r.json());
+          const hits = [...(search?.query?.search || [])].sort(
+            (a, b) => scorePlaceText(b?.title || "", q) - scorePlaceText(a?.title || "", q)
+          );
+          for (const hit of hits) {
+            const title = hit?.title;
+            if (!title || /coat of arms|flag of|logo/i.test(title)) continue;
+            const data = await fetch(
+              `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(
+                title
+              )}&prop=pageimages|images&pithumbsize=640&imlimit=20&format=json&origin=*`,
+              { signal: AbortSignal.timeout(8000) }
+            ).then((r) => r.json());
+            const page = Object.values(data?.query?.pages || {})[0];
+            const candidates = [];
+            const thumb = page?.thumbnail?.source || "";
+            if (thumb && isUsablePlacePhoto(thumb) && isUsablePlacePhoto(page?.pageimage || title)) {
+              candidates.push({ url: thumb, label: page?.pageimage || title });
+            }
+            for (const fileTitle of (page?.images || [])
+              .map((im) => String(im.title || ""))
+              .filter((name) => isUsablePlacePhoto(name))
+              .slice(0, 8)) {
+              try {
+                const imgData = await fetch(
+                  `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(
+                    fileTitle
+                  )}&prop=imageinfo&iiprop=url|mime&iiurlwidth=640&format=json&origin=*`,
+                  { signal: AbortSignal.timeout(8000) }
+                ).then((r) => r.json());
+                const imgPage = Object.values(imgData?.query?.pages || {})[0];
+                const info = imgPage?.imageinfo?.[0];
+                const url = info?.thumburl || info?.url || "";
+                if (url && isUsablePlacePhoto(fileTitle) && isUsablePlacePhoto(url)) {
+                  candidates.push({ url, label: fileTitle });
+                }
+              } catch {
+                /* try next file */
+              }
+            }
+            for (const cand of candidates) {
+              const score =
+                scorePlacePhoto(cand.label, q) +
+                scorePlacePhoto(cand.url, q) +
+                scorePlaceText(title, q);
+              if (score > bestScore) {
+                bestScore = score;
+                bestUrl = cand.url;
+              }
+            }
+            if (bestScore >= 10) return bestUrl;
+          }
+        } catch {
+          /* try next host/query */
+        }
+      }
+    }
+    return bestUrl || "";
+  }
+
+  function scrubStopFotoNotes(card) {
+    const nodes = [
+      ...card.querySelectorAll(".stop-body > p, .stop-body p"),
+    ];
+    for (const notesEl of nodes) {
+      const text = notesEl.textContent || "";
+      if (!/https?:\/\/|Foto:|TripAdvisor:/i.test(text)) continue;
+      const cleaned = tidyExtract(text);
+      if (cleaned) notesEl.textContent = cleaned;
+      else notesEl.remove();
+    }
+  }
+
+  function ensureStopMiniMap(card, stop) {
+    const lat = Number(stop?.lat);
+    const lng = Number(stop?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      card.querySelector(".pv-stop-mini-map")?.remove();
+      return;
+    }
+    const pad = 0.018;
+    const bbox = `${lng - pad},${lat - pad * 0.75},${lng + pad},${lat + pad * 0.75}`;
+    const src =
+      `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}` +
+      `&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
+    let mini = card.querySelector(".pv-stop-mini-map");
+    if (!mini) {
+      mini = document.createElement("div");
+      mini.className = "pv-stop-mini-map";
+      mini.innerHTML = `<iframe title="Mappa tappa" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+      const body = card.querySelector(".stop-body") || card;
+      const footer = body.querySelector(".stop-footer");
+      if (footer) footer.insertAdjacentElement("beforebegin", mini);
+      else body.appendChild(mini);
+    }
+    const iframe = mini.querySelector("iframe");
+    if (iframe && iframe.dataset.pvSrc !== src) {
+      iframe.dataset.pvSrc = src;
+      iframe.src = src;
+    }
   }
 
   function findStopByTitle(trip, title) {
@@ -2052,7 +2224,12 @@
           if (/è uno Stato|is a (Nordic )?country|Repubblica d'/i.test(extract.slice(0, 160))) {
             continue;
           }
-          enriched.image = page.thumbnail?.source || enriched.image;
+          {
+            const thumb = page.thumbnail?.source || "";
+            if (thumb && isUsablePlacePhoto(thumb) && isUsablePlacePhoto(page.pageimage || page.title || "")) {
+              enriched.image = thumb;
+            }
+          }
           enriched.extract = extract.slice(0, 280) || enriched.extract;
           enriched.wikiUrl =
             page.fullurl || enriched.wikiUrl || `https://${host}/wiki/${encodeURIComponent(title)}`;
@@ -6380,7 +6557,7 @@ Regole:
   function extractStopImage(stop) {
     const notes = String(stop?.notes || "");
     const m = notes.match(/Foto:\s*(https?:\/\/\S+)/i) || notes.match(/(https?:\/\/\S+\.(?:jpe?g|png|webp)(?:\?\S*)?)/i);
-    if (m) return m[1];
+    if (m && isUsablePlacePhoto(m[1])) return m[1];
     return placeImageUrl(stop);
   }
 
@@ -6581,7 +6758,11 @@ Regole:
       if (!media) {
         media = document.createElement("div");
         media.className = "pv-stop-media";
-        media.innerHTML = `<img src="${escapeHtml(extractStopImage(stop))}" alt="" loading="lazy" />`;
+        const initialSrc = extractStopImage(stop);
+        const safeSrc = isUsablePlacePhoto(initialSrc)
+          ? initialSrc
+          : placeImageUrl({ address: stop.address, title: stop.title });
+        media.innerHTML = `<img src="${escapeHtml(safeSrc)}" alt="" loading="lazy" />`;
         const symbol = card.querySelector(".stop-symbol");
         if (symbol) symbol.insertAdjacentElement("afterend", media);
         else card.insertBefore(media, card.firstChild);
@@ -6589,13 +6770,15 @@ Regole:
 
       const addrKey = String(stop.address || "").trim();
       const imgEl = media.querySelector("img");
+      const currentSrc = imgEl?.currentSrc || imgEl?.src || extractStopImage(stop) || "";
+      const hasBadPhoto = !isUsablePlacePhoto(currentSrc);
       const needsAddressImage =
         addrKey.length >= 2 &&
-        media.dataset.pvAddr !== addrKey &&
+        (media.dataset.pvAddr !== addrKey || hasBadPhoto) &&
         !imageFail.has(`${stop.id}::${addrKey}`);
       if (needsAddressImage) {
         const photo = await fetchStopPlaceImage(addrKey, trip.destination);
-        if (photo) {
+        if (photo && isUsablePlacePhoto(photo)) {
           stop.notes = upsertFotoNote(stop.notes, photo);
           if (imgEl) imgEl.src = photo;
           media.dataset.pvAddr = addrKey;
@@ -6603,6 +6786,9 @@ Regole:
         } else {
           imageFail.add(`${stop.id}::${addrKey}`);
           media.dataset.pvAddr = addrKey;
+          if (hasBadPhoto && imgEl) {
+            imgEl.src = placeImageUrl({ address: stop.address, title: stop.title });
+          }
         }
       }
 
@@ -6620,16 +6806,9 @@ Regole:
         sticker.title = cat;
       }
 
-      // Hide raw Foto:/TripAdvisor URL lines from notes — links live in the chip row.
-      const notesEl = [...card.querySelectorAll(".stop-body > p")].find((p) =>
-        /https?:\/\/|Foto:|TripAdvisor:/i.test(p.textContent || "")
-      );
-      if (notesEl && !notesEl.dataset.pvCleaned) {
-        const cleaned = tidyExtract(notesEl.textContent || "");
-        notesEl.dataset.pvCleaned = "1";
-        if (cleaned) notesEl.textContent = cleaned;
-        else notesEl.remove();
-      }
+      // Never show raw Foto:/URL lines — photo lives in the thumbnail only.
+      scrubStopFotoNotes(card);
+      ensureStopMiniMap(card, stop);
 
       let extras = card.querySelector(".pv-stop-extras");
       if (!extras) {
@@ -6744,6 +6923,18 @@ Regole:
         await saveTrip(auth, trip, data.revision);
       } catch {
         /* ignore */
+      }
+    }
+
+    // Keep the itinerary side map in sync with geocoded stops.
+    if ((trip.stops || []).some((s) => s.lat != null && s.lng != null)) {
+      void pushColoredMapPoints();
+    } else {
+      const empty = document.querySelector(".map-card .map-empty p, .map-empty p");
+      if (empty && !empty.dataset.pvGeocodeDone) {
+        empty.dataset.pvGeocodeDone = "1";
+        empty.textContent =
+          "Aggiungi un indirizzo alle tappe: così compare la cartina dell'itinerario.";
       }
     }
   }
@@ -8646,7 +8837,23 @@ Regole:
     const stopList = document.querySelector(".stops-list");
     const needsStopEnhance =
       stopList &&
-      (stopList.querySelector(".stop-card:not(:has(.pv-stop-media))") ||
+      ([...stopList.querySelectorAll("article.stop-card")].some((card) => {
+        if (!card.querySelector(".pv-stop-media")) return true;
+        if (
+          [...card.querySelectorAll(".stop-body p")].some((p) =>
+            /Foto:\s*https?:\/\/|https?:\/\/\S+\.(?:jpe?g|png|webp|svg)/i.test(p.textContent || "")
+          )
+        ) {
+          return true;
+        }
+        const imgSrc = card.querySelector(".pv-stop-media img")?.getAttribute("src") || "";
+        if (imgSrc && !isUsablePlacePhoto(imgSrc)) return true;
+        const hasMapLink = [...card.querySelectorAll("button, a")].some((el) =>
+          /Vedi sulla mappa/i.test(el.textContent || "")
+        );
+        if (hasMapLink && !card.querySelector(".pv-stop-mini-map")) return true;
+        return false;
+      }) ||
         document.querySelector(".map-card .map-empty"));
     if (!itineraryEnhancement && needsStopEnhance) {
       itineraryEnhancement = enhanceItineraryStops().catch(() => {}).finally(() => { itineraryEnhancement = null; });
