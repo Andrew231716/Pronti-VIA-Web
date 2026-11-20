@@ -323,6 +323,46 @@
     if (input.value.trim().length >= 2) scheduleSearch(input);
   });
 
+  document.addEventListener(
+    "focusout",
+    (event) => {
+      const input = event.target;
+      if (!isStopAddressInput(input)) return;
+      const query = input.value.trim();
+      if (query.length < 2) return;
+      const { lat, lng } = findCoordInputs(input);
+      const hasCoords =
+        lat &&
+        lng &&
+        Number.isFinite(Number(lat.value)) &&
+        Number.isFinite(Number(lng.value)) &&
+        String(lat.value).trim() !== "" &&
+        String(lng.value).trim() !== "";
+      if (hasCoords) return;
+      // Blur without picking a suggestion: still resolve coords for the map.
+      window.setTimeout(() => {
+        if (document.activeElement === input) return;
+        void (async () => {
+          try {
+            const response = await fetch(`/api/places?q=${encodeURIComponent(query)}`, {
+              signal: AbortSignal.timeout(12000),
+            });
+            const data = await response.json().catch(() => ({}));
+            const place = (Array.isArray(data.places) ? data.places : []).find(
+              (item) => item && item.lat != null && item.lng != null
+            );
+            if (!place) return;
+            if (input.value.trim() !== query) return;
+            applyPlaceToStopForm(input, place);
+          } catch {
+            /* ignore */
+          }
+        })();
+      }, 180);
+    },
+    true
+  );
+
   document.addEventListener("keydown", (event) => {
     const box = document.getElementById(SUGGEST_ID);
     if (!box || box.hidden || !activeInput) return;
