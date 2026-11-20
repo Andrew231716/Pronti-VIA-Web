@@ -59,8 +59,8 @@ ok(
   "stamps",
   /magic-extras-20261120e\.js/.test(index) &&
     /ux-suite-20261120d\.js/.test(index) &&
-    /20261120e-iacta/.test(sw) &&
-    /const SHELL_VER = "20261120e"/.test(account) &&
+    /20261120f-tappa/.test(sw) &&
+    /const SHELL_VER = "20261120f"/.test(account) &&
     existsSync("assets/magic-extras-20261120e.js") &&
     existsSync("assets/ux-suite-20261120d.js") &&
     /dataset\.pvReady = "20261120e"/.test(magic) &&

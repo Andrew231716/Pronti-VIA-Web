@@ -1230,7 +1230,7 @@ async function activateSession(data, { bootApp = true } = {}) {
 
 let appLoaded = false;
 let appLoadPromise = null;
-const APP_MODULE = "/assets/index-loadfix-20261111x.js";
+const APP_MODULE = "/assets/index-loadfix-20261120f.js";
 
 function rootHasApp() {
   const root = document.getElementById("root");
@@ -1589,7 +1589,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261120e";
+const SHELL_VER = "20261120f";
 
 async function ensureFreshShell() {
   try {

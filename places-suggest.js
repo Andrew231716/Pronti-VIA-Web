@@ -60,7 +60,8 @@
         color: #5b7380;
         font: 14px/1.4 "Segoe UI", "Helvetica Neue", sans-serif;
       }
-      .pv-destination-field input {
+      .pv-destination-field input,
+      .pv-stop-address-field input {
         background-image: linear-gradient(180deg, #fff, #f8fbfb);
       }
     `;
@@ -75,7 +76,7 @@
     box.id = SUGGEST_ID;
     box.hidden = true;
     box.setAttribute("role", "listbox");
-    box.setAttribute("aria-label", "Suggerimenti destinazione");
+    box.setAttribute("aria-label", "Suggerimenti luoghi");
     document.body.appendChild(box);
     return box;
   }
@@ -102,20 +103,63 @@
     box.hidden = false;
   }
 
+  function fieldLabelText(input) {
+    const label = input?.closest?.("label.field");
+    const span = label?.querySelector(":scope > span");
+    return (span?.textContent || "").trim();
+  }
+
   function isDestinationInput(input) {
     if (!(input instanceof HTMLInputElement)) return false;
     if (input.dataset.pvPlaces === "destination") return true;
     if (input.closest(".pv-destination-field")) return true;
-    const label = input.closest("label.field");
-    const span = label?.querySelector(":scope > span");
-    return (span?.textContent || "").trim() === "Destinazione";
+    return fieldLabelText(input) === "Destinazione";
+  }
+
+  function isStopAddressInput(input) {
+    if (!(input instanceof HTMLInputElement)) return false;
+    if (input.dataset.pvPlaces === "stop") return true;
+    if (input.closest(".pv-stop-address-field")) return true;
+    const label = fieldLabelText(input);
+    if (label === "Indirizzo o località") return true;
+    // Fallback: address-like field inside stop edit form with lat/lng nearby.
+    if (!input.closest("form.edit-form, .edit-form")) return false;
+    return /indirizzo|localit[aà]|luogo/i.test(label) && Boolean(findCoordInputs(input).lat);
+  }
+
+  function placesMode(input) {
+    if (isDestinationInput(input)) return "destination";
+    if (isStopAddressInput(input)) return "stop";
+    return null;
+  }
+
+  function findCoordInputs(addressInput) {
+    const root =
+      addressInput.closest("form.edit-form") ||
+      addressInput.closest(".edit-form") ||
+      addressInput.closest("form") ||
+      addressInput.closest(".modal, .sheet, .panel, dialog") ||
+      document;
+    const labels = [...root.querySelectorAll("label.field")];
+    let lat = null;
+    let lng = null;
+    for (const label of labels) {
+      const span = (label.querySelector(":scope > span")?.textContent || "").trim();
+      const input = label.querySelector("input");
+      if (!input) continue;
+      if (span === "Latitudine") lat = input;
+      if (span === "Longitudine") lng = input;
+    }
+    return { lat, lng };
   }
 
   function setReactInputValue(input, value) {
-    const descriptor = Object.getOwnPropertyDescriptor(
-      HTMLInputElement.prototype,
-      "value"
-    );
+    if (!(input instanceof HTMLInputElement) && !(input instanceof HTMLTextAreaElement)) return;
+    const proto =
+      input instanceof HTMLTextAreaElement
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+    const descriptor = Object.getOwnPropertyDescriptor(proto, "value");
     descriptor?.set?.call(input, value);
     input.dispatchEvent(new Event("input", { bubbles: true }));
     input.dispatchEvent(new Event("change", { bubbles: true }));
@@ -133,37 +177,63 @@
     const translationLabel = italian ? "in italiano" : english ? "in inglese" : "";
     const bilingual = Boolean(local && translation && !namesEqual(local, translation));
     const title = String(place?.title || "").trim();
+    const address = String(place?.address || "").trim();
     // Prefer Italian first when saving into the field, with local name in parentheses.
-    const value = bilingual ? `${translation} (${local})` : title || translation || local;
-    return { local, italian, english, translation, translationLabel, bilingual, title, value };
+    const value = bilingual ? `${translation} (${local})` : title || translation || local || address;
+    return { local, italian, english, translation, translationLabel, bilingual, title, address, value };
+  }
+
+  function applyPlaceToStopForm(input, place) {
+    const { lat, lng } = findCoordInputs(input);
+    const latNum = Number(place?.lat);
+    const lngNum = Number(place?.lng);
+    if (lat && Number.isFinite(latNum)) setReactInputValue(lat, String(latNum));
+    if (lng && Number.isFinite(lngNum)) setReactInputValue(lng, String(lngNum));
+    const details = input.closest("form, .edit-form")?.querySelector("details.coordinate-details");
+    if (details && Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+      details.open = true;
+    }
   }
 
   function choosePlace(place) {
     if (!activeInput || !place) return;
     const input = activeInput;
-    const { value } = placeDisplay(place);
-    setReactInputValue(input, value || place.title);
+    const mode = placesMode(input) || "destination";
+    const view = placeDisplay(place);
+    const value =
+      mode === "stop"
+        ? view.title || view.address || view.value || place.title
+        : view.value || place.title;
+    setReactInputValue(input, value || "");
+    if (mode === "stop") applyPlaceToStopForm(input, place);
     hide();
     input.focus();
   }
 
-  function renderPlaces(input, places, { loading = false } = {}) {
+  function renderPlaces(input, places, { loading = false, mode = "destination" } = {}) {
     const box = ensureBox();
     currentPlaces = places;
+    const loadingText = mode === "stop" ? "Cerco luoghi e indirizzi…" : "Cerco città e paesi…";
+    const emptyText = mode === "stop" ? "Nessun luogo trovato" : "Nessuna città o paese trovato";
     if (loading) {
-      box.innerHTML = `<div class="pv-place-loading">Cerco città e paesi…</div>`;
+      box.innerHTML = `<div class="pv-place-loading">${loadingText}</div>`;
       placeBox(input);
       return;
     }
     if (!places.length) {
-      box.innerHTML = `<div class="pv-place-empty">Nessuna città o paese trovato</div>`;
+      box.innerHTML = `<div class="pv-place-empty">${emptyText}</div>`;
       placeBox(input);
       return;
     }
     box.innerHTML = places
       .map((place, index) => {
         const view = placeDisplay(place);
-        const strongText = view.bilingual ? view.local : view.title || view.local || view.translation;
+        const strongText =
+          mode === "stop"
+            ? view.title || view.local || view.translation || view.address
+            : view.bilingual
+              ? view.local
+              : view.title || view.local || view.translation;
         const itLine = view.bilingual
           ? `<div class="pv-place-it">${escapeHtml(view.translationLabel)}: ${escapeHtml(view.translation)}</div>`
           : "";
@@ -205,27 +275,30 @@
       .replaceAll('"', "&quot;");
   }
 
-  async function search(input, query) {
+  async function search(input, query, mode) {
     const requestId = ++seq;
-    renderPlaces(input, [], { loading: true });
+    renderPlaces(input, [], { loading: true, mode });
     try {
+      const scopeParam = mode === "destination" ? "scope=destination&" : "";
       const response = await fetch(
-        `/api/places?scope=destination&q=${encodeURIComponent(query)}`,
+        `/api/places?${scopeParam}q=${encodeURIComponent(query)}`,
         { signal: AbortSignal.timeout(12000) }
       );
       const data = await response.json().catch(() => ({}));
       if (requestId !== seq || activeInput !== input) return;
       const places = Array.isArray(data.places) ? data.places : [];
       highlight = places.length ? 0 : -1;
-      renderPlaces(input, places);
+      renderPlaces(input, places, { mode });
     } catch {
       if (requestId === seq && activeInput === input) {
-        renderPlaces(input, []);
+        renderPlaces(input, [], { mode });
       }
     }
   }
 
   function scheduleSearch(input) {
+    const mode = placesMode(input);
+    if (!mode) return;
     activeInput = input;
     const query = input.value.trim();
     clearTimeout(timer);
@@ -234,18 +307,18 @@
       activeInput = input;
       return;
     }
-    timer = setTimeout(() => search(input, query), 280);
+    timer = setTimeout(() => search(input, query, mode), 280);
   }
 
   document.addEventListener("input", (event) => {
     const input = event.target;
-    if (!isDestinationInput(input)) return;
+    if (!placesMode(input)) return;
     scheduleSearch(input);
   });
 
   document.addEventListener("focusin", (event) => {
     const input = event.target;
-    if (!isDestinationInput(input)) return;
+    if (!placesMode(input)) return;
     activeInput = input;
     if (input.value.trim().length >= 2) scheduleSearch(input);
   });
@@ -258,14 +331,15 @@
       return;
     }
     if (!currentPlaces.length) return;
+    const mode = placesMode(activeInput) || "destination";
     if (event.key === "ArrowDown") {
       event.preventDefault();
       highlight = (highlight + 1) % currentPlaces.length;
-      renderPlaces(activeInput, currentPlaces);
+      renderPlaces(activeInput, currentPlaces, { mode });
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       highlight = (highlight - 1 + currentPlaces.length) % currentPlaces.length;
-      renderPlaces(activeInput, currentPlaces);
+      renderPlaces(activeInput, currentPlaces, { mode });
     } else if (event.key === "Enter" && highlight >= 0) {
       event.preventDefault();
       choosePlace(currentPlaces[highlight]);
