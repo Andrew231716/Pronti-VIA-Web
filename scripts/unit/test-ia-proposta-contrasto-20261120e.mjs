@@ -31,11 +31,11 @@ ok(
 
 ok(
   "stamps 20261120e",
-  /magic-extras-20261120h\.js/.test(index) &&
-    /20261120h-indirizzo/.test(sw) &&
-    /const SHELL_VER = "20261120h"/.test(account) &&
-    existsSync("assets/magic-extras-20261120h.js") &&
-    /dataset\.pvReady = "20261120h"/.test(magic)
+  /magic-extras-20261120i\.js/.test(index) &&
+    /20261120i-fotomappa/.test(sw) &&
+    /const SHELL_VER = "20261120i"/.test(account) &&
+    existsSync("assets/magic-extras-20261120i.js") &&
+    /dataset\.pvReady = "20261120i"/.test(magic)
 );
 
 if (process.exitCode) process.exit(process.exitCode);
