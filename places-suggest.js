@@ -118,13 +118,10 @@
 
   function isStopAddressInput(input) {
     if (!(input instanceof HTMLInputElement)) return false;
+    // Only the address field — never the stop title ("Nome del luogo o attività").
     if (input.dataset.pvPlaces === "stop") return true;
     if (input.closest(".pv-stop-address-field")) return true;
-    const label = fieldLabelText(input);
-    if (label === "Indirizzo o località") return true;
-    // Fallback: address-like field inside stop edit form with lat/lng nearby.
-    if (!input.closest("form.edit-form, .edit-form")) return false;
-    return /indirizzo|localit[aà]|luogo/i.test(label) && Boolean(findCoordInputs(input).lat);
+    return fieldLabelText(input) === "Indirizzo o località";
   }
 
   function placesMode(input) {

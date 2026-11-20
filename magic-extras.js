@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120g") return;
+    if (style && style.dataset.pvReady === "20261120h") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120g";
+    style.dataset.pvReady = "20261120h";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -915,8 +915,64 @@
 
   function placeImageUrl(place) {
     if (place?.image && /^https?:\/\//i.test(place.image)) return place.image;
-    const seed = encodeURIComponent(String(place?.title || "place").slice(0, 40));
+    const seed = encodeURIComponent(String(place?.address || place?.title || "place").slice(0, 40));
     return `https://picsum.photos/seed/${seed}/320/240`;
+  }
+
+  function upsertFotoNote(notes, url) {
+    const text = String(notes || "");
+    const line = `Foto: ${url}`;
+    if (/Foto:\s*https?:\/\//i.test(text)) {
+      return text.replace(/Foto:\s*https?:\/\/\S+/i, line).slice(0, 3000);
+    }
+    return [tidyExtract(text), line].filter(Boolean).join("\n").slice(0, 3000);
+  }
+
+  async function fetchStopPlaceImage(query, destination) {
+    const q = String(query || "").trim();
+    if (q.length < 2) return "";
+    const hint = String(destination || "").trim();
+    const searchQ = hint ? `${q} ${hint}` : q;
+    const wikiHosts = ["en.wikipedia.org", "it.wikipedia.org"];
+    for (const host of wikiHosts) {
+      try {
+        const search = await fetch(
+          `https://${host}/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(
+            searchQ
+          )}&srlimit=3&format=json&origin=*`,
+          { signal: AbortSignal.timeout(8000) }
+        ).then((r) => r.json());
+        const hits = search?.query?.search || [];
+        const title = hits[0]?.title;
+        if (!title) continue;
+        const data = await fetch(
+          `https://${host}/w/api.php?action=query&titles=${encodeURIComponent(
+            title
+          )}&prop=pageimages&pithumbsize=640&format=json&origin=*`,
+          { signal: AbortSignal.timeout(8000) }
+        ).then((r) => r.json());
+        const page = Object.values(data?.query?.pages || {})[0];
+        const thumb = page?.thumbnail?.source || "";
+        if (thumb && /^https?:\/\//i.test(thumb)) return thumb;
+      } catch {
+        /* try next */
+      }
+    }
+    try {
+      const data = await fetch(
+        `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
+          searchQ
+        )}&gsrlimit=3&prop=imageinfo&iiprop=url&iiurlwidth=640&format=json&origin=*`,
+        { signal: AbortSignal.timeout(8000) }
+      ).then((r) => r.json());
+      for (const page of Object.values(data?.query?.pages || {})) {
+        const url = page?.imageinfo?.[0]?.thumburl || page?.imageinfo?.[0]?.url || "";
+        if (url && /\.(jpe?g|png|webp)/i.test(url)) return url;
+      }
+    } catch {
+      /* ignore */
+    }
+    return "";
   }
 
   function findStopByTitle(trip, title) {
@@ -6472,10 +6528,12 @@ Regole:
     ensureDayOrderTools(list, trip);
 
     const geocodeFail = (window.__pvGeocodeFail ||= new Set());
+    const imageFail = (window.__pvStopImageFail ||= new Set());
+    // Geocode only from Indirizzo — never from the stop title.
     const needsCoords = (trip.stops || []).filter(
       (stop) =>
         (stop.lat == null || stop.lng == null) &&
-        String(stop.address || stop.title || "").trim().length >= 2 &&
+        String(stop.address || "").trim().length >= 2 &&
         !geocodeFail.has(stop.id)
     );
     if (needsCoords.length) {
@@ -6486,7 +6544,7 @@ Regole:
       }
       let filled = 0;
       for (const stop of needsCoords.slice(0, 8)) {
-        const query = String(stop.address || stop.title || "").trim();
+        const query = String(stop.address || "").trim();
         const place = await geocodePlace(
           trip.destination ? `${query}, ${trip.destination}` : query
         );
@@ -6496,7 +6554,6 @@ Regole:
         }
         stop.lat = place.lat;
         stop.lng = place.lng;
-        if (!String(stop.address || "").trim() && place.title) stop.address = place.title;
         dirty = true;
         filled += 1;
       }
@@ -6528,6 +6585,25 @@ Regole:
         const symbol = card.querySelector(".stop-symbol");
         if (symbol) symbol.insertAdjacentElement("afterend", media);
         else card.insertBefore(media, card.firstChild);
+      }
+
+      const addrKey = String(stop.address || "").trim();
+      const imgEl = media.querySelector("img");
+      const needsAddressImage =
+        addrKey.length >= 2 &&
+        media.dataset.pvAddr !== addrKey &&
+        !imageFail.has(`${stop.id}::${addrKey}`);
+      if (needsAddressImage) {
+        const photo = await fetchStopPlaceImage(addrKey, trip.destination);
+        if (photo) {
+          stop.notes = upsertFotoNote(stop.notes, photo);
+          if (imgEl) imgEl.src = photo;
+          media.dataset.pvAddr = addrKey;
+          dirty = true;
+        } else {
+          imageFail.add(`${stop.id}::${addrKey}`);
+          media.dataset.pvAddr = addrKey;
+        }
       }
 
       let sticker = media.querySelector(".pv-stop-sticker");
@@ -8567,7 +8643,12 @@ Regole:
     bindForceDeleteStop();
     relabelInvalidDateBadges();
     void repairInvalidStopCategories();
-    if (!itineraryEnhancement && document.querySelector(".stops-list .stop-card:not(:has(.pv-stop-media))")) {
+    const stopList = document.querySelector(".stops-list");
+    const needsStopEnhance =
+      stopList &&
+      (stopList.querySelector(".stop-card:not(:has(.pv-stop-media))") ||
+        document.querySelector(".map-card .map-empty"));
+    if (!itineraryEnhancement && needsStopEnhance) {
       itineraryEnhancement = enhanceItineraryStops().catch(() => {}).finally(() => { itineraryEnhancement = null; });
     }
   }
@@ -8633,6 +8714,10 @@ Regole:
     pendingPois = [];
     delete document.documentElement.dataset.pvDistAttempted;
     delete document.documentElement.dataset.pvCatRepair;
+    try {
+      window.__pvGeocodeFail?.clear?.();
+      window.__pvStopImageFail?.clear?.();
+    } catch { /* ignore */ }
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);
