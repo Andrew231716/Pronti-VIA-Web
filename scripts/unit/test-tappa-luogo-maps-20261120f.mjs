@@ -14,18 +14,18 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 const places = readFileSync("places-suggest.js", "utf8");
-const spa = readFileSync("assets/index-loadfix-20261120f.js", "utf8");
+const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
 
 ok(
-  "stamps 20261120f",
-  /places-suggest\.js\?v=20261120f/.test(index) &&
-    /account\.js\?v=20261120f/.test(index) &&
-    /20261120f-tappa/.test(sw) &&
-    /places-suggest\.js\?v=20261120f/.test(sw) &&
-    /index-loadfix-20261120f\.js/.test(sw) &&
-    /const SHELL_VER = "20261120f"/.test(account) &&
-    /APP_MODULE = "\/assets\/index-loadfix-20261120f\.js"/.test(account) &&
-    existsSync("assets/index-loadfix-20261120f.js")
+  "stamps 20261120g",
+  /places-suggest\.js\?v=20261120g/.test(index) &&
+    /account\.js\?v=20261120g/.test(index) &&
+    /20261120g-mappa/.test(sw) &&
+    /places-suggest\.js\?v=20261120g/.test(sw) &&
+    /index-loadfix-20261120g\.js/.test(sw) &&
+    /const SHELL_VER = "20261120g"/.test(account) &&
+    /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
+    existsSync("assets/index-loadfix-20261120g.js")
 );
 
 ok(
@@ -63,7 +63,7 @@ ok(
 ok(
   "map still depends on stop lat/lng after save",
   /Aggiungi le coordinate a una tappa per mostrarla qui/.test(spa) &&
-    /lat:n\.lat\.trim\(\)\?Number\(n\.lat\):null/.test(spa) &&
+    /lat=n\.lat\.trim\(\)\?Number\(n\.lat\):null/.test(spa) &&
     /Ze=e\.stops\.find\(e=>e\.id===Ce&&e\.lat!==null\)/.test(spa)
 );
 
@@ -71,4 +71,4 @@ if (process.exitCode) {
   console.error("tappa-luogo-maps checks failed");
   process.exit(1);
 }
-console.log("tappa-luogo-maps 20261120f ok");
+console.log("tappa-luogo-maps 20261120g ok");

@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120e") return;
+    if (style && style.dataset.pvReady === "20261120g") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120e";
+    style.dataset.pvReady = "20261120g";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -988,6 +988,43 @@
         if (ev.target === overlay) close(null);
       });
     });
+  }
+
+
+  async function geocodePlace(q) {
+    const query = String(q || "").trim();
+    if (query.length < 2) return null;
+    try {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(query)}`, {
+        signal: AbortSignal.timeout(12000),
+      });
+      const data = await res.json().catch(() => ({}));
+      const place = (data.places || []).find((p) => p.lat != null && p.lng != null);
+      if (place && Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lng))) {
+        return {
+          lat: Number(place.lat),
+          lng: Number(place.lng),
+          title: String(place.title || place.name || query).trim(),
+          address: String(place.address || "").trim(),
+        };
+      }
+    } catch {
+      /* fall through */
+    }
+    try {
+      const place = await geocodeDestination(query);
+      if (place && place.lat != null && place.lng != null) {
+        return {
+          lat: Number(place.lat),
+          lng: Number(place.lng),
+          title: String(place.title || query).trim(),
+          address: String(place.address || "").trim(),
+        };
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
   }
 
   async function geocodeDestination(q) {
@@ -6433,6 +6470,46 @@ Regole:
     const days = tripDays(trip);
     let dirty = false;
     ensureDayOrderTools(list, trip);
+
+    const geocodeFail = (window.__pvGeocodeFail ||= new Set());
+    const needsCoords = (trip.stops || []).filter(
+      (stop) =>
+        (stop.lat == null || stop.lng == null) &&
+        String(stop.address || stop.title || "").trim().length >= 2 &&
+        !geocodeFail.has(stop.id)
+    );
+    if (needsCoords.length) {
+      const empty = document.querySelector(".map-card .map-empty p, .map-empty p");
+      if (empty && !empty.dataset.pvGeocoding) {
+        empty.dataset.pvGeocoding = "1";
+        empty.textContent = "Cerco i luoghi delle tappe sulla mappa…";
+      }
+      let filled = 0;
+      for (const stop of needsCoords.slice(0, 8)) {
+        const query = String(stop.address || stop.title || "").trim();
+        const place = await geocodePlace(
+          trip.destination ? `${query}, ${trip.destination}` : query
+        );
+        if (!place) {
+          geocodeFail.add(stop.id);
+          continue;
+        }
+        stop.lat = place.lat;
+        stop.lng = place.lng;
+        if (!String(stop.address || "").trim() && place.title) stop.address = place.title;
+        dirty = true;
+        filled += 1;
+      }
+      if (filled) {
+        try {
+          await saveTrip(auth, trip, data.revision);
+          remountTripSection(auth, "itinerary");
+          return;
+        } catch {
+          /* keep enhancing cards even if persist failed */
+        }
+      }
+    }
 
     for (const card of cards) {
       const title = card.querySelector("h3")?.textContent?.trim() || "";
