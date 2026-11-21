@@ -40,8 +40,8 @@ ok(
 ok(
   "stamps 20261120e",
   /ux-suite-20261120d\.js/.test(index) &&
-    /20261120k-sguardo/.test(sw) &&
-    /const SHELL_VER = "20261120k"/.test(account) &&
+    /20261120l-layout/.test(sw) &&
+    /const SHELL_VER = "20261120l"/.test(account) &&
     /const STYLE_VER = "20261120d"/.test(ux) &&
     existsSync("assets/ux-suite-20261120d.js")
 );

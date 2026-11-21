@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120k") return;
+    if (style && style.dataset.pvReady === "20261120l") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120k";
+    style.dataset.pvReady = "20261120l";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -360,10 +360,42 @@
       /* Mini-map on stop cards is disabled — map lives in .map-card only. */
       .stop-card .pv-stop-mini-map{display:none !important}
       .map-card .pv-overview-map{
+        position:relative;
         margin:0;border:0;border-radius:0;overflow:hidden;background:#d9e9e7;
-        width:100%;height:248px
+        width:100%;height:220px;
+        isolation:isolate;
       }
-      .map-card .pv-overview-map iframe{width:100%;height:100%;border:0;display:block}
+      /* Crop OSM embed chrome (donation/attribution bar) out of the card. */
+      .map-card .pv-overview-map iframe{
+        width:100%;
+        height:calc(100% + 52px);
+        border:0;display:block;
+        margin:0 0 -52px;
+        pointer-events:auto;
+      }
+      .map-card .pv-overview-map::after{
+        content:"";
+        position:absolute;left:0;right:0;bottom:0;height:18px;
+        background:linear-gradient(180deg, transparent, rgba(255,255,255,.55));
+        pointer-events:none;z-index:1;
+      }
+      .map-card > .map-caption{
+        gap:4px;padding:12px 16px 10px;border-top:1px solid #e7eef1;
+      }
+      .map-card > .map-caption strong{
+        font-size:.95rem;font-weight:750;color:#16353b;line-height:1.25;
+      }
+      .map-card > .map-caption a{
+        color:#007d82;font-size:.8rem;font-weight:650;text-decoration:none;
+        width:fit-content;
+      }
+      .map-card > .pv-day-legend{
+        padding:10px 14px 16px;
+      }
+      @media (max-width:720px){
+        .map-card .pv-overview-map{height:200px}
+        .map-card .pv-overview-map iframe{height:calc(100% + 48px);margin-bottom:-48px}
+      }
       .stop-card .pv-stop-sticker{
         position:absolute;right:-6px;bottom:-6px;z-index:2;
         width:1.85rem;height:1.85rem;display:inline-flex;align-items:center;justify-content:center;
@@ -1255,7 +1287,10 @@
     if (!captionHost) {
       captionHost = document.createElement("div");
       captionHost.className = "map-caption";
-      captionHost.innerHTML = `<strong></strong>`;
+      overview.insertAdjacentElement("afterend", captionHost);
+    }
+    // Keep caption directly under the overview map (SPA may leave it elsewhere).
+    if (captionHost.previousElementSibling !== overview) {
       overview.insertAdjacentElement("afterend", captionHost);
     }
     let strong = captionHost.querySelector("strong");
@@ -1268,6 +1303,19 @@
         ? focus.title || "Tappa"
         : `${focus.title || "Tappa"} · ${stops.length} tappe in mappa`;
     strong.textContent = label;
+    let openLink = captionHost.querySelector("a[data-pv-open-map], a[href*='openstreetmap.org']");
+    const openHref =
+      `https://www.openstreetmap.org/?mlat=${Number(focus.lat)}&mlon=${Number(focus.lng)}` +
+      `#map=15/${Number(focus.lat)}/${Number(focus.lng)}`;
+    if (!openLink) {
+      openLink = document.createElement("a");
+      openLink.dataset.pvOpenMap = "1";
+      openLink.target = "_blank";
+      openLink.rel = "noreferrer";
+      openLink.textContent = "Apri mappa";
+      captionHost.appendChild(openLink);
+    }
+    openLink.href = openHref;
 
     // Keep SPA map.html in sync with ALL geocoded stops (for day colors / multi-pin when shown).
     void pushColoredMapPoints();
