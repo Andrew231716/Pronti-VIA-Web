@@ -18,12 +18,12 @@ const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
 
 ok(
   "stamps 20261120k",
-  /places-suggest\.js\?v=20261120o/.test(index) &&
-    /account\.js\?v=20261120o/.test(index) &&
-    /20261120o-bleed/.test(sw) &&
-    /places-suggest\.js\?v=20261120o/.test(sw) &&
+  /places-suggest\.js\?v=20261120p/.test(index) &&
+    /account\.js\?v=20261120p/.test(index) &&
+    /20261120p-bleed/.test(sw) &&
+    /places-suggest\.js\?v=20261120p/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120o"/.test(account) &&
+    /const SHELL_VER = "20261120p"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
     existsSync("assets/index-loadfix-20261120g.js")
 );

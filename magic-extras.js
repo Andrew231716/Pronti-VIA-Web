@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120o") return;
+    if (style && style.dataset.pvReady === "20261120p") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120o";
+    style.dataset.pvReady = "20261120p";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -375,33 +375,41 @@
       .stop-card .pv-stop-mini-map{display:none !important}
       /* Drop the old OSM-embed wrapper: Leaflet map.html is full-bleed. */
       .map-card .pv-overview-map{display:none !important}
+      #root .right-panel{
+        min-width:0;max-width:100%;width:100%;
+      }
       #root .map-card{
-        display:flex;flex-direction:column;width:100%;max-width:100%;
-        overflow:hidden;padding:0;box-sizing:border-box;
+        display:flex !important;flex-direction:column;
+        width:100% !important;max-width:100% !important;
+        min-width:0 !important;
+        margin-left:0 !important;margin-right:0 !important;
+        overflow:hidden;padding:0 !important;box-sizing:border-box;
       }
       #root .map-card > .sub-heading{
         margin:0;padding:14px 16px 12px;flex:0 0 auto;
       }
-      /* Edge-to-edge cartina: flush left AND right of the card. */
+      /* Edge-to-edge cartina: flush LEFT and RIGHT of the card (no side gutters). */
       #root .map-card iframe.travel-map,
       #root .map-card iframe[src*="map.html"],
       #root .map-card > iframe{
         display:block !important;
         width:100% !important;
         max-width:none !important;
-        min-width:0 !important;
+        min-width:100% !important;
         height:260px !important;
         margin:0 !important;
         padding:0 !important;
         border:0 !important;
         border-radius:0 !important;
-        align-self:stretch;
-        box-sizing:border-box;
+        align-self:stretch !important;
+        justify-self:stretch !important;
+        box-sizing:border-box !important;
         background:#d9e9e7;
       }
       #root .map-card > .map-caption{
         display:flex;flex-direction:column;gap:4px;
         padding:12px 16px 10px;border-top:1px solid #e7eef1;flex:0 0 auto;
+        width:100%;box-sizing:border-box;
       }
       #root .map-card > .map-caption strong{
         font-size:.95rem;font-weight:750;color:#16353b;line-height:1.25;
@@ -411,16 +419,27 @@
         width:fit-content;
       }
       #root .map-card > .pv-day-legend{
-        padding:10px 14px 16px;flex:0 0 auto;
+        padding:10px 14px 16px;flex:0 0 auto;width:100%;box-sizing:border-box;
       }
       #root .map-card > .map-empty{
         margin:0;border-radius:0;width:100%;box-sizing:border-box;
       }
-      /* On narrow screens the map card must span the full right-panel width. */
-      @media (max-width:900px){
+      /* SPA uses 2-col right-panel under 850px — force map across BOTH columns to the right edge. */
+      @media (max-width:1100px){
         #root .right-panel .map-card{
-          grid-column:1 / -1;
-          width:100%;
+          grid-column:1 / -1 !important;
+          width:100% !important;
+          max-width:100% !important;
+        }
+      }
+      @media (max-width:850px){
+        #root .right-panel{
+          grid-template-columns:1fr !important;
+        }
+        #root .right-panel .map-card{
+          grid-column:1 / -1 !important;
+          grid-row:auto !important;
+          width:100% !important;
         }
         #root .map-card iframe.travel-map,
         #root .map-card iframe[src*="map.html"],
@@ -1297,17 +1316,21 @@
       spaFrame.title = "Uno sguardo alla mappa";
       spaFrame.loading = "lazy";
       spaFrame.referrerPolicy = "no-referrer-when-downgrade";
-      spaFrame.src = `/map.html?v=20261120o`;
+      spaFrame.src = `/map.html?v=20261120p`;
       if (empty) empty.replaceWith(spaFrame);
       else host.querySelector(".sub-heading")?.insertAdjacentElement("afterend", spaFrame);
     } else {
       spaFrame.hidden = false;
       spaFrame.removeAttribute("hidden");
       spaFrame.style.display = "block";
+      spaFrame.style.width = "100%";
+      spaFrame.style.minWidth = "100%";
+      spaFrame.style.maxWidth = "none";
+      spaFrame.style.margin = "0";
       try {
         const u = new URL(spaFrame.getAttribute("src") || "/map.html", location.href);
-        if (u.searchParams.get("v") !== "20261120o") {
-          u.searchParams.set("v", "20261120o");
+        if (u.searchParams.get("v") !== "20261120p") {
+          u.searchParams.set("v", "20261120p");
           spaFrame.src = u.pathname + u.search;
         }
       } catch {
@@ -5531,7 +5554,7 @@ Regole:
   }
 
   function ensureMapIframe() {
-    const MAP_VER = "20261120o";
+    const MAP_VER = "20261120p";
     const iframes = [...document.querySelectorAll('iframe[src*="map.html"]')];
     for (const iframe of iframes) {
       try {
