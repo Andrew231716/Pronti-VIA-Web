@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120p") return;
+    if (style && style.dataset.pvReady === "20261120q") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120p";
+    style.dataset.pvReady = "20261120q";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -373,8 +373,6 @@
       .stop-card .pv-stop-media img{width:100%;height:100%;object-fit:cover;display:block}
       /* Mini-map on stop cards is disabled — map lives in .map-card only. */
       .stop-card .pv-stop-mini-map{display:none !important}
-      /* Drop the old OSM-embed wrapper: Leaflet map.html is full-bleed. */
-      .map-card .pv-overview-map{display:none !important}
       #root .right-panel{
         min-width:0;max-width:100%;width:100%;
       }
@@ -384,25 +382,50 @@
         min-width:0 !important;
         margin-left:0 !important;margin-right:0 !important;
         overflow:hidden;padding:0 !important;box-sizing:border-box;
+        position:relative;
       }
       #root .map-card > .sub-heading{
         margin:0;padding:14px 16px 12px;flex:0 0 auto;
       }
-      /* Edge-to-edge cartina: flush LEFT and RIGHT of the card (no side gutters). */
+      /*
+        Visible preview = OSM embed in .pv-overview-map (tiles always show).
+        SPA Leaflet map.html often paints blank grey + a white right strip on mobile
+        when the iframe was hidden / zero-sized — park it off-layout.
+      */
       #root .map-card iframe.travel-map,
-      #root .map-card iframe[src*="map.html"],
-      #root .map-card > iframe{
+      #root .map-card iframe[src*="map.html"]{
+        position:absolute !important;
+        width:0 !important;height:0 !important;min-width:0 !important;
+        opacity:0 !important;pointer-events:none !important;
+        margin:0 !important;padding:0 !important;border:0 !important;
+        overflow:hidden !important;
+      }
+      #root .map-card .pv-overview-map{
         display:block !important;
+        position:relative;
         width:100% !important;
-        max-width:none !important;
+        max-width:100% !important;
+        min-width:0 !important;
+        height:220px;
+        margin:0 !important;
+        padding:0 !important;
+        overflow:hidden;
+        background:#d9e9e7;
+        flex:0 0 auto;
+        align-self:stretch;
+      }
+      #root .map-card .pv-overview-map iframe{
+        position:absolute !important;
+        left:0 !important;top:0 !important;right:0 !important;
+        width:100% !important;
         min-width:100% !important;
-        height:260px !important;
+        max-width:none !important;
+        /* Crop OSM donation/attribution chrome at the bottom */
+        height:calc(100% + 58px) !important;
         margin:0 !important;
         padding:0 !important;
         border:0 !important;
-        border-radius:0 !important;
-        align-self:stretch !important;
-        justify-self:stretch !important;
+        display:block !important;
         box-sizing:border-box !important;
         background:#d9e9e7;
       }
@@ -424,7 +447,6 @@
       #root .map-card > .map-empty{
         margin:0;border-radius:0;width:100%;box-sizing:border-box;
       }
-      /* SPA uses 2-col right-panel under 850px — force map across BOTH columns to the right edge. */
       @media (max-width:1100px){
         #root .right-panel .map-card{
           grid-column:1 / -1 !important;
@@ -441,9 +463,8 @@
           grid-row:auto !important;
           width:100% !important;
         }
-        #root .map-card iframe.travel-map,
-        #root .map-card iframe[src*="map.html"],
-        #root .map-card > iframe{height:240px !important}
+        #root .map-card .pv-overview-map{height:200px}
+        #root .map-card .pv-overview-map iframe{height:calc(100% + 52px) !important}
       }
       .stop-card .pv-stop-sticker{
         position:absolute;right:-6px;bottom:-6px;z-index:2;
@@ -1202,8 +1223,10 @@
   }
 
   function osmEmbedSrc(lat, lng) {
-    const pad = 0.018;
-    const bbox = `${lng - pad},${lat - pad * 0.75},${lng + pad},${lat + pad * 0.75}`;
+    // Slightly wider horizontal pad so the marker sits centered without side gutters.
+    const padX = 0.022;
+    const padY = 0.014;
+    const bbox = `${lng - padX},${lat - padY},${lng + padX},${lat + padY}`;
     return (
       `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}` +
       `&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`
@@ -1274,9 +1297,6 @@
     if (!host || !tripAuth()) return;
     stripStopMiniMaps();
     bindOverviewMapLinks();
-    // Always drop the inset OSM-embed wrapper — it left a white left gutter
-    // and clipped the right edge / attribution chrome.
-    host.querySelectorAll(".pv-overview-map").forEach((el) => el.remove());
 
     let data;
     try {
@@ -1291,11 +1311,17 @@
     const empty = host.querySelector(".map-empty");
     let spaFrame = host.querySelector("iframe.travel-map, iframe[src*='map.html']");
 
+    // Park SPA Leaflet: on mobile it often stays blank grey with a white right strip.
+    if (spaFrame) {
+      spaFrame.hidden = true;
+      spaFrame.setAttribute("aria-hidden", "true");
+      spaFrame.style.cssText =
+        "position:absolute;width:0;height:0;opacity:0;pointer-events:none;border:0;margin:0;padding:0";
+    }
+
     if (!stops.length) {
-      if (spaFrame) {
-        spaFrame.hidden = false;
-        spaFrame.removeAttribute("hidden");
-      }
+      host.querySelector(".pv-overview-map")?.remove();
+      if (empty) empty.hidden = false;
       return;
     }
 
@@ -1309,44 +1335,33 @@
     const focus = resolveOverviewFocusStop(stops, trip);
     overviewFocusStopId = focus?.id || overviewFocusStopId;
 
-    // Prefer the SPA Leaflet iframe: full-bleed left→right, no OSM chrome.
-    if (!spaFrame) {
-      spaFrame = document.createElement("iframe");
-      spaFrame.className = "travel-map";
-      spaFrame.title = "Uno sguardo alla mappa";
-      spaFrame.loading = "lazy";
-      spaFrame.referrerPolicy = "no-referrer-when-downgrade";
-      spaFrame.src = `/map.html?v=20261120p`;
-      if (empty) empty.replaceWith(spaFrame);
-      else host.querySelector(".sub-heading")?.insertAdjacentElement("afterend", spaFrame);
-    } else {
-      spaFrame.hidden = false;
-      spaFrame.removeAttribute("hidden");
-      spaFrame.style.display = "block";
-      spaFrame.style.width = "100%";
-      spaFrame.style.minWidth = "100%";
-      spaFrame.style.maxWidth = "none";
-      spaFrame.style.margin = "0";
-      try {
-        const u = new URL(spaFrame.getAttribute("src") || "/map.html", location.href);
-        if (u.searchParams.get("v") !== "20261120p") {
-          u.searchParams.set("v", "20261120p");
-          spaFrame.src = u.pathname + u.search;
-        }
-      } catch {
-        /* keep existing src */
-      }
-      if (empty) empty.remove();
+    // Visible preview: OSM embed (tiles + marker always paint).
+    const src = osmEmbedSrc(Number(focus.lat), Number(focus.lng));
+    let overview = host.querySelector(":scope > .pv-overview-map");
+    if (!overview) {
+      overview = document.createElement("div");
+      overview.className = "pv-overview-map";
+      overview.innerHTML =
+        `<iframe title="Uno sguardo alla mappa" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+      if (spaFrame?.isConnected) spaFrame.insertAdjacentElement("afterend", overview);
+      else if (empty) empty.replaceWith(overview);
+      else host.querySelector(".sub-heading")?.insertAdjacentElement("afterend", overview);
+    }
+    empty?.remove();
+    const iframe = overview.querySelector("iframe");
+    if (iframe && iframe.dataset.pvSrc !== src) {
+      iframe.dataset.pvSrc = src;
+      iframe.src = src;
     }
 
     let captionHost = host.querySelector(".map-caption");
     if (!captionHost) {
       captionHost = document.createElement("div");
       captionHost.className = "map-caption";
-      spaFrame.insertAdjacentElement("afterend", captionHost);
+      overview.insertAdjacentElement("afterend", captionHost);
     }
-    if (captionHost.previousElementSibling !== spaFrame) {
-      spaFrame.insertAdjacentElement("afterend", captionHost);
+    if (captionHost.previousElementSibling !== overview) {
+      overview.insertAdjacentElement("afterend", captionHost);
     }
     let strong = captionHost.querySelector("strong");
     if (!strong) {

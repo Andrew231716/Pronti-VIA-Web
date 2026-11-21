@@ -9,45 +9,33 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120p.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120q.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
-const mapHtml = readFileSync("map.html", "utf8");
 
 ok(
-  "stamps 20261120p",
-  /magic-extras-20261120p\.js/.test(index) &&
-    /20261120p-bleed/.test(sw) &&
-    /const SHELL_VER = "20261120p"/.test(account) &&
-    existsSync("assets/magic-extras-20261120p.js") &&
-    /dataset\.pvReady = "20261120p"/.test(magic)
+  "stamps 20261120q",
+  /magic-extras-20261120q\.js/.test(index) &&
+    /20261120q-preview/.test(sw) &&
+    /const SHELL_VER = "20261120q"/.test(account) &&
+    existsSync("assets/magic-extras-20261120q.js")
 );
 
 ok(
-  "overview uses Leaflet full-bleed, not OSM embed",
-  magic.includes('.map-card .pv-overview-map{display:none !important}') &&
-    magic.includes("host.querySelectorAll(\".pv-overview-map\")") &&
-    magic.includes("min-width:100% !important") &&
-    magic.includes("max-width:none !important") &&
+  "overview preview OSM full width + leaflet parked",
+  magic.includes("openstreetmap.org/export/embed.html") &&
+    magic.includes("pv-overview-map") &&
+    magic.includes("width:0 !important") &&
     magic.includes("grid-column:1 / -1 !important") &&
-    magic.includes("grid-template-columns:1fr !important") &&
-    magic.includes("min-width:100% !important") &&
-    /map\.html\?v=20261120p/.test(magic)
+    magic.includes("grid-template-columns:1fr !important")
 );
 
 ok(
-  "map.html resizes and zooms focused stop",
-  mapHtml.includes("viavia-map-resize") &&
-    mapHtml.includes("pts.length === 1") &&
-    mapHtml.includes("map.setView")
-);
-
-ok(
-  "pushColoredMapPoints selects focused stop",
+  "pushColoredMapPoints still selects focused stop",
   /async function pushColoredMapPoints\(selectedId/.test(magic) &&
     /pushColoredMapPoints\(overviewFocusStopId\)/.test(magic)
 );
 
 if (process.exitCode) process.exit(1);
-console.log("mappa-layout-bleed 20261120p ok");
+console.log("mappa-layout-bleed 20261120q ok");

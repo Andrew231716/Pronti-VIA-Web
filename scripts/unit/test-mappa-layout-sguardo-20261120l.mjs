@@ -9,28 +9,27 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120p.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120q.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120p",
-  /magic-extras-20261120p\.js/.test(index) &&
-    /20261120p-bleed/.test(sw) &&
-    /const SHELL_VER = "20261120p"/.test(account) &&
-    existsSync("assets/magic-extras-20261120p.js")
+  "stamps 20261120q",
+  /magic-extras-20261120q\.js/.test(index) &&
+    /20261120q-preview/.test(sw) &&
+    /const SHELL_VER = "20261120q"/.test(account) &&
+    existsSync("assets/magic-extras-20261120q.js")
 );
 
 ok(
-  "overview map is full-bleed Leaflet with caption",
-  magic.includes('.map-card .pv-overview-map{display:none !important}') &&
-    magic.includes("width:100% !important") &&
-    magic.includes("grid-column:1 / -1 !important") &&
-    magic.includes("grid-template-columns:1fr !important") &&
+  "overview map shows OSM preview with caption",
+  magic.includes("pv-overview-map") &&
+    magic.includes("openstreetmap.org/export/embed.html") &&
     magic.includes("data-pv-open-map") &&
     magic.includes("Apri mappa") &&
-    magic.includes("#root .map-card > .map-caption")
+    magic.includes("#root .map-card > .map-caption") &&
+    magic.includes("height:calc(100% + 58px)")
 );
 
 ok(
@@ -40,4 +39,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("mappa-layout-sguardo 20261120p ok");
+console.log("mappa-layout-sguardo 20261120q ok");
