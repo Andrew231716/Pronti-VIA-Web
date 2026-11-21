@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120i") return;
+    if (style && style.dataset.pvReady === "20261120j") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120i";
+    style.dataset.pvReady = "20261120j";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -357,11 +357,13 @@
       .stop-card{position:relative}
       .stop-card .pv-stop-media{flex:0 0 72px;width:72px;height:72px;border-radius:12px;overflow:hidden;background:#e8f0f0;align-self:flex-start;position:relative}
       .stop-card .pv-stop-media img{width:100%;height:100%;object-fit:cover;display:block}
-      .stop-card .pv-stop-mini-map{
-        margin-top:10px;border-radius:12px;overflow:hidden;border:1px solid #d9e7e7;
-        background:#e8f0f0;aspect-ratio:16/9;max-height:220px
+      /* Mini-map on stop cards is disabled — map lives in .map-card only. */
+      .stop-card .pv-stop-mini-map{display:none !important}
+      .map-card .pv-overview-map{
+        margin:0;border:0;border-radius:0;overflow:hidden;background:#d9e9e7;
+        width:100%;height:248px
       }
-      .stop-card .pv-stop-mini-map iframe{width:100%;height:100%;min-height:160px;border:0;display:block}
+      .map-card .pv-overview-map iframe{width:100%;height:100%;border:0;display:block}
       .stop-card .pv-stop-sticker{
         position:absolute;right:-6px;bottom:-6px;z-index:2;
         width:1.85rem;height:1.85rem;display:inline-flex;align-items:center;justify-content:center;
@@ -1118,33 +1120,90 @@
     }
   }
 
-  function ensureStopMiniMap(card, stop) {
-    const lat = Number(stop?.lat);
-    const lng = Number(stop?.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      card.querySelector(".pv-stop-mini-map")?.remove();
-      return;
-    }
+  function osmEmbedSrc(lat, lng) {
     const pad = 0.018;
     const bbox = `${lng - pad},${lat - pad * 0.75},${lng + pad},${lat + pad * 0.75}`;
-    const src =
+    return (
       `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}` +
-      `&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`;
-    let mini = card.querySelector(".pv-stop-mini-map");
-    if (!mini) {
-      mini = document.createElement("div");
-      mini.className = "pv-stop-mini-map";
-      mini.innerHTML = `<iframe title="Mappa tappa" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
-      const body = card.querySelector(".stop-body") || card;
-      const footer = body.querySelector(".stop-footer");
-      if (footer) footer.insertAdjacentElement("beforebegin", mini);
-      else body.appendChild(mini);
+      `&layer=mapnik&marker=${encodeURIComponent(`${lat},${lng}`)}`
+    );
+  }
+
+  function stripStopMiniMaps(root = document) {
+    root.querySelectorAll(".pv-stop-mini-map").forEach((el) => el.remove());
+  }
+
+  /** Map belongs only in «Uno sguardo alla mappa», never on the stop card. */
+  function ensureStopMiniMap(card) {
+    card?.querySelectorAll?.(".pv-stop-mini-map").forEach((el) => el.remove());
+  }
+
+  async function ensureOverviewMap() {
+    const host = document.querySelector(".map-card");
+    if (!host || !tripAuth()) return;
+    stripStopMiniMaps();
+    let auth;
+    let data;
+    try {
+      ({ auth, data } = await loadTrip());
+    } catch {
+      return;
     }
-    const iframe = mini.querySelector("iframe");
+    const stops = (data.trip?.stops || []).filter(
+      (s) => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lng))
+    );
+    const empty = host.querySelector(".map-empty");
+    const spaFrame = host.querySelector("iframe.travel-map, iframe[src*='map.html']");
+    if (!stops.length) {
+      host.querySelector(".pv-overview-map")?.remove();
+      if (spaFrame) {
+        delete spaFrame.dataset.pvOsm;
+        spaFrame.hidden = false;
+      }
+      return;
+    }
+    const caption = host.querySelector(".map-caption strong")?.textContent?.trim() || "";
+    const selectedBtn = document.querySelector(".day-strip button.selected");
+    let stop =
+      (caption && stops.find((s) => String(s.title || "").trim() === caption)) ||
+      null;
+    if (!stop && selectedBtn) {
+      const idx = [...document.querySelectorAll(".day-strip button")].indexOf(selectedBtn);
+      const days = tripDays(data.trip);
+      const day = days[idx];
+      if (day) stop = stops.find((s) => s.day === day) || null;
+    }
+    stop = stop || stops[0];
+    const lat = Number(stop.lat);
+    const lng = Number(stop.lng);
+    const src = osmEmbedSrc(lat, lng);
+
+    // Prefer a dedicated overview embed so the place is always visible here.
+    let overview = host.querySelector(":scope > .pv-overview-map");
+    if (!overview) {
+      overview = document.createElement("div");
+      overview.className = "pv-overview-map";
+      overview.innerHTML =
+        `<iframe title="Uno sguardo alla mappa" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>`;
+      if (spaFrame) {
+        spaFrame.hidden = true;
+        spaFrame.insertAdjacentElement("afterend", overview);
+      } else if (empty) {
+        empty.replaceWith(overview);
+      } else {
+        host.querySelector(".sub-heading")?.insertAdjacentElement("afterend", overview);
+      }
+    }
+    empty?.remove();
+    if (spaFrame) spaFrame.hidden = true;
+    const iframe = overview.querySelector("iframe");
     if (iframe && iframe.dataset.pvSrc !== src) {
       iframe.dataset.pvSrc = src;
       iframe.src = src;
     }
+    // Keep caption in sync with the pin we show.
+    const captionHost = host.querySelector(".map-caption strong");
+    if (captionHost && stop.title) captionHost.textContent = stop.title;
   }
 
   function findStopByTitle(trip, title) {
@@ -6808,7 +6867,7 @@ Regole:
 
       // Never show raw Foto:/URL lines — photo lives in the thumbnail only.
       scrubStopFotoNotes(card);
-      ensureStopMiniMap(card, stop);
+      ensureStopMiniMap(card);
 
       let extras = card.querySelector(".pv-stop-extras");
       if (!extras) {
@@ -8816,6 +8875,8 @@ Regole:
     injectPackingTemplates();
     injectBudgetAndCharts();
     injectDistancesAndLegend();
+    void ensureOverviewMap();
+    stripStopMiniMaps();
     bindDayStripWeather();
     injectFxCalculator();
     void syncDayWeather(false);
@@ -8848,10 +8909,6 @@ Regole:
         }
         const imgSrc = card.querySelector(".pv-stop-media img")?.getAttribute("src") || "";
         if (imgSrc && !isUsablePlacePhoto(imgSrc)) return true;
-        const hasMapLink = [...card.querySelectorAll("button, a")].some((el) =>
-          /Vedi sulla mappa/i.test(el.textContent || "")
-        );
-        if (hasMapLink && !card.querySelector(".pv-stop-mini-map")) return true;
         return false;
       }) ||
         document.querySelector(".map-card .map-empty"));
