@@ -13,19 +13,19 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 const places = readFileSync("places-suggest.js", "utf8");
-const magic = readFileSync("assets/magic-extras-20261120n.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120p.js", "utf8");
 const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
 
 ok(
   "stamps 20261120k",
-  /magic-extras-20261120n\.js/.test(index) &&
-    /places-suggest\.js\?v=20261120n/.test(index) &&
-    /account\.js\?v=20261120n/.test(index) &&
-    /20261120n-layout/.test(sw) &&
+  /magic-extras-20261120p\.js/.test(index) &&
+    /places-suggest\.js\?v=20261120p/.test(index) &&
+    /account\.js\?v=20261120p/.test(index) &&
+    /20261120p-bleed/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120n"/.test(account) &&
+    /const SHELL_VER = "20261120p"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
-    existsSync("assets/magic-extras-20261120n.js") &&
+    existsSync("assets/magic-extras-20261120p.js") &&
     existsSync("assets/index-loadfix-20261120g.js")
 );
 
