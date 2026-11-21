@@ -13,19 +13,19 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 const places = readFileSync("places-suggest.js", "utf8");
-const magic = readFileSync("assets/magic-extras-20261120i.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120k.js", "utf8");
 const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
 
 ok(
-  "stamps 20261120i",
-  /magic-extras-20261120i\.js/.test(index) &&
-    /places-suggest\.js\?v=20261120i/.test(index) &&
-    /account\.js\?v=20261120i/.test(index) &&
-    /20261120i-fotomappa/.test(sw) &&
+  "stamps 20261120k",
+  /magic-extras-20261120k\.js/.test(index) &&
+    /places-suggest\.js\?v=20261120k/.test(index) &&
+    /account\.js\?v=20261120k/.test(index) &&
+    /20261120k-sguardo/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120i"/.test(account) &&
+    /const SHELL_VER = "20261120k"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
-    existsSync("assets/magic-extras-20261120i.js") &&
+    existsSync("assets/magic-extras-20261120k.js") &&
     existsSync("assets/index-loadfix-20261120g.js")
 );
 
@@ -56,4 +56,4 @@ if (process.exitCode) {
   console.error("mappa-tappa-geocode checks failed");
   process.exit(1);
 }
-console.log("mappa-tappa-geocode 20261120i ok");
+console.log("mappa-tappa-geocode 20261120k ok");
