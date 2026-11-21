@@ -9,17 +9,17 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120p.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120q.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120p",
-  /magic-extras-20261120p\.js/.test(index) &&
-    /20261120p-bleed/.test(sw) &&
-    /const SHELL_VER = "20261120p"/.test(account) &&
-    existsSync("assets/magic-extras-20261120p.js")
+  "stamps 20261120q",
+  /magic-extras-20261120q\.js/.test(index) &&
+    /20261120q-preview/.test(sw) &&
+    /const SHELL_VER = "20261120q"/.test(account) &&
+    existsSync("assets/magic-extras-20261120q.js")
 );
 
 ok(
@@ -34,4 +34,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("organizza-prep-gaps 20261120p (via n) ok");
+console.log("organizza-prep-gaps 20261120q (via n) ok");
