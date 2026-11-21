@@ -1138,47 +1138,96 @@
     card?.querySelectorAll?.(".pv-stop-mini-map").forEach((el) => el.remove());
   }
 
+  let overviewFocusStopId = "";
+
+  function resolveOverviewFocusStop(stops, trip) {
+    if (overviewFocusStopId) {
+      const hit = stops.find((s) => s.id === overviewFocusStopId);
+      if (hit) return hit;
+    }
+    const caption = document.querySelector(".map-card .map-caption strong")?.textContent?.trim() || "";
+    if (caption) {
+      const byTitle = stops.find((s) => String(s.title || "").trim() === caption);
+      if (byTitle) return byTitle;
+    }
+    const selectedBtn = document.querySelector(".day-strip button.selected");
+    if (selectedBtn) {
+      const idx = [...document.querySelectorAll(".day-strip button")].indexOf(selectedBtn);
+      const days = tripDays(trip);
+      const day = days[idx];
+      if (day) {
+        const byDay = stops.find((s) => s.day === day);
+        if (byDay) return byDay;
+      }
+    }
+    return stops[0];
+  }
+
+  function bindOverviewMapLinks() {
+    if (document.documentElement.dataset.pvOverviewMapLinks === "1") return;
+    document.documentElement.dataset.pvOverviewMapLinks = "1";
+    document.addEventListener(
+      "click",
+      (event) => {
+        const btn = event.target?.closest?.("button, a");
+        if (!btn || !/Vedi sulla mappa/i.test(btn.textContent || "")) return;
+        const card = btn.closest("article.stop-card");
+        const title = card?.querySelector("h3")?.textContent?.trim() || "";
+        if (title) {
+          // Resolve id on next ensureOverviewMap via title caption / trip lookup.
+          overviewFocusStopId = card?.dataset?.pvStopId || "";
+          window.__pvOverviewFocusTitle = title;
+        }
+        const host = document.querySelector(".map-card");
+        if (host) {
+          host.scrollIntoView({ behavior: "smooth", block: "center" });
+          void ensureOverviewMap();
+        }
+      },
+      true
+    );
+  }
+
   async function ensureOverviewMap() {
     const host = document.querySelector(".map-card");
     if (!host || !tripAuth()) return;
     stripStopMiniMaps();
-    let auth;
+    bindOverviewMapLinks();
     let data;
     try {
-      ({ auth, data } = await loadTrip());
+      ({ data } = await loadTrip());
     } catch {
       return;
     }
-    const stops = (data.trip?.stops || []).filter(
+    const trip = data.trip || {};
+    const stops = (trip.stops || []).filter(
       (s) => Number.isFinite(Number(s.lat)) && Number.isFinite(Number(s.lng))
     );
     const empty = host.querySelector(".map-empty");
-    const spaFrame = host.querySelector("iframe.travel-map, iframe[src*='map.html']");
+    let spaFrame = host.querySelector("iframe.travel-map, iframe[src*='map.html']");
+
     if (!stops.length) {
       host.querySelector(".pv-overview-map")?.remove();
       if (spaFrame) {
-        delete spaFrame.dataset.pvOsm;
         spaFrame.hidden = false;
+        delete spaFrame.dataset.pvOsm;
       }
       return;
     }
-    const caption = host.querySelector(".map-caption strong")?.textContent?.trim() || "";
-    const selectedBtn = document.querySelector(".day-strip button.selected");
-    let stop =
-      (caption && stops.find((s) => String(s.title || "").trim() === caption)) ||
-      null;
-    if (!stop && selectedBtn) {
-      const idx = [...document.querySelectorAll(".day-strip button")].indexOf(selectedBtn);
-      const days = tripDays(data.trip);
-      const day = days[idx];
-      if (day) stop = stops.find((s) => s.day === day) || null;
-    }
-    stop = stop || stops[0];
-    const lat = Number(stop.lat);
-    const lng = Number(stop.lng);
-    const src = osmEmbedSrc(lat, lng);
 
-    // Prefer a dedicated overview embed so the place is always visible here.
+    // Focus: explicit pick > title from «Vedi sulla mappa» > caption/day > first.
+    if (!overviewFocusStopId && window.__pvOverviewFocusTitle) {
+      const named = stops.find(
+        (s) => String(s.title || "").trim() === String(window.__pvOverviewFocusTitle).trim()
+      );
+      if (named) overviewFocusStopId = named.id;
+    }
+    const focus = resolveOverviewFocusStop(stops, trip);
+    overviewFocusStopId = focus?.id || overviewFocusStopId;
+
+    // Reliable OSM preview for the focused stop (works for every tappa).
+    // When more stops exist, map.html also receives all pins via pushColoredMapPoints.
+    const src = osmEmbedSrc(Number(focus.lat), Number(focus.lng));
     let overview = host.querySelector(":scope > .pv-overview-map");
     if (!overview) {
       overview = document.createElement("div");
@@ -1201,9 +1250,27 @@
       iframe.dataset.pvSrc = src;
       iframe.src = src;
     }
-    // Keep caption in sync with the pin we show.
-    const captionHost = host.querySelector(".map-caption strong");
-    if (captionHost && stop.title) captionHost.textContent = stop.title;
+
+    let captionHost = host.querySelector(".map-caption");
+    if (!captionHost) {
+      captionHost = document.createElement("div");
+      captionHost.className = "map-caption";
+      captionHost.innerHTML = `<strong></strong>`;
+      overview.insertAdjacentElement("afterend", captionHost);
+    }
+    let strong = captionHost.querySelector("strong");
+    if (!strong) {
+      strong = document.createElement("strong");
+      captionHost.prepend(strong);
+    }
+    const label =
+      stops.length === 1
+        ? focus.title || "Tappa"
+        : `${focus.title || "Tappa"} · ${stops.length} tappe in mappa`;
+    strong.textContent = label;
+
+    // Keep SPA map.html in sync with ALL geocoded stops (for day colors / multi-pin when shown).
+    void pushColoredMapPoints();
   }
 
   function findStopByTitle(trip, title) {
@@ -6779,7 +6846,7 @@ Regole:
         empty.textContent = "Cerco i luoghi delle tappe sulla mappa…";
       }
       let filled = 0;
-      for (const stop of needsCoords.slice(0, 8)) {
+      for (const stop of needsCoords) {
         const query = String(stop.address || "").trim();
         const place = await geocodePlace(
           trip.destination ? `${query}, ${trip.destination}` : query
@@ -6809,6 +6876,7 @@ Regole:
       const stop = findStopByTitle(trip, title);
       if (!stop) continue;
       card.classList.add("pv-stop-enhanced");
+      if (stop.id) card.dataset.pvStopId = stop.id;
       const cat = normalizeStopCategory(stop.category);
       card.dataset.pvStopCat = cat;
       syncStopTimePill(card, stop.time);
@@ -8982,6 +9050,9 @@ Regole:
       window.__pvGeocodeFail?.clear?.();
       window.__pvStopImageFail?.clear?.();
     } catch { /* ignore */ }
+    overviewFocusStopId = "";
+    delete window.__pvOverviewFocusTitle;
+    delete document.documentElement.dataset.pvOverviewMapLinks;
     setMagicOpen(false);
     document.querySelectorAll(".pv-useful,.pv-fx-box,.pv-fx-calc,.pv-day-weather,.pv-links-box").forEach((el) => el.remove());
     const root = document.getElementById(ROOT_ID);

@@ -57,13 +57,13 @@ ok(
 
 ok(
   "stamps",
-  /magic-extras-20261120j\.js/.test(index) &&
+  /magic-extras-20261120k\.js/.test(index) &&
     /ux-suite-20261120d\.js/.test(index) &&
-    /20261120j-sguardo/.test(sw) &&
-    /const SHELL_VER = "20261120j"/.test(account) &&
-    existsSync("assets/magic-extras-20261120j.js") &&
+    /20261120k-sguardo/.test(sw) &&
+    /const SHELL_VER = "20261120k"/.test(account) &&
+    existsSync("assets/magic-extras-20261120k.js") &&
     existsSync("assets/ux-suite-20261120d.js") &&
-    /dataset\.pvReady = "20261120j"/.test(magic) &&
+    /dataset\.pvReady = "20261120k"/.test(magic) &&
     /const STYLE_VER = "20261120d"/.test(ux)
 );
 

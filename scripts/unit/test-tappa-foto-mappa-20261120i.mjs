@@ -9,20 +9,20 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120j.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120k.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120j",
-  /magic-extras-20261120j\.js/.test(index) &&
-    /places-suggest\.js\?v=20261120j/.test(index) &&
-    /account\.js\?v=20261120j/.test(index) &&
-    /20261120j-sguardo/.test(sw) &&
-    /const SHELL_VER = "20261120j"/.test(account) &&
-    existsSync("assets/magic-extras-20261120j.js") &&
-    /dataset\.pvReady = "20261120j"/.test(magic)
+  "stamps 20261120k",
+  /magic-extras-20261120k\.js/.test(index) &&
+    /places-suggest\.js\?v=20261120k/.test(index) &&
+    /account\.js\?v=20261120k/.test(index) &&
+    /20261120k-sguardo/.test(sw) &&
+    /const SHELL_VER = "20261120k"/.test(account) &&
+    existsSync("assets/magic-extras-20261120k.js") &&
+    /dataset\.pvReady = "20261120k"/.test(magic)
 );
 
 ok(
@@ -59,4 +59,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("tappa-foto-mappa 20261120j ok");
+console.log("tappa-foto-mappa 20261120k ok");

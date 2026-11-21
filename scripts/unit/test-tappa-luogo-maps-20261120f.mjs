@@ -17,13 +17,13 @@ const places = readFileSync("places-suggest.js", "utf8");
 const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
 
 ok(
-  "stamps 20261120j",
-  /places-suggest\.js\?v=20261120j/.test(index) &&
-    /account\.js\?v=20261120j/.test(index) &&
-    /20261120j-sguardo/.test(sw) &&
-    /places-suggest\.js\?v=20261120j/.test(sw) &&
+  "stamps 20261120k",
+  /places-suggest\.js\?v=20261120k/.test(index) &&
+    /account\.js\?v=20261120k/.test(index) &&
+    /20261120k-sguardo/.test(sw) &&
+    /places-suggest\.js\?v=20261120k/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120j"/.test(account) &&
+    /const SHELL_VER = "20261120k"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
     existsSync("assets/index-loadfix-20261120g.js")
 );
@@ -71,4 +71,4 @@ if (process.exitCode) {
   console.error("tappa-luogo-maps checks failed");
   process.exit(1);
 }
-console.log("tappa-luogo-maps 20261120j ok");
+console.log("tappa-luogo-maps 20261120k ok");
