@@ -178,15 +178,29 @@
             { color: "#007d82", weight: 3, opacity: 0.55, dashArray: "6 8" }
           ).addTo(map);
         }
-        if (pts.length) {
+        if (pts.length === 1) {
+          map.setView([pts[0].lat, pts[0].lng], 15);
+        } else if (pts.length) {
+          const selectedPt = e.data.selected
+            ? pts.find((p) => p.id === e.data.selected)
+            : null;
           map.fitBounds(
             pts.map((p) => [p.lat, p.lng]),
-            { padding: [30, 30], maxZoom: 13 }
+            { padding: [28, 28], maxZoom: selectedPt ? 14 : 13 }
           );
+          if (selectedPt) {
+            setTimeout(() => map.panTo([selectedPt.lat, selectedPt.lng], { animate: false }), 0);
+          }
         } else if (e.data.destination) {
           applyDestinationCenter(e.data.destination);
         }
         map.invalidateSize();
+      });
+      addEventListener("message", (e) => {
+        if (e.source !== parent || e.origin !== location.origin) return;
+        if (e.data?.type === "viavia-map-resize") {
+          map.invalidateSize();
+        }
       });
       map.on("click", (e) => {
         if (pick) parent.postMessage({ type: "viavia-coordinate", lat: e.latlng.lat, lng: e.latlng.lng }, location.origin);

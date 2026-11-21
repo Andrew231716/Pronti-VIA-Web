@@ -9,17 +9,17 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120n.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120o.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
   "stamps 20261120k",
-  /magic-extras-20261120n\.js/.test(index) &&
-    /20261120n-layout/.test(sw) &&
-    /const SHELL_VER = "20261120n"/.test(account) &&
-    existsSync("assets/magic-extras-20261120n.js")
+  /magic-extras-20261120o\.js/.test(index) &&
+    /20261120o-bleed/.test(sw) &&
+    /const SHELL_VER = "20261120o"/.test(account) &&
+    existsSync("assets/magic-extras-20261120o.js")
 );
 
 ok(
