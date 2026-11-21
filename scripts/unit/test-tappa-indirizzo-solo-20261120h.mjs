@@ -10,18 +10,18 @@ function ok(label, cond) {
 }
 
 const places = readFileSync("places-suggest.js", "utf8");
-const magic = readFileSync("assets/magic-extras-20261120l.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120n.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120l",
-  /magic-extras-20261120l\.js/.test(index) &&
-    /places-suggest\.js\?v=20261120l/.test(index) &&
-    /20261120l-layout/.test(sw) &&
-    /const SHELL_VER = "20261120l"/.test(account) &&
-    existsSync("assets/magic-extras-20261120l.js")
+  "stamps 20261120k",
+  /magic-extras-20261120n\.js/.test(index) &&
+    /places-suggest\.js\?v=20261120n/.test(index) &&
+    /20261120n-layout/.test(sw) &&
+    /const SHELL_VER = "20261120n"/.test(account) &&
+    existsSync("assets/magic-extras-20261120n.js")
 );
 
 ok(
@@ -47,4 +47,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("tappa-indirizzo-solo 20261120l ok");
+console.log("tappa-indirizzo-solo 20261120k ok");
