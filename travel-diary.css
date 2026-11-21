@@ -1,0 +1,1662 @@
+/* Shared travel diary styling. Country colours come from the destination engine. */
+html {
+  --diary-accent: var(--pv-dest-teal-deep, #00656a);
+  --diary-ink: var(--pv-dest-ink, #12343c);
+  --diary-muted: var(--pv-dest-muted, #3f5860);
+  --diary-line: var(--pv-dest-line, #d5e3e6);
+  --diary-paper: #fff;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-sand, #f3f8f8) 80%, #fff);
+  --diary-shadow: 0 5px 18px rgba(20, 49, 55, .07);
+  --diary-display: "New York", Georgia, serif;
+}
+
+html[data-pv-theme="dark"] {
+  --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #2aa3a8) 43%, white);
+  --diary-ink: #edf5f5;
+  --diary-muted: #bacccc;
+  --diary-line: #3d555a;
+  --diary-paper: #17272c;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #007d82) 17%, #17272c);
+  --diary-shadow: none;
+}
+
+html[data-pv-theme="dark"] body.pv-account-ready {
+  background: radial-gradient(ellipse at 80% 0%, var(--diary-wash), #101c21 70%) !important;
+}
+
+/* Light SPA dialogs (share, forms) keep dark ink in dark mode */
+html[data-pv-theme="dark"] :is([data-slot="dialog-content"], [data-slot="alert-dialog-content"]) {
+  color: #12343c;
+}
+html[data-pv-theme="dark"] :is([data-slot="dialog-title"], [data-slot="alert-dialog-title"]) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] .share-box h3 {
+  color: #12343c !important;
+}
+
+#root .trip-cover {
+  border-radius: 1.3rem;
+  box-shadow: var(--diary-shadow);
+}
+
+#root .trip-cover:has(> .pv-diary-cover) {
+  isolation: isolate;
+  background: linear-gradient(118deg, #132e36 15%, var(--pv-dest-teal-deep) 77%, var(--pv-dest-teal));
+}
+
+#root .trip-cover:has(> .pv-diary-cover) > :is(img, .photo-credit) {
+  display: none;
+}
+
+.pv-diary-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+#root .trip-cover:has(> .pv-diary-cover) .cover-shade {
+  background: linear-gradient(90deg, rgba(9, 23, 29, .7), rgba(9, 23, 29, .48) 72%, rgba(9, 23, 29, .12));
+}
+
+#root .cover-content h1,
+#root .section-heading h2,
+#pv-plat-panel .pv-plat-hero h2,
+.pv-account-hero h1 {
+  font-family: var(--diary-display);
+  font-weight: 700;
+  letter-spacing: -.025em;
+  line-height: 1.12;
+}
+
+#root .cover-content .destination {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: .35rem .65rem;
+  border: 1px solid rgba(255, 255, 255, .43);
+  border-radius: 999px;
+  background: rgba(8, 25, 30, .48);
+}
+
+#root .section-heading,
+#root .refund-heading {
+  border-bottom: 0;
+  padding-bottom: .35rem;
+}
+
+#root .section-heading h2 {
+  color: var(--diary-ink);
+}
+
+#root .section-heading .eyebrow {
+  color: var(--diary-muted);
+}
+
+#root :is(.stop-card, .booking-card, .budget-card, .expense-row, .split-panel,
+  .transfer-row, .text-card, .map-card, .check-row, .saved-card, .empty-state, .edit-form, .notes-paper),
+#root :is(.pv-trip-card, .pv-home-resume, .pv-event-rail),
+#pv-account-gate :is(.pv-trip-card, .pv-home-resume),
+#pv-plat-panel :is(.pv-plat-card, .pv-plat-stat),
+.pv-ux-sheet :is(.pv-ux-card, .pv-import-group) {
+  background-color: var(--diary-paper);
+  border-color: var(--diary-line);
+  border-radius: 1rem;
+  color: var(--diary-ink);
+  box-shadow: var(--diary-shadow);
+}
+
+/* notes-paper is a white pad in the SPA: keep ink readable even when workspace is light-on-dark */
+html[data-pv-theme="dark"] #root .notes-paper {
+  background: #fff !important;
+  border-color: #dfe7eb !important;
+  color: #12343c !important;
+}
+
+/*
+ * White / light paper surfaces that stay pale in dark mode must keep dark ink.
+ * Otherwise .workspace { color: light !important } makes totals and inputs invisible.
+ */
+html[data-pv-theme="dark"] #root .money-stats > div {
+  background: #fff !important;
+  border-color: #dde6eb !important;
+  color: #12343c !important;
+  isolation: isolate;
+}
+html[data-pv-theme="dark"] #root .money-stats > div :is(strong, span, small, p, div) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div :is(span, small) {
+  color: #5b7076 !important;
+}
+/* Keep first-child readable even when SPA white-on-teal is washed to white */
+html[data-pv-theme="dark"] #root .money-stats > div:first-child {
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #dde6eb !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div:first-child strong {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .money-stats > div:first-child :is(span, small) {
+  color: #5b7076 !important;
+}
+
+html[data-pv-theme="dark"] #root :is(
+  .pv-budget-box,
+  .pv-chart-box,
+  .pv-day-weather,
+  .pv-links-box,
+  .pv-fx-calc,
+  .pv-day-legend,
+  .pv-es-member-fx,
+  .pv-sw-board,
+  .budget-card,
+  .budget-total
+) {
+  color: #12343c !important;
+  isolation: isolate;
+}
+html[data-pv-theme="dark"] #root :is(
+  .pv-budget-box,
+  .pv-chart-box,
+  .pv-day-weather,
+  .pv-links-box,
+  .pv-fx-calc,
+  .pv-day-legend,
+  .pv-es-member-fx
+) {
+  background: #fff !important;
+  border-color: #d9e7e7 !important;
+}
+html[data-pv-theme="dark"] #root .budget-card {
+  background: #f7fbfb !important;
+  border-color: #d9e7e7 !important;
+}
+html[data-pv-theme="dark"] #root :is(
+  .pv-budget-box,
+  .pv-chart-box,
+  .pv-day-weather,
+  .pv-links-box,
+  .pv-fx-calc,
+  .pv-day-legend,
+  .pv-es-member-fx,
+  .pv-sw-board,
+  .budget-card,
+  .budget-total
+) :is(p, span, strong, small, label, div, em, li, time, h3, h4):not(button):not(button *) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box, .pv-chart-box, .pv-fx-calc, .pv-day-weather, .pv-links-box)
+  :is(.pv-block-title, .pv-block-meta, .hint, .pv-fx-rate, .cond, .pv-private-tag) {
+  color: #5b7076 !important;
+}
+html[data-pv-theme="dark"] #root :is(.pv-budget-box, .pv-chart-box, .pv-fx-calc, .pv-expense-fx, .pv-es-member-fx)
+  :is(input, select, textarea) {
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+  caret-color: #007d82;
+}
+html[data-pv-theme="dark"] #root .pv-budget-box button,
+html[data-pv-theme="dark"] #root .pv-chart-box button {
+  color: #184047 !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+}
+html[data-pv-theme="dark"] #root .app-shell .field :is(input, select, textarea) {
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #c9dbdb !important;
+  caret-color: #007d82;
+}
+html[data-pv-theme="dark"] #root .app-shell .field > span {
+  color: #3f5860 !important;
+}
+html[data-pv-theme="dark"] #root .budget-total strong {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #root .budget-total span {
+  color: #5b7076 !important;
+}
+
+#root :is(.budget-card, .empty-state, .pv-home-resume, .pv-event-rail),
+#pv-account-gate .pv-home-resume {
+  background: var(--diary-wash);
+}
+
+#root :is(.booking-card, .expense-row, .stop-card) p,
+#root :is(.balance-row, .expense-row) details {
+  color: var(--diary-muted);
+}
+
+#root .app-shell .main-tabs {
+  border-bottom-color: var(--diary-line) !important;
+  padding-block: .25rem;
+  scroll-padding-inline: .5rem;
+}
+
+#root .app-shell .main-tabs button {
+  min-height: 44px;
+  border-radius: .75rem !important;
+  color: var(--diary-muted) !important;
+}
+
+#root .app-shell .main-tabs button[data-state="active"] {
+  color: var(--diary-accent) !important;
+  background: var(--diary-wash) !important;
+}
+
+#root .app-shell .main-tabs button[data-state="active"]::after {
+  background: var(--diary-accent) !important;
+}
+
+#root .app-shell .button:not(.secondary):not(.danger) {
+  background: var(--pv-dest-teal-deep, #00656a);
+  border-color: var(--pv-dest-teal-deep, #00656a);
+}
+
+#root .app-shell .button,
+#root .app-shell .field :is(input, select, textarea) {
+  border-radius: .7rem;
+}
+
+#root .app-shell .button {
+  min-height: 44px;
+  white-space: normal;
+  text-align: center;
+}
+
+#root .app-shell .button.secondary,
+#root .app-shell .field :is(input, select, textarea) {
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  border-color: var(--diary-line);
+}
+
+:is(#root, #pv-plat-panel, #pv-primary-nav, .pv-ux-sheet, #pv-account-gate)
+  :is(a, button, input, select, textarea, [role="tab"]):focus-visible {
+  outline: 2px solid var(--diary-accent);
+  outline-offset: 3px;
+}
+
+#pv-primary-nav .pv-nav-ico {
+  border-radius: .8rem;
+}
+
+#pv-plat-panel .pv-plat-hero {
+  border-radius: 1rem;
+}
+
+#pv-plat-panel .pv-plat-btn,
+.pv-ux-sheet :is(.pv-ux-primary, .pv-ux-ghost),
+#pv-account-gate .pv-account-submit {
+  min-height: 44px;
+  border-radius: .7rem;
+}
+
+@media (max-width: 520px) {
+  #root .trip-cover {
+    min-height: 190px;
+  }
+
+  #root .cover-content h1 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+    font-size: clamp(1.4rem, 7vw, 1.8rem);
+  }
+
+  #root .cover-content {
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
+  }
+
+  #root .section-heading {
+    flex-wrap: wrap;
+  }
+
+  #root .section-heading h2 {
+    font-size: clamp(1.35rem, 6vw, 1.6rem);
+  }
+
+  #root .app-shell .field :is(input, select, textarea) {
+    font-size: 16px;
+  }
+}
+
+@media print {
+  .pv-diary-cover { display: none; }
+  #root .trip-cover { box-shadow: none; }
+}
+
+.pv-trip-push {
+  width: min(calc(100% - 2rem), 27rem);
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 1.15rem;
+  border: 1px solid var(--diary-line);
+  border-radius: 1rem;
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  box-shadow: 0 12px 48px #102a3040;
+}
+.pv-trip-push::backdrop { background: #102a3070; }
+.pv-trip-push form { display: grid; gap: .75rem; }
+.pv-trip-push h2 { font: 700 1.45rem/1.2 var(--diary-display); }
+.pv-trip-push p { font-size: .93rem; }
+.pv-trip-push label { display: flex; align-items: center; gap: .65rem; }
+.pv-trip-push input { appearance: auto; accent-color: var(--diary-accent); }
+.pv-trip-push input[name="name"] {
+  width: 100%;
+  border: 1px solid var(--diary-line);
+  border-radius: .55rem;
+  padding: .6rem;
+  font-size: 16px;
+}
+.pv-trip-push form > div { display: flex; flex-wrap: wrap; gap: .55rem; }
+.pv-trip-push button {
+  min-height: 44px;
+  padding: .55rem .85rem;
+  border: 1px solid var(--diary-line);
+  border-radius: .65rem;
+}
+.pv-trip-push .pv-trip-push-primary {
+  background: var(--pv-dest-teal-deep, #00656a);
+  color: #fff;
+}
+.pv-trip-push-status:empty { display: none; }
+
+/* Keep resolved destination photos visible above the illustrated fallback. */
+#root .trip-cover[data-pv-cover-ready="1"]:has(> .pv-diary-cover) > img {
+  display: block;
+}
+#root .trip-cover[data-pv-cover-ready="1"]:has(> .pv-diary-cover) > .photo-credit {
+  display: block;
+}
+#root .trip-cover[data-pv-cover-ready="1"] > .pv-diary-cover { display: none; }
+html[data-pv-dest="gh"] #root .trip-cover {
+  border-block-start: 4px solid #dba62f;
+  border-block-end: 3px solid #b84132;
+}
+#pv-primary-nav:has(#pv-nav-budget) .pv-primary-nav-inner {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+#pv-primary-nav:has(#pv-nav-settings) .pv-primary-nav-inner {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+#pv-primary-nav:has(#pv-nav-budget) .pv-nav-label,
+#pv-primary-nav:has(#pv-nav-settings) .pv-nav-label {
+  font-size: clamp(.52rem, 2.2vw, .72rem);
+}
+body.pv-primary-nav-ready:has(#pv-nav-budget) .pv-prev-launch { display: none !important; }
+
+#root .workspace-tabs, #root .workspace-grid, #root .primary-panel {
+  min-width: 0;
+  max-width: 100%;
+}
+#root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  min-width: 0;
+  padding: clamp(.75rem, 3vw, 1.25rem);
+  border: 1px solid var(--diary-line);
+  border-radius: 1rem;
+  background: var(--diary-paper);
+  overflow-wrap: anywhere;
+  animation: pv-panel-in .18s ease-out;
+  will-change: opacity;
+  contain: layout style;
+}
+@keyframes pv-panel-in {
+  from { opacity: .72; }
+  to { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .primary-panel > [role="tabpanel"]:not([hidden]) { animation: none; }
+}
+#root .workspace-tabs { background: transparent !important; }
+#root .pv-event-section { margin-bottom: .8rem; }
+#root .pv-event-section ul { margin-block: .45rem; padding-inline-start: 1.2rem; }
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
+  }
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+    width: 100%;
+    height: auto;
+    min-height: 68px !important;
+    padding: .55rem .3rem !important;
+    gap: .35rem;
+    white-space: normal;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+    text-align: center;
+    font-size: 11.5px !important;
+    font-weight: 650 !important;
+    border-radius: 12px !important;
+  }
+  #root .workspace-tabs .main-tabs [role="tab"] svg {
+    flex-shrink: 0;
+    width: 20px !important;
+    height: 20px !important;
+  }
+  #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
+  #root .day-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .4rem;
+    overflow: visible;
+  }
+  #root .day-strip > button {
+    min-width: 0;
+    padding-inline: .35rem;
+  }
+}
+
+/* The local photo is painted by the cover itself, so a React image remount
+   or an asynchronous destination lookup cannot remove it. */
+#root .trip-cover[data-pv-accra-cover] {
+  background: #173b30;
+}
+#root .trip-cover[data-pv-accra-cover] > img,
+#root .trip-cover[data-pv-accra-cover] > .pv-diary-cover,
+#root .trip-cover[data-pv-accra-cover]:not([data-pv-cover-ready="1"]) > .photo-credit {
+  display: none !important;
+}
+
+html {
+  scroll-padding-top: calc(62px + env(safe-area-inset-top, 0px));
+  scroll-padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+}
+#root :is(.section-heading, .day-heading) { scroll-margin-top: .65rem; }
+#root .workspace-tabs .main-tabs [role="tab"] { min-height: 44px !important; }
+#root .app-shell :is(.icon-btn, .day-strip button),
+#pv-magic-panel :is(.pv-chips button, .pv-actions button),
+.pv-ux-sheet .pv-ux-actions button {
+  min-height: 44px;
+}
+#root .app-shell .icon-btn { min-width: 44px; }
+#pv-magic-panel .pv-panel-body { min-height: 0; overscroll-behavior: contain; }
+#pv-magic-panel .pv-chat-form > input { min-width: 0; font-size: 16px; }
+#pv-magic-panel .pv-panel-foot { padding-bottom: max(14px, env(safe-area-inset-bottom, 0px)); }
+#pv-primary-nav .pv-nav-item { min-width: 0; }
+#pv-primary-nav #pv-nav-budget .pv-nav-label { text-overflow: clip; }
+@media (max-width: 640px) {
+  html[data-pv-dest] body.pv-account-ready { background-attachment: scroll; }
+  #pv-primary-nav .pv-primary-nav-inner { gap: 2px; padding-inline: 4px; }
+  #pv-primary-nav .pv-nav-item { padding-inline: 1px; }
+  #pv-magic-panel .pv-drag-handle { touch-action: pan-y; }
+  #root .primary-panel .section-heading > div { min-width: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .day-strip { scroll-behavior: auto; }
+  #pv-primary-nav .pv-nav-item { transition: none; }
+}
+
+#root .pv-home-resume {
+  padding: 1rem;
+  border-inline-start: 4px solid var(--diary-accent);
+}
+#root .pv-home-resume .button { width: fit-content; min-height: 44px; }
+#root .pv-trip-sync { font-weight: 700; color: var(--diary-accent); }
+#root .pv-planning-tools {
+  display: grid;
+  gap: .55rem;
+  margin-block: .65rem;
+  padding: .75rem;
+  border-radius: .75rem;
+  background: var(--diary-wash);
+}
+#root .pv-planning-tools[hidden],
+#root .check-row[hidden],
+#root article.booking-card button[hidden] { display: none !important; }
+#root .pv-planning-tools p { white-space: pre-wrap; overflow-wrap: anywhere; }
+#root .pv-planning-tools ul { margin: 0; padding-inline-start: 1.2rem; }
+#root .pv-planning-tools select, #root .pv-packing-owner {
+  min-height: 44px;
+  max-width: 100%;
+  padding: .4rem;
+  border: 1px solid var(--diary-line);
+  border-radius: .5rem;
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+}
+#root .pv-planning-tools label { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
+#root .check-row:has(.pv-packing-owner) { flex-wrap: wrap; }
+#root .pv-packing-owner { margin-inline-start: auto; }
+#root .pv-bookings-ordered:not([hidden]) { display: flex; flex-direction: column; }
+#root .pv-bookings-ordered > .section-heading,
+#root .pv-bookings-ordered > [data-pv-planning="personal-bookings"],
+#root .pv-bookings-ordered > .pv-book-shared-label,
+#root .pv-bookings-ordered > .pv-event-section,
+#root .pv-bookings-ordered > .pv-planning-tools {
+  order: -20;
+}
+#root .pv-booking-docs { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .6rem; }
+#root :is(.pv-booking-docs, .pv-planning-tools) a { color: var(--diary-accent); text-decoration: underline; }
+#root .pv-plan-place { margin-block: .2rem .65rem; }
+#root .pv-explore-saved { display: inline-block; margin-top: .5rem; color: var(--diary-accent); font-weight: 700; }
+#root .pv-event-section li > :is(button, span) { margin-inline-start: .5rem; }
+.pv-itinerary-preview ul { padding-inline-start: 1.2rem; }
+
+/* Mobile hierarchy shared across destinations. */
+:root {
+  --diary-action: #16564b;
+  --diary-action-hover: #114437;
+  --diary-status: #315e52;
+}
+html[data-pv-theme="dark"] { --diary-status: #b9dfd2; }
+#root .pv-home-resume {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: .65rem;
+  padding: clamp(1rem, 4vw, 1.65rem);
+  background: linear-gradient(135deg, var(--diary-paper), var(--diary-wash));
+  border: 1px solid var(--diary-line);
+  border-inline-start: 4px solid var(--diary-accent);
+}
+#root .pv-home-resume h3 {
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  line-height: 1.16;
+}
+#root .pv-resume-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .35rem .8rem;
+}
+#root .pv-resume-top span { color: var(--diary-muted); font-weight: 650; overflow-wrap: anywhere; }
+#root .pv-resume-top small, #root .pv-trip-sync { color: var(--diary-status); font-weight: 650; }
+#root .pv-recent-row .pv-trip-card { padding-block: .5rem; }
+#root .pv-home-resume .button,
+#root .app-shell .button:not(.secondary):not(.danger) {
+  background: var(--diary-action);
+  border-color: var(--diary-action);
+}
+#root .pv-home-resume .button:hover,
+#root .app-shell .button:not(.secondary):not(.danger):hover {
+  background: var(--diary-action-hover);
+}
+
+#root .pv-itinerary-timeline [data-pv-planning="days"] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem;
+}
+#root .pv-itinerary-timeline [data-pv-planning="days"] label { flex: 1 1 12rem; }
+#root .pv-itinerary-timeline .stops-list {
+  border-inline-start: 2px solid var(--diary-line);
+  padding-inline-start: .75rem;
+  margin-inline-start: .35rem;
+}
+#root .pv-itinerary-timeline .stop-card { position: relative; }
+#root .pv-itinerary-timeline .stop-card::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: -1.14rem;
+  top: 1.2rem;
+  width: .65rem;
+  height: .65rem;
+  border-radius: 50%;
+  background: var(--diary-accent);
+}
+#root .pv-itinerary-timeline .time-pill { font-weight: 750; font-variant-numeric: tabular-nums; }
+#root .pv-itinerary-timeline .address { min-height: 44px; display: inline-flex; align-items: center; gap: .35rem; }
+
+#root .pv-explore-layout .booking-card,
+#root .pv-places-layout .stop-card {
+  border-radius: 1rem;
+  padding: .9rem;
+}
+#root :is(.pv-place-status, .pv-explore-saved, .pv-next-booking-label) {
+  display: inline-flex;
+  width: fit-content;
+  margin-block: .45rem;
+  padding: .3rem .55rem;
+  border-radius: .55rem;
+  background: var(--diary-wash);
+  color: var(--diary-ink);
+  font-size: .8rem;
+  font-weight: 700;
+}
+#root .pv-booking-next { border-inline-start: 4px solid var(--diary-accent) !important; }
+#root .pv-booking-docs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: .65rem;
+  border: 1px solid var(--diary-line);
+  border-radius: .6rem;
+  background: var(--diary-wash);
+}
+.pv-sw-me > span { display: block; font-size: .8rem; margin-bottom: .25rem; }
+.pv-sw-me > strong { display: block; font-size: clamp(1rem, 4.5vw, 1.4rem); }
+.pv-budget-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: .8rem 0; }
+.pv-budget-comparison > div { border: 1px solid #d6e4e1; border-radius: .65rem; padding: .65rem; }
+.pv-budget-comparison dt { font-size: .8rem; }
+.pv-budget-comparison dd { margin: .2rem 0 0; font-weight: 750; font-size: clamp(.95rem, 4.5vw, 1.3rem); overflow-wrap: anywhere; }
+
+#pv-magic-panel .pv-bubble.bot { font-size: 1rem; line-height: 1.6; }
+#pv-magic-panel #pv-chat-results:not(:empty) { margin-top: .9rem; border-top: 1px solid #d6e4e1; }
+:is(#pv-plat-panel, #pv-magic-panel, .pv-ux-sheet) :is(h2,h3) { line-height: 1.2; }
+:is(#pv-plat-panel, #pv-magic-panel, .pv-ux-sheet) :is(.pv-plat-btn,.pv-ux-primary,.pv-magic-close) { min-height: 44px; }
+@media (max-width: 640px) {
+  #root .pv-itinerary-timeline .day-strip {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+  }
+  #root .pv-itinerary-timeline .day-strip > button { flex: 0 0 6.25rem; scroll-snap-align: start; }
+}
+
+/* Keep labels and form controls usable on compact mobile viewports. */
+@media (max-width: 380px) {
+  #pv-primary-nav { padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right)); }
+  #pv-primary-nav:has(#pv-nav-budget) .pv-nav-label {
+    font-size: .625rem;
+    letter-spacing: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+  #root .pv-itinerary-timeline [data-pv-planning="days"] label {
+    flex-basis: 9rem;
+    min-width: 0;
+  }
+  #root .pv-itinerary-timeline [data-pv-planning="days"] select { width: 100%; }
+}
+@media (max-width: 640px) {
+  #root .app-shell :is(input, select, textarea),
+  .pv-ux-sheet :is(input, select, textarea),
+  #pv-plat-panel :is(input, select, textarea) {
+    max-width: 100%;
+    min-width: 0;
+  }
+  .pv-ux-modal .pv-ux-sheet {
+    max-height: min(78dvh, 840px);
+  }
+}
+@media (max-height: 420px) and (pointer: coarse) {
+  #pv-magic-panel:not([hidden]) {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+  }
+  #pv-magic-panel .pv-panel-body { flex: 0 0 auto; }
+  #pv-magic-panel .pv-panel-foot { position: sticky; bottom: 0; }
+}
+
+#root .topbar .brand:has(.pv-account-mark) > img { display: none; }
+#root .topbar .brand .pv-account-mark { width: 32px; height: 32px; }
+#root .trip-cover[data-pv-accra-cover] {
+  height: auto;
+  min-height: 0;
+}
+#root .trip-cover[data-pv-accra-cover]::before,
+#root .pv-home-resume.pv-resume-accra::before {
+  content: "";
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+  background: #173b30 url("./assets/ghana-collage.webp") center / cover no-repeat;
+}
+#root .trip-cover[data-pv-accra-cover] .cover-shade { display: none; }
+#root .trip-cover[data-pv-trip-cover] .cover-content {
+  position: relative;
+  inset: auto;
+  padding: clamp(1rem, 4vw, 2rem);
+}
+#root .trip-cover[data-pv-trip-cover] .photo-credit {
+  position: static;
+  display: block;
+  width: fit-content;
+  margin: 0 1rem .75rem;
+  color: #e4f3ed;
+  font-size: .75rem;
+}
+#root main.app-shell > .pv-home-resume { margin-bottom: 1rem; }
+#root .pv-home-resume.pv-resume-accra {
+  padding-top: 0;
+  overflow: hidden;
+}
+#root .pv-home-resume.pv-resume-accra::before {
+  width: calc(100% + 2 * clamp(1rem, 4vw, 1.65rem));
+  margin-inline: calc(-1 * clamp(1rem, 4vw, 1.65rem));
+}
+html #pv-preventivo-root .pv-prev-shell {
+  background: var(--diary-wash);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-preventivo-root .pv-prev-top { background: var(--pv-dest-teal-deep, #124048); }
+html #pv-preventivo-root .pv-prev-tabs,
+html #pv-preventivo-root .pv-callout { background: var(--diary-wash); border-color: var(--diary-line); color: var(--diary-ink); }
+html #pv-preventivo-root .pv-prev-card,
+html #pv-preventivo-root .pv-prev-tabs button,
+html #pv-preventivo-root label.pv-field :is(input,select,textarea) {
+  background: var(--diary-paper);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-preventivo-root .pv-prev-card :is(h2,p),
+html #pv-preventivo-root :is(.pv-prev-muted,.pv-status,label.pv-field) { color: var(--diary-ink); }
+html #pv-preventivo-root .pv-prev-tabs button.active,
+html #pv-preventivo-root .pv-prev-actions .primary {
+  background: var(--pv-dest-teal-deep, #16564b);
+  border-color: var(--pv-dest-teal-deep, #16564b);
+  color: white;
+}
+@media (max-width: 640px) {
+  body.pv-primary-nav-ready #pv-preventivo-root .pv-prev-shell {
+    bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+    height: min(72dvh, 700px) !important;
+    max-height: calc(100dvh - 100px - env(safe-area-inset-bottom, 0px)) !important;
+  }
+  #pv-preventivo-root .pv-prev-sub { display: none !important; }
+}
+
+/* Reserve the same space below the main panels as below Preventivo. */
+body.pv-primary-nav-ready {
+  --pv-panel-nav-space: calc(82px + env(safe-area-inset-bottom, 0px));
+}
+body.pv-primary-nav-ready #pv-plat-status {
+  top: calc(54px + env(safe-area-inset-top, 0px));
+  pointer-events: none;
+}
+body.pv-primary-nav-ready:not(:has([role="dialog"][data-state="open"], [role="listbox"])):is(
+  .pv-magic-open, .pv-plat-open, :has(#pv-account-menu[aria-expanded="true"]), :has(#pv-nav-settings[aria-expanded="true"])
+) #pv-primary-nav {
+  z-index: 125500;
+}
+body.pv-magic-open #pv-primary-nav #pv-hub-nav { opacity: 1; }
+body.pv-primary-nav-ready #pv-plat-panel.open {
+  bottom: var(--pv-panel-nav-space);
+  max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
+  padding-bottom: 16px;
+}
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"], #pv-nav-settings[aria-expanded="true"]) #pv-ux-modal {
+  padding-bottom: var(--pv-panel-nav-space);
+}
+body.pv-primary-nav-ready:has(#pv-account-menu[aria-expanded="true"], #pv-nav-settings[aria-expanded="true"]) #pv-ux-modal .pv-ux-sheet {
+  max-height: min(82dvh, calc(100dvh - var(--pv-panel-nav-space) - 8px));
+  padding-bottom: 20px;
+}
+@media (max-width: 640px) {
+  body.pv-primary-nav-ready #pv-magic-root #pv-magic-panel {
+    bottom: calc(var(--pv-panel-nav-space) + var(--pv-chat-keyboard, 0px)) !important;
+    height: min(82dvh, calc(var(--pv-chat-viewport, 100dvh) - var(--pv-panel-nav-space) - 8px));
+  }
+}
+
+html #pv-magic-root .pv-magic-panel,
+html #pv-ux-modal .pv-ux-sheet,
+html #pv-plat-panel {
+  background: var(--diary-wash);
+  border-color: var(--diary-line);
+  color: var(--diary-ink);
+}
+html #pv-magic-root :is(.pv-panel-head, .pv-panel-foot, .pv-place-card),
+html #pv-ux-modal :is(.pv-menu-grid button, .pv-menu-context, .pv-account-card, .pv-account-field),
+html #pv-plat-panel .pv-plat-card {
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  border-color: var(--diary-line);
+}
+html #pv-ux-modal .pv-account-field dt { color: var(--diary-muted); }
+html #pv-ux-modal .pv-account-field dd { color: var(--diary-ink); }
+html #pv-ux-modal .pv-account-card .user { color: var(--diary-accent); }
+html #pv-ux-modal .pv-account-card .meta,
+html #pv-ux-modal .pv-menu-section h3 { color: var(--diary-muted); }
+html #pv-magic-root :is(.pv-magic-panel h3, .pv-lead, .pv-bubble.bot, .pv-place-card p),
+html #pv-ux-modal :is(.pv-menu-grid button span, .pv-menu-context p),
+html #pv-plat-panel .pv-plat-muted { color: var(--diary-ink); }
+html #pv-magic-root .pv-bubble.bot { background: var(--diary-paper); border-color: var(--diary-line); }
+html #pv-magic-root :is(.pv-bubble.user, .pv-chat-form button, .pv-card-actions .primary),
+html #pv-ux-modal .pv-ux-primary,
+html #pv-plat-panel .pv-plat-btn.primary {
+  background: var(--pv-dest-teal-deep, #16564b);
+  border-color: var(--pv-dest-teal-deep, #16564b);
+  color: white;
+}
+
+/*
+ * Import modal: paste/file/ghost controls are always light paper.
+ * In dark theme --pv-ink / --diary-ink become pale and wash out on white.
+ */
+html[data-pv-theme="dark"] #pv-ux-modal :is(.pv-import-paste, .pv-import-file, .pv-import-hint, .pv-import-map, .pv-import-trip-list label, .pv-import-item, .pv-ux-card) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-paste {
+  background: #fff !important;
+  border-color: #cfe0e4 !important;
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-paste::placeholder {
+  color: #5b7076 !important;
+  opacity: 1 !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-file {
+  background: #f7fbfb !important;
+  border-color: rgba(0, 125, 130, 0.35) !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-file input[type="file"] {
+  color: #12343c !important;
+  background: #fff !important;
+  border-color: #cfe0e4 !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal :is(.pv-ux-ghost, .pv-ux-close) {
+  background: #eef5f5 !important;
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-hint {
+  background: #eef7f7 !important;
+  border-color: rgba(0, 125, 130, 0.14) !important;
+  color: #16353b !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-trip-list label {
+  background: #fff !important;
+  border-color: #d5e3e6 !important;
+}
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-trip-list span,
+html[data-pv-theme="dark"] #pv-ux-modal .pv-import-file > span {
+  color: #3f5860 !important;
+}
+
+/*
+ * Pronty chat import proposal sits on light paper (#f7fbfb).
+ * Global .pv-lead / diary-ink go pale in dark theme → unreadable on white.
+ */
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import {
+  background: #f7fbfb !important;
+  border-color: #d7e4e6 !important;
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import :is(
+  h4,
+  .pv-lead,
+  .pv-import-count,
+  .pv-import-group h4,
+  .pv-import-map,
+  .pv-import-hint,
+  .pv-import-item,
+  .title,
+  .detail,
+  .pv-imp-guess,
+  strong,
+  p,
+  span,
+  label
+) {
+  color: #12343c !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-lead strong {
+  color: #0f2c31 !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-import-group h4 span {
+  color: #3f5860 !important;
+}
+html[data-pv-theme="dark"] #pv-magic-root .pv-chat-import .pv-chat-clarify button {
+  background: #fff !important;
+  border-color: #b8d0d0 !important;
+  color: #124048 !important;
+}
+
+html #pv-plat-status.server { display: none !important; }
+html[data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
+  background: var(--diary-paper);
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: #c5d6da !important;
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active {
+  color: var(--pv-account-teal, #5eead4) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #pv-primary-nav .pv-primary-nav-inner {
+  background: rgba(22, 40, 44, 0.94) !important;
+}
+
+/* Keep the trip sections next to the cover and distinguish the active one. */
+#root .app-shell .workspace-tabs > .main-tabs {
+  margin-top: .55rem;
+  background: var(--diary-paper) !important;
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+  color: var(--diary-ink) !important;
+  font-size: .92rem !important;
+  font-weight: 720 !important;
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"][aria-selected="true"] {
+  background: var(--diary-action) !important;
+  color: white !important;
+  box-shadow: none !important;
+}
+#root .workspace-tabs > .trip-toolbar { margin-top: .6rem; }
+#pv-primary-nav .pv-primary-nav-inner .pv-nav-item {
+  color: var(--diary-ink);
+}
+#pv-primary-nav .pv-primary-nav-inner .pv-nav-item .pv-nav-label {
+  font-weight: 700;
+}
+:is(#pv-plat-panel, #pv-ux-modal, #pv-magic-panel, #pv-preventivo-root)
+  :is(.pv-plat-tab, .pv-plat-btn, .pv-prev-tabs button, .pv-menu-grid button, .pv-chips button) {
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    font-size: clamp(.77rem, 3.35vw, .92rem) !important;
+  }
+  #root .trip-cover[data-pv-trip-cover] .cover-content { padding-block: .7rem; }
+  #root .trip-cover[data-pv-trip-cover] .photo-credit { margin-bottom: .45rem; }
+}
+
+/* Compact information strip below the Ghana collage. */
+#root .trip-cover[data-pv-trip-cover] .cover-content {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .6rem 1.15rem;
+  padding: 1.1rem 1rem .65rem;
+  font-size: .8rem;
+  line-height: 1.35;
+  color: #d7ece4;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-content h1 {
+  order: -2;
+  flex: 0 0 100%;
+  display: block;
+  margin: 0;
+  font-size: clamp(1.28rem, 5.2vw, 1.75rem);
+  line-height: 1.18;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-content .destination {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: inherit;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-meta { display: contents; }
+#root .trip-cover[data-pv-trip-cover] .cover-meta > span:first-child {
+  order: -1;
+  flex: 0 0 100%;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-meta > :is(span,button) {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  font-size: inherit;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-content svg {
+  width: .85rem;
+  height: .85rem;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-meta > button {
+  min-height: 44px;
+}
+#root .trip-cover[data-pv-trip-cover] .photo-credit {
+  margin: 0 .85rem .45rem;
+  font-size: .62rem;
+  line-height: 1.2;
+}
+
+/* Title lives in the green meta strip — no absolute overlay / edge clipping. */
+#root .trip-cover[data-pv-trip-cover] .cover-content h1 {
+  position: static;
+  inset: auto;
+  bottom: auto;
+  padding: 0 0 .25rem;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  color: #f4fbf7;
+  font-size: clamp(1.32rem, 5.4vw, 1.85rem);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+  text-shadow: none;
+  z-index: auto;
+}
+
+
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover]) {
+  height: auto;
+  min-height: 0;
+  background: var(--pv-dest-teal-deep, #173b30);
+}
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover])::before {
+  content: "";
+  display: block;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+}
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover]):has(.pv-destination-collage)::before,
+#root .trip-cover[data-pv-trip-cover]:not([data-pv-accra-cover])[data-pv-cover-ready="1"]:not(:has(.pv-destination-collage))::before {
+  display: none;
+}
+#root .trip-cover[data-pv-trip-cover] .cover-shade { display: none; }
+#root .trip-cover[data-pv-trip-cover] .pv-diary-cover {
+  bottom: auto;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+}
+#root .trip-cover[data-pv-trip-cover] > img {
+  height: auto;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+  object-fit: cover;
+}
+#root .trip-cover[data-pv-trip-cover]:has(.pv-destination-collage) > img { display: none; }
+#root .trip-cover .pv-destination-collage {
+  display: flex;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  max-height: 410px;
+  overflow: hidden;
+}
+#root .pv-destination-collage a { flex: 1 1 0; min-width: 0; }
+#root .pv-destination-collage img { width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 640px) {
+  #pv-account-chip,
+  #pv-primary-nav .pv-primary-nav-inner {
+    background: var(--diary-paper);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  html[data-pv-dest] #pv-dest-atmosphere {
+    mix-blend-mode: normal;
+    opacity: .38;
+  }
+}
+.pv-trip-workflow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-block: .65rem;
+}
+.pv-trip-workflow > button {
+  flex: 1 1 8rem;
+  min-height: 44px;
+  font-weight: 700;
+}
+#pv-day-sheet .pv-plat-list > li {
+  padding-block: .55rem;
+  overflow-wrap: anywhere;
+}
+
+/* Trip workspace: prep vs in-viaggio menu + denser toolbar */
+#root .workspace-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+#root .workspace-tabs > .pv-trip-phase {
+  order: -2;
+}
+#root .workspace-tabs > .pv-trip-phase-hint {
+  order: -1;
+}
+#root .app-shell .main-tabs [role="tab"][data-state="active"],
+#root .app-shell .main-tabs [role="tab"][aria-selected="true"] {
+  font-weight: 750 !important;
+}
+#root .trip-toolbar {
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--diary-line);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--diary-paper) 92%, transparent);
+}
+#root .trip-toolbar .travelers {
+  min-width: 0;
+  flex: 1 1 10rem;
+  gap: 10px;
+}
+#root .trip-toolbar .travelers > span:last-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--diary-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#root .trip-toolbar .toolbar-actions {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#root .trip-toolbar .toolbar-actions .button {
+  min-height: 44px;
+  padding-inline: 14px;
+  font-weight: 700;
+}
+#root .trip-toolbar .icon-btn {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-paper);
+}
+@media (max-width: 640px) {
+  #root .trip-toolbar .toolbar-actions .button {
+    flex: 1 1 auto;
+    min-width: 8.5rem;
+  }
+}
+@media (min-width: 641px) {
+  #root .app-shell .workspace-tabs .main-tabs {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    overflow: visible !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
+  }
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    flex: 1 1 7.5rem;
+    min-width: 7.2rem;
+    max-width: 11rem;
+    flex-direction: row !important;
+    justify-content: center;
+    gap: .45rem;
+    border-radius: 12px !important;
+    padding: .65rem .85rem !important;
+  }
+  #root .workspace-tabs .main-tabs [role="tab"]::after { display: none; }
+}
+
+/* Section panels: soft tint of destination sand toward white (clearer than page wash) */
+#root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  gap: .65rem;
+  padding: clamp(.9rem, 3.2vw, 1.35rem);
+  background: color-mix(in srgb, var(--diary-wash, var(--pv-dest-sand, #f3f8f8)) 22%, #fff);
+  box-shadow: 0 10px 26px rgba(20, 49, 55, .08);
+}
+html[data-pv-theme="dark"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  background: #24383d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .35);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] {
+  gap: .55rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .55rem .75rem;
+  margin-block: .15rem .35rem;
+  padding: .65rem .75rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools[data-pv-planning="days"] label {
+  /* Visually hidden — day strip is the navigator; select stays for a11y. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools:not([data-pv-planning="days"]) label {
+  flex: 1 1 12rem;
+  margin: 0;
+}
+#root .pv-cover-countdown {
+  position: absolute;
+  left: .75rem;
+  right: auto;
+  top: .75rem;
+  bottom: auto;
+  z-index: 6;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  align-items: flex-start;
+  max-width: min(70%, 15.5rem);
+  padding: .45rem .6rem .5rem;
+  border-radius: .9rem;
+  background: rgb(8 24 22 / .55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgb(0 0 0 / .22);
+  color: #fff;
+  text-shadow: 0 1px 3px rgb(0 0 0 / .35);
+}
+#root .pv-cover-countdown .pv-cover-count-label {
+  margin: 0;
+  width: fit-content;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 700 .68rem/1.2 inherit;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  opacity: .92;
+}
+#root .pv-cover-countdown .pv-cover-count-value {
+  margin: 0;
+  font: 700 clamp(1.35rem, 5.5vw, 1.85rem)/1.05 var(--diary-display);
+  letter-spacing: -.03em;
+}
+#root .pv-cover-countdown .pv-cover-count-meta {
+  display: none;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section] > .section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.35rem, 5.2vw, 1.7rem);
+}
+#root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card) {
+  padding: .85rem .95rem;
+  border-width: 1px;
+  border-style: solid;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+#root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row):hover {
+  border-color: color-mix(in srgb, var(--diary-accent) 35%, var(--diary-line));
+  box-shadow: 0 6px 18px rgba(16, 42, 48, .07);
+}
+#root .primary-panel .empty-state {
+  text-align: center;
+  padding: 1.35rem 1rem;
+  border-style: dashed;
+  background: color-mix(in srgb, var(--diary-wash) 80%, transparent);
+}
+#root .primary-panel .day-strip {
+  gap: .45rem;
+  padding: .15rem 0 .25rem;
+}
+#root .primary-panel .day-strip > button {
+  border-radius: 999px !important;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-paper);
+  color: var(--diary-ink);
+  font-weight: 650;
+}
+#root .primary-panel .day-strip > button.selected,
+#root .primary-panel .day-strip > button[aria-pressed="true"],
+#root .primary-panel .day-strip > button[data-state="active"] {
+  background: var(--diary-action) !important;
+  border-color: var(--diary-action) !important;
+  color: #fff !important;
+}
+#root .primary-panel .check-row {
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  min-height: 52px;
+}
+#root .primary-panel .check-row.done {
+  opacity: .62;
+}
+#root .primary-panel .money-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: .55rem;
+}
+#root .primary-panel .money-stats > div {
+  border-radius: .9rem;
+  padding: .75rem .8rem;
+  border: 1px solid var(--diary-line);
+  background: var(--diary-wash);
+}
+#root .primary-panel .notes-paper {
+  min-height: 12rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1rem;
+  line-height: 1.55;
+}
+#root .primary-panel .budget-card {
+  padding: .95rem 1rem;
+}
+#root .primary-panel .pv-planning-tools {
+  border: 1px solid color-mix(in srgb, var(--diary-line) 80%, transparent);
+  background: color-mix(in srgb, var(--diary-wash) 88%, transparent);
+}
+#root .trip-toolbar {
+  align-items: center;
+  margin: 10px 0 8px;
+  padding: 8px 10px;
+  gap: 8px;
+}
+#root .trip-toolbar .travelers > span:last-child {
+  font-size: 12.5px;
+}
+#root .app-shell .workspace-tabs .main-tabs {
+  border: 1px solid var(--diary-line) !important;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--diary-line) 45%, transparent);
+}
+#root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+  letter-spacing: -.01em;
+}
+@media (max-width: 640px) {
+  #root .app-shell .workspace-tabs .main-tabs [role="tab"] {
+    min-height: 72px !important;
+    gap: .4rem;
+    padding: .5rem .25rem !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #root .primary-panel :is(.stop-card, .booking-card, .check-row, .expense-row) {
+    transition: none;
+  }
+}
+
+#root .pv-event-action { justify-self: start; margin-block-end: .6rem; }
+
+html[data-pv-theme="dark"] :is(#root, #pv-trip-preventivo-panel)
+:is(.pv-tp-card, .pv-tp-sheet, .pv-esim-card, #pv-tp-lines .pv-tp-line) {
+  color-scheme: dark;
+  background: #213539 !important;
+  color: #edf5f5 !important;
+  border-color: #627c80 !important;
+}
+html[data-pv-theme="dark"] :is(#root, #pv-trip-preventivo-panel) .pv-tp-card
+:is(h3, strong, b, header, label, details, summary, .pv-payment-info, .pv-tp-muted, .pv-tp-status) {
+  color: #edf5f5 !important;
+}
+html[data-pv-theme="dark"] :is(#root, #pv-trip-preventivo-panel) .pv-tp-card
+:is(input, select, option, textarea, button:not(.pv-tp-danger)) {
+  background: #30494e !important;
+  color: #fff !important;
+  border-color: #859ea2 !important;
+}
+html[data-pv-theme="dark"] #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active,
+html[data-pv-theme="dark"] #pv-account-chip .pv-account-chip-hint {
+  color: #9df2df !important;
+}
+html[data-pv-theme="dark"] #root .pv-event-action {
+  background: #263e42 !important;
+  color: #edf5f5 !important;
+  border-color: #789397 !important;
+}
+
+html[data-pv-theme="dark"] body.pv-dest-theme-ready #pv-primary-nav .pv-primary-nav-inner .pv-nav-item.is-active,
+html[data-pv-theme="dark"] body.pv-dest-theme-ready #pv-account-chip #pv-account-chip-hint {
+  color: #9df2df !important;
+}
+html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"] {
+  color: #edf5f5 !important;
+  background: #23383d !important;
+}
+html[data-pv-theme="dark"] #root .workspace-tabs .main-tabs [role="tab"][aria-selected="true"] {
+  color: white !important;
+  background: #185850 !important;
+  box-shadow: inset 0 -3px #9df2df;
+}
+
+/* Keep each travel card's surface, secondary text and interactive ink together. */
+@media screen {
+  html[data-pv-theme="dark"] #root :is(.explore-links a, .stop-card, .booking-card,
+    .saved-card, .map-card, .expense-row, .split-panel, .check-row, .empty-state) {
+    background: #203439 !important;
+    color: #edf5f5 !important;
+    border-color: #687f84 !important;
+  }
+  html[data-pv-theme="dark"] #root .workspace-tabs .explore-search .field > span,
+  html[data-pv-theme="dark"] #root .explore-links a strong {
+    color: #edf5f5 !important;
+  }
+  html[data-pv-theme="dark"] #root .explore-links a span,
+  html[data-pv-theme="dark"] #root :is(.stop-card, .booking-card, .expense-row, .empty-state) > p,
+  html[data-pv-theme="dark"] #root :is(.stop-card, .booking-card, .expense-row) p,
+  html[data-pv-theme="dark"] #root .expense-row details,
+  html[data-pv-theme="dark"] #root .check-row.done > span {
+    color: #c6d8db !important;
+  }
+  html[data-pv-theme="dark"] #root .explore-links a svg {
+    color: #95eadc !important;
+  }
+  html[data-pv-theme="dark"] #root .explore-links a:focus-visible {
+    outline: 3px solid #95eadc;
+    outline-offset: 2px;
+  }
+}
+
+#root .trip-cover > img:not([src]),
+#root .trip-cover > .photo-credit:empty { display: none !important; }
+
+/* Itinerario: one clear day navigator + tighter day reading. */
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .section-heading .eyebrow,
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .pv-section-guide {
+  display: none;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .section-heading h2 {
+  font-size: clamp(1.35rem, 4vw, 1.85rem);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: .4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  padding: .1rem 0 .25rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button {
+  display: grid;
+  gap: .12rem;
+  align-content: center;
+  flex: 0 0 auto;
+  min-width: 5.35rem;
+  max-width: 7rem;
+  border-radius: .85rem !important;
+  padding: .5rem .7rem;
+  text-align: start;
+  scroll-snap-align: start;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--diary-action, #16564b) 28%, transparent);
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected :is(span, strong),
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] :is(span, strong) {
+  color: #fff !important;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -4px;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button strong {
+  font-size: 1.05rem;
+  letter-spacing: -.02em;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button span {
+  font-size: .72rem;
+  opacity: .92;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .pv-planning-tools[data-pv-planning="days"] {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .utility-strip {
+  order: 5;
+  margin-block: .45rem 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .route-warning {
+  order: 6;
+  margin: 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] > .utility-strip:not(:has(a, button:nth-child(2))) + .route-warning {
+  display: none;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading {
+  margin-block: .35rem 0;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-heading h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .empty-state {
+  padding: .95rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stops-list {
+  gap: .75rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card.pv-stop-enhanced {
+  overflow: visible;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card h3 {
+  margin: .05rem 0 .15rem;
+  font-size: 1.12rem;
+  line-height: 1.22;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-footer {
+  gap: .4rem;
+  margin-top: .25rem;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .pv-stop-media {
+  width: 92px;
+  height: 92px;
+  border-radius: 16px;
+}
+#root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .stop-card .address {
+  font-size: .82rem;
+  opacity: .88;
+}
+
+/* Ghana scrapbook panels — richer wash behind brighter cards so layers don’t blend. */
+html[data-pv-dest="gh"] {
+  --diary-paper: #ffffff;
+  --diary-card: #ffffff;
+  /* Keep wash for accents, but never use it as card fill (blends with Ghana panel). */
+  --diary-wash: #ffffff;
+  --diary-muted: #3a4630;
+  --diary-ink: #29271e;
+  --diary-line: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 55%, #b89a58);
+  --diary-action: var(--pv-dest-teal-deep, #104d37);
+  --diary-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 18%, transparent);
+}
+html[data-pv-dest="gh"] #root .primary-panel .empty-state {
+  background: #fff !important;
+  border: 1.5px solid color-mix(in srgb, var(--pv-dest-accent, #dba62f) 42%, #c9b27e) !important;
+  border-style: solid !important;
+  color: #29271e !important;
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+}
+html[data-pv-dest="gh"] #root .day-heading > span {
+  color: #3a4630 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] {
+  --diary-paper: #15241f;
+  --diary-card: #22352e;
+  --diary-wash: color-mix(in srgb, var(--pv-dest-teal, #176348) 34%, #0d1714);
+  --diary-line: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 34%, #3d555a);
+  --diary-ink: #edf5f5;
+  --diary-muted: #c5d6da;
+  --diary-accent: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, white);
+  --diary-shadow: 0 12px 32px rgba(0, 0, 0, .42);
+}
+/* Ghana section frame: soft cream (not pure white); gold wash stays on the PAGE. */
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  position: relative;
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 34%, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 28%, var(--diary-line));
+  border-block-start: 3px solid var(--pv-dest-accent, #dba62f);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--pv-dest-teal, #176348) 14%, transparent);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"]:not([hidden]) {
+  background: #2a4038;
+  border-block-start-color: var(--pv-dest-accent, #dba62f);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, .4);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: var(--pv-dest-teal-deep, #104d37);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] .section-heading h2 {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 55%, #edf5f5);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button:not(.selected):not([aria-pressed="true"]) {
+  background: var(--diary-card, #fff) !important;
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 75%, #c9b27e) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, transparent);
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button.selected,
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"][data-pv-section="itinerary"] .day-strip > button[aria-pressed="true"] {
+  background: var(--pv-dest-teal, #176348) !important;
+  border-color: var(--pv-dest-teal-deep, #104d37) !important;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
+}
+html[data-pv-dest="gh"] #root .pv-day-weather {
+  background: var(--diary-card, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 42%, var(--diary-line));
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pv-dest-teal, #176348) 12%, transparent);
+}
+html[data-pv-dest="gh"] #root .pv-day-weather .pv-weather-sticker {
+  background: color-mix(in srgb, var(--pv-dest-sand, #fff5df) 65%, #fff);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 35%, transparent);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-links-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-fx-calc,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-budget-box,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-chart-box {
+  color: #edf5f5 !important;
+  background: var(--diary-card, #22352e) !important;
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 38%, #3d555a) !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(.pv-block-title, .pv-block-meta, .cond),
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather :is(p, span, strong, small, div, em):not(button):not(button *):not(.pv-weather-sticker) {
+  color: #d7e6e8 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .pv-day-weather .temp {
+  color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 70%, white) !important;
+}
+html[data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper) {
+  border-color: color-mix(in srgb, var(--pv-dest-line, #e5d2ac) 70%, #c9b27e);
+  background: var(--diary-card, #fff);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--pv-dest-teal, #176348) 10%, transparent);
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .check-row, .expense-row, .saved-card, .text-card, .notes-paper, .empty-state) {
+  background: var(--diary-card, #22352e);
+  border-color: color-mix(in srgb, var(--pv-dest-accent, #dba62f) 22%, #3d555a);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .28);
+  color: #edf5f5 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .primary-panel > [role="tabpanel"] :is(.stop-card, .booking-card, .empty-state, .notes-paper)
+  :is(p, span, strong, small, label, a, h3):not(button):not(button *) {
+  color: #d7e6e8 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading,
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading h3 {
+  color: #edf5f5 !important;
+}
+html[data-pv-theme="dark"][data-pv-dest="gh"] #root .day-heading > span {
+  color: #d7e6e8 !important;
+  background: #1a2a24 !important;
+}
+/* Light Ghana: ensure muted labels stay dark enough on gold wash */
+html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root .primary-panel > [role="tabpanel"] {
+  color: #29271e;
+}
+html[data-pv-dest="gh"]:not([data-pv-theme="dark"]) #root :is(.eyebrow, .pv-section-guide, .address, .hint) {
+  color: #3a4630 !important;
+  opacity: 1 !important;
+}
