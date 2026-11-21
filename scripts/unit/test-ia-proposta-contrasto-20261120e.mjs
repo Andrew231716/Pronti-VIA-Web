@@ -32,9 +32,9 @@ ok(
 ok(
   "stamps 20261120e",
   /magic-extras-20261120k\.js/.test(index) &&
-    /20261120k-sguardo/.test(sw) &&
-    /const SHELL_VER = "20261120k"/.test(account) &&
-    existsSync("assets/magic-extras-20261120k.js") &&
+    /20261120m-prep/.test(sw) &&
+    /const SHELL_VER = "20261120m"/.test(account) &&
+    existsSync("assets/magic-extras-20261120m.js") &&
     /dataset\.pvReady = "20261120k"/.test(magic)
 );
 

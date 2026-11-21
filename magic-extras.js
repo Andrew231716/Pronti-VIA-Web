@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120k") return;
+    if (style && style.dataset.pvReady === "20261120m") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120k";
+    style.dataset.pvReady = "20261120m";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -327,6 +327,20 @@
       .pv-chart-row .bar{height:10px;border-radius:999px;background:#e6efef;overflow:hidden}
       .pv-chart-row .fill{height:100%;background:#007d82;border-radius:inherit}
       .pv-dist-note,.route-hop{display:block;margin:4px 0 10px;padding:6px 10px;border-radius:999px;background:#eef6f6;color:#3c5c62;font-size:.78rem;font-weight:600;width:fit-content}
+      .pv-org-card .sub-heading h3{font-size:1rem}
+      .pv-org-block{display:grid;gap:8px;padding:0 2px 4px}
+      .pv-org-block + .pv-org-block{margin-top:10px;padding-top:10px;border-top:1px solid #e7eef1}
+      .pv-org-label{margin:0;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
+      .pv-org-list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+      .pv-org-item,.saved-card .pv-org-item{
+        appearance:none;display:flex;align-items:flex-start;gap:8px;width:100%;margin:0;padding:9px 11px;
+        border:1px solid #d7e4e8;border-radius:12px;background:#f8fbfb;color:#1d3338;text-align:left;
+        cursor:pointer;font:inherit;line-height:1.3
+      }
+      .pv-org-item:hover,.pv-org-item:focus-visible{border-color:#51a7a3;background:#eef8f7;outline:none}
+      .pv-org-item strong{display:block;font-size:.86rem;font-weight:700;color:#16353b}
+      .pv-org-item small{display:block;margin-top:2px;font-size:.75rem;color:#5b7076}
+      .pv-org-empty{margin:0;color:#5b7076;font-size:.88rem;line-height:1.45}
       .pv-day-legend{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:8px;margin:0;padding:12px 14px 14px;border-top:1px solid #e7eef1;background:#f7fbfb}
       .pv-day-legend .pv-day-legend-title{grid-column:1/-1;margin:0 0 2px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#5b7076;font-weight:700}
       .pv-day-legend button{appearance:none;display:flex;align-items:flex-start;gap:8px;width:100%;margin:0;padding:8px 9px;border:1px solid #d7e4e8;border-radius:12px;background:#fff;color:#1d3338;text-align:left;cursor:pointer;font:inherit;line-height:1.25}
@@ -6515,48 +6529,204 @@ Regole:
     }
   }
 
+  function openTripSection(section) {
+    const tabs = [...document.querySelectorAll('#root .main-tabs [role="tab"], #root [role="tab"]')];
+    const tab =
+      tabs.find((el) => (el.getAttribute("aria-controls") || "").includes(section)) ||
+      tabs.find((el) => new RegExp(section, "i").test(el.textContent || "")) ||
+      tabs.find((el) => new RegExp(section, "i").test(el.getAttribute("data-pv-section") || ""));
+    if (tab) {
+      tab.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+      tab.click();
+      return;
+    }
+    if (section === "preventivo" && typeof window.__pvOpenPreventivo === "function") {
+      window.__pvOpenPreventivo();
+    }
+  }
+
+  function collectPrepGaps(trip) {
+    const days = tripDays(trip);
+    const stops = Array.isArray(trip.stops) ? trip.stops : [];
+    const emptyDays = days
+      .map((day, index) => ({
+        day,
+        index,
+        label: `Giorno ${index + 1}`,
+        when: formatDayShort(day),
+      }))
+      .filter((row) => !stops.some((s) => String(s.day || "") === row.day));
+
+    const unscheduled = stops.filter((s) => stopNeedsDay(s, trip));
+    const noAddress = stops.filter((s) => !String(s.address || "").trim());
+    const checklist = Array.isArray(trip.checklist) ? trip.checklist : [];
+    const packingDone = checklist.filter((c) => c && c.done).length;
+    const packingOpen = checklist.length - packingDone;
+    const bookings = Array.isArray(trip.bookings) ? trip.bookings : [];
+    const expenses = Array.isArray(trip.expenses) ? trip.expenses : [];
+    const members = Array.isArray(trip.members) ? trip.members : [];
+    const budget = Number(trip.budget) || 0;
+    const notes = String(trip.notes || "").trim();
+
+    const prep = [];
+    if (unscheduled.length) {
+      prep.push({
+        id: "unscheduled",
+        title:
+          unscheduled.length === 1
+            ? "1 tappa senza giorno"
+            : `${unscheduled.length} tappe senza giorno`,
+        detail: "Assegnale a un giorno dell’itinerario",
+        section: "itinerary",
+      });
+    }
+    if (noAddress.length) {
+      prep.push({
+        id: "address",
+        title:
+          noAddress.length === 1
+            ? "1 tappa senza indirizzo"
+            : `${noAddress.length} tappe senza indirizzo`,
+        detail: "Serve per mappe e indicazioni",
+        section: "itinerary",
+      });
+    }
+    if (!checklist.length) {
+      prep.push({
+        id: "packing-empty",
+        title: "Valigia ancora vuota",
+        detail: "Aggiungi le cose da portare",
+        section: "packing",
+      });
+    } else if (packingOpen > 0) {
+      prep.push({
+        id: "packing-open",
+        title:
+          packingOpen === 1 ? "1 voce in valigia da fare" : `${packingOpen} voci in valigia da fare`,
+        detail: `${packingDone}/${checklist.length} già spuntate`,
+        section: "packing",
+      });
+    }
+    if (!bookings.length) {
+      prep.push({
+        id: "bookings",
+        title: "Nessuna prenotazione salvata",
+        detail: "Volo, hotel o trasferimenti",
+        section: "bookings",
+      });
+    }
+    if (budget <= 0) {
+      prep.push({
+        id: "budget",
+        title: "Budget non impostato",
+        detail: "Utile per spese e preventivo",
+        section: "expenses",
+      });
+    } else if (!expenses.length) {
+      prep.push({
+        id: "expenses",
+        title: "Nessuna spesa registrata",
+        detail: "Puoi iniziare quando vuoi",
+        section: "expenses",
+      });
+    }
+    if (members.length < 2) {
+      prep.push({
+        id: "members",
+        title: "Compagni di viaggio da aggiungere",
+        detail: "Per condividere e dividere le spese",
+        section: "settings",
+      });
+    }
+    if (!notes) {
+      prep.push({
+        id: "notes",
+        title: "Note di viaggio vuote",
+        detail: "Promemoria utili per tutti",
+        section: "notes",
+      });
+    }
+
+    return { emptyDays, prep, total: emptyDays.length + prep.length };
+  }
+
   function refreshOrganizeOverviewCard() {
     const card = document.querySelector("#root section.saved-card, #root .saved-card");
     if (!card) return;
     const trip = readOpenTripSync();
-    if (!trip || !Array.isArray(trip.stops)) return;
-    const pending = trip.stops.filter((s) => stopNeedsDay(s, trip));
-    const sig = `${pending.length}:${pending.map((s) => s.id || s.title || "").join("|")}`;
+    if (!trip) return;
+    const gaps = collectPrepGaps(trip);
+    const sig = [
+      gaps.total,
+      gaps.emptyDays.map((d) => d.day).join(","),
+      gaps.prep.map((p) => p.id).join(","),
+    ].join("|");
     if (card.dataset.pvOrgSig === sig) return;
     card.dataset.pvOrgSig = sig;
+    card.classList.add("pv-org-card");
+
+    const heading = card.querySelector(".sub-heading h3");
+    if (heading) heading.textContent = "Ancora da preparare";
 
     const countEl = card.querySelector(".round-count");
-    if (countEl) countEl.textContent = String(pending.length);
+    if (countEl) countEl.textContent = String(gaps.total);
 
-    card.querySelectorAll(".saved-place, .small-note, .pv-org-note").forEach((el) => el.remove());
+    card
+      .querySelectorAll(".saved-place, .small-note, .pv-org-note, .pv-org-block, .pv-org-empty")
+      .forEach((el) => el.remove());
 
-    for (const stop of pending.slice(0, 3)) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "saved-place";
-      const cat = escapeHtml(String(stop.category || "Altro"));
-      const title = escapeHtml(String(stop.title || "Senza titolo"));
-      btn.innerHTML = `<span aria-hidden="true">📍</span><span>${title}<small>${cat}</small></span>`;
-      btn.addEventListener("click", () => {
-        const tab = [...document.querySelectorAll('#root .main-tabs [role="tab"]')].find((el) =>
-          (el.getAttribute("aria-controls") || "").includes("itinerary")
-        );
-        tab?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
-        tab?.click();
-      });
-      card.appendChild(btn);
+    if (!gaps.total) {
+      const note = document.createElement("p");
+      note.className = "pv-org-empty";
+      note.textContent = "Itinerario e preparazione sono a posto: nessun giorno vuoto e niente di urgente in sospeso.";
+      card.appendChild(note);
+      return;
     }
 
-    if (!pending.length) {
-      const note = document.createElement("p");
-      note.className = "small-note";
-      note.textContent = "Tutti i luoghi hanno già il loro giorno.";
-      card.appendChild(note);
-    } else if (pending.length > 3) {
-      const note = document.createElement("p");
-      note.className = "small-note pv-org-note";
-      note.textContent = `Altre ${pending.length - 3} tappe senza giorno.`;
-      card.appendChild(note);
+    if (gaps.emptyDays.length) {
+      const block = document.createElement("div");
+      block.className = "pv-org-block";
+      block.innerHTML = `<p class="pv-org-label">Giorni senza tappe</p>`;
+      const list = document.createElement("div");
+      list.className = "pv-org-list";
+      for (const row of gaps.emptyDays.slice(0, 6)) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pv-org-item";
+        btn.innerHTML = `<span aria-hidden="true">📅</span><span><strong>${escapeHtml(
+          row.label
+        )}</strong><small>${escapeHtml(row.when)} · nessuna tappa</small></span>`;
+        btn.addEventListener("click", () => openTripSection("itinerary"));
+        list.appendChild(btn);
+      }
+      if (gaps.emptyDays.length > 6) {
+        const more = document.createElement("p");
+        more.className = "small-note pv-org-note";
+        more.textContent = `Altri ${gaps.emptyDays.length - 6} giorni senza tappe.`;
+        list.appendChild(more);
+      }
+      block.appendChild(list);
+      card.appendChild(block);
+    }
+
+    if (gaps.prep.length) {
+      const block = document.createElement("div");
+      block.className = "pv-org-block";
+      block.innerHTML = `<p class="pv-org-label">Manca nella preparazione</p>`;
+      const list = document.createElement("div");
+      list.className = "pv-org-list";
+      for (const item of gaps.prep.slice(0, 6)) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "pv-org-item";
+        btn.innerHTML = `<span aria-hidden="true">✓</span><span><strong>${escapeHtml(
+          item.title
+        )}</strong><small>${escapeHtml(item.detail)}</small></span>`;
+        btn.addEventListener("click", () => openTripSection(item.section));
+        list.appendChild(btn);
+      }
+      block.appendChild(list);
+      card.appendChild(block);
     }
   }
 
