@@ -9,18 +9,18 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120r.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120s.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120r",
-  /magic-extras-20261120r\.js/.test(index) &&
-    /20261120r-voce/.test(sw) &&
-    /const SHELL_VER = "20261120r"/.test(account) &&
-    existsSync("assets/magic-extras-20261120r.js") &&
-    /dataset\.pvReady = "20261120r"/.test(magic)
+  "stamps 20261120s",
+  /magic-extras-20261120s\.js/.test(index) &&
+    /20261120s-piano/.test(sw) &&
+    /const SHELL_VER = "20261120s"/.test(account) &&
+    existsSync("assets/magic-extras-20261120s.js") &&
+    /dataset\.pvReady = "20261120s"/.test(magic)
 );
 
 ok(
@@ -57,4 +57,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("preventivo-salva-voce 20261120r ok");
+console.log("preventivo-salva-voce 20261120s ok");
