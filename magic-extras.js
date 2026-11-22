@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120q") return;
+    if (style && style.dataset.pvReady === "20261120r") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120q";
+    style.dataset.pvReady = "20261120r";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -8304,18 +8304,36 @@ Regole:
       .pv-quote-summary{background:var(--pv-accent,#174f48);color:white;padding:18px;border-radius:14px;margin-bottom:16px}
       .pv-quote-summary h3{font-size:1.7rem!important;color:inherit;margin:4px 0!important;font-variant-numeric:tabular-nums}
       .pv-quote-summary small{font-size:.82rem;font-weight:500}
-      #pv-tp-lines .pv-tp-line{display:block;border:1px solid #cbdad3;border-radius:14px;padding:14px;background:var(--pv-surface,Canvas);color:CanvasText}
-      .pv-tp-line header{display:flex;justify-content:space-between;gap:12px;align-items:baseline;overflow-wrap:anywhere}
-      .pv-tp-line header b{white-space:nowrap;font-variant-numeric:tabular-nums}
-      .pv-payment-info{font-size:.88rem;margin:8px 0}
-      .pv-tp-line details{border-top:1px solid #becdc6}
-      .pv-tp-line summary{padding:12px 0;min-height:44px;box-sizing:border-box;cursor:pointer;font-weight:650}
-      .pv-tp-line label{display:grid;gap:4px;margin:8px 0}
-      .pv-tp-line button{padding:9px 12px;min-height:44px;border:1px solid #afc5bc;border-radius:9px;margin:4px 4px 4px 0}
-      .pv-tp-line [data-pay-status]:empty{display:none}
+      #pv-tp-lines .pv-tp-line{display:block;border:1px solid #cbdad3;border-radius:14px;padding:12px 14px 14px;background:var(--pv-surface,Canvas);color:CanvasText}
+      #pv-tp-lines .pv-tp-line[data-dirty="1"]{border-color:#007d82;box-shadow:0 0 0 1px rgba(0,125,130,.22)}
+      .pv-tp-line-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;overflow-wrap:anywhere}
+      .pv-tp-line-head-main{display:grid;gap:4px;min-width:0}
+      .pv-tp-line-title-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
+      .pv-tp-line-head b[data-line-total]{white-space:nowrap;font-variant-numeric:tabular-nums;font-size:1.05rem}
+      .pv-payment-info{font-size:.88rem;margin:0;color:#5b7380}
+      .pv-tp-pay-strip{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:end;margin:12px 0 4px;padding:10px;border-radius:12px;background:#f3f8f8;border:1px solid #d7e4e6}
+      .pv-tp-pay-strip label{display:grid;gap:4px;margin:0;font-size:.82rem;font-weight:650;color:#3d5a63}
+      .pv-tp-pay-strip input{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:9px 10px;font:inherit;min-height:44px;background:#fff}
+      .pv-tp-pay-strip .pv-tp-ghost,.pv-tp-pay-strip .pv-tp-primary{margin:0;min-height:44px}
+      .pv-tp-pay-hint{grid-column:1/-1;margin:0;font-size:.82rem;color:#5b7380}
+      .pv-tp-line .pv-tp-edit-panel{border-top:1px solid #becdc6;margin-top:10px}
+      .pv-tp-line .pv-tp-edit-panel > summary{padding:12px 0;min-height:44px;box-sizing:border-box;cursor:pointer;font-weight:650;list-style:none}
+      .pv-tp-line .pv-tp-edit-panel > summary::-webkit-details-marker{display:none}
+      .pv-tp-line .pv-tp-edit-panel > summary::before{content:"▸ ";color:#007d82}
+      .pv-tp-line .pv-tp-edit-panel[open] > summary::before{content:"▾ "}
+      .pv-tp-line label{display:grid;gap:4px;margin:8px 0;font-size:.88rem;font-weight:650;color:#3d5a63}
+      .pv-tp-line-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+      .pv-tp-line-actions .pv-tp-primary,.pv-tp-line-actions .pv-tp-danger,.pv-tp-line-actions .pv-tp-ghost{margin:0;min-height:44px;border-radius:999px;padding:11px 16px;font:700 13px inherit;border:0;cursor:pointer}
+      .pv-tp-line [data-pay-status]:empty,.pv-tp-line [data-line-status]:empty{display:none}
+      .pv-tp-line [data-line-status],.pv-tp-line [data-pay-status]{margin:6px 0 0;font-size:.85rem;color:#0f5a30}
+      .pv-tp-line [data-line-status][data-err="1"],.pv-tp-line [data-pay-status][data-err="1"]{color:#7a2e28}
       .pv-personal-payments li{margin:.65em 0}
       .pv-tp-personal-ledger .pv-tp-personal-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
       .pv-tp-personal-ledger .pv-tp-personal-list li{padding:8px 10px;border-radius:10px;background:#f4faf9;border:1px solid #d7e4e6}
+      @media (max-width:520px){
+        .pv-tp-pay-strip{grid-template-columns:1fr 1fr}
+        .pv-tp-pay-strip label{grid-column:1/-1}
+      }
     `;
   }
 
@@ -8613,7 +8631,7 @@ Regole:
     if (pvHost) renderPreventivoPersonalLedger(pvHost, authId);
   }
 
-  function paymentRow(line, idx, travelers, prefix) {
+  function paymentRow(line, idx, travelers, prefix, opts = {}) {
     const total = lineAmount(line);
     const share = Math.round(total / travelers);
     const stored =
@@ -8626,20 +8644,79 @@ Regole:
     );
     const due = Math.max(0, displayShare - paid);
     const residualLabel = due > 0 ? `Residuo ${formatEuro(due)}` : "Saldato";
+    const status = ["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"].includes(line.status)
+      ? line.status
+      : "STIMA";
+    const badgeClass = status === "DA VERIFICARE" ? "WARN" : status;
+    const openEdit = opts.openEdit ? " open" : "";
+    const canPay = Boolean(line.id && prefix);
+    const payStrip = canPay
+      ? `<div class="pv-tp-pay-strip">
+          <label>Hai già versato (€)
+            <input data-paid type="number" min="0" step="0.01" inputmode="decimal" value="${paid / 100}">
+          </label>
+          <button type="button" class="pv-tp-ghost" data-payment="partial">Salva</button>
+          <button type="button" class="pv-tp-primary" data-payment="full">Salda tutto</button>
+          <p role="status" data-pay-status></p>
+        </div>`
+      : `<p class="pv-tp-pay-hint">Salva la voce per registrare quanto hai versato della tua quota.</p>`;
     return `<article class="pv-tp-line" data-line-idx="${idx}">
-      <header><strong>${escapeTp(line.title || "Nuova voce")}</strong><b>${formatEuro(total)}</b></header>
-      <p class="pv-payment-info">La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · ${residualLabel}</p>
-      <details class="pv-payment-controls"><summary>Il mio pagamento</summary>
-        ${line.id && prefix ? `<label>Totale già versato (€)<input data-paid type="number" min="0" step="0.01" inputmode="decimal" value="${paid/100}"></label>
-        <button type="button" data-payment="partial">Salva importo</button><button type="button" data-payment="full">Salda tutta la quota</button>` : "Salva la voce e accedi per registrare il pagamento."}
-        <p role="status" data-pay-status></p>
+      <header class="pv-tp-line-head">
+        <div class="pv-tp-line-head-main">
+          <div class="pv-tp-line-title-row">
+            <strong data-line-title>${escapeTp(line.title || "Nuova voce")}</strong>
+            <span class="pv-badge ${badgeClass}" data-line-badge>${escapeTp(status)}</span>
+          </div>
+          <p class="pv-payment-info" data-line-share>La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · ${residualLabel}</p>
+        </div>
+        <b data-line-total>${formatEuro(total)}</b>
+      </header>
+      ${payStrip}
+      <details class="pv-tp-edit-panel"${openEdit}>
+        <summary>Modifica voce</summary>
+        <label>Descrizione<input data-k="title" value="${escapeTp(line.title || "Nuova voce")}"></label>
+        <label>Importo di gruppo (€)<input data-k="euros" type="number" min="0" step="0.01" inputmode="decimal" value="${total / 100}"></label>
+        <label>Stato del prezzo<select data-k="status">${["STIMA", "DA VERIFICARE", "VERIFICATO", "SCADUTO"]
+          .map((v) => `<option ${v === status ? "selected" : ""}>${v}</option>`)
+          .join("")}</select></label>
+        <p class="pv-tp-muted">Verificato = prezzo confermato. Usa «Hai già versato» sopra per le quote pagate.</p>
+        <div class="pv-tp-line-actions">
+          <button type="button" class="pv-tp-primary" data-save-line>Salva voce</button>
+          <button type="button" class="pv-tp-danger" data-remove-line>Elimina</button>
+        </div>
+        <p role="status" data-line-status></p>
       </details>
-      <details><summary>Modifica voce</summary>
-      <label>Descrizione<input data-k="title" value="${escapeTp(line.title || "Nuova voce")}"></label>
-      <label>Importo di gruppo (€)<input data-k="euros" type="number" min="0" step="0.01" value="${total/100}"></label>
-      <label>Stato del prezzo<select data-k="status">${["STIMA","DA VERIFICARE","VERIFICATO","SCADUTO"].map(v => `<option ${v === line.status ? "selected" : ""}>${v}</option>`).join("")}</select></label>
-      <p class="pv-tp-muted">Verificato = prezzo confermato, non un pagamento. Usa «Il mio pagamento» per le quote versate.</p>
-      <button type="button" class="pv-tp-danger" data-remove-line>Rimuovi voce</button></details></article>`;
+    </article>`;
+  }
+
+  function syncPreventivoLinePreview(row, travelers) {
+    if (!row) return;
+    const titleInput = row.querySelector('[data-k="title"]');
+    const eurosInput = row.querySelector('[data-k="euros"]');
+    const statusInput = row.querySelector('[data-k="status"]');
+    const titleEl = row.querySelector("[data-line-title]");
+    const totalEl = row.querySelector("[data-line-total]");
+    const shareEl = row.querySelector("[data-line-share]");
+    const badge = row.querySelector("[data-line-badge]");
+    const paidField = row.querySelector("[data-paid]");
+    const title = titleInput?.value?.trim() || "Nuova voce";
+    const totalCents = Math.max(0, Math.round(Number(eurosInput?.value || 0) * 100));
+    const share = Math.round(totalCents / Math.max(1, travelers));
+    const paid = Math.max(0, Math.round(Number(paidField?.value || 0) * 100));
+    const due = Math.max(0, share - paid);
+    if (titleEl) titleEl.textContent = title;
+    if (totalEl) totalEl.textContent = formatEuro(totalCents);
+    if (shareEl) {
+      shareEl.innerHTML = `La tua quota <strong>${formatEuro(share)}</strong> · Versato ${formatEuro(paid)} · ${
+        due > 0 ? `Residuo ${formatEuro(due)}` : "Saldato"
+      }`;
+    }
+    if (badge && statusInput) {
+      const status = statusInput.value || "STIMA";
+      badge.textContent = status;
+      badge.className = `pv-badge ${status === "DA VERIFICARE" ? "WARN" : status}`;
+    }
+    row.dataset.dirty = "1";
   }
 
   function showPersonalPayments(money) {
@@ -8705,9 +8782,9 @@ Regole:
           <header class="pv-quote-summary"><span>Scenario ${escapeTp(pv.scenario || "viaggio")}</span><h3>${formatEuro(pp)} <small>a persona</small></h3><span>${formatEuro(group)} per il gruppo · ${travelers} ${travelers === 1 ? "persona" : "persone"}</span></header>
           <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
           <div class="pv-tp-actions">
-            <button type="button" class="pv-tp-ghost" id="pv-tp-add-line">+ Aggiungi voce</button>
+            <button type="button" class="pv-tp-primary" id="pv-tp-add-line">+ Aggiungi voce</button>
+            <button type="button" class="pv-tp-ghost" id="pv-tp-save">Salva tutte</button>
             <button type="button" class="pv-tp-ghost" id="pv-tp-import">Importa foglio / PDF / foto</button>
-            <button type="button" class="pv-tp-primary" id="pv-tp-save">Salva modifiche</button>
             <button type="button" class="pv-tp-ghost" id="pv-tp-open-smart">Apri Preventivo intelligente</button>
           </div>
           <p class="pv-tp-status" id="pv-tp-status"></p>
@@ -8720,10 +8797,38 @@ Regole:
       `;
 
       const list = body.querySelector("#pv-tp-lines");
-      list.onclick = event => {
+      const markPayStatus = (el, text, isErr = false) => {
+        if (!el) return;
+        el.textContent = text;
+        if (isErr) el.dataset.err = "1";
+        else delete el.dataset.err;
+      };
+      list.oninput = (event) => {
         const row = event.target.closest(".pv-tp-line");
         if (!row) return;
-        if (event.target.closest("[data-remove-line]")) { row.remove(); return; }
+        if (
+          event.target.matches('[data-k="title"], [data-k="euros"], [data-k="status"], [data-paid]')
+        ) {
+          syncPreventivoLinePreview(row, travelers);
+        }
+      };
+      list.onchange = list.oninput;
+      list.onclick = (event) => {
+        const row = event.target.closest(".pv-tp-line");
+        if (!row) return;
+        if (event.target.closest("[data-save-line]")) {
+          const lineStatus = row.querySelector("[data-line-status]");
+          markPayStatus(lineStatus, "Salvataggio…");
+          void saveTripPreventivoSection(auth, data, pv).then(() => {
+            /* render refreshes status */
+          });
+          return;
+        }
+        if (event.target.closest("[data-remove-line]")) {
+          row.remove();
+          void saveTripPreventivoSection(auth, data, pv);
+          return;
+        }
         const action = event.target.closest("[data-payment]")?.dataset.payment;
         if (!action) return;
         const line = lines[Number(row.dataset.lineIdx)];
@@ -8732,32 +8837,54 @@ Regole:
         try {
           const prefix = paymentPrefix(auth.id);
           if (!prefix || !line?.id) throw new Error("Accedi e salva la voce prima di registrare il pagamento.");
-          if (Math.round(Number(row.querySelector('[data-k="euros"]').value)*100) !== lineAmount(line)) throw new Error("Salva prima il nuovo importo del preventivo.");
-          const share = Math.round(lineAmount(line)/travelers);
-          const paid = action === "full" ? share : Math.round(field.valueAsNumber*100);
-          if (!Number.isSafeInteger(paid) || paid < 0 || paid > share || (action !== "full" && !field.validity.valid)) throw new Error("Inserisci un importo tra zero e la tua quota.");
+          if (Math.round(Number(row.querySelector('[data-k="euros"]').value) * 100) !== lineAmount(line)) {
+            throw new Error("Salva prima la voce con il nuovo importo.");
+          }
+          const share = Math.round(lineAmount(line) / travelers);
+          const paid = action === "full" ? share : Math.round(field.valueAsNumber * 100);
+          if (
+            !Number.isSafeInteger(paid) ||
+            paid < 0 ||
+            paid > share ||
+            (action !== "full" && !field.validity.valid)
+          ) {
+            throw new Error("Inserisci un importo tra zero e la tua quota.");
+          }
           localStorage.setItem(prefix + line.id, JSON.stringify({ title: line.title, paid, share }));
           field.value = String(paid / 100);
-          const dueNow = Math.max(0, share - paid);
-          row.querySelector(".pv-payment-info").textContent =
-            `La tua quota ${formatEuro(share)} · Versato ${formatEuro(paid)} · ${dueNow > 0 ? `Residuo ${formatEuro(dueNow)}` : "Saldato"}`;
+          syncPreventivoLinePreview(row, travelers);
+          delete row.dataset.dirty;
           refreshPersonalBudgetUi(auth.id);
           const budgetInfo = personalBudgetRemaining(auth.id);
           if (budgetInfo.budget == null) {
-            status.textContent =
-              "Registrato nelle spese personali. Imposta un budget privato in Spese per scalare il residuo.";
+            markPayStatus(
+              status,
+              "Registrato nelle spese personali. Imposta un budget privato in Spese per scalare il residuo."
+            );
           } else if (budgetInfo.remaining < 0) {
-            status.textContent = `Registrato nelle spese personali. Budget superato di ${formatEuro(-budgetInfo.remaining)}.`;
+            markPayStatus(
+              status,
+              `Registrato nelle spese personali. Budget superato di ${formatEuro(-budgetInfo.remaining)}.`
+            );
           } else {
-            status.textContent = `Registrato nelle spese personali. Restano ${formatEuro(budgetInfo.remaining)} sul budget privato.`;
+            markPayStatus(
+              status,
+              `Registrato nelle spese personali. Restano ${formatEuro(budgetInfo.remaining)} sul budget privato.`
+            );
           }
-        } catch (err) { status.textContent = err.message; }
+        } catch (err) {
+          markPayStatus(status, err.message || "Pagamento non salvato.", true);
+        }
       };
       body.querySelector("#pv-tp-add-line").onclick = () => {
         list.querySelector(":scope > .pv-tp-muted")?.remove();
-        list.insertAdjacentHTML("beforeend", paymentRow({}, -1, travelers, ""));
-        list.lastElementChild.querySelector("details:last-child").open = true;
-        list.lastElementChild.querySelector('[data-k="title"]').focus();
+        list.insertAdjacentHTML(
+          "beforeend",
+          paymentRow({}, -1, travelers, "", { openEdit: true })
+        );
+        const created = list.lastElementChild;
+        syncPreventivoLinePreview(created, travelers);
+        created.querySelector('[data-k="title"]')?.focus();
       };
       body.querySelector("#pv-tp-open-smart")?.addEventListener("click", () => {
         if (document.getElementById("pv-trip-preventivo-panel") && !document.getElementById("pv-trip-preventivo-panel").hidden) {
@@ -8787,7 +8914,9 @@ Regole:
     const root = getPreventivoRenderRoot() || document;
     const status = root.querySelector?.("#pv-tp-status") || document.getElementById("pv-tp-status");
     const saveBtn = root.querySelector?.("#pv-tp-save") || document.getElementById("pv-tp-save");
+    const lineSaveBtns = [...(root.querySelectorAll?.("[data-save-line]") || [])];
     if (saveBtn) saveBtn.disabled = true;
+    for (const btn of lineSaveBtns) btn.disabled = true;
     if (status) status.textContent = "Salvataggio…";
     try {
       const rows = [...(root.querySelectorAll?.("#pv-tp-lines .pv-tp-line") || document.querySelectorAll("#pv-tp-lines .pv-tp-line"))];
@@ -8889,13 +9018,18 @@ Regole:
         /* ignore */
       }
       window.dispatchEvent(new CustomEvent("pv-preventivo-synced", { detail: { tripId: auth.id } }));
-      if (status) status.textContent = "Preventivo salvato nella sezione (non nelle note).";
+      if (status) status.textContent = "Voci salvate.";
       injectPreventivoTripBanner();
       await renderTripPreventivoSection();
+      const freshStatus =
+        getPreventivoRenderRoot()?.querySelector?.("#pv-tp-status") ||
+        document.getElementById("pv-tp-status");
+      if (freshStatus) freshStatus.textContent = "Voci salvate.";
     } catch (err) {
       if (status) status.textContent = err.message || "Salvataggio non riuscito.";
     } finally {
       if (saveBtn) saveBtn.disabled = false;
+      for (const btn of lineSaveBtns) btn.disabled = false;
     }
   }
 
