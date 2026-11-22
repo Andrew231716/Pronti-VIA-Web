@@ -40,13 +40,13 @@ ok(
 
 ok(
   "stamps 20261120e",
-  /magic-extras-20261120q\.js/.test(index) &&
+  /magic-extras-20261120r\.js/.test(index) &&
     /ux-suite-20261120d\.js/.test(index) &&
-    /20261120q-preview/.test(sw) &&
-    /const SHELL_VER = "20261120q"/.test(account) &&
-    existsSync("assets/magic-extras-20261120q.js") &&
+    /20261120r-voce/.test(sw) &&
+    /const SHELL_VER = "20261120r"/.test(account) &&
+    existsSync("assets/magic-extras-20261120r.js") &&
     existsSync("assets/ux-suite-20261120d.js") &&
-    /dataset\.pvReady = "20261120q"/.test(magic) &&
+    /dataset\.pvReady = "20261120r"/.test(magic) &&
     /const STYLE_VER = "20261120d"/.test(ux)
 );
 

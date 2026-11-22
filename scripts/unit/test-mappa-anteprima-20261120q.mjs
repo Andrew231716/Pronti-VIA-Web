@@ -9,18 +9,18 @@ function ok(label, cond) {
   console.log(`ok - ${label}`);
 }
 
-const magic = readFileSync("assets/magic-extras-20261120q.js", "utf8");
+const magic = readFileSync("assets/magic-extras-20261120r.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261120q",
-  /magic-extras-20261120q\.js/.test(index) &&
-    /20261120q-preview/.test(sw) &&
-    /const SHELL_VER = "20261120q"/.test(account) &&
-    existsSync("assets/magic-extras-20261120q.js") &&
-    /dataset\.pvReady = "20261120q"/.test(magic)
+  "stamps 20261120r",
+  /magic-extras-20261120r\.js/.test(index) &&
+    /20261120r-voce/.test(sw) &&
+    /const SHELL_VER = "20261120r"/.test(account) &&
+    existsSync("assets/magic-extras-20261120r.js") &&
+    /dataset\.pvReady = "20261120r"/.test(magic)
 );
 
 ok(
@@ -43,4 +43,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("mappa-anteprima 20261120q ok");
+console.log("mappa-anteprima 20261120r ok");

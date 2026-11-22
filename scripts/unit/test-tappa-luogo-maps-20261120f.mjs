@@ -20,10 +20,10 @@ ok(
   "stamps 20261120k",
   /places-suggest\.js\?v=20261120q/.test(index) &&
     /account\.js\?v=20261120q/.test(index) &&
-    /20261120q-preview/.test(sw) &&
+    /20261120r-voce/.test(sw) &&
     /places-suggest\.js\?v=20261120q/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120q"/.test(account) &&
+    /const SHELL_VER = "20261120r"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
     existsSync("assets/index-loadfix-20261120g.js")
 );
