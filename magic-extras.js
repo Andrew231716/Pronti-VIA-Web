@@ -90,13 +90,13 @@
 
   function ensureStyles() {
     let style = document.getElementById(STYLE_ID);
-    if (style && style.dataset.pvReady === "20261120r") return;
+    if (style && style.dataset.pvReady === "20261120s") return;
     if (!style) {
       style = document.createElement("style");
       style.id = STYLE_ID;
       document.head.appendChild(style);
     }
-    style.dataset.pvReady = "20261120r";
+    style.dataset.pvReady = "20261120s";
     style.textContent = `
       /* z-index must clear trip chrome and sit with other FABs (Hub is 120100 on the left). */
       #${ROOT_ID}{position:fixed;inset:0;z-index:120040;pointer-events:none;font-family:inherit}
@@ -4171,6 +4171,28 @@ Regole:
         localTransportDay: [6, 20],
         activitiesDay: [10, 30],
         note: "In generale più conveniente.",
+      };
+    }
+    if (
+      /ghana|accra|kenya|tanzania|marocco|morocco|egitto|egypt|senegal|tunisia|sudafrica|south africa|nigeria|costa d.?avorio|ethiopia|etiopia/.test(
+        blob
+      )
+    ) {
+      return {
+        label: "destinazione Africa",
+        foodDay: [12, 35],
+        localTransportDay: [4, 15],
+        activitiesDay: [8, 28],
+        note: "Street food e locali tipici restano contenuti; i ristoranti turistici alzano la media.",
+      };
+    }
+    if (/thailand|thai|vietnam|bali|indonesia|india|sri lanka|cambodia|filippine|philippines|laos/.test(blob)) {
+      return {
+        label: "destinazione Asia più accessibile",
+        foodDay: [10, 30],
+        localTransportDay: [3, 12],
+        activitiesDay: [8, 25],
+        note: "Cibo locale economico; evita solo le zone hotel-only.",
       };
     }
     return {
@@ -8330,6 +8352,18 @@ Regole:
       .pv-personal-payments li{margin:.65em 0}
       .pv-tp-personal-ledger .pv-tp-personal-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
       .pv-tp-personal-ledger .pv-tp-personal-list li{padding:8px 10px;border-radius:10px;background:#f4faf9;border:1px solid #d7e4e6}
+      .pv-funding-plan{margin:10px 0 12px;padding:12px;border-radius:12px;background:linear-gradient(180deg,#eef8f7,#f7fbfb);border:1px solid #cfe3df}
+      .pv-funding-plan h3{margin:0 0 6px;font-size:1rem}
+      .pv-funding-meta{margin:0 0 6px;font-size:.88rem;color:#3d5a63}
+      .pv-funding-ok{margin:0;font-weight:650;color:#0f5a30}
+      .pv-funding-plan p{margin:0}
+      .pv-personal-payments .pv-funding-plan{background:#f3faf8}
+      .pv-food-plan .pv-food-meals{display:grid;gap:10px;margin:12px 0}
+      .pv-food-plan .pv-food-meals label{display:grid;gap:4px;margin:0;font-size:.88rem;font-weight:650;color:#3d5a63}
+      .pv-food-plan .pv-food-meals select{width:100%;box-sizing:border-box;border:1px solid #d7e4e6;border-radius:10px;padding:10px;font:inherit;min-height:44px;background:#fff}
+      .pv-food-summary{padding:10px 12px;border-radius:12px;background:#f3f8f8;border:1px solid #d7e4e6;margin-bottom:10px}
+      .pv-food-summary p{margin:0 0 4px}
+      .pv-food-summary p:last-child{margin:0}
       @media (max-width:520px){
         .pv-tp-pay-strip{grid-template-columns:1fr 1fr}
         .pv-tp-pay-strip label{grid-column:1/-1}
@@ -8546,6 +8580,290 @@ Regole:
     return { budget, personal, remaining: budget - personal };
   }
 
+  function monthsUntilMonthBeforeDeparture(startIso) {
+    const raw = String(startIso || "").slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null;
+    const start = new Date(`${raw}T12:00:00`);
+    if (Number.isNaN(+start)) return null;
+    const deadline = new Date(start.getFullYear(), start.getMonth(), 1);
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    if (deadline <= today) return 0;
+    return Math.max(
+      0,
+      (deadline.getFullYear() - today.getFullYear()) * 12 + (deadline.getMonth() - today.getMonth())
+    );
+  }
+
+  function resolveTripForPersonalPlan(tripId) {
+    try {
+      if (
+        tripLoadCache?.payload?.auth?.id === tripId &&
+        tripLoadCache.payload?.data?.trip
+      ) {
+        return tripLoadCache.payload.data.trip;
+      }
+      const row = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}")[tripId];
+      return row?.trip || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function buildPersonalFundingPlan(tripId, trip = null, quote = null) {
+    const liveTrip = trip || resolveTripForPersonalPlan(tripId);
+    const pv = quote || liveTrip?.meta?.preventivo || null;
+    const lines = Array.isArray(pv?.lines) ? pv.lines : [];
+    const travelers = Math.max(1, Number(pv?.params?.travelers || liveTrip?.members?.length || 1));
+    const entries = Object.fromEntries(
+      listPersonalPaymentEntries(tripId).map((row) => [row.lineId, row])
+    );
+    let shareTotal = 0;
+    let paidTotal = 0;
+    let dueTotal = 0;
+    for (const line of lines) {
+      const entry = line?.id ? entries[line.id] : null;
+      const paid = Math.max(0, Math.round(Number(entry?.paid) || 0));
+      const share = settledShareForDisplay(
+        entry || { paid, share: Math.round(lineAmount(line) / travelers) },
+        line,
+        travelers
+      );
+      shareTotal += share;
+      paidTotal += Math.min(paid, share);
+      dueTotal += Math.max(0, share - paid);
+    }
+    const start = String(pv?.params?.start || liveTrip?.start || liveTrip?.startDate || "").slice(0, 10);
+    const months = monthsUntilMonthBeforeDeparture(start);
+    const monthly =
+      dueTotal <= 0 ? 0 : months == null ? null : months === 0 ? dueTotal : Math.ceil(dueTotal / months);
+    let deadlineLabel = "";
+    if (start && /^\d{4}-\d{2}-\d{2}$/.test(start)) {
+      const d = new Date(`${start}T12:00:00`);
+      const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+      deadlineLabel = prev.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+    }
+    return {
+      shareTotal,
+      paidTotal,
+      due: dueTotal,
+      months,
+      monthly,
+      start,
+      deadlineLabel,
+      travelers,
+      lineCount: lines.length,
+    };
+  }
+
+  function personalFundingPlanHtml(plan, { compact = false } = {}) {
+    if (!plan || plan.lineCount <= 0) return "";
+    let body;
+    if (plan.due <= 0) {
+      body = `<p class="pv-funding-ok">Hai già coperto tutta la tua quota (${formatEuro(plan.shareTotal)}).</p>`;
+    } else if (plan.months == null) {
+      body = `<p>Ti manca <strong>${formatEuro(plan.due)}</strong>. Imposta la data di partenza del viaggio per il piano mensile.</p>`;
+    } else if (plan.months === 0) {
+      body = `<p>Ti manca <strong>${formatEuro(plan.due)}</strong>. Sei nel mese della partenza (o oltre): metti da parte subito il residuo.</p>`;
+    } else {
+      body = `<p>Ti manca <strong>${formatEuro(plan.due)}</strong>. Per arrivare a posto entro <strong>${escapeTp(
+        plan.deadlineLabel || "il mese prima"
+      )}</strong>: <strong>${formatEuro(plan.monthly)} / mese</strong> × ${plan.months} ${
+        plan.months === 1 ? "mese" : "mesi"
+      }.</p>`;
+    }
+    return `<div class="pv-funding-plan" data-pv-funding="1">
+      ${compact ? "" : "<h3>Il tuo piano personale</h3>"}
+      <p class="pv-funding-meta">Quota ${formatEuro(plan.shareTotal)} · Versato ${formatEuro(
+      plan.paidTotal
+    )} · Residuo ${formatEuro(plan.due)}</p>
+      ${body}
+    </div>`;
+  }
+
+  const FOOD_MEAL_CHOICES = {
+    breakfast: [
+      { id: "hotel_free", label: "Colazione hotel inclusa", weight: 0 },
+      { id: "cafe", label: "Colazione al bar / caffè", weight: 0.22 },
+      { id: "skip", label: "Salto la colazione", weight: 0 },
+    ],
+    lunch: [
+      { id: "packed", label: "Cibo al sacco", weight: 0.18 },
+      { id: "fast", label: "Fast food / street food", weight: 0.32 },
+      { id: "restaurant", label: "Ristorante a pranzo", weight: 0.48 },
+      { id: "skip", label: "Salto il pranzo", weight: 0 },
+    ],
+    dinner: [
+      { id: "packed", label: "Cena semplice / al sacco", weight: 0.2 },
+      { id: "fast", label: "Fast food / street food", weight: 0.36 },
+      { id: "restaurant", label: "Ristorante a cena", weight: 0.55 },
+      { id: "skip", label: "Salto la cena", weight: 0 },
+    ],
+  };
+
+  function foodPlanStorageKey(tripId) {
+    const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
+    const owner = session?.user?.username;
+    return owner && tripId ? `pv-food-plan:${JSON.stringify([owner, tripId])}` : "";
+  }
+
+  function readFoodPlan(tripId, pv = null) {
+    const fallback = {
+      breakfast: "hotel_free",
+      lunch: "fast",
+      dinner: "restaurant",
+    };
+    try {
+      const fromMeta = pv?.foodPlan;
+      if (fromMeta && typeof fromMeta === "object") {
+        return {
+          breakfast: fromMeta.breakfast || fallback.breakfast,
+          lunch: fromMeta.lunch || fallback.lunch,
+          dinner: fromMeta.dinner || fallback.dinner,
+        };
+      }
+      const key = foodPlanStorageKey(tripId);
+      if (!key) return fallback;
+      const raw = JSON.parse(localStorage.getItem(key) || "null");
+      if (!raw || typeof raw !== "object") return fallback;
+      return {
+        breakfast: raw.breakfast || fallback.breakfast,
+        lunch: raw.lunch || fallback.lunch,
+        dinner: raw.dinner || fallback.dinner,
+      };
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeFoodPlan(tripId, plan) {
+    const key = foodPlanStorageKey(tripId);
+    if (!key) return;
+    try {
+      localStorage.setItem(key, JSON.stringify(plan));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function stayDaysForFood(start, end, trip) {
+    if (start && end) {
+      const a = Date.parse(start);
+      const b = Date.parse(end);
+      if (Number.isFinite(a) && Number.isFinite(b) && b >= a) {
+        return Math.max(1, Math.round((b - a) / 86400000) + 1);
+      }
+    }
+    const days = tripDays(trip || {});
+    return days.length || 7;
+  }
+
+  function estimateFoodPlan(destination, title, start, end, trip, choices) {
+    const band = destinationCostBand(destination, title);
+    const days = stayDaysForFood(start, end, trip);
+    const mid = ((Number(band.foodDay[0]) || 0) + (Number(band.foodDay[1]) || 0)) / 2;
+    const pick = (slot, id) =>
+      (FOOD_MEAL_CHOICES[slot] || []).find((row) => row.id === id) || FOOD_MEAL_CHOICES[slot][0];
+    const breakfast = pick("breakfast", choices.breakfast);
+    const lunch = pick("lunch", choices.lunch);
+    const dinner = pick("dinner", choices.dinner);
+    const dayEuro = mid * (breakfast.weight + lunch.weight + dinner.weight);
+    const dayCents = Math.max(0, Math.round(dayEuro * 100));
+    const totalCents = dayCents * days;
+    return {
+      band,
+      days,
+      mid,
+      breakfast,
+      lunch,
+      dinner,
+      dayCents,
+      totalCents,
+      loDayCents: Math.max(0, Math.round(band.foodDay[0] * (breakfast.weight + lunch.weight + dinner.weight) * 100)),
+      hiDayCents: Math.max(0, Math.round(band.foodDay[1] * (breakfast.weight + lunch.weight + dinner.weight) * 100)),
+    };
+  }
+
+  function foodMealSelectHtml(slot, selectedId, estimate) {
+    const mid = estimate.mid || 30;
+    return `<label>${slot === "breakfast" ? "Colazione" : slot === "lunch" ? "Pranzo" : "Cena"}
+      <select data-food-meal="${slot}">${(FOOD_MEAL_CHOICES[slot] || [])
+        .map((opt) => {
+          const euro = Math.round(mid * opt.weight);
+          const hint = opt.weight === 0 ? "0 €" : `~${euro} €`;
+          return `<option value="${opt.id}" ${opt.id === selectedId ? "selected" : ""}>${escapeTp(
+            opt.label
+          )} (${hint}/gg)</option>`;
+        })
+        .join("")}</select>
+    </label>`;
+  }
+
+  function foodPlanCardHtml(tripId, dest, title, start, end, trip, pv) {
+    const choices = readFoodPlan(tripId, pv);
+    const estimate = estimateFoodPlan(dest, title, start, end, trip, choices);
+    return `<section class="pv-tp-card pv-food-plan" data-pv-food-plan="1">
+      <h3>Stima cibo sul posto</h3>
+      <p class="pv-tp-muted">Prezzi medi per <strong>${escapeTp(dest || "destinazione")}</strong> (${escapeTp(
+        estimate.band.label
+      )}, tipico ${estimate.band.foodDay[0]}–${estimate.band.foodDay[1]} €/giorno). Scegli lo stile dei pasti: la stima si aggiorna subito per ${estimate.days} giorni.</p>
+      <div class="pv-food-meals">
+        ${foodMealSelectHtml("breakfast", choices.breakfast, estimate)}
+        ${foodMealSelectHtml("lunch", choices.lunch, estimate)}
+        ${foodMealSelectHtml("dinner", choices.dinner, estimate)}
+      </div>
+      <div class="pv-food-summary" data-food-summary>
+        <p><strong>${formatEuro(estimate.dayCents)}</strong> a persona / giorno · totale viaggio <strong data-food-total>${formatEuro(
+          estimate.totalCents
+        )}</strong></p>
+        <p class="pv-tp-muted">Fascia orientativa ${formatEuro(estimate.loDayCents * estimate.days)}–${formatEuro(
+          estimate.hiDayCents * estimate.days
+        )}. ${escapeTp(estimate.band.note)}</p>
+      </div>
+      <div class="pv-tp-actions">
+        <button type="button" class="pv-tp-primary" data-food-add-line>Aggiungi stima cibo al preventivo</button>
+      </div>
+      <p class="pv-tp-status" data-food-status></p>
+    </section>`;
+  }
+
+  function refreshFoodPlanSummary(root, tripId, dest, title, start, end, trip, pv) {
+    const card = root?.querySelector?.("[data-pv-food-plan]");
+    if (!card) return null;
+    const choices = {
+      breakfast: card.querySelector('[data-food-meal="breakfast"]')?.value || "hotel_free",
+      lunch: card.querySelector('[data-food-meal="lunch"]')?.value || "fast",
+      dinner: card.querySelector('[data-food-meal="dinner"]')?.value || "restaurant",
+    };
+    writeFoodPlan(tripId, choices);
+    const estimate = estimateFoodPlan(dest, title, start, end, trip, choices);
+    const summary = card.querySelector("[data-food-summary]");
+    if (summary) {
+      summary.innerHTML = `<p><strong>${formatEuro(estimate.dayCents)}</strong> a persona / giorno · totale viaggio <strong data-food-total>${formatEuro(
+        estimate.totalCents
+      )}</strong></p>
+        <p class="pv-tp-muted">Fascia orientativa ${formatEuro(estimate.loDayCents * estimate.days)}–${formatEuro(
+          estimate.hiDayCents * estimate.days
+        )}. ${escapeTp(estimate.band.note)}</p>`;
+    }
+    // Refresh option hints with live mid price.
+    for (const slot of ["breakfast", "lunch", "dinner"]) {
+      const select = card.querySelector(`[data-food-meal="${slot}"]`);
+      if (!select) continue;
+      const selected = select.value;
+      select.innerHTML = (FOOD_MEAL_CHOICES[slot] || [])
+        .map((opt) => {
+          const euro = Math.round(estimate.mid * opt.weight);
+          const hint = opt.weight === 0 ? "0 €" : `~${euro} €`;
+          return `<option value="${opt.id}" ${opt.id === selected ? "selected" : ""}>${escapeTp(
+            opt.label
+          )} (${hint}/gg)</option>`;
+        })
+        .join("");
+    }
+    return { choices, estimate };
+  }
+
   function syncBudgetCardWithPersonal(tripId) {
     const budget = readPrivateBudgetCents(tripId);
     if (budget == null) return;
@@ -8590,8 +8908,11 @@ Regole:
   function renderPreventivoPersonalLedger(host, tripId) {
     if (!host) return;
     let box = host.querySelector(":scope > .pv-tp-personal-ledger, .pv-tp-personal-ledger");
+    const trip = resolveTripForPersonalPlan(tripId);
+    const quote = trip?.meta?.preventivo || null;
+    const plan = buildPersonalFundingPlan(tripId, trip, quote);
     const rows = listPersonalPaymentEntries(tripId).filter((r) => r.paid > 0);
-    if (!rows.length) {
+    if (!rows.length && plan.lineCount <= 0) {
       box?.remove();
       return;
     }
@@ -8605,16 +8926,27 @@ Regole:
     const total = rows.reduce((s, r) => s + r.paid, 0);
     const budget = readPrivateBudgetCents(tripId);
     const left = budget != null ? budget - total : null;
+    const listHtml = rows.length
+      ? `<ul class="pv-tp-personal-list">${rows
+          .map((r) => {
+            const line = quote?.lines?.find((l) => l.id === r.lineId);
+            const share = settledShareForDisplay(r, line, plan.travelers);
+            return `<li><strong>${escapeTp(line?.title || r.title)}</strong><br>${personalPayStatusLabel(
+              r.paid,
+              share
+            )}</li>`;
+          })
+          .join("")}</ul>`
+      : `<p class="pv-tp-muted">Nessun versamento registrato ancora: segna «Hai già versato» sulle voci sopra.</p>`;
     box.innerHTML = `
       <h3>Spese personali da preventivo</h3>
+      ${personalFundingPlanHtml(plan)}
       <p class="pv-tp-muted">Quote già versate su questo dispositivo · totale ${formatEuro(total)}${
         budget != null
           ? ` · budget ${formatEuro(budget)} · ${left < 0 ? "superato" : formatEuro(left) + " disponibili"}`
           : ""
       }</p>
-      <ul class="pv-tp-personal-list">${rows
-        .map((r) => `<li><strong>${escapeTp(r.title)}</strong> · ${formatEuro(r.paid)}</li>`)
-        .join("")}</ul>
+      ${listHtml}
     `;
   }
 
@@ -8629,6 +8961,12 @@ Regole:
       document.querySelector(".pv-tp-root") ||
       document.querySelector(".pv-preventivo-workspace");
     if (pvHost) renderPreventivoPersonalLedger(pvHost, authId);
+    const trip = resolveTripForPersonalPlan(authId);
+    const plan = buildPersonalFundingPlan(authId, trip, trip?.meta?.preventivo || null);
+    const planHtml = personalFundingPlanHtml(plan, { compact: true });
+    for (const slot of document.querySelectorAll("[data-pv-funding-slot]")) {
+      slot.innerHTML = planHtml;
+    }
   }
 
   function paymentRow(line, idx, travelers, prefix, opts = {}) {
@@ -8724,17 +9062,27 @@ Regole:
     const auth = tripAuth();
     const prefix = auth && paymentPrefix(auth.id);
     let box = money.parentElement.querySelector(".pv-personal-payments");
-    if (!prefix) { box?.remove(); return; }
-    const trip = tripLoadCache?.payload?.auth?.id === auth.id && tripLoadCache.payload.auth.key === auth.key ? tripLoadCache.payload.data.trip : null;
+    if (!prefix) {
+      box?.remove();
+      return;
+    }
+    const trip =
+      tripLoadCache?.payload?.auth?.id === auth.id && tripLoadCache.payload.auth.key === auth.key
+        ? tripLoadCache.payload.data.trip
+        : resolveTripForPersonalPlan(auth.id);
     const quote = trip?.meta?.preventivo;
     const travelers = Math.max(1, Number(quote?.params?.travelers || trip?.members?.length || 1));
+    const plan = buildPersonalFundingPlan(auth.id, trip, quote);
     const entries = listPersonalPaymentEntries(auth.id).filter((r) => r.paid > 0);
     const rows = entries.map((entry) => {
       const line = quote?.lines?.find((l) => l.id === entry.lineId);
       const share = settledShareForDisplay(entry, line, travelers);
       return `<li><strong>${escapeTp(line?.title || entry.title)}</strong><br>${personalPayStatusLabel(entry.paid, share)}</li>`;
     });
-    if (!rows.length) { box?.remove(); return; }
+    if (!rows.length && plan.lineCount <= 0) {
+      box?.remove();
+      return;
+    }
     if (!box) {
       box = document.createElement("section");
       box.className = "pv-budget-box pv-personal-payments";
@@ -8745,9 +9093,16 @@ Regole:
     const left = budget != null ? budget - total : null;
     const budgetLine =
       budget != null
-        ? `<p>Totale ${formatEuro(total)} · budget privato ${formatEuro(budget)} · ${left < 0 ? "superato" : formatEuro(left) + " disponibili"}</p>`
-        : `<p>Totale versato ${formatEuro(total)} (imposta un budget privato per vedere il residuo)</p>`;
-    const html = `<h3>Spese personali</h3><p>Pagamenti del preventivo su questo dispositivo</p>${budgetLine}<ul>${rows.join("")}</ul>`;
+        ? `<p>Totale versato ${formatEuro(total)} · budget privato ${formatEuro(budget)} · ${
+            left < 0 ? "superato" : formatEuro(left) + " disponibili"
+          }</p>`
+        : `<p>Totale versato ${formatEuro(total)} (imposta un budget privato per vedere il residuo sul budget)</p>`;
+    const listHtml = rows.length
+      ? `<ul>${rows.join("")}</ul>`
+      : `<p>Nessun versamento ancora: apri Preventivo e segna quanto hai già pagato.</p>`;
+    const html = `<h3>Spese personali</h3><p>Dal preventivo su questo dispositivo</p>${personalFundingPlanHtml(
+      plan
+    )}${budgetLine}${listHtml}`;
     if (box.innerHTML !== html) box.innerHTML = html;
   }
 
@@ -8770,6 +9125,16 @@ Regole:
         typeof window.__pvEsimBlockHtml === "function"
           ? window.__pvEsimBlockHtml(dest, start, end, { compact: true })
           : `<p class="pv-tp-muted">Modulo eSIM non ancora caricato. Ricarica la pagina.</p>`;
+      const fundingPlan = buildPersonalFundingPlan(auth.id, trip, pv);
+      const foodHtml = foodPlanCardHtml(
+        auth.id,
+        dest,
+        trip.title || pv.params?.title || "",
+        start,
+        end,
+        trip,
+        pv
+      );
 
       const lineRows = lines.length
         ? lines
@@ -8780,6 +9145,7 @@ Regole:
       body.innerHTML = `
         <section class="pv-tp-card">
           <header class="pv-quote-summary"><span>Scenario ${escapeTp(pv.scenario || "viaggio")}</span><h3>${formatEuro(pp)} <small>a persona</small></h3><span>${formatEuro(group)} per il gruppo · ${travelers} ${travelers === 1 ? "persona" : "persone"}</span></header>
+          <div data-pv-funding-slot>${personalFundingPlanHtml(fundingPlan, { compact: true })}</div>
           <div class="pv-tp-lines" id="pv-tp-lines">${lineRows}</div>
           <div class="pv-tp-actions">
             <button type="button" class="pv-tp-primary" id="pv-tp-add-line">+ Aggiungi voce</button>
@@ -8789,6 +9155,7 @@ Regole:
           </div>
           <p class="pv-tp-status" id="pv-tp-status"></p>
         </section>
+        ${foodHtml}
         <section class="pv-tp-card">
           <h3>eSIM per ${escapeTp(dest || "destinazione")}</h3>
           <p class="pv-tp-muted">Tariffe indicative per i giorni di permanenza. Tocca un operatore per verificare prezzi aggiornati.</p>
@@ -8904,6 +9271,69 @@ Regole:
       body.querySelector("#pv-tp-save")?.addEventListener("click", () =>
         void saveTripPreventivoSection(auth, data, pv)
       );
+      const foodCard = body.querySelector("[data-pv-food-plan]");
+      if (foodCard) {
+        const syncFood = () =>
+          refreshFoodPlanSummary(
+            body,
+            auth.id,
+            dest,
+            trip.title || pv.params?.title || "",
+            start,
+            end,
+            trip,
+            pv
+          );
+        foodCard.addEventListener("change", (ev) => {
+          if (ev.target?.matches?.("[data-food-meal]")) syncFood();
+        });
+        foodCard.querySelector("[data-food-add-line]")?.addEventListener("click", () => {
+          const live = syncFood() || {
+            choices: readFoodPlan(auth.id, pv),
+            estimate: estimateFoodPlan(
+              dest,
+              trip.title || "",
+              start,
+              end,
+              trip,
+              readFoodPlan(auth.id, pv)
+            ),
+          };
+          const euros = Math.max(0, Number((live.estimate.totalCents / 100).toFixed(2)));
+          const title = `Cibo (${live.choices.breakfast}/${live.choices.lunch}/${live.choices.dinner})`;
+          list.querySelector(":scope > .pv-tp-muted")?.remove();
+          const existing = [...list.querySelectorAll(".pv-tp-line")].find((row) =>
+            /^Cibo\b/i.test(row.querySelector('[data-k="title"]')?.value || "")
+          );
+          if (existing) {
+            const titleInput = existing.querySelector('[data-k="title"]');
+            const eurosInput = existing.querySelector('[data-k="euros"]');
+            const statusInput = existing.querySelector('[data-k="status"]');
+            if (titleInput) titleInput.value = title;
+            if (eurosInput) eurosInput.value = String(euros);
+            if (statusInput) statusInput.value = "STIMA";
+            existing.querySelector(".pv-tp-edit-panel")?.setAttribute("open", "");
+            syncPreventivoLinePreview(existing, travelers);
+          } else {
+            list.insertAdjacentHTML(
+              "beforeend",
+              paymentRow(
+                { title, status: "STIMA", totalCents: live.estimate.totalCents },
+                -1,
+                travelers,
+                "",
+                { openEdit: true }
+              )
+            );
+            syncPreventivoLinePreview(list.lastElementChild, travelers);
+          }
+          const status = foodCard.querySelector("[data-food-status]");
+          if (status) {
+            status.textContent = "Stima cibo aggiunta alle voci. Tocca «Salva voce» o «Salva tutte».";
+          }
+          writeFoodPlan(auth.id, live.choices);
+        });
+      }
       refreshPersonalBudgetUi(auth.id);
     } catch (err) {
       body.innerHTML = `<p class="pv-tp-status" style="color:#7a2e28">${escapeTp(err.message || "Preventivo non disponibile")}</p>`;
@@ -8953,6 +9383,15 @@ Regole:
         const key = byStatus[l.status] != null ? l.status : "STIMA";
         byStatus[key] = (byStatus[key] || 0) + (l.totalCents || 0);
       }
+      const foodChoices = readFoodPlan(auth.id, prevPv);
+      const foodEstimate = estimateFoodPlan(
+        dest,
+        prevPv?.params?.title || data.trip?.title || "",
+        start,
+        end,
+        data.trip,
+        foodChoices
+      );
       const preventivo = {
         ...(prevPv || {}),
         version: prevPv?.version || "20261029a",
@@ -8976,6 +9415,13 @@ Regole:
         },
         lines,
         esim,
+        foodPlan: {
+          ...foodChoices,
+          days: foodEstimate.days,
+          dayCents: foodEstimate.dayCents,
+          totalCents: foodEstimate.totalCents,
+          band: foodEstimate.band.label,
+        },
       };
       const trip = { ...data.trip };
       const meta = { ...(trip.meta && typeof trip.meta === "object" ? trip.meta : {}) };
