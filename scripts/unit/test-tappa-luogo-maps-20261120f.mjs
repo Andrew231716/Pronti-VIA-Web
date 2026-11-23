@@ -14,7 +14,7 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 const places = readFileSync("places-suggest.js", "utf8");
-const spa = readFileSync("assets/index-loadfix-20261120g.js", "utf8");
+const spa = readFileSync("assets/index-loadfix-20261120v.js", "utf8");
 
 ok(
   "stamps 20261120k",
@@ -22,10 +22,10 @@ ok(
     /account\.js\?v=20261120q/.test(index) &&
     /20261120t-assicura/.test(sw) &&
     /places-suggest\.js\?v=20261120q/.test(sw) &&
-    /index-loadfix-20261120g\.js/.test(sw) &&
+    /index-loadfix-20261120v.js/.test(sw) &&
     /const SHELL_VER = "20261120t"/.test(account) &&
-    /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
-    existsSync("assets/index-loadfix-20261120g.js")
+    /APP_MODULE = "\/assets\/index-loadfix-20261120v.js"/.test(account) &&
+    existsSync("assets/index-loadfix-20261120v.js")
 );
 
 ok(

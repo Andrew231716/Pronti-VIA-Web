@@ -51,7 +51,7 @@ ok(
   /destination-theme-20261119u\.js/.test(index) &&
     /magic-extras-20261120s\.js/.test(index) &&
     /ux-suite-20261120u\.js/.test(index) &&
-    /20261120u-inslayout/.test(sw) &&
+    /20261120v-homefix/.test(sw) &&
     /SHELL_VER = "20261120t"/.test(account) &&
     existsSync("assets/destination-theme-20261119u.js")
 );

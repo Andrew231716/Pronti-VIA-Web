@@ -35,7 +35,7 @@ ok(
   /magic-extras-20261120s\.js/.test(index) &&
     /ux-suite-20261120u\.js/.test(index) &&
     /travel-diary\.css\?v=20261120e-iacta/.test(index) &&
-    /20261120u-inslayout/.test(sw)
+    /20261120v-homefix/.test(sw)
 );
 ok(
   "assets",

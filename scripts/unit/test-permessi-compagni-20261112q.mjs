@@ -37,7 +37,7 @@ ok(
   /api-shim-20261119f\.js/.test(sw) &&
     /magic-extras-20261120s\.js/.test(sw) &&
     /ux-suite-20261120u\.js/.test(sw) &&
-    /20261120u-inslayout/.test(sw)
+    /20261120v-homefix/.test(sw)
 );
 ok(
   "assets exist",

@@ -39,7 +39,7 @@ ok(
     /account\.css\?v=20261118b/.test(index) &&
     existsSync("assets/ux-suite-20261120u.js")
 );
-ok("sw", /20261120u-inslayout/.test(sw) && /ux-suite-20261120u\.js/.test(sw) && /account.js\?v=20261120u/.test(sw));
+ok("sw", /20261120v-homefix/.test(sw) && /ux-suite-20261120u\.js/.test(sw) && /account.js\?v=20261120u/.test(sw));
 
 
 if (failed) {
