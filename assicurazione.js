@@ -8,10 +8,12 @@
   window.__pvAssicurazioneBound = true;
 
   const STYLE_ID = "pv-assicurazione-css";
-  const STYLE_VER = "20261120u";
+  const STYLE_VER = "20261120w";
   const SECTION = "insurance";
   const PANEL_ID = "pv-insurance-panel";
   const TAB_ID = "pv-insurance-tab";
+  /** SPA panels we hid while Assicurazione was open — restore all on leave. */
+  const hiddenByInsurance = new Set();
 
   function tripAuth() {
     try {
@@ -656,13 +658,28 @@
     return tab;
   }
 
+  function restoreHiddenSpaPanels() {
+    for (const other of hiddenByInsurance) {
+      try {
+        other.hidden = false;
+        other.removeAttribute("hidden");
+        other.style.removeProperty("display");
+      } catch {
+        /* node may be detached */
+      }
+    }
+    hiddenByInsurance.clear();
+  }
+
   function openInsuranceSection() {
     const tabs = document.querySelector("#root .main-tabs");
     const tab = ensureTab();
     const panel = ensurePanelShell();
     if (!tab || !panel) return;
 
-    // Deselect SPA tabs / hide SPA panels
+    restoreHiddenSpaPanels();
+
+    // Deselect SPA tabs / hide SPA panels (attribute only — never permanent display:none)
     tabs?.querySelectorAll('[role="tab"]').forEach((el) => {
       if (el === tab) return;
       el.setAttribute("aria-selected", "false");
@@ -670,9 +687,9 @@
       const controls = el.getAttribute("aria-controls");
       const other = controls && document.getElementById(controls);
       if (other && other !== panel) {
+        hiddenByInsurance.add(other);
         other.hidden = true;
         other.setAttribute("hidden", "");
-        other.style.display = "none";
       }
     });
     tab.setAttribute("aria-selected", "true");
@@ -707,19 +724,7 @@
       panel.classList.remove("pv-ins-open");
       panel.hidden = true;
       panel.style.display = "none";
-      // Restore SPA panels that we hid
-      tabs.querySelectorAll('[role="tab"]').forEach((el) => {
-        if (el === tab) return;
-        if (el.getAttribute("aria-selected") === "true" || el.getAttribute("data-state") === "active") {
-          const controls = el.getAttribute("aria-controls");
-          const other = controls && document.getElementById(controls);
-          if (other) {
-            other.hidden = false;
-            other.removeAttribute("hidden");
-            other.style.display = "";
-          }
-        }
-      });
+      restoreHiddenSpaPanels();
     }
   }
 
@@ -735,6 +740,7 @@
 
   function tick() {
     if (!tripAuth()) {
+      restoreHiddenSpaPanels();
       document.getElementById(TAB_ID)?.remove();
       document.getElementById(PANEL_ID)?.remove();
       return;
@@ -748,8 +754,15 @@
 
   window.__pvOpenInsuranceSection = openInsuranceSection;
 
-  const mo = new MutationObserver(() => tick());
-  mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true });
+  let tickTimer = null;
+  const mo = new MutationObserver(() => {
+    if (tickTimer) return;
+    tickTimer = setTimeout(() => {
+      tickTimer = null;
+      tick();
+    }, 80);
+  });
+  mo.observe(document.documentElement, { childList: true, subtree: true });
   setInterval(tick, 1200);
   tick();
 })();

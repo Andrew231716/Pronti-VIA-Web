@@ -20,15 +20,15 @@ const access = readFileSync("netlify/functions/_trip-access.mjs", "utf8");
 const src = readFileSync("assicurazione.js", "utf8");
 
 ok(
-  "stamps 20261120u",
-  /ux-suite-20261120u\.js/.test(index) &&
-    /assicurazione-20261120u\.js/.test(index) &&
-    /assicurazione-20261120u\.js/.test(sw) &&
-    /20261120v-homefix/.test(sw) &&
-    /const SHELL_VER = "20261120v"/.test(account) &&
-    existsSync("assets/assicurazione-20261120u.js") &&
-    existsSync("assets/ux-suite-20261120u.js") &&
-    readFileSync("assets/assicurazione-20261120u.js", "utf8") === src
+  "stamps 20261120w",
+  /ux-suite-20261120w\.js/.test(index) &&
+    /assicurazione-20261120w\.js/.test(index) &&
+    /assicurazione-20261120w\.js/.test(sw) &&
+    /20261120w-postassicura/.test(sw) &&
+    /const SHELL_VER = "20261120w"/.test(account) &&
+    existsSync("assets/assicurazione-20261120w.js") &&
+    existsSync("assets/ux-suite-20261120w.js") &&
+    readFileSync("assets/assicurazione-20261120w.js", "utf8") === src
 );
 
 ok(
@@ -64,6 +64,13 @@ ok(
     /PANEL_ID = "pv-insurance-panel"/.test(src) &&
     /parseInsuranceCertificate/.test(src) &&
     /trip\.meta = \{[\s\S]*insurance/.test(src)
+);
+
+ok(
+  "panel hide does not leave permanent display:none",
+  /hiddenByInsurance/.test(src) &&
+    /restoreHiddenSpaPanels/.test(src) &&
+    !/other\.style\.display = "none"/.test(src)
 );
 
 // Parser smoke with Heymondo sample PDF (if present) or fixture text
@@ -132,4 +139,4 @@ async function parseSample() {
 await parseSample();
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log("assicurazione-viaggio 20261120u ok");
+console.log("assicurazione-viaggio 20261120w ok");

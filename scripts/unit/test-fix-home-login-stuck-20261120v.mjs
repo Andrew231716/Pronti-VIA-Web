@@ -10,18 +10,18 @@ function ok(label, cond) {
 }
 
 const account = readFileSync("account.js", "utf8");
-const spa = readFileSync("assets/index-loadfix-20261120v.js", "utf8");
+const spa = readFileSync("assets/index-loadfix-20261120w.js", "utf8");
 const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
 ok(
-  "stamps 20261120v",
-  /const SHELL_VER = "20261120v"/.test(account) &&
-    /account\.js\?v=20261120v/.test(index) &&
-    /20261120v-homefix/.test(sw) &&
-    /index-loadfix-20261120v\.js/.test(account) &&
-    /index-loadfix-20261120v\.js/.test(sw) &&
-    existsSync("assets/index-loadfix-20261120v.js")
+  "stamps 20261120w (prefer-home still wired)",
+  /const SHELL_VER = "20261120w"/.test(account) &&
+    /account\.js\?v=20261120w/.test(index) &&
+    /20261120w-postassicura/.test(sw) &&
+    /index-loadfix-20261120w\.js/.test(account) &&
+    /index-loadfix-20261120w\.js/.test(sw) &&
+    existsSync("assets/index-loadfix-20261120w.js")
 );
 
 ok(

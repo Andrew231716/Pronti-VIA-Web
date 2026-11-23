@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261120v-homefix`;
+const CACHE = `${CACHE_PREFIX}20261120w-postassicura`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -13,20 +13,20 @@ const PRECACHE = [
   "./manifest.webmanifest?v=20261111q",
   "./account.css?v=20261118b",
   "./travel-diary.css?v=20261120e-iacta",
-  "./account.js?v=20261120v",
+  "./account.js?v=20261120w",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261120v",
   "./assets/index-JJ3bX5VS.css",
   // Must match the case-sensitive dynamic import in account.js.
-  "./assets/index-loadfix-20261120v.js",
+  "./assets/index-loadfix-20261120w.js",
   "./assets/api-shim-20261119f.js",
   "./assets/magic-extras-20261120s.js",
   "./assets/expense-suite-20261111m.js",
   "./assets/expense-splitwise-20261111o.js",
   "./assets/app-suite-20261118h.js",
   "./assets/preventivo-islanda-20261117e.js",
-  "./assets/ux-suite-20261120u.js",
-  "./assets/assicurazione-20261120u.js",
+  "./assets/ux-suite-20261120w.js",
+  "./assets/assicurazione-20261120w.js",
   "./assets/pv-platform-20261118c.js",
   "./assets/destination-theme-20261119u.js",
   "./assets/event-pdf.mjs",
