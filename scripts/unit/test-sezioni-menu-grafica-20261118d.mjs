@@ -61,7 +61,7 @@ ok(
   /ux-suite-20261120u\.js/.test(index) &&
     /travel-diary\.css\?v=20261120e-iacta/.test(index) &&
     /ux-suite-20261120u\.js/.test(sw) &&
-    /20261120u-inslayout/.test(sw)
+    /20261120v-homefix/.test(sw)
 );
 ok(
   "asset mirrors source",

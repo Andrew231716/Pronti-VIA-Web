@@ -26,9 +26,9 @@ ok(
   /account.js\?v=20261120u/.test(index) &&
     /account\.css\?v=20261118b/.test(index) &&
     /account.js\?v=20261120u/.test(sw) &&
-    /20261120u-inslayout/.test(sw)
+    /20261120v-homefix/.test(sw)
 );
-ok("shell ver", /const SHELL_VER = "20261120u"/.test(accountJs));
+ok("shell ver", /const SHELL_VER = "20261120v"/.test(accountJs));
 ok("files exist", existsSync("account.js") && existsSync("account.css"));
 
 if (failed) {

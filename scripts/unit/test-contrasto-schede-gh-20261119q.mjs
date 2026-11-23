@@ -53,9 +53,9 @@ ok(
 ok(
   "stamps",
   /destination-theme-20261119u\.js/.test(index) &&
-    /20261120u-inslayout/.test(sw) &&
+    /20261120v-homefix/.test(sw) &&
     /account\.js\?v=20261120t/.test(index) &&
-    /const SHELL_VER = "20261120u"/.test(account) &&
+    /const SHELL_VER = "20261120v"/.test(account) &&
     existsSync("assets/destination-theme-20261119u.js")
 );
 ok(

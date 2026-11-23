@@ -38,7 +38,7 @@ ok(
 );
 ok(
   "sw + assets",
-  /20261120u-inslayout/.test(sw) &&
+  /20261120v-homefix/.test(sw) &&
     existsSync("assets/api-shim-20261119f.js") &&
     existsSync("assets/magic-extras-20261120s.js") &&
     existsSync("assets/app-suite-20261118h.js") &&

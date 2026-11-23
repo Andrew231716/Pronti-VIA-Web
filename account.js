@@ -1208,8 +1208,25 @@ async function activateSession(data, { bootApp = true } = {}) {
     }
   }
 
-  // Re-open the shared trip after signup/login (before SPA empty-state → Creta).
-  restorePendingShareHash();
+  // Shared-link flow: reopen that trip. Normal login: prefer Home so we don't
+  // auto-resume a trip that can hang forever on "Apriamo…".
+  const pendingShare = readPendingShare();
+  if (pendingShare?.trip && pendingShare?.key) {
+    restorePendingShareHash();
+  } else {
+    try {
+      sessionStorage.setItem("pv-prefer-home-v1", "1");
+    } catch {
+      /* ignore */
+    }
+    try {
+      if (/(?:^|[&#])trip=/.test(String(location.hash || ""))) {
+        history.replaceState(null, "", location.pathname + location.search);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   hideGate();
   showChip();
@@ -1217,8 +1234,8 @@ async function activateSession(data, { bootApp = true } = {}) {
   if (bootApp) {
     try {
       await loadApp();
-      // SPA may have mounted before hash restore; nudge it once more.
-      restorePendingShareHash();
+      // SPA may have mounted before hash restore; nudge shared trips once more.
+      if (pendingShare?.trip && pendingShare?.key) restorePendingShareHash();
     } catch {
       // Session is already active — don't bounce back to the login form.
       showAppBootFallback(
@@ -1230,7 +1247,7 @@ async function activateSession(data, { bootApp = true } = {}) {
 
 let appLoaded = false;
 let appLoadPromise = null;
-const APP_MODULE = "/assets/index-loadfix-20261120g.js";
+const APP_MODULE = "/assets/index-loadfix-20261120v.js";
 
 function rootHasApp() {
   const root = document.getElementById("root");
@@ -1239,6 +1256,75 @@ function rootHasApp() {
   return Boolean(
     root.querySelector(".topbar, .app-shell, .workspace, .recent-trips, main, [data-pv-app]")
   );
+}
+
+function rootIsStuckLoading() {
+  const root = document.getElementById("root");
+  if (!root) return false;
+  if (root.querySelector(".app-shell, .workspace, .recent-trips")) return false;
+  return Boolean(root.querySelector("main.loading"));
+}
+
+function forceHomeLanding(reason) {
+  try {
+    sessionStorage.setItem("pv-prefer-home-v1", "1");
+  } catch {
+    /* ignore */
+  }
+  try {
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch {
+    try {
+      location.hash = "";
+    } catch {
+      /* ignore */
+    }
+  }
+  try {
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+  } catch {
+    window.dispatchEvent(new Event("hashchange"));
+  }
+  if (reason) {
+    try {
+      console.warn("[pv] forceHomeLanding", reason);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+function watchStuckTripLoad() {
+  let ticks = 0;
+  const tick = () => {
+    if (!document.body.classList.contains("pv-account-ready")) {
+      setTimeout(tick, 2000);
+      return;
+    }
+    if (!rootIsStuckLoading()) {
+      ticks = 0;
+      setTimeout(tick, 2000);
+      return;
+    }
+    ticks += 1;
+    // ~8s of continuous "Apriamo…" → escape to Home instead of blank atmosphere.
+    if (ticks >= 4) {
+      ticks = 0;
+      forceHomeLanding("stuck-trip-load");
+      showAppBootFallback(
+        "Il viaggio non si apriva. Sei in Home: apri un viaggio da Viaggi oppure tocca Riprova."
+      );
+      try {
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+      } catch {
+        window.dispatchEvent(new Event("hashchange"));
+      }
+      setTimeout(tick, 4000);
+      return;
+    }
+    setTimeout(tick, 2000);
+  };
+  setTimeout(tick, 2500);
 }
 
 function showAppBootFallback(message) {
@@ -1589,7 +1675,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261120u";
+const SHELL_VER = "20261120v";
 
 async function ensureFreshShell() {
   try {
@@ -1610,5 +1696,6 @@ async function ensureFreshShell() {
 
 boot().finally(() => {
   watchAppMount();
+  watchStuckTripLoad();
   void ensureFreshShell();
 });

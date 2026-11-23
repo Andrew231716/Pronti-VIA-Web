@@ -24,8 +24,8 @@ ok(
   /ux-suite-20261120u\.js/.test(index) &&
     /assicurazione-20261120u\.js/.test(index) &&
     /assicurazione-20261120u\.js/.test(sw) &&
-    /20261120u-inslayout/.test(sw) &&
-    /const SHELL_VER = "20261120u"/.test(account) &&
+    /20261120v-homefix/.test(sw) &&
+    /const SHELL_VER = "20261120v"/.test(account) &&
     existsSync("assets/assicurazione-20261120u.js") &&
     existsSync("assets/ux-suite-20261120u.js") &&
     readFileSync("assets/assicurazione-20261120u.js", "utf8") === src
