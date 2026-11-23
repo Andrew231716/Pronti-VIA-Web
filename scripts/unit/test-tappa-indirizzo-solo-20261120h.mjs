@@ -19,8 +19,8 @@ ok(
   "stamps 20261120k",
   /magic-extras-20261120s\.js/.test(index) &&
     /places-suggest\.js\?v=20261120q/.test(index) &&
-    /20261120s-piano/.test(sw) &&
-    /const SHELL_VER = "20261120s"/.test(account) &&
+    /20261120t-assicura/.test(sw) &&
+    /const SHELL_VER = "20261120t"/.test(account) &&
     existsSync("assets/magic-extras-20261120s.js")
 );
 

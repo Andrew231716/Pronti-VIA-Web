@@ -21,9 +21,9 @@ ok(
   /magic-extras-20261120s\.js/.test(index) &&
     /places-suggest\.js\?v=20261120q/.test(index) &&
     /account\.js\?v=20261120q/.test(index) &&
-    /20261120s-piano/.test(sw) &&
+    /20261120t-assicura/.test(sw) &&
     /index-loadfix-20261120g\.js/.test(sw) &&
-    /const SHELL_VER = "20261120s"/.test(account) &&
+    /const SHELL_VER = "20261120t"/.test(account) &&
     /APP_MODULE = "\/assets\/index-loadfix-20261120g\.js"/.test(account) &&
     existsSync("assets/magic-extras-20261120s.js") &&
     existsSync("assets/index-loadfix-20261120g.js")

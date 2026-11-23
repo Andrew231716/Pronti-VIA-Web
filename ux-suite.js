@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261120d";
+  const STYLE_VER = "20261120t";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -19,6 +19,7 @@
     places: { phase: "both", label: "Luoghi", icon: "places" },
     preventivo: { phase: "prep", label: "Preventivo", icon: "preventivo" },
     bookings: { phase: "both", label: "Prenotazioni", icon: "bookings" },
+    insurance: { phase: "both", label: "Assicurazione", icon: "insurance" },
     expenses: { phase: "trip", label: "Spese", icon: "spese" },
     documents: { phase: "prep", label: "Documenti", icon: "docs" },
     packing: { phase: "prep", label: "Valigia", icon: "packing" },
@@ -27,11 +28,11 @@
   const TRIP_PHASE_COPY = {
     prep: {
       title: "Prepara",
-      hint: "Itinerario giorno per giorno, budget, prenotazioni, documenti e valigia",
+      hint: "Itinerario, budget, prenotazioni, assicurazione, documenti e valigia",
     },
     trip: {
       title: "In viaggio",
-      hint: "Itinerario, spese e note — assistenza mentre sei fuori",
+      hint: "Itinerario, assicurazione, spese e note — assistenza mentre sei fuori",
     },
   };
   const SECTION_GUIDE = {
@@ -40,6 +41,7 @@
     places: "I tuoi posti salvati, a portata di mappa.",
     preventivo: "Stima costi e budget prima di impegnare le prenotazioni.",
     bookings: "Voli, hotel e biglietti: tieni tutto sotto controllo.",
+    insurance: "Polizza condivisa: emergenze, massimali e viaggiatori a un tocco.",
     expenses: "Spese condivise e saldi tra compagni, in tempo reale.",
     documents: "Passaporti, voucher e PDF utili al check-in.",
     packing: "Checklist valigia personale e condivisa.",
@@ -64,7 +66,10 @@
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6h12l1 14H5L6 6Z"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M10 11v5M14 11v5"/></svg>',
     notes:
       '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>',
+    insurance:
+      '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>',
   };
+  window.__pvInsuranceIconSvg = ICON_SVG.insurance;
 
   const TEMPLATES = [
     {
@@ -5557,6 +5562,8 @@
   }
 
   function tabSectionKey(tab) {
+    const fromData = tab?.dataset?.pvTab;
+    if (fromData) return fromData;
     const controls = tab?.getAttribute?.("aria-controls") || "";
     const match = controls.match(/-content-([a-z]+)$/i);
     return match ? match[1] : "";
@@ -5634,8 +5641,8 @@
     if (ok) return;
     const preferred =
       phase === "trip"
-        ? ["itinerary", "expenses", "notes", "explore", "places", "bookings"]
-        : ["itinerary", "preventivo", "bookings", "documents", "packing", "places", "explore"];
+        ? ["itinerary", "expenses", "notes", "explore", "places", "bookings", "insurance"]
+        : ["itinerary", "preventivo", "bookings", "insurance", "documents", "packing", "places", "explore"];
     for (const key of preferred) {
       const tab = [...tabs.querySelectorAll('[role="tab"]')].find((el) => tabSectionKey(el) === key);
       if (!tab || getComputedStyle(tab).display === "none") continue;
@@ -5809,8 +5816,8 @@
     // Itinerario is "both" — first in Prepara so you can plan days before leaving.
     const order =
       phase === "trip"
-        ? ["itinerary", "explore", "places", "expenses", "bookings", "notes", "preventivo", "documents", "packing"]
-        : ["itinerary", "preventivo", "bookings", "documents", "packing", "places", "explore", "expenses", "notes"];
+        ? ["itinerary", "explore", "places", "expenses", "bookings", "insurance", "notes", "preventivo", "documents", "packing"]
+        : ["itinerary", "preventivo", "bookings", "insurance", "documents", "packing", "places", "explore", "expenses", "notes"];
     [...tabs.querySelectorAll('[role="tab"]')].forEach((tab) => {
       const key = tabSectionKey(tab);
       const idx = order.indexOf(key);

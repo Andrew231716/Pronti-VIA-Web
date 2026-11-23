@@ -17,8 +17,8 @@ const account = readFileSync("account.js", "utf8");
 ok(
   "stamps 20261120s",
   /magic-extras-20261120s\.js/.test(index) &&
-    /20261120s-piano/.test(sw) &&
-    /const SHELL_VER = "20261120s"/.test(account) &&
+    /20261120t-assicura/.test(sw) &&
+    /const SHELL_VER = "20261120t"/.test(account) &&
     existsSync("assets/magic-extras-20261120s.js")
 );
 
