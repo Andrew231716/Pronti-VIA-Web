@@ -8,7 +8,7 @@
   window.__pvAssicurazioneBound = true;
 
   const STYLE_ID = "pv-assicurazione-css";
-  const STYLE_VER = "20261120t";
+  const STYLE_VER = "20261120u";
   const SECTION = "insurance";
   const PANEL_ID = "pv-insurance-panel";
   const TAB_ID = "pv-insurance-tab";
@@ -49,84 +49,121 @@
         display:inline-flex;align-items:center;gap:6px;padding:14px 11px;color:inherit;
       }
       #${PANEL_ID}{
-        display:none;min-width:0;padding:clamp(.75rem,3vw,1.25rem);
-        border:1px solid var(--diary-line, #d5e3e6);border-radius:1rem;
-        background:var(--diary-paper, #fff);
+        display:none;min-width:0;padding:0;border:0;background:transparent;
       }
-      #${PANEL_ID}.pv-ins-open{display:block}
-      #${PANEL_ID} .pv-ins-head{
-        display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:12px;
-        margin:0 0 14px;
+      #${PANEL_ID}.pv-ins-open{display:flex;flex-direction:column;gap:1rem}
+      #${PANEL_ID} .section-heading{
+        display:flex;align-items:center;gap:10px;margin:0;
       }
-      #${PANEL_ID} .pv-ins-head h2{
-        margin:0;font-size:1.25rem;letter-spacing:-.02em;display:flex;align-items:center;gap:8px;
+      #${PANEL_ID} .section-heading h2{
+        margin:0;font-family:var(--diary-display, Georgia, serif);
+        font-size:clamp(1.2rem,3.2vw,1.45rem);letter-spacing:-.02em;color:var(--diary-ink,#12343c);
+        display:flex;align-items:center;gap:8px;
       }
-      #${PANEL_ID} .pv-ins-guide{margin:0 0 14px;color:#3f5860;font-size:.9rem;line-height:1.4}
-      #${PANEL_ID} .pv-ins-upload{
-        display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 16px;
+      #${PANEL_ID} .section-heading svg{width:20px;height:20px;flex:0 0 auto}
+      #${PANEL_ID} .pv-section-guide{
+        margin:0;color:var(--diary-muted,#3f5860);font-size:.92rem;line-height:1.4;max-width:42rem;
       }
-      #${PANEL_ID} .pv-ins-upload label,
-      #${PANEL_ID} .pv-ins-upload button{
-        appearance:none;border:1px solid #c9dbdb;border-radius:12px;padding:10px 14px;
-        background:#eef6f6;color:#0f3a40;font:700 13px inherit;cursor:pointer;min-height:42px;
+      #${PANEL_ID} .pv-ins-toolbar{
+        display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
       }
-      #${PANEL_ID} .pv-ins-upload label{display:inline-flex;align-items:center;gap:8px}
-      #${PANEL_ID} .pv-ins-upload input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
-      #${PANEL_ID} .pv-ins-status{font-size:.82rem;color:#5b7380}
-      #${PANEL_ID} .pv-ins-hero{
-        border:1px solid #d7e6e7;border-radius:16px;padding:14px 16px;margin:0 0 14px;
-        background:linear-gradient(160deg,#eef7f7,#f7fbfb);
+      #${PANEL_ID} .pv-ins-toolbar label,
+      #${PANEL_ID} .pv-ins-toolbar button{
+        appearance:none;border:1px solid var(--diary-line,#d5e3e6);border-radius:10px;
+        padding:9px 14px;background:var(--diary-paper,#fff);color:var(--diary-ink,#0f3a40);
+        font:650 13px inherit;cursor:pointer;min-height:40px;
       }
-      #${PANEL_ID} .pv-ins-hero .eyebrow{
-        font-size:.72rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#5b7380;
+      #${PANEL_ID} .pv-ins-toolbar label{
+        display:inline-flex;align-items:center;gap:8px;
+        background:color-mix(in srgb, var(--diary-accent,#007d82) 10%, #fff);
+        border-color:color-mix(in srgb, var(--diary-accent,#007d82) 28%, var(--diary-line,#d5e3e6));
       }
-      #${PANEL_ID} .pv-ins-hero strong{display:block;font-size:1.15rem;margin:4px 0 8px}
-      #${PANEL_ID} .pv-ins-chips{display:flex;flex-wrap:wrap;gap:8px}
-      #${PANEL_ID} .pv-ins-chip{
-        display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
-        background:#fff;border:1px solid #d5e3e6;font:650 12px inherit;color:#16353b;
+      #${PANEL_ID} .pv-ins-toolbar button[data-pv-ins-clear]{
+        background:transparent;color:var(--diary-muted,#5b7380);font-weight:600;
       }
-      #${PANEL_ID} .pv-ins-actions{
-        display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:0 0 16px;
+      #${PANEL_ID} .pv-ins-toolbar input{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+      #${PANEL_ID} .pv-ins-status{font-size:.8rem;color:var(--diary-muted,#5b7380)}
+      #${PANEL_ID} .pv-ins-body{display:flex;flex-direction:column;gap:1.25rem}
+      #${PANEL_ID} .pv-ins-title{
+        margin:0;font-size:1.15rem;line-height:1.25;color:var(--diary-ink,#12343c);letter-spacing:-.01em;
       }
-      #${PANEL_ID} .pv-ins-action{
-        display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;
-        padding:12px 14px;border-radius:14px;border:1px solid #cfe0e4;background:#fff;
-        text-decoration:none;color:#12343c;min-height:72px;box-shadow:0 4px 14px rgba(16,42,48,.04);
+      #${PANEL_ID} .pv-ins-meta{
+        margin:.35rem 0 0;color:var(--diary-muted,#3f5860);font-size:.9rem;line-height:1.45;
       }
-      #${PANEL_ID} .pv-ins-action span{font-size:.72rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#5b7380}
-      #${PANEL_ID} .pv-ins-action strong{font-size:.95rem;line-height:1.25;word-break:break-word}
-      #${PANEL_ID} .pv-ins-card{
-        border:1px solid #e0e7ec;border-radius:14px;padding:14px;margin:0 0 12px;background:#fff;
+      #${PANEL_ID} .pv-ins-meta b{color:var(--diary-ink,#12343c);font-weight:700}
+      #${PANEL_ID} .pv-ins-sos{
+        display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-decoration:none;
+        padding:14px 16px;border-radius:12px;color:#fff;
+        background:var(--diary-accent,#007d82);
+        min-height:56px;justify-content:center;
       }
-      #${PANEL_ID} .pv-ins-card h3{margin:0 0 10px;font-size:.95rem}
-      #${PANEL_ID} .pv-ins-row{
-        display:grid;grid-template-columns:minmax(110px,34%) 1fr;gap:6px 12px;padding:7px 0;
-        border-bottom:1px solid #eef3f3;font-size:.9rem;
+      #${PANEL_ID} .pv-ins-sos span{
+        font-size:.72rem;font-weight:750;letter-spacing:.04em;text-transform:uppercase;opacity:.88;
       }
-      #${PANEL_ID} .pv-ins-row:last-child{border-bottom:0}
-      #${PANEL_ID} .pv-ins-row span{color:#5b7380;font-weight:650}
-      #${PANEL_ID} .pv-ins-row a,#${PANEL_ID} .pv-ins-row strong{color:#0f3a40;font-weight:700;text-decoration:none;word-break:break-word}
-      #${PANEL_ID} .pv-ins-people{display:grid;gap:8px}
-      #${PANEL_ID} .pv-ins-person{
-        display:flex;justify-content:space-between;gap:10px;align-items:center;
-        padding:10px 12px;border-radius:12px;background:#f7fbfb;border:1px solid #e4eeee;
+      #${PANEL_ID} .pv-ins-sos strong{font-size:1.15rem;font-weight:750;letter-spacing:.01em}
+      #${PANEL_ID} .pv-ins-links{
+        display:flex;flex-direction:column;gap:0;margin:0;padding:0;list-style:none;
+        border-top:1px solid var(--diary-line,#d5e3e6);
       }
-      #${PANEL_ID} .pv-ins-person strong{font-size:.92rem}
-      #${PANEL_ID} .pv-ins-person span{font-size:.78rem;color:#5b7380;font-variant-numeric:tabular-nums}
+      #${PANEL_ID} .pv-ins-links a{
+        display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+        padding:11px 2px;border-bottom:1px solid var(--diary-line,#d5e3e6);
+        text-decoration:none;color:var(--diary-ink,#12343c);font-size:.95rem;
+      }
+      #${PANEL_ID} .pv-ins-links a span{color:var(--diary-muted,#5b7380);font-size:.82rem;font-weight:650}
+      #${PANEL_ID} .pv-ins-links a strong{font-weight:700;text-align:right;word-break:break-word}
+      #${PANEL_ID} .pv-ins-block h3{
+        margin:0 0 .55rem;font-size:.78rem;font-weight:800;letter-spacing:.05em;
+        text-transform:uppercase;color:var(--diary-muted,#5b7380);
+      }
+      #${PANEL_ID} .pv-ins-people{margin:0;padding:0;list-style:none}
+      #${PANEL_ID} .pv-ins-people li{
+        display:flex;justify-content:space-between;gap:12px;align-items:baseline;
+        padding:9px 0;border-bottom:1px solid color-mix(in srgb, var(--diary-line,#d5e3e6) 70%, transparent);
+        font-size:.92rem;
+      }
+      #${PANEL_ID} .pv-ins-people li:last-child{border-bottom:0}
+      #${PANEL_ID} .pv-ins-people strong{font-weight:700;color:var(--diary-ink,#12343c)}
+      #${PANEL_ID} .pv-ins-people span{
+        color:var(--diary-muted,#5b7380);font-size:.78rem;font-variant-numeric:tabular-nums;text-align:right;
+      }
       #${PANEL_ID} .pv-ins-cover{
-        display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:baseline;
-        padding:10px 0;border-bottom:1px solid #eef3f3;
+        display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:baseline;
+        padding:8px 0;border-bottom:1px solid color-mix(in srgb, var(--diary-line,#d5e3e6) 70%, transparent);
+        font-size:.9rem;
       }
       #${PANEL_ID} .pv-ins-cover:last-child{border-bottom:0}
-      #${PANEL_ID} .pv-ins-cover strong{font-size:.9rem}
-      #${PANEL_ID} .pv-ins-cover em{font-style:normal;font-weight:800;color:#007d82;font-size:.88rem;white-space:nowrap}
-      #${PANEL_ID} .pv-ins-empty{
-        padding:28px 18px;text-align:center;color:#3f5860;background:#edf4f5;border-radius:14px;
+      #${PANEL_ID} .pv-ins-cover strong{font-weight:650;color:var(--diary-ink,#12343c)}
+      #${PANEL_ID} .pv-ins-cover em{
+        font-style:normal;font-weight:750;color:var(--diary-accent,#007d82);white-space:nowrap;
       }
-      #${PANEL_ID} .pv-ins-empty strong{display:block;margin:0 0 6px;color:#12343c}
+      #${PANEL_ID} .pv-ins-details{
+        border:0;border-top:1px solid var(--diary-line,#d5e3e6);padding:0;margin:0;
+      }
+      #${PANEL_ID} .pv-ins-details > summary{
+        cursor:pointer;list-style:none;padding:12px 2px;font:700 .92rem inherit;
+        color:var(--diary-ink,#12343c);display:flex;justify-content:space-between;align-items:center;
+      }
+      #${PANEL_ID} .pv-ins-details > summary::-webkit-details-marker{display:none}
+      #${PANEL_ID} .pv-ins-details > summary::after{
+        content:"+";font-weight:700;color:var(--diary-muted,#5b7380);font-size:1.1rem;line-height:1;
+      }
+      #${PANEL_ID} .pv-ins-details[open] > summary::after{content:"–"}
+      #${PANEL_ID} .pv-ins-details .pv-ins-detail-body{padding:0 0 8px;display:grid;gap:1rem}
+      #${PANEL_ID} .pv-ins-facts{
+        display:grid;gap:6px 16px;margin:0;
+        grid-template-columns:minmax(7rem,28%) 1fr;font-size:.9rem;
+      }
+      #${PANEL_ID} .pv-ins-facts dt{margin:0;color:var(--diary-muted,#5b7380)}
+      #${PANEL_ID} .pv-ins-facts dd{margin:0;font-weight:700;color:var(--diary-ink,#12343c);word-break:break-word}
+      #${PANEL_ID} .pv-ins-empty{
+        padding:1.25rem 0;color:var(--diary-muted,#3f5860);font-size:.95rem;line-height:1.45;max-width:36rem;
+      }
+      #${PANEL_ID} .pv-ins-empty strong{display:block;margin:0 0 4px;color:var(--diary-ink,#12343c);font-size:1.05rem}
       @media (max-width:560px){
-        #${PANEL_ID} .pv-ins-row{grid-template-columns:1fr}
+        #${PANEL_ID} .pv-ins-facts{grid-template-columns:1fr}
+        #${PANEL_ID} .pv-ins-people li{flex-direction:column;gap:2px;align-items:flex-start}
+        #${PANEL_ID} .pv-ins-people span{text-align:left}
       }
     `;
   }
@@ -401,12 +438,19 @@
     return digits ? `tel:${digits}` : "";
   }
 
-  function rowHtml(label, value, href) {
+  function factHtml(label, value) {
     if (!value) return "";
-    const body = href
-      ? `<a href="${escapeHtml(href)}">${escapeHtml(value)}</a>`
-      : `<strong>${escapeHtml(value)}</strong>`;
-    return `<div class="pv-ins-row"><span>${escapeHtml(label)}</span>${body}</div>`;
+    return `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd>`;
+  }
+
+  function linkItem(label, value, href) {
+    if (!value || !href) return "";
+    const external = href.startsWith("http")
+      ? ' target="_blank" rel="noopener noreferrer"'
+      : "";
+    return `<li><a href="${escapeHtml(href)}"${external}><span>${escapeHtml(
+      label
+    )}</span><strong>${escapeHtml(value)}</strong></a></li>`;
   }
 
   function renderInsurance(panel, insurance) {
@@ -416,105 +460,93 @@
       body.innerHTML = `
         <div class="pv-ins-empty">
           <strong>Nessuna polizza ancora</strong>
-          Carica il certificato PDF: estraiamo polizza, contatti di emergenza,
-          viaggiatori e massimali — condivisi con tutto il gruppo.
+          Carica il certificato PDF: contatti di emergenza, assicurati e massimali restano condivisi con il gruppo.
         </div>`;
       return;
     }
 
-    const actions = [];
-    if (insurance.emergencyPhone) {
-      actions.push({
-        label: "Assistenza 24h",
-        value: insurance.emergencyPhone,
-        href: telHref(insurance.emergencyPhone),
-      });
-    }
-    if (insurance.phone && insurance.phone !== insurance.emergencyPhone) {
-      actions.push({ label: "Telefono", value: insurance.phone, href: telHref(insurance.phone) });
-    }
-    if (insurance.email) {
-      actions.push({ label: "Email", value: insurance.email, href: `mailto:${insurance.email}` });
-    }
-    if (insurance.portalUrl) {
-      actions.push({ label: "Area polizza", value: "Apri portale", href: insurance.portalUrl });
-    }
-    if (insurance.airhelpUrl) {
-      actions.push({ label: "AirHelp", value: "Avvia reclamo", href: insurance.airhelpUrl });
-    }
+    const metaParts = [
+      insurance.destination,
+      [insurance.startDate, insurance.endDate].filter(Boolean).join(" → ") || "",
+      insurance.insuredCount ? `${insurance.insuredCount} assicurati` : "",
+      insurance.policyNumber ? `n. ${insurance.policyNumber}` : "",
+    ].filter(Boolean);
 
-    const chips = [
-      insurance.destination && `<span class="pv-ins-chip">${escapeHtml(insurance.destination)}</span>`,
-      (insurance.startDate || insurance.endDate) &&
-        `<span class="pv-ins-chip">${escapeHtml(
-          [insurance.startDate, insurance.endDate].filter(Boolean).join(" → ")
-        )}</span>`,
-      insurance.insuredCount &&
-        `<span class="pv-ins-chip">${escapeHtml(String(insurance.insuredCount))} assicurati</span>`,
-      insurance.premiumFinal &&
-        `<span class="pv-ins-chip">${escapeHtml(insurance.premiumFinal)}</span>`,
-    ]
-      .filter(Boolean)
+    const secondary = [
+      insurance.phone && insurance.phone !== insurance.emergencyPhone
+        ? linkItem("Telefono", insurance.phone, telHref(insurance.phone))
+        : "",
+      linkItem("Email", insurance.email, insurance.email ? `mailto:${insurance.email}` : ""),
+      linkItem("Area polizza", "Apri", insurance.portalUrl),
+      linkItem("AirHelp", "Reclamo volo", insurance.airhelpUrl),
+    ].filter(Boolean);
+
+    const facts = [
+      factHtml("Compagnia", insurance.provider),
+      factHtml("Polizza", insurance.policyNumber),
+      factHtml("Contraente", insurance.contractorName),
+      factHtml("Codice fiscale", insurance.fiscalCode),
+      factHtml("Stipula", insurance.signedAt),
+      factHtml("Premio", insurance.premiumFinal || insurance.totalCost),
+    ].filter(Boolean);
+
+    const limits = (insurance.limits || [])
+      .map(
+        (c) =>
+          `<div class="pv-ins-cover"><strong>${escapeHtml(c.label)}</strong><em>${escapeHtml(
+            c.value
+          )}</em></div>`
+      )
       .join("");
 
     body.innerHTML = `
-      <div class="pv-ins-hero">
-        <div class="eyebrow">Polizza condivisa</div>
-        <strong>${escapeHtml(insurance.product || "Assicurazione viaggio")}${
-          insurance.policyNumber ? ` · ${escapeHtml(insurance.policyNumber)}` : ""
-        }</strong>
-        <div class="pv-ins-chips">${chips}</div>
+      <div>
+        <p class="pv-ins-title">${escapeHtml(insurance.product || "Assicurazione viaggio")}</p>
+        ${
+          metaParts.length
+            ? `<p class="pv-ins-meta">${metaParts
+                .map((p, i) => (i === 0 ? `<b>${escapeHtml(p)}</b>` : escapeHtml(p)))
+                .join(" · ")}</p>`
+            : ""
+        }
       </div>
       ${
-        actions.length
-          ? `<div class="pv-ins-actions">${actions
-              .map(
-                (a) =>
-                  `<a class="pv-ins-action" href="${escapeHtml(a.href)}" ${
-                    a.href.startsWith("http") ? 'target="_blank" rel="noopener noreferrer"' : ""
-                  }><span>${escapeHtml(a.label)}</span><strong>${escapeHtml(a.value)}</strong></a>`
-              )
-              .join("")}</div>`
+        insurance.emergencyPhone
+          ? `<a class="pv-ins-sos" href="${escapeHtml(telHref(insurance.emergencyPhone))}">
+              <span>Assistenza 24h</span>
+              <strong>${escapeHtml(insurance.emergencyPhone)}</strong>
+            </a>`
           : ""
       }
-      <div class="pv-ins-card">
-        <h3>Dati polizza</h3>
-        ${rowHtml("Compagnia", insurance.provider)}
-        ${rowHtml("N. polizza", insurance.policyNumber)}
-        ${rowHtml("Contraente", insurance.contractorName)}
-        ${rowHtml("Codice fiscale", insurance.fiscalCode)}
-        ${rowHtml("Stipula", insurance.signedAt)}
-        ${rowHtml("Premio finale", insurance.premiumFinal)}
-        ${rowHtml("Costo totale", insurance.totalCost)}
-      </div>
+      ${secondary.length ? `<ul class="pv-ins-links">${secondary.join("")}</ul>` : ""}
       ${
         insurance.travelers?.length
-          ? `<div class="pv-ins-card"><h3>Viaggiatori assicurati</h3><div class="pv-ins-people">${insurance.travelers
-              .map(
-                (t) =>
-                  `<div class="pv-ins-person"><strong>${escapeHtml(t.name)}</strong><span>${escapeHtml(
-                    t.fiscalCode || ""
-                  )}</span></div>`
-              )
-              .join("")}</div></div>`
+          ? `<div class="pv-ins-block">
+              <h3>Assicurati</h3>
+              <ul class="pv-ins-people">${insurance.travelers
+                .map(
+                  (t) =>
+                    `<li><strong>${escapeHtml(t.name)}</strong>${
+                      t.fiscalCode ? `<span>${escapeHtml(t.fiscalCode)}</span>` : ""
+                    }</li>`
+                )
+                .join("")}</ul>
+            </div>`
           : ""
       }
       ${
-        insurance.limits?.length || insurance.coverages?.length
-          ? `<div class="pv-ins-card"><h3>Coperture e massimali</h3>${[
-              ...(insurance.limits || []).map(
-                (c) =>
-                  `<div class="pv-ins-cover"><strong>${escapeHtml(c.label)}</strong><em>${escapeHtml(
-                    c.value
-                  )}</em></div>`
-              ),
-              ...(insurance.coverages || []).map(
-                (c) =>
-                  `<div class="pv-ins-cover"><strong>${escapeHtml(c.label)}</strong><em>${escapeHtml(
-                    c.premium || ""
-                  )}</em></div>`
-              ),
-            ].join("")}</div>`
+        facts.length || limits
+          ? `<details class="pv-ins-details">
+              <summary>Dettagli e massimali</summary>
+              <div class="pv-ins-detail-body">
+                ${facts.length ? `<dl class="pv-ins-facts">${facts.join("")}</dl>` : ""}
+                ${
+                  limits
+                    ? `<div class="pv-ins-block"><h3>Massimali</h3>${limits}</div>`
+                    : ""
+                }
+              </div>
+            </details>`
           : ""
       }
     `;
@@ -549,22 +581,22 @@
     panel.setAttribute("role", "tabpanel");
     panel.dataset.pvSection = SECTION;
     panel.innerHTML = `
-      <div class="pv-ins-head">
+      <div class="section-heading">
         <h2>
-          <span aria-hidden="true">${
+          <span class="pv-section-icon" aria-hidden="true">${
             window.__pvInsuranceIconSvg ||
             '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>'
           }</span>
-          Assicurazione viaggio
+          Assicurazione
         </h2>
       </div>
-      <p class="pv-ins-guide">Polizza condivisa con il gruppo — assistenza, massimali e viaggiatori a un tocco.</p>
-      <div class="pv-ins-upload">
+      <p class="pv-section-guide">Polizza del gruppo: assistenza e massimali a un tocco.</p>
+      <div class="pv-ins-toolbar">
         <label>
           <input type="file" accept="application/pdf,.pdf" />
-          + Carica certificato PDF
+          Carica PDF
         </label>
-        <button type="button" data-pv-ins-clear hidden>Rimuovi polizza</button>
+        <button type="button" data-pv-ins-clear hidden>Rimuovi</button>
         <span class="pv-ins-status"></span>
       </div>
       <div class="pv-ins-body"></div>
