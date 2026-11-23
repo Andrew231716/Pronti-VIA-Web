@@ -20,15 +20,24 @@ const access = readFileSync("netlify/functions/_trip-access.mjs", "utf8");
 const src = readFileSync("assicurazione.js", "utf8");
 
 ok(
-  "stamps 20261120t",
-  /ux-suite-20261120t\.js/.test(index) &&
-    /assicurazione-20261120t\.js/.test(index) &&
-    /assicurazione-20261120t\.js/.test(sw) &&
-    /20261120t-assicura/.test(sw) &&
-    /const SHELL_VER = "20261120t"/.test(account) &&
-    existsSync("assets/assicurazione-20261120t.js") &&
-    existsSync("assets/ux-suite-20261120t.js") &&
-    readFileSync("assets/assicurazione-20261120t.js", "utf8") === src
+  "stamps 20261120u",
+  /ux-suite-20261120u\.js/.test(index) &&
+    /assicurazione-20261120u\.js/.test(index) &&
+    /assicurazione-20261120u\.js/.test(sw) &&
+    /20261120u-inslayout/.test(sw) &&
+    /const SHELL_VER = "20261120u"/.test(account) &&
+    existsSync("assets/assicurazione-20261120u.js") &&
+    existsSync("assets/ux-suite-20261120u.js") &&
+    readFileSync("assets/assicurazione-20261120u.js", "utf8") === src
+);
+
+ok(
+  "layout semplificato",
+  /pv-ins-sos/.test(src) &&
+    /pv-ins-details/.test(src) &&
+    /pv-ins-toolbar/.test(src) &&
+    !/pv-ins-chip/.test(src) &&
+    !/pv-ins-card/.test(src)
 );
 
 ok(
@@ -123,4 +132,4 @@ async function parseSample() {
 await parseSample();
 
 if (process.exitCode) process.exit(process.exitCode);
-console.log("assicurazione-viaggio 20261120t ok");
+console.log("assicurazione-viaggio 20261120u ok");

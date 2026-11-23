@@ -49,12 +49,12 @@ ok(
 ok(
   "stamps",
   /destination-theme-20261119u\.js/.test(index) &&
-    /ux-suite-20261120t\.js/.test(index) &&
+    /ux-suite-20261120u\.js/.test(index) &&
     /magic-extras-20261120s\.js/.test(index) &&
     /travel-diary\.css\?v=20261120e-iacta/.test(index) &&
-    /20261120t-assicura/.test(sw) &&
+    /20261120u-inslayout/.test(sw) &&
     existsSync("assets/destination-theme-20261119u.js") &&
-    existsSync("assets/ux-suite-20261120t.js") &&
+    existsSync("assets/ux-suite-20261120u.js") &&
     existsSync("assets/magic-extras-20261120s.js")
 );
 

@@ -34,15 +34,15 @@ ok(
   /api-shim-20261119f\.js/.test(index) &&
     /magic-extras-20261120s\.js/.test(index) &&
     /app-suite-20261118h\.js/.test(index) &&
-    /ux-suite-20261120t\.js/.test(index)
+    /ux-suite-20261120u\.js/.test(index)
 );
 ok(
   "sw + assets",
-  /20261120t-assicura/.test(sw) &&
+  /20261120u-inslayout/.test(sw) &&
     existsSync("assets/api-shim-20261119f.js") &&
     existsSync("assets/magic-extras-20261120s.js") &&
     existsSync("assets/app-suite-20261118h.js") &&
-    existsSync("assets/ux-suite-20261120t.js")
+    existsSync("assets/ux-suite-20261120u.js")
 );
 
 

@@ -33,14 +33,14 @@ ok(
 ok(
   "stamps",
   /magic-extras-20261120s\.js/.test(index) &&
-    /ux-suite-20261120t\.js/.test(index) &&
+    /ux-suite-20261120u\.js/.test(index) &&
     /travel-diary\.css\?v=20261120e-iacta/.test(index) &&
-    /20261120t-assicura/.test(sw)
+    /20261120u-inslayout/.test(sw)
 );
 ok(
   "assets",
   existsSync("assets/magic-extras-20261120s.js") &&
-    existsSync("assets/ux-suite-20261120t.js") &&
+    existsSync("assets/ux-suite-20261120u.js") &&
     readFileSync("assets/magic-extras-20261120s.js", "utf8").includes('dataset.pvReady = "20261120s"')
 );
 

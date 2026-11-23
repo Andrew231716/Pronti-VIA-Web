@@ -44,13 +44,13 @@ ok(
 
 ok(
   "stamps",
-  /ux-suite-20261120t\.js/.test(index) &&
+  /ux-suite-20261120u\.js/.test(index) &&
     /magic-extras-20261120s\.js/.test(index) &&
     /travel-diary\.css\?v=20261120e-iacta/.test(index) &&
-    /20261120t-assicura/.test(sw) &&
-    existsSync("assets/ux-suite-20261120t.js") &&
+    /20261120u-inslayout/.test(sw) &&
+    existsSync("assets/ux-suite-20261120u.js") &&
     existsSync("assets/magic-extras-20261120s.js") &&
-    /const STYLE_VER = "20261120t"/.test(ux) &&
+    /const STYLE_VER = "20261120u"/.test(ux) &&
     /dataset\.pvReady = "20261120s"/.test(magic)
 );
 

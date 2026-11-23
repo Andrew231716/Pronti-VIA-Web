@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261120t";
+  const STYLE_VER = "20261120u";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -41,7 +41,7 @@
     places: "I tuoi posti salvati, a portata di mappa.",
     preventivo: "Stima costi e budget prima di impegnare le prenotazioni.",
     bookings: "Voli, hotel e biglietti: tieni tutto sotto controllo.",
-    insurance: "Polizza condivisa: emergenze, massimali e viaggiatori a un tocco.",
+    insurance: "Assistenza e massimali della polizza di gruppo.",
     expenses: "Spese condivise e saldi tra compagni, in tempo reale.",
     documents: "Passaporti, voucher e PDF utili al check-in.",
     packing: "Checklist valigia personale e condivisa.",
