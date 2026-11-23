@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261120u";
+  const STYLE_VER = "20261120w";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -691,8 +691,26 @@
         grid-column: 1 / -1; padding: 16px; border: 1px solid var(--line, #b7d8d8);
         border-radius: 16px; display: grid; gap: 6px; justify-items: start;
       }
+      .pv-home-resume .pv-resume-top{
+        display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;width:100%
+      }
+      .pv-home-resume .pv-resume-top small{opacity:.75;font-weight:600}
       .pv-home-resume :is(h3,p){margin:0;overflow-wrap:anywhere}
       .pv-home-resume a{margin-top:4px;min-height:44px}
+      /* Prefer-home + real trips: hide Creta demo chrome under the resume card */
+      main.app-shell.pv-home-real-only > .demo-notice,
+      main.app-shell.pv-home-real-only > .trip-cover,
+      main.app-shell.pv-home-real-only > .workspace-tabs,
+      main.app-shell.pv-home-real-only > .main-tabs,
+      main.app-shell.pv-home-real-only > .trip-toolbar,
+      main.app-shell.pv-home-real-only > .travelers,
+      main.app-shell.pv-home-real-only > .error-banner,
+      main.app-shell.pv-home-real-only > .link-reminder,
+      main.app-shell.pv-home-real-only > .workspace-grid,
+      main.app-shell.pv-home-real-only > .primary-panel,
+      main.app-shell.pv-home-real-only > .footer{
+        display:none!important
+      }
       .recent-trips.pv-home-cards{
         display:grid;gap:14px;margin-top:10px
       }
@@ -1901,11 +1919,17 @@
 
   let resumeTarget;
 
+  function syncHomeDemoVisibility(host, hasResume) {
+    if (!host) return;
+    host.classList.toggle("pv-home-real-only", Boolean(hasResume));
+  }
+
   function renderHomeResume() {
     const existing = document.querySelector("#root .pv-home-resume");
     const host = document.querySelector("#root main.app-shell");
     if (tripAuth() || !host) {
       existing?.remove();
+      syncHomeDemoVisibility(host, false);
       if (resumeTarget && tripAuth()?.id === resumeTarget.id) {
         if (window.ProntiPlatform?.openTravelDay && document.querySelector("#root .trip-cover")) {
           const preparing = resumeTarget.preparing;
@@ -1937,6 +1961,7 @@
       || (first.priority === 1 ? first.start.localeCompare(second.start) : 0))[0];
     if (!featured) {
       existing?.remove();
+      syncHomeDemoVisibility(host, false);
       return;
     }
 
@@ -1946,6 +1971,7 @@
       resume.innerHTML = '<div class="pv-resume-top"><span></span><small></small></div><h3></h3><p></p><a class="button">Riprendi viaggio</a>';
       host.prepend(resume);
     }
+    syncHomeDemoVisibility(host, true);
     resume.classList.toggle("pv-resume-accra", /\b(?:accra|ghana)\b/i.test(`${featured.destination} ${featured.title}`));
     const next = featured.next;
     const dates = [featured.start, featured.end].filter(Boolean).map(date => date.split("-").reverse().join("/")).join(" – ");
