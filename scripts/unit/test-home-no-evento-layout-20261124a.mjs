@@ -16,13 +16,13 @@ const sw = readFileSync("sw.js", "utf8");
 const account = readFileSync("account.js", "utf8");
 
 ok(
-  "stamps 20261124a",
-  /STYLE_VER = "20261124a"/.test(ux) &&
-    /ux-suite-20261124a\.js/.test(index) &&
-    /ux-suite-20261124a\.js/.test(sw) &&
-    /const SHELL_VER = "20261124a"/.test(account) &&
-    existsSync("assets/ux-suite-20261124a.js") &&
-    readFileSync("assets/ux-suite-20261124a.js", "utf8") === ux
+  "stamps 20261124b",
+  /STYLE_VER = "20261124b"/.test(ux) &&
+    /ux-suite-20261124b\.js/.test(index) &&
+    /ux-suite-20261124b\.js/.test(sw) &&
+    /const SHELL_VER = "20261124b"/.test(account) &&
+    existsSync("assets/ux-suite-20261124b.js") &&
+    readFileSync("assets/ux-suite-20261124b.js", "utf8") === ux
 );
 
 ok(
@@ -46,4 +46,4 @@ ok(
 );
 
 if (process.exitCode) process.exit(1);
-console.log("home-no-evento-layout 20261124a ok");
+console.log("home-no-evento-layout 20261124b ok");

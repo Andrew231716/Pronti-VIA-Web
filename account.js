@@ -178,13 +178,20 @@ function placeThemeToggle() {
   if (!onTrip) onTrip = document.body.classList.contains("pv-trip-open");
 
   if (!onTrip) {
-    const nuovo = [...document.querySelectorAll("#root button")].find((el) =>
+    const topActions = document.querySelector("#root .topbar .top-actions");
+    const nuovo = [...(topActions?.querySelectorAll("button") || document.querySelectorAll("#root button"))].find((el) =>
       /^\+?\s*nuovo viaggio$/i.test((el.textContent || "").replace(/\s+/g, " ").trim())
     );
-    if (nuovo) {
-      // Keep the SPA button in place (React-owned); only park Sistema beside it.
-      if (btn.previousElementSibling !== nuovo) nuovo.insertAdjacentElement("afterend", btn);
-      nuovo.classList.add("pv-home-nuovo");
+    const trips = [...(topActions?.querySelectorAll("button") || [])].find((el) =>
+      /^i tuoi viaggi$/i.test((el.textContent || "").trim())
+    );
+    // Nuovo viaggio is hidden in the sheet; park Sistema beside «I tuoi viaggi».
+    const anchor = trips || nuovo;
+    if (anchor) {
+      if (nuovo) nuovo.classList.add("pv-home-nuovo");
+      if (btn.previousElementSibling !== anchor && btn.nextElementSibling !== anchor) {
+        anchor.insertAdjacentElement("afterend", btn);
+      }
       setMode("home");
       return;
     }
@@ -825,10 +832,22 @@ function ensureUi() {
   });
 
   nav.querySelector("#pv-nav-home").addEventListener("click", () => {
-    // Guests on shared links must not clear #trip&key (that opens the login gate).
+    // Shared-link recipients must not leave the trip (guest → login gate; view-token → Home).
     try {
       const session = JSON.parse(localStorage.getItem("viavia-account-v1") || "null");
-      if (session?.guest) {
+      const hash = new URLSearchParams(String(location.hash || "").replace(/^#/, ""));
+      const tripId = hash.get("trip");
+      const key = hash.get("key");
+      let shareLock = Boolean(session?.guest);
+      if (!shareLock && tripId && key) {
+        const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}") || {};
+        const rec = db[tripId];
+        if (rec && !rec.softReadonly) {
+          if (rec.viewToken && key === rec.viewToken) shareLock = true;
+          else if (rec.canEdit === false && rec.key && key !== rec.key) shareLock = true;
+        }
+      }
+      if (shareLock) {
         setNavCurrent("trips");
         if (typeof window.__pvNavHome === "function") window.__pvNavHome();
         return;
@@ -1675,7 +1694,7 @@ async function boot() {
   }
 }
 
-const SHELL_VER = "20261124a";
+const SHELL_VER = "20261124b";
 
 async function ensureFreshShell() {
   try {

@@ -1,6 +1,6 @@
 /* Pronti? VIA! — offline shell service worker */
 const CACHE_PREFIX = "pv-shell-";
-const CACHE = `${CACHE_PREFIX}20261124a-home-no-evento`;
+const CACHE = `${CACHE_PREFIX}20261124b-viaggi-share-lock`;
 const PRECACHE = [
   "./",
   "./index.html",
@@ -13,7 +13,7 @@ const PRECACHE = [
   "./manifest.webmanifest?v=20261111q",
   "./account.css?v=20261118b",
   "./travel-diary.css?v=20261120e-iacta",
-  "./account.js?v=20261124a",
+  "./account.js?v=20261124b",
   "./ios-form-fix.js?v=20261029a",
   "./places-suggest.js?v=20261120v",
   "./assets/index-JJ3bX5VS.css",
@@ -25,7 +25,7 @@ const PRECACHE = [
   "./assets/expense-splitwise-20261111o.js",
   "./assets/app-suite-20261118h.js",
   "./assets/preventivo-islanda-20261117e.js",
-  "./assets/ux-suite-20261124a.js",
+  "./assets/ux-suite-20261124b.js",
   "./assets/assicurazione-20261120w.js",
   "./assets/pv-platform-20261118c.js",
   "./assets/destination-theme-20261119u.js",

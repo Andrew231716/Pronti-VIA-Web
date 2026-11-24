@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261124a";
+  const STYLE_VER = "20261124b";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -761,25 +761,36 @@
       /* Home import CTA removed — keep any leftover node hidden */
       #pv-home-import-btn,
       .pv-home-import-card{display:none!important}
-      /* Home toolbar: I tuoi viaggi · cestino · Nuovo viaggio · Sistema */
+      /* Topbar home: solo «I tuoi viaggi» (+ Sistema). Nuovo viaggio e cestino vivono nel foglio. */
       #root .topbar .top-actions.pv-home-actions{
         display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0
       }
       #root .topbar .top-actions.pv-home-actions > .text-button{
         flex:0 1 auto;min-height:40px;padding:8px 10px
       }
-      #root .topbar .top-actions.pv-home-actions > .pv-home-trash-wrap{
-        display:inline-flex;align-items:center;margin:0;flex:0 0 auto
-      }
       #root .topbar .top-actions.pv-home-actions > .button.pv-home-nuovo,
-      #root .topbar .top-actions.pv-home-actions > .button.secondary{
-        flex:1 1 auto;min-width:min(100%,148px);min-height:40px;justify-content:center
+      #root .topbar .top-actions.pv-home-actions > .pv-home-trash-wrap,
+      #pv-home-trash-btn{
+        display:none!important
       }
       #root .topbar .top-actions.pv-home-actions > #pv-theme-toggle{
         flex:0 0 auto;margin:0
       }
       .pv-home-trash-wrap{
         display:inline-flex;align-items:center;gap:8px;margin-left:0;vertical-align:middle
+      }
+      .pv-trips-sheet-actions{
+        display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px
+      }
+      .pv-trips-sheet-actions .button{flex:1 1 auto;min-height:44px;justify-content:center}
+      .pv-trips-sheet-actions .pv-trash-icon-btn{flex:0 0 auto}
+      /* Link condiviso: niente fuga verso Home */
+      body.pv-share-lock #pv-nav-home{display:none!important}
+      body.pv-share-lock #root .topbar .brand{pointer-events:none;cursor:default}
+      body.pv-share-lock #root .topbar .top-actions > .text-button,
+      body.pv-share-lock #root .topbar .top-actions > .button.secondary,
+      body.pv-share-lock #root .topbar .top-actions > .button.pv-home-nuovo{
+        display:none!important
       }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
@@ -1777,17 +1788,38 @@
     }
   }
 
+  function triggerSpaNewTrip() {
+    closeModal();
+    const btn =
+      [...document.querySelectorAll("#root .topbar button, #root button")].find((el) =>
+        /^\+?\s*nuovo viaggio$/i.test((el.textContent || "").replace(/\s+/g, " ").trim())
+      ) || null;
+    if (btn) {
+      btn.hidden = false;
+      btn.removeAttribute("hidden");
+      btn.click();
+      return;
+    }
+    toast("Apri «Nuovo viaggio» dalla Home", "warn");
+  }
+
   function openManageTrips() {
     const links = readRecentLinks();
+    const headerActions = `<div class="pv-trips-sheet-actions">
+         <button type="button" class="button" data-ux-new-trip>+ Nuovo viaggio</button>
+         <button type="button" class="pv-trash-icon-btn" data-ux-manage-hint aria-label="Rimuovi un viaggio dall’elenco" title="Usa il cestino accanto a ogni viaggio">${trashIconSvg(15)}</button>
+       </div>`;
     const body =
       links.length === 0
-        ? `<div class="pv-empty-state" style="margin:4px 0 8px">
+        ? `${headerActions}
+           <div class="pv-empty-state" style="margin:4px 0 8px">
              <span class="pv-empty-emo" aria-hidden="true">🧳</span>
              <h3>Nessun viaggio ancora</h3>
-             <p>Crea il primo dalla home con «Nuovo viaggio», oppure apri un link condiviso.</p>
+             <p>Crea il primo con «Nuovo viaggio», oppure apri un link condiviso.</p>
            </div>
            <div class="pv-ux-actions"><button type="button" class="pv-ux-ghost" data-ux-close>Chiudi</button></div>`
-        : `<p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Apri un viaggio o rimuovilo da questo dispositivo (e dal cloud se disponibile).</p>
+        : `${headerActions}
+           <p style="margin:0 0 10px;color:#5b7380;font-size:.9rem">Apri un viaggio o rimuovilo da questo dispositivo (e dal cloud se disponibile).</p>
            <div class="pv-trip-manage-list">
              ${links
                .map((t, i) => {
@@ -1809,6 +1841,20 @@
 
     openModal("I tuoi viaggi", body, {
       onMount: (root) => {
+        root.querySelector("[data-ux-new-trip]")?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          triggerSpaNewTrip();
+        });
+        root.querySelector("[data-ux-manage-hint]")?.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          const first = root.querySelector("button[data-del]");
+          if (first) {
+            first.focus();
+            toast("Tocca il cestino accanto al viaggio da rimuovere", "ok");
+          } else {
+            toast("Nessun viaggio da rimuovere", "warn");
+          }
+        });
         root.querySelectorAll("button[data-del]").forEach((btn) => {
           btn.addEventListener("click", async () => {
             const idx = Number(btn.getAttribute("data-del"));
@@ -2032,6 +2078,7 @@
     const host = document.querySelector(".recent-trips");
     if (!host) return;
 
+    polishSpaTripsSheet();
     enhanceHomeTripCards();
     polishLocalOnlyBanner();
 
@@ -2101,49 +2148,67 @@
   }
 
   function polishHomeActionsRow() {
-    const nuovo =
-      [...document.querySelectorAll("#root .topbar button, #root .top-actions button")].find((b) =>
-        /^\+?\s*nuovo viaggio$/i.test((b.textContent || "").replace(/\s+/g, " ").trim())
-      ) || null;
-    const row = nuovo?.closest(".top-actions") || document.querySelector("#root .topbar .top-actions");
+    const row = document.querySelector("#root .topbar .top-actions");
     if (!row) return;
     row.classList.add("pv-home-actions");
-    if (nuovo) nuovo.classList.add("pv-home-nuovo");
+    const nuovo =
+      [...row.querySelectorAll("button")].find((b) =>
+        /^\+?\s*nuovo viaggio$/i.test((b.textContent || "").replace(/\s+/g, " ").trim())
+      ) || null;
+    if (nuovo) {
+      nuovo.classList.add("pv-home-nuovo");
+      // Keep in DOM for triggerSpaNewTrip(), but hide from topbar.
+      nuovo.setAttribute("aria-hidden", "true");
+      nuovo.tabIndex = -1;
+    }
+    // Trash lives inside «I tuoi viaggi» — never beside the topbar CTA.
+    document.getElementById("pv-home-trash-btn")?.closest?.(".pv-home-trash-wrap")?.remove();
+    document.getElementById("pv-home-trash-btn")?.remove();
+    document.getElementById("pv-home-delete-bar")?.remove();
+  }
+
+  function polishSpaTripsSheet() {
+    const host = document.querySelector(".recent-trips");
+    if (!host || tripAuth() || isShareLinkSession()) {
+      document.getElementById("pv-trips-sheet-bar")?.remove();
+      return;
+    }
+    let bar = document.getElementById("pv-trips-sheet-bar");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "pv-trips-sheet-bar";
+      bar.className = "pv-trips-sheet-actions";
+      bar.innerHTML = `<button type="button" class="button" data-ux-new-trip>+ Nuovo viaggio</button>
+        <button type="button" class="pv-trash-icon-btn" data-ux-manage-hint aria-label="Rimuovi un viaggio" title="Usa il cestino accanto a ogni viaggio">${trashIconSvg(15)}</button>`;
+      host.prepend(bar);
+      bar.querySelector("[data-ux-new-trip]")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        triggerSpaNewTrip();
+      });
+      bar.querySelector("[data-ux-manage-hint]")?.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        const first = host.querySelector(".pv-delete-trip, .pv-recent-trash, button[data-del]");
+        if (first) {
+          first.focus?.();
+          toast("Tocca il cestino accanto al viaggio da rimuovere", "ok");
+        } else {
+          openManageTrips();
+        }
+      });
+    }
+    // Hide the SPA duplicate Nuovo viaggio at the bottom of the sheet (actions live in the bar).
+    [...host.querySelectorAll(":scope > button.button")].forEach((btn) => {
+      if (/^\+?\s*nuovo viaggio$/i.test((btn.textContent || "").replace(/\s+/g, " ").trim())) {
+        btn.hidden = true;
+        btn.setAttribute("aria-hidden", "true");
+      }
+    });
   }
 
   function injectHomeDeleteEntry() {
-    document.getElementById("pv-home-delete-bar")?.remove();
-    // Home CTA "I tuoi viaggi" (exact label) — show a small red trash beside it, no "Elimina" text.
-    const anchor =
-      [...document.querySelectorAll("button")].find((b) =>
-        /^i tuoi viaggi$/i.test((b.textContent || "").trim())
-      ) || null;
-    if (!anchor) {
-      document.getElementById("pv-home-trash-btn")?.closest?.(".pv-home-trash-wrap")?.remove();
-      document.getElementById("pv-home-trash-btn")?.remove();
-      polishHomeActionsRow();
-      return;
-    }
-    if (!document.getElementById("pv-home-trash-btn")) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.id = "pv-home-trash-btn";
-      btn.className = "pv-trash-icon-btn";
-      btn.innerHTML = trashIconSvg(15);
-      btn.setAttribute("aria-label", "Rimuovi un viaggio salvato");
-      btn.title = "Rimuovi un viaggio";
-      btn.addEventListener("click", (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        openManageTrips();
-      });
-
-      const wrap = document.createElement("span");
-      wrap.className = "pv-home-trash-wrap";
-      wrap.appendChild(btn);
-      anchor.insertAdjacentElement("afterend", wrap);
-    }
+    // Topbar trash removed — actions live in the I tuoi viaggi sheet / manage modal.
     polishHomeActionsRow();
+    polishSpaTripsSheet();
   }
 
   function openModal(title, bodyHtml, { onMount } = {}) {
@@ -2839,8 +2904,55 @@
     }
   }
 
+  /** Guest or view-token share: stay inside the trip (no Home escape). */
+  function isShareLinkSession() {
+    if (isGuestAccount()) return true;
+    const auth = tripAuth();
+    if (!auth) return false;
+    try {
+      const db = JSON.parse(localStorage.getItem("viavia-local-trips-v1") || "{}") || {};
+      const rec = db[auth.id];
+      if (!rec) return false;
+      if (rec.softReadonly) return false;
+      if (rec.viewToken && auth.key === rec.viewToken) return true;
+      if (rec.canEdit === false && rec.key && auth.key !== rec.key) return true;
+    } catch {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function syncShareLockChrome() {
+    const lock = Boolean(tripAuth() && isShareLinkSession());
+    document.body.classList.toggle("pv-share-lock", lock);
+    const brand = document.querySelector("#root .topbar a.brand");
+    if (brand) {
+      if (lock) {
+        if (!brand.dataset.pvShareHref) brand.dataset.pvShareHref = brand.getAttribute("href") || "./";
+        brand.setAttribute("href", "#");
+        brand.addEventListener("click", blockShareHomeNav, true);
+      } else if (brand.dataset.pvShareHref) {
+        brand.setAttribute("href", brand.dataset.pvShareHref);
+        delete brand.dataset.pvShareHref;
+        brand.removeEventListener("click", blockShareHomeNav, true);
+      }
+    }
+  }
+
+  function blockShareHomeNav(ev) {
+    if (!isShareLinkSession()) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    toast("Con il link condiviso resti nel viaggio — Home non è disponibile", "warn");
+  }
+
   function leaveOpenTripSoft() {
+    if (isShareLinkSession()) {
+      toast("Con il link condiviso resti nel viaggio — Home non è disponibile", "warn");
+      return;
+    }
     document.body.classList.remove("pv-trip-open");
+    document.body.classList.remove("pv-share-lock");
     try {
       window.__pvCapturePendingShare?.();
     } catch {
@@ -2873,11 +2985,13 @@
   }
 
   function navGoHome() {
-    // Share recipients (guest): Home would clear #trip&key → login gate. Keep them in the trip.
-    if (isGuestAccount()) {
+    // Share recipients: Home would leave the trip (or kick guests to login). Stay put.
+    if (isShareLinkSession()) {
       lockPrimaryNav("trips", 2500);
       toast(
-        "Sei nel viaggio condiviso. Home (i tuoi viaggi) richiede un account — resta qui o accedi.",
+        isGuestAccount()
+          ? "Sei nel viaggio condiviso. Home richiede un account — resta qui o accedi."
+          : "Con il link condiviso resti nel viaggio — Home non è disponibile.",
         "warn"
       );
       return;
@@ -2948,6 +3062,8 @@
   window.__pvNavHome = navGoHome;
   window.__pvNavTrips = navGoTrips;
   window.__pvNavAi = navGoAi;
+  window.__pvOpenManageTrips = openManageTrips;
+  window.__pvIsShareLinkSession = isShareLinkSession;
 
   function openSearchSheet() {
     openModal(
@@ -6058,14 +6174,15 @@
     const home = document.getElementById("pv-nav-home");
     const trips = document.getElementById("pv-nav-trips");
     const inTrip = Boolean(tripAuth());
-    const guest = isGuestAccount();
+    const shareLock = isShareLinkSession();
+    syncShareLockChrome();
     if (home) {
-      // Guests on share links: hide Home — clearing the trip hash would kick them to login.
-      home.hidden = guest;
-      home.toggleAttribute("disabled", guest);
-      home.setAttribute("aria-hidden", guest ? "true" : "false");
-      if (guest) {
-        home.title = "Home non disponibile sul link condiviso (serve un account)";
+      // Share-link recipients: hide Home — leaving the trip is not allowed.
+      home.hidden = shareLock;
+      home.toggleAttribute("disabled", shareLock);
+      home.setAttribute("aria-hidden", shareLock ? "true" : "false");
+      if (shareLock) {
+        home.title = "Home non disponibile sul link condiviso";
       } else {
         home.title = inTrip
           ? "Home — esci dal viaggio e torna alla panoramica"
@@ -6080,10 +6197,12 @@
   }
 
   function syncPrimaryNavState() {
+    // Always sync share-lock chrome (brand/Home escape), even before primary nav mounts.
+    syncShareLockChrome();
     if (typeof window.__pvSetPrimaryNav !== "function") return;
     syncPrimaryNavLabels();
-    // Guests live inside the shared trip — never claim Home as current.
-    if (isGuestAccount() && tripAuth()) {
+    // Share recipients live inside the trip — never claim Home as current.
+    if (isShareLinkSession() && tripAuth()) {
       if (!document.body.classList.contains("pv-plat-open") &&
           !document.body.classList.contains("pv-magic-open") &&
           !document.getElementById("pv-preventivo-root")?.classList.contains("open") &&
@@ -6093,7 +6212,7 @@
       }
     }
     // User just chose Home: keep Home selected even while hash is clearing.
-    if (primaryNavLockActive("home") && !isGuestAccount()) {
+    if (primaryNavLockActive("home") && !isShareLinkSession()) {
       window.__pvSetPrimaryNav("home");
       return;
     }
