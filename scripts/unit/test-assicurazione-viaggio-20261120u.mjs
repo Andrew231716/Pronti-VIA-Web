@@ -20,14 +20,14 @@ const access = readFileSync("netlify/functions/_trip-access.mjs", "utf8");
 const src = readFileSync("assicurazione.js", "utf8");
 
 ok(
-  "stamps 20261120w",
-  /ux-suite-20261120w\.js/.test(index) &&
+  "stamps shell 20261124a + assicurazione w",
+  /ux-suite-20261124a\.js/.test(index) &&
     /assicurazione-20261120w\.js/.test(index) &&
     /assicurazione-20261120w\.js/.test(sw) &&
-    /20261120w-postassicura/.test(sw) &&
-    /const SHELL_VER = "20261120w"/.test(account) &&
+    /20261124a-home-no-evento/.test(sw) &&
+    /const SHELL_VER = "20261124a"/.test(account) &&
     existsSync("assets/assicurazione-20261120w.js") &&
-    existsSync("assets/ux-suite-20261120w.js") &&
+    existsSync("assets/ux-suite-20261124a.js") &&
     readFileSync("assets/assicurazione-20261120w.js", "utf8") === src
 );
 

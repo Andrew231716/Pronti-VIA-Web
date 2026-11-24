@@ -7,7 +7,7 @@
   window.__pvUxSuiteBound = true;
 
   const STYLE_ID = "pv-ux-suite-css";
-  const STYLE_VER = "20261120w";
+  const STYLE_VER = "20261124a";
   const ACTIVITY_KEY = "viavia-activity-v1";
   const REVISIONS_KEY = "viavia-trip-revisions-v1";
   const ONBOARD_KEY = "viavia-onboard-v1";
@@ -758,25 +758,28 @@
         display:inline-flex;align-items:center;justify-content:center;cursor:pointer;min-height:36px
       }
       .toolbar-actions .pv-delete-trip-btn:hover{background:#ffe8e6;color:#b71c1c}
-      .pv-home-import-card{
-        display:flex;align-items:flex-start;gap:12px;width:100%;box-sizing:border-box;
-        margin:10px 0 12px;padding:14px 16px;border-radius:16px;text-align:left;cursor:pointer;
-        appearance:none;border:1px solid rgba(0,125,130,.18);
-        background:linear-gradient(160deg,#eef7f7,#e6f2f2);
-        color:#12343c;box-shadow:0 6px 18px rgba(16,42,48,.05);font:inherit
+      /* Home import CTA removed — keep any leftover node hidden */
+      #pv-home-import-btn,
+      .pv-home-import-card{display:none!important}
+      /* Home toolbar: I tuoi viaggi · cestino · Nuovo viaggio · Sistema */
+      #root .topbar .top-actions.pv-home-actions{
+        display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0
       }
-      .pv-home-import-card .emo{
-        flex:0 0 auto;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
-        background:#fff;border:1px solid rgba(0,125,130,.14);font-size:1.2rem
+      #root .topbar .top-actions.pv-home-actions > .text-button{
+        flex:0 1 auto;min-height:40px;padding:8px 10px
       }
-      .pv-home-import-card strong{display:block;font-size:.95rem;line-height:1.25;margin:0 0 2px}
-      .pv-home-import-card span{display:block;font-size:.8rem;color:#3f5860;line-height:1.35}
-      .pv-home-import-card:active{transform:scale(.99)}
-      @media (min-width:768px){
-        .pv-home-import-card{max-width:720px}
+      #root .topbar .top-actions.pv-home-actions > .pv-home-trash-wrap{
+        display:inline-flex;align-items:center;margin:0;flex:0 0 auto
+      }
+      #root .topbar .top-actions.pv-home-actions > .button.pv-home-nuovo,
+      #root .topbar .top-actions.pv-home-actions > .button.secondary{
+        flex:1 1 auto;min-width:min(100%,148px);min-height:40px;justify-content:center
+      }
+      #root .topbar .top-actions.pv-home-actions > #pv-theme-toggle{
+        flex:0 0 auto;margin:0
       }
       .pv-home-trash-wrap{
-        display:inline-flex;align-items:center;gap:8px;margin-left:8px;vertical-align:middle
+        display:inline-flex;align-items:center;gap:8px;margin-left:0;vertical-align:middle
       }
       .pv-ux-modal{position:fixed;inset:0;z-index:125000;display:grid;place-items:end center;padding:0}
       .pv-ux-modal[hidden]{display:none!important}
@@ -2092,48 +2095,20 @@
   }
 
   function injectHomeImportEntry() {
-    const existing = document.getElementById("pv-home-import-btn");
-    if (tripAuth()) {
-      existing?.remove();
-      return;
-    }
-    if (existing) return;
+    // Home no longer shows «Crea viaggio da evento» — import lives in Sistema / viaggio.
+    document.getElementById("pv-home-import-btn")?.remove();
+    document.querySelectorAll(".pv-home-import-card").forEach((el) => el.remove());
+  }
 
-    const host = document.querySelector(".recent-trips");
+  function polishHomeActionsRow() {
     const nuovo =
-      [...document.querySelectorAll("button")].find((b) => /nuovo viaggio/i.test((b.textContent || "").trim())) || null;
-    const section =
-      host ||
-      nuovo?.closest("section") ||
-      nuovo?.parentElement?.parentElement ||
-      document.querySelector("#root main");
-    if (!section && !nuovo) return;
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "pv-home-import-btn";
-    btn.className = "pv-home-import-card";
-    btn.innerHTML = `<span class="emo" aria-hidden="true">📥</span>
-      <span>
-        <strong>Crea viaggio da evento</strong>
-        <span>Incolla testo o importa più file · tappe, prenotazioni, checklist e documenti</span>
-      </span>`;
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      void openEventImportWizard({ mode: "create" });
-    });
-
-    // Full-width card under the "I tuoi viaggi / Nuovo viaggio" row — never inside the trash wrap.
-    if (nuovo) {
-      const row = nuovo.parentElement;
-      if (row && row !== section) row.insertAdjacentElement("afterend", btn);
-      else nuovo.insertAdjacentElement("afterend", btn);
-    } else if (host) {
-      host.prepend(btn);
-    } else {
-      section.prepend(btn);
-    }
+      [...document.querySelectorAll("#root .topbar button, #root .top-actions button")].find((b) =>
+        /^\+?\s*nuovo viaggio$/i.test((b.textContent || "").replace(/\s+/g, " ").trim())
+      ) || null;
+    const row = nuovo?.closest(".top-actions") || document.querySelector("#root .topbar .top-actions");
+    if (!row) return;
+    row.classList.add("pv-home-actions");
+    if (nuovo) nuovo.classList.add("pv-home-nuovo");
   }
 
   function injectHomeDeleteEntry() {
@@ -2146,27 +2121,29 @@
     if (!anchor) {
       document.getElementById("pv-home-trash-btn")?.closest?.(".pv-home-trash-wrap")?.remove();
       document.getElementById("pv-home-trash-btn")?.remove();
+      polishHomeActionsRow();
       return;
     }
-    if (document.getElementById("pv-home-trash-btn")) return;
+    if (!document.getElementById("pv-home-trash-btn")) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = "pv-home-trash-btn";
+      btn.className = "pv-trash-icon-btn";
+      btn.innerHTML = trashIconSvg(15);
+      btn.setAttribute("aria-label", "Rimuovi un viaggio salvato");
+      btn.title = "Rimuovi un viaggio";
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openManageTrips();
+      });
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "pv-home-trash-btn";
-    btn.className = "pv-trash-icon-btn";
-    btn.innerHTML = trashIconSvg(15);
-    btn.setAttribute("aria-label", "Rimuovi un viaggio salvato");
-    btn.title = "Rimuovi un viaggio";
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      openManageTrips();
-    });
-
-    const wrap = document.createElement("span");
-    wrap.className = "pv-home-trash-wrap";
-    wrap.appendChild(btn);
-    anchor.insertAdjacentElement("afterend", wrap);
+      const wrap = document.createElement("span");
+      wrap.className = "pv-home-trash-wrap";
+      wrap.appendChild(btn);
+      anchor.insertAdjacentElement("afterend", wrap);
+    }
+    polishHomeActionsRow();
   }
 
   function openModal(title, bodyHtml, { onMount } = {}) {
@@ -2513,11 +2490,10 @@
     return `${textBlock}<div class="pv-menu-section">
               <div class="pv-menu-context">
                 <strong>Impostazioni</strong>
-                <p>Apri un viaggio per compagni, inviti, notifiche, sync e checklist. Qui puoi già importare da un evento.</p>
+                <p>Usa «Nuovo viaggio» in Home, oppure apri un viaggio per compagni, inviti, sync e checklist.</p>
               </div>
               <h3>⚙️ Strumenti</h3>
               <div class="pv-menu-grid">
-                <button type="button" data-ux="import-event"><strong><span class="pv-menu-emo" aria-hidden="true">📥</span>Crea / importa da evento</strong><span>Nuovo viaggio o aggiunte · testo + più file</span></button>
                 <button type="button" data-ux="manage-trips"><strong><span class="pv-menu-emo" aria-hidden="true">🗂️</span>Elenco viaggi</strong><span>Apri o gestisci i viaggi salvati</span></button>
                 <button type="button" data-ux="sync-settings"><strong>Sincronizzazione e backup</strong><span>Tema, sync e backup Hub</span></button>
               </div>
@@ -6463,8 +6439,9 @@
       run(renderHomeResume);
       run(enhanceHomeTripCards);
       run(enhanceRecentTripsDelete);
-      run(injectHomeDeleteEntry);
       run(injectHomeImportEntry);
+      run(injectHomeDeleteEntry);
+      run(polishHomeActionsRow);
     }
   }
 

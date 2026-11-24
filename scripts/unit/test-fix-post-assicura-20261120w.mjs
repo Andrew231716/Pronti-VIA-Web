@@ -20,19 +20,19 @@ const spa = readFileSync(spaPath, "utf8");
 
 ok(
   "stamps 20261120w",
-  /const SHELL_VER = "20261120w"/.test(account) &&
+  /const SHELL_VER = "20261124a"/.test(account) &&
     /index-loadfix-20261120w\.js/.test(account) &&
-    /account\.js\?v=20261120w/.test(index) &&
-    /ux-suite-20261120w\.js/.test(index) &&
+    /account\.js\?v=20261124a/.test(index) &&
+    /ux-suite-20261124a\.js/.test(index) &&
     /assicurazione-20261120w\.js/.test(index) &&
-    /20261120w-postassicura/.test(sw) &&
+    /20261124a-home-no-evento/.test(sw) &&
     /index-loadfix-20261120w\.js/.test(sw) &&
-    /ux-suite-20261120w\.js/.test(sw) &&
+    /ux-suite-20261124a\.js/.test(sw) &&
     /assicurazione-20261120w\.js/.test(sw) &&
     existsSync(spaPath) &&
-    existsSync("assets/ux-suite-20261120w.js") &&
+    existsSync("assets/ux-suite-20261124a.js") &&
     existsSync("assets/assicurazione-20261120w.js") &&
-    readFileSync("assets/ux-suite-20261120w.js", "utf8") === ux &&
+    readFileSync("assets/ux-suite-20261124a.js", "utf8") === ux &&
     readFileSync("assets/assicurazione-20261120w.js", "utf8") === ins
 );
 
@@ -46,7 +46,7 @@ ok(
 
 ok(
   "ux hides Creta demo under real resume",
-  /STYLE_VER = "20261120w"/.test(ux) &&
+  /STYLE_VER = "20261124a"/.test(ux) &&
     /pv-home-real-only/.test(ux) &&
     /syncHomeDemoVisibility/.test(ux) &&
     /main\.app-shell\.pv-home-real-only > \.demo-notice/.test(ux) &&
