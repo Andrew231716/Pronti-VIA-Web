@@ -21,13 +21,13 @@ const src = readFileSync("assicurazione.js", "utf8");
 
 ok(
   "stamps shell 20261124a + assicurazione w",
-  /ux-suite-20261124a\.js/.test(index) &&
+  /ux-suite-20261124b\.js/.test(index) &&
     /assicurazione-20261120w\.js/.test(index) &&
     /assicurazione-20261120w\.js/.test(sw) &&
-    /20261124a-home-no-evento/.test(sw) &&
-    /const SHELL_VER = "20261124a"/.test(account) &&
+    /20261124b-viaggi-share-lock/.test(sw) &&
+    /const SHELL_VER = "20261124b"/.test(account) &&
     existsSync("assets/assicurazione-20261120w.js") &&
-    existsSync("assets/ux-suite-20261124a.js") &&
+    existsSync("assets/ux-suite-20261124b.js") &&
     readFileSync("assets/assicurazione-20261120w.js", "utf8") === src
 );
 
