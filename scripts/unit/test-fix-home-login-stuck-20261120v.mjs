@@ -15,10 +15,10 @@ const index = readFileSync("index.html", "utf8");
 const sw = readFileSync("sw.js", "utf8");
 
 ok(
-  "stamps 20261120w (prefer-home still wired)",
-  /const SHELL_VER = "20261120w"/.test(account) &&
-    /account\.js\?v=20261120w/.test(index) &&
-    /20261120w-postassicura/.test(sw) &&
+  "stamps 20261124a (prefer-home still wired)",
+  /const SHELL_VER = "20261124a"/.test(account) &&
+    /account\.js\?v=20261124a/.test(index) &&
+    /20261124a-home-no-evento/.test(sw) &&
     /index-loadfix-20261120w\.js/.test(account) &&
     /index-loadfix-20261120w\.js/.test(sw) &&
     existsSync("assets/index-loadfix-20261120w.js")
